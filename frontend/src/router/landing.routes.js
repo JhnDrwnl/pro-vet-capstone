@@ -1,6 +1,6 @@
 // src/router/landing.routes.js
 import LandingLayout from '@/layouts/LandingLayout.vue'
-import About from '@/views/landing/Home.vue'
+import Home from '@/views/landing/Home.vue'
 
 export default [
   {
@@ -9,8 +9,8 @@ export default [
     children: [
       {
         path: '',
-        name: 'Home',
-        component: About,
+        name: 'home',
+        component: Home,
       },
     ],
   }
