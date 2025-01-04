@@ -4,12 +4,14 @@ import landingRoutes from './landing.routes.js';
 import userRoutes from './user.routes.js';
 import adminRoutes from './admin.routes.js';
 import veterinaryRoutes from './veterinary.routes.js'; // New veterinary routes
+import authRoutes from './auth.routes.js'
 
 const routes = [
   ...landingRoutes,
   ...userRoutes,
   ...adminRoutes,
   ...veterinaryRoutes,
+  ...authRoutes,
 
   {
     path: '/:pathMatch(.*)*',
