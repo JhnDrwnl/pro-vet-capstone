@@ -1,7 +1,6 @@
 <!-- views/auth/Login.vue -->
 <template>
     <div class="min-h-screen relative">
-      <!-- Arrow button -->
       <button 
         @click="goToHome" 
         class="absolute top-4 left-4 p-1.5 rounded-full bg-white shadow-md hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 z-10"
@@ -10,14 +9,11 @@
         <ArrowLeftIcon class="w-4 h-4 text-blue-600" />
       </button>
   
-      <!-- Background layers -->
       <div class="absolute inset-x-0 top-0 h-1/2 bg-blue-600"></div>
       <div class="absolute inset-x-0 bottom-0 h-1/2 bg-blue-100"></div>
       
-      <!-- Content -->
       <div class="relative min-h-screen flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl grid md:grid-cols-2 overflow-hidden">
-          <!-- Login Form Panel -->
           <div class="p-6 lg:p-8 flex flex-col items-center">
             <h1 class="text-xl font-semibold text-gray-800 mb-6">Login</h1>
             <form @submit.prevent="handleSubmit" class="space-y-4 w-80">
@@ -55,7 +51,7 @@
                   />
                   <span class="ml-2 text-gray-600">Remember me</span>
                 </label>
-                <a href="#" class="text-blue-600 hover:text-blue-700">Forgot password?</a>
+                <button @click="showForgotPassword = true" type="button" class="text-blue-600 hover:text-blue-700">Forgot password?</button>
               </div>
   
               <button 
@@ -65,6 +61,16 @@
               >
                 {{ emailLoginLoading ? 'Logging in...' : 'Login' }}
               </button>
+  
+              <div v-if="showUnverifiedError" class="mt-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+                <p>Your email is not verified. Please check your inbox for the verification link.</p>
+                <button 
+                  @click="resendVerificationEmail" 
+                  class="mt-2 text-blue-600 hover:text-blue-800 underline focus:outline-none"
+                >
+                  Resend verification email
+                </button>
+              </div>
   
               <div class="relative my-4 flex items-center">
                 <div class="flex-grow h-px bg-gray-300"></div>
@@ -91,7 +97,6 @@
             </div>
           </div>
   
-          <!-- Pet Health Management System Panel -->
           <div class="bg-gray-50 p-6 lg:p-8 flex flex-col items-center justify-center text-center relative">
             <div class="mb-4">
               <img 
@@ -107,6 +112,32 @@
               Keep track of your pet's health and book appointments effortlessly with our system. Stay updated on check-ups, vaccinations, and treatment plans, ensuring your furry friends receive the care they deserve.
             </p>
           </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showForgotPassword" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+        <h2 class="text-xl font-semibold mb-4">Reset Password</h2>
+        <p class="mb-4">Enter your email address and we'll send you a link to reset your password.</p>
+        <input 
+          type="email" 
+          v-model="form.email"
+          placeholder="Email"
+          class="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm mb-4"
+        />
+        <div class="flex justify-end space-x-2">
+          <button 
+            @click="showForgotPassword = false" 
+            class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors duration-200"
+          >
+            Cancel
+          </button>
+          <button 
+            @click="handleForgotPassword" 
+            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors duration-200"
+          >
+            Send Reset Link
+          </button>
         </div>
       </div>
     </div>
@@ -127,6 +158,8 @@
   const showPassword = ref(false)
   const emailLoginLoading = ref(false)
   const googleLoginLoading = ref(false)
+  const showUnverifiedError = ref(false);
+  const showForgotPassword = ref(false);
   
   const form = reactive({
     email: '',
@@ -135,14 +168,19 @@
   })
   
   onMounted(() => {
-    // Check if there's an email in the query parameters
     const emailFromQuery = route.query.email;
     if (emailFromQuery) {
       form.email = emailFromQuery;
     }
+  
+    const rememberedEmail = localStorage.getItem('userEmail');
+    const rememberMe = localStorage.getItem('rememberMe') === 'true';
+    if (rememberedEmail && rememberMe) {
+      form.email = rememberedEmail;
+      form.remember = true;
+    }
   });
   
-  // Add a watcher for the user state
   watch(() => authStore.user, (newUser) => {
     if (newUser) {
       console.log('User state updated:', newUser);
@@ -154,18 +192,35 @@
   const handleSubmit = async () => {
     try {
       emailLoginLoading.value = true;
-      await authStore.loginUser({
+      const loginResult = await authStore.loginUser({
         email: form.email,
-        password: form.password
+        password: form.password,
+        rememberMe: form.remember
       });
-      console.log('Login successful, user:', authStore.user);
-      if (authStore.isAuthenticated) {
+      if (loginResult.success) {
+        console.log('Login successful, user:', authStore.user);
         redirectToDashboard();
+      } else if (loginResult.emailVerificationRequired) {
+        showUnverifiedError.value = true;
       }
     } catch (error) {
       console.error('Login error:', error);
     } finally {
       emailLoginLoading.value = false;
+    }
+  }
+  
+  const resendVerificationEmail = async () => {
+    try {
+      const success = await authStore.resendVerificationEmail(form.email);
+      if (success) {
+        alert('Verification email has been resent. Please check your inbox.');
+      } else {
+        alert('Failed to resend verification email. Please try again later.');
+      }
+    } catch (error) {
+      console.error('Error resending verification email:', error);
+      alert('An error occurred while resending the verification email.');
     }
   }
   
@@ -207,6 +262,25 @@
   const goToHome = () => {
     router.push('/');
   }
+  
+  const handleForgotPassword = async () => {
+    if (!form.email) {
+      alert('Please enter your email address.');
+      return;
+    }
+    try {
+      const success = await authStore.sendPasswordResetEmail(form.email);
+      if (success) {
+        alert('Password reset email sent. Please check your inbox.');
+        showForgotPassword.value = false;
+      } else {
+        alert('Failed to send password reset email. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      alert('An error occurred while sending the password reset email.');
+    }
+  };
   </script>
   
   <style scoped>
@@ -215,3 +289,7 @@
     display: none;
   }
   </style>
+  
+  
+  
+  

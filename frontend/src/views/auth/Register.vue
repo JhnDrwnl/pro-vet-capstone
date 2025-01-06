@@ -37,7 +37,7 @@
           <!-- Register Form Panel -->
           <div class="p-6 lg:p-8 flex flex-col items-center">
             <h1 class="text-xl font-semibold text-gray-800 mb-6">Register</h1>
-            <form @submit.prevent="handleRegister" class="space-y-4 w-80">
+            <form v-if="!registrationComplete" @submit.prevent="handleRegister" class="space-y-4 w-80">
               <div class="grid grid-cols-2 gap-4">
                 <input 
                   type="text" 
@@ -141,6 +141,7 @@
   
   const showPassword = ref(false);
   const showConfirmPassword = ref(false);
+  const registrationComplete = ref(false);
   const form = reactive({
     firstName: '',
     lastName: '',
@@ -170,8 +171,9 @@
         firstName: form.firstName,
         lastName: form.lastName
       });
-      // Redirect to login page with email parameter
-      router.push({ name: 'login', query: { email: registeredEmail } });
+      registrationComplete.value = true;
+      // Redirect to login page with email as query parameter
+      router.push({ path: '/auth/login', query: { email: registeredEmail } });
     } catch (error) {
       console.error('Registration failed:', error);
     }
@@ -206,3 +208,5 @@
     display: none;
   }
   </style>
+  
+  

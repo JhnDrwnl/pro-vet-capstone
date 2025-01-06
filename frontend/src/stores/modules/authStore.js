@@ -8,7 +8,12 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   getAdditionalUserInfo,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  setPersistence,
+  browserSessionPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
@@ -18,7 +23,9 @@ export const useAuthStore = defineStore('auth', {
     loading: false,
     error: null,
     isInitialized: false,
-    registrationMethod: null
+    registrationMethod: null,
+    verificationEmail: null,
+    rememberMe: false
   }),
   
   actions: {
@@ -95,10 +102,11 @@ export const useAuthStore = defineStore('auth', {
         this.registrationMethod = 'email';
         console.log('User registered and document created with ID:', userId);
         
-        // Important: Sign out the user after registration
+        await sendEmailVerification(user);
+        this.verificationEmail = email;
+        
         await this.logoutUser();
         
-        // Return the email for redirection purposes
         return email;
       } catch (error) {
         this.error = error.message;
@@ -109,15 +117,38 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async loginUser({ email, password }) {
+    async loginUser({ email, password, rememberMe }) {
       this.loading = true;
       this.error = null;
       try {
+        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+        
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        await this.fetchUserData(userCredential.user);
+        const user = userCredential.user;
+        
+        if (!user.emailVerified) {
+          await signOut(auth);
+          this.error = "Please verify your email before logging in.";
+          this.user = null;
+          return { success: false, emailVerificationRequired: true };
+        }
+        
+        await this.fetchUserData(user);
+        
+        this.rememberMe = rememberMe;
+        if (rememberMe) {
+          localStorage.setItem('rememberMe', 'true');
+          localStorage.setItem('userEmail', email);
+        } else {
+          localStorage.removeItem('rememberMe');
+          localStorage.removeItem('userEmail');
+        }
+        
+        return { success: true };
       } catch (error) {
         this.error = error.message;
         console.error('Login error:', error);
+        return { success: false };
       } finally {
         this.loading = false;
       }
@@ -130,6 +161,9 @@ export const useAuthStore = defineStore('auth', {
         await signOut(auth);
         this.user = null;
         this.registrationMethod = null;
+        this.rememberMe = false;
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('userEmail');
       } catch (error) {
         this.error = error.message;
         console.error('Logout error:', error);
@@ -193,6 +227,69 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.loading = false;
       }
+    },
+
+    async verifyEmail(oobCode) {
+      this.loading = true;
+      this.error = null;
+      try {
+        await auth.applyActionCode(oobCode);
+        const user = auth.currentUser;
+        if (user) {
+          const userId = this.generateUserId(user.uid);
+          await setDoc(doc(db, 'users', userId), { emailVerified: true }, { merge: true });
+        }
+        return true;
+      } catch (error) {
+        this.error = error.message;
+        console.error('Email verification error:', error);
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async resendVerificationEmail(email) {
+      try {
+        const user = auth.currentUser;
+        if (user && user.email === email) {
+          await sendEmailVerification(user);
+          return true;
+        } else {
+          const userCredential = await signInWithEmailAndPassword(auth, email, 'dummy-password');
+          await sendEmailVerification(userCredential.user);
+          await signOut(auth);
+          return true;
+        }
+      } catch (error) {
+        console.error('Error resending verification email:', error);
+        this.error = error.message;
+        return false;
+      }
+    },
+
+    async sendPasswordResetEmail(email) {
+      this.loading = true;
+      this.error = null;
+      try {
+        await sendPasswordResetEmail(auth, email);
+        return true;
+      } catch (error) {
+        this.error = error.message;
+        console.error('Password reset email error:', error);
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    checkRememberMe() {
+      const rememberMe = localStorage.getItem('rememberMe');
+      if (rememberMe === 'true') {
+        this.rememberMe = true;
+        return localStorage.getItem('userEmail') || '';
+      }
+      return '';
     }
   },
 
