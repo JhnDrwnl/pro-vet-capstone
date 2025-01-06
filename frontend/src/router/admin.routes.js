@@ -1,11 +1,11 @@
-import AdminLayout from '../layouts/AdminLayout.vue';
-import Dashboard from '../views/admin/Dashboard.vue';
-import Analytics from '../views/admin/Analytics.vue';
-import Appointments from '../views/admin/Appointments.vue';
-import UserManagement from '../views/admin/UserManagement.vue';
-import DataManagement from '../views/admin/DataManagement.vue';
-import Telehealth from '../views/admin/Telehealth.vue';
-import Chatbot from '../views/admin/Chatbot.vue';
+import AdminLayout from '@/layouts/AdminLayout.vue';
+import Dashboard from '@/views/admin/Dashboard.vue';
+import Analytics from '@/views/admin/Analytics.vue';
+import Appointments from '@/views/admin/Appointments.vue';
+import UserManagement from '@/views/admin/UserManagement.vue';
+import DataManagement from '@/views/admin/DataManagement.vue';
+import Telehealth from '@/views/admin/Telehealth.vue';
+import Chatbot from '@/views/admin/Chatbot.vue';
 
 
 export default [

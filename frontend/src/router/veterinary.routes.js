@@ -1,11 +1,11 @@
-import VeterinaryLayout from '../layouts/VeterinaryLayout.vue';
-import VetDashboard from '../views/vet/VetDashboard.vue';
-import VetClientPets from '../views/vet/VetClientPets.vue';
-import VetAppointments from '../views/vet/VetAppointments.vue';
-import VetFeedback from '../views/vet/VetFeedback.vue';
-import VetHealthRiskAssessment from '../views/vet/VetHealthRiskAssessment.vue';
-import VetTelehealth from '../views/vet/VetTelehealth.vue';
-import MedicalRecords from '../views/vet/MedicalRecords.vue';
+import VeterinaryLayout from '@/layouts/VeterinaryLayout.vue';
+import VetDashboard from '@/views/vet/VetDashboard.vue';
+import VetClientPets from '@/views/vet/VetClientPets.vue';
+import VetAppointments from '@/views/vet/VetAppointments.vue';
+import VetFeedback from '@/views/vet/VetFeedback.vue';
+import VetHealthRiskAssessment from '@/views/vet/VetHealthRiskAssessment.vue';
+import VetTelehealth from '@/views/vet/VetTelehealth.vue';
+import MedicalRecords from '@/views/vet/MedicalRecords.vue';
 
 export default [
   {
