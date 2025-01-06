@@ -7,20 +7,57 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
-  getAdditionalUserInfo
+  getAdditionalUserInfo,
+  onAuthStateChanged
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, getDocs, query, collection, where } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     loading: false,
-    error: null
+    error: null,
+    isInitialized: false,
+    registrationMethod: null
   }),
   
   actions: {
     generateUserId(uid) {
       return `user_${uid.substring(0, 8)}`;
+    },
+
+    async initializeAuth() {
+      return new Promise((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            await this.fetchUserData(user);
+          } else {
+            this.user = null;
+          }
+          this.isInitialized = true;
+          unsubscribe();
+          resolve();
+        }, (error) => {
+          this.error = error.message;
+          this.isInitialized = true;
+          reject(error);
+        });
+      });
+    },
+
+    async fetchUserData(user) {
+      const userId = this.generateUserId(user.uid);
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        this.user = {
+          ...user,
+          userId: userId,
+          role: userDoc.data().role
+        };
+      } else {
+        console.error('User document not found');
+        this.user = null;
+      }
     },
 
     async createUserDocument(user, additionalData = {}) {
@@ -32,6 +69,7 @@ export const useAuthStore = defineStore('auth', {
         email: user.email,
         uid: user.uid,
         createdAt: new Date(),
+        role: additionalData.role || 'user',
         ...additionalData
       };
 
@@ -46,15 +84,16 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async registerUser({ email, password, firstName, lastName }) {
+    async registerUser({ email, password, firstName, lastName, role = 'user' }) {
       this.loading = true;
       this.error = null;
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        this.user = userCredential.user;
+        const user = userCredential.user;
         
-        const userId = await this.createUserDocument(this.user, { firstName, lastName });
-        this.user.userId = userId;
+        const userId = await this.createUserDocument(user, { firstName, lastName, role });
+        await this.fetchUserData(user);
+        this.registrationMethod = 'email';
         console.log('User registered and document created with ID:', userId);
       } catch (error) {
         this.error = error.message;
@@ -69,14 +108,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null;
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        this.user = userCredential.user;
-        const userId = this.generateUserId(this.user.uid);
-        const userDoc = await getDoc(doc(db, 'users', userId));
-        if (userDoc.exists()) {
-          this.user.userId = userId;
-        } else {
-          console.error('User document not found');
-        }
+        await this.fetchUserData(userCredential.user);
       } catch (error) {
         this.error = error.message;
         console.error('Login error:', error);
@@ -91,6 +123,7 @@ export const useAuthStore = defineStore('auth', {
       try {
         await signOut(auth);
         this.user = null;
+        this.registrationMethod = null;
       } catch (error) {
         this.error = error.message;
         console.error('Logout error:', error);
@@ -107,28 +140,27 @@ export const useAuthStore = defineStore('auth', {
         provider.addScope('email');
         provider.addScope('profile');
         const result = await signInWithPopup(auth, provider);
-        this.user = result.user;
+        const user = result.user;
 
-        console.log('Google sign-in user:', this.user);
-        console.log('User email:', this.user.email);
-        console.log('User display name:', this.user.displayName);
-        console.log('User photo URL:', this.user.photoURL);
-        console.log('User UID:', this.user.uid);
+        console.log('Google sign-in user:', user);
+        console.log('User email:', user.email);
+        console.log('User display name:', user.displayName);
+        console.log('User photo URL:', user.photoURL);
+        console.log('User UID:', user.uid);
 
         const additionalUserInfo = getAdditionalUserInfo(result);
         console.log('Is new user:', additionalUserInfo?.isNewUser);
 
-        const userId = this.generateUserId(this.user.uid);
+        const userId = this.generateUserId(user.uid);
         const userDoc = await getDoc(doc(db, 'users', userId));
 
         if (!userDoc.exists() || additionalUserInfo?.isNewUser) {
-          // If the document doesn't exist or it's a new user, create it
-          const nameParts = this.user.displayName ? this.user.displayName.split(' ') : ['', ''];
+          const nameParts = user.displayName ? user.displayName.split(' ') : ['', ''];
           let firstName, lastName;
 
           if (nameParts.length >= 2) {
-            lastName = nameParts.pop(); // Get the last part as lastName
-            firstName = nameParts.join(' '); // Join the rest as firstName
+            lastName = nameParts.pop();
+            firstName = nameParts.join(' ');
           } else {
             firstName = nameParts[0] || '';
             lastName = '';
@@ -137,15 +169,17 @@ export const useAuthStore = defineStore('auth', {
           console.log('Parsed firstName:', firstName);
           console.log('Parsed lastName:', lastName);
 
-          await this.createUserDocument(this.user, {
+          await this.createUserDocument(user, {
             firstName,
             lastName,
-            photoURL: this.user.photoURL || '',
-            email: this.user.email || additionalUserInfo?.profile?.email || ''
+            photoURL: user.photoURL || '',
+            email: user.email || additionalUserInfo?.profile?.email || '',
+            role: 'user'
           });
         }
 
-        this.user.userId = userId;
+        await this.fetchUserData(user);
+        this.registrationMethod = 'google';
         console.log('Google sign-in successful');
       } catch (error) {
         this.error = error.message;
@@ -158,6 +192,8 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.user,
-    currentUser: (state) => state.user
+    currentUser: (state) => state.user,
+    userRole: (state) => state.user?.role || null
   }
 });
+

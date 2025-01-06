@@ -1,3 +1,4 @@
+// src/router/veterinary.routes.js
 import VeterinaryLayout from '@/layouts/VeterinaryLayout.vue';
 import VetDashboard from '@/views/vet/VetDashboard.vue';
 import VetClientPets from '@/views/vet/VetClientPets.vue';
@@ -11,10 +12,11 @@ export default [
   {
     path: '/vet',
     component: VeterinaryLayout,
+    meta: { requiresAuth: true, roles: ['veterinary'] }, 
     children: [
         {
-            path: 'vetdashboard',
-            name: 'vetdashboard',
+            path: 'dashboard',
+            name: 'VetDashboard',
             component: VetDashboard,
         },
         {

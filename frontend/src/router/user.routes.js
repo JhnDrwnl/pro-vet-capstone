@@ -1,3 +1,4 @@
+// src/router/user.routes.js
 import UserLayout from '@/layouts/UserLayout.vue';
 import UserDashboard from '@/views/user/UserDashboard.vue';
 import PetProfiles from '@/views/user/PetProfiles.vue';
@@ -10,10 +11,11 @@ export default [
   {
     path: '/user',
     component: UserLayout,
+    meta: { requiresAuth: true, roles: ['user'] },
     children: [
         {
-            path: 'userdashboard',
-            name: 'userdashboard',
+            path: 'dashboard',
+            name: 'UserDashboard',
             component: UserDashboard,
         },
         {

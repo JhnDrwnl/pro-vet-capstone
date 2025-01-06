@@ -146,7 +146,8 @@
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'user'
   });
   
   const togglePassword = (field) => {
@@ -168,13 +169,14 @@
         email: form.email,
         password: form.password,
         firstName: form.firstName,
-        lastName: form.lastName
+        lastName: form.lastName,
+        role: form.role
       });
       if (authStore.user) {
         console.log('Registration successful:', authStore.user);
         console.log('User email:', authStore.user.email);
         console.log('User UID:', authStore.user.uid);
-        router.push('/dashboard');
+        router.push('/auth/login');
       } else {
         console.error('Registration successful but user is null');
       }
@@ -212,3 +214,5 @@
     display: none;
   }
   </style>
+  
+  

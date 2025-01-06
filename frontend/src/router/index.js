@@ -1,10 +1,11 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
-// import { useAuthStore } from '@/store/modules/auth'; // Update the store import as per your setup
+import { useAuthStore } from '@/stores/modules/authStore';
 import landingRoutes from './landing.routes.js';
 import userRoutes from './user.routes.js';
 import adminRoutes from './admin.routes.js';
-import veterinaryRoutes from './veterinary.routes.js'; // New veterinary routes
-import authRoutes from './auth.routes.js'
+import veterinaryRoutes from './veterinary.routes.js';
+import authRoutes from './auth.routes.js';
 
 const routes = [
   ...landingRoutes,
@@ -32,61 +33,64 @@ const router = createRouter({
   },
 });
 
-// function getRoleBasedRedirect(role) {
-//   switch (role) {
-//     case 'admin':
-//       return { name: 'AdminDashboard' }; // Assuming 'AdminDashboard' is defined in adminRoutes
-//     case 'veterinary':
-//       return { name: 'VeterinaryDashboard' }; // Assuming 'VeterinaryDashboard' is defined in veterinaryRoutes
-//     case 'user':
-//       return { name: 'UserAccount' }; // Assuming 'UserAccount' is defined in userRoutes
-//     default:
-//       return { name: 'UserAccount' };
-//   }
-// }
+function getRoleBasedRedirect(role) {
+  switch (role) {
+    case 'admin':
+      return { name: 'AdminDashboard' };
+    case 'veterinary':
+      return { name: 'VetDashboard' };
+    case 'user':
+      return { name: 'UserDashboard' };
+    default:
+      return { name: 'UserDashboard' };
+  }
+}
 
-// router.beforeEach(async (to, from, next) => {
-//   const authStore = useAuthStore();
+router.beforeEach(async (to, from, next) => {
+  const authStore = useAuthStore();
 
-//   // Always allow access to landing and user pages
-//   if (to.matched.some(record => record.path === '/' || record.path.startsWith('/user'))) {
-//     next();
-//     return;
-//   }
+  // Always allow access to public routes
+  if (to.meta.public) {
+    next();
+    return;
+  }
 
-//   // Wait for auth initialization
-//   if (!authStore.isInitialized) {
-//     try {
-//       await authStore.initializeAuth();
-//     } catch (error) {
-//       console.error('Auth initialization failed:', error);
-//       next({ name: 'login' });
-//       return;
-//     }
-//   }
+  // Wait for auth initialization
+  if (!authStore.isInitialized) {
+    try {
+      await authStore.initializeAuth();
+    } catch (error) {
+      console.error('Auth initialization failed:', error);
+      next({ name: 'login' });
+      return;
+    }
+  }
 
-//   const isAuthenticated = authStore.isAuthenticated;
-//   const userRole = authStore.userRole || localStorage.getItem('userRole');
-//   const userExists = authStore.userExists;
+  const isAuthenticated = authStore.isAuthenticated;
+  const userRole = authStore.userRole;
 
-//   if (isAuthenticated && userExists) {
-//     if (to.name === 'login' || to.name === 'register') {
-//       // If user is authenticated and trying to access login or register, redirect to appropriate dashboard
-//       const roleBasedRedirect = getRoleBasedRedirect(userRole);
-//       next(roleBasedRedirect);
-//     } else if (to.meta.roles && !to.meta.roles.includes(userRole)) {
-//       // If the route requires specific roles and the user doesn't have access, redirect to the correct dashboard
-//       const roleBasedRedirect = getRoleBasedRedirect(userRole);
-//       next(roleBasedRedirect);
-//     } else {
-//       next();
-//     }
-//   } else if (to.meta.requiresAuth) {
-//     // If the route requires authentication, redirect to login
-//     next({ name: 'login' });
-//   } else {
-//     next();
-//   }
-// });
+  console.log('Router guard - isAuthenticated:', isAuthenticated);
+  console.log('Router guard - userRole:', userRole);
+
+  if (isAuthenticated) {
+    if (to.name === 'login' || to.name === 'register') {
+      // If user is authenticated and trying to access login or register, redirect to appropriate dashboard
+      const roleBasedRedirect = getRoleBasedRedirect(userRole);
+      next(roleBasedRedirect);
+    } else if (to.meta.roles && !to.meta.roles.includes(userRole)) {
+      // If the route requires specific roles and the user doesn't have access, redirect to the correct dashboard
+      const roleBasedRedirect = getRoleBasedRedirect(userRole);
+      next(roleBasedRedirect);
+    } else {
+      next();
+    }
+  } else if (to.meta.requiresAuth) {
+    // If the route requires authentication, redirect to login
+    next({ name: 'login' });
+  } else {
+    next();
+  }
+});
 
 export default router;
+
