@@ -1,12 +1,12 @@
 // src/router/auth.routes
-import LandingLayout from '@/layouts/LandingLayout.vue'
+import AuthLayout from '@/layouts/AuthLayout.vue'
 import Login from '@/views/auth/Login.vue'
 import Register from '@/views/auth/Register.vue'
 
 export default [
   {
     path: '/auth',
-    component: LandingLayout,
+    component: AuthLayout,
     children: [
         {
             path: 'login',

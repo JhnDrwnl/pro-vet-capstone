@@ -1,8 +1,6 @@
-<!-- src/layouts/LandingLayout.vue -->
+<!-- src/layouts/AuthLayout.vue -->
 <template>
     <div class="min-h-screen flex flex-col bg-gray-50">
-      <Navbar/>
-    
       <main class="flex-grow">
         <router-view></router-view>
       </main>
@@ -10,5 +8,4 @@
   </template>
   
   <script setup>
-  import Navbar from '@/components/common/LandingNav.vue'
   </script>
