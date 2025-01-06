@@ -92,12 +92,18 @@ export const useAuthStore = defineStore('auth', {
         const user = userCredential.user;
         
         const userId = await this.createUserDocument(user, { firstName, lastName, role });
-        await this.fetchUserData(user);
         this.registrationMethod = 'email';
         console.log('User registered and document created with ID:', userId);
+        
+        // Important: Sign out the user after registration
+        await this.logoutUser();
+        
+        // Return the email for redirection purposes
+        return email;
       } catch (error) {
         this.error = error.message;
         console.error('Registration error:', error);
+        throw error;
       } finally {
         this.loading = false;
       }
@@ -196,4 +202,3 @@ export const useAuthStore = defineStore('auth', {
     userRole: (state) => state.user?.role || null
   }
 });
-

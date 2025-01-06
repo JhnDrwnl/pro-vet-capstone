@@ -84,13 +84,17 @@ router.beforeEach(async (to, from, next) => {
     } else {
       next();
     }
-  } else if (to.meta.requiresAuth) {
-    // If the route requires authentication, redirect to login
-    next({ name: 'login' });
   } else {
-    next();
+    // Allow access to login and register routes even when not authenticated
+    if (to.name === 'login' || to.name === 'register') {
+      next();
+    } else if (to.meta.requiresAuth) {
+      // If the route requires authentication, redirect to login
+      next({ name: 'login' });
+    } else {
+      next();
+    }
   }
 });
 
 export default router;
-

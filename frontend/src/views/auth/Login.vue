@@ -61,9 +61,9 @@
               <button 
                 type="submit"
                 class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
-                :disabled="loading"
+                :disabled="emailLoginLoading"
               >
-                {{ loading ? 'Logging in...' : 'Login' }}
+                {{ emailLoginLoading ? 'Logging in...' : 'Login' }}
               </button>
   
               <div class="relative my-4 flex items-center">
@@ -75,10 +75,10 @@
               <button 
                 @click.prevent="loginWithGoogle" 
                 class="w-full py-2 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
-                :disabled="loading"
+                :disabled="googleLoginLoading"
               >
                 <img src="/ant-design--google-circle-filled.png" alt="Google Icon" class="w-7 h-7 mr-3" />
-                {{ loading ? 'Signing in...' : 'Login with Google' }}
+                {{ googleLoginLoading ? 'Signing in...' : 'Login with Google' }}
               </button>
   
               <p class="text-center text-xs text-gray-600">
@@ -113,87 +113,105 @@
   </template>
   
   <script setup>
-import { ref, reactive, watch } from 'vue'
-import { EyeIcon, EyeOffIcon, ArrowLeftIcon } from 'lucide-vue-next'
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/modules/authStore';
-import { storeToRefs } from 'pinia';
-
-const router = useRouter();
-const authStore = useAuthStore();
-const { user, loading, error } = storeToRefs(authStore);
-
-const showPassword = ref(false)
-const form = reactive({
-  email: '',
-  password: '',
-  remember: false
-})
-
-// Add a watcher for the user state
-watch(() => authStore.user, (newUser) => {
-  if (newUser) {
-    console.log('User state updated:', newUser);
-    console.log('User role:', newUser.role);
-    redirectToDashboard();
-  }
-}, { deep: true });
-
-const handleSubmit = async () => {
-  try {
-    await authStore.loginUser({
-      email: form.email,
-      password: form.password
-    });
-    console.log('Login successful, user:', authStore.user);
-    if (authStore.isAuthenticated) {
+  import { ref, reactive, watch, onMounted } from 'vue'
+  import { EyeIcon, EyeOffIcon, ArrowLeftIcon } from 'lucide-vue-next'
+  import { useRouter, useRoute } from 'vue-router';
+  import { useAuthStore } from '@/stores/modules/authStore';
+  import { storeToRefs } from 'pinia';
+  
+  const router = useRouter();
+  const route = useRoute();
+  const authStore = useAuthStore();
+  const { user, error } = storeToRefs(authStore);
+  
+  const showPassword = ref(false)
+  const emailLoginLoading = ref(false)
+  const googleLoginLoading = ref(false)
+  
+  const form = reactive({
+    email: '',
+    password: '',
+    remember: false
+  })
+  
+  onMounted(() => {
+    // Check if there's an email in the query parameters
+    const emailFromQuery = route.query.email;
+    if (emailFromQuery) {
+      form.email = emailFromQuery;
+    }
+  });
+  
+  // Add a watcher for the user state
+  watch(() => authStore.user, (newUser) => {
+    if (newUser) {
+      console.log('User state updated:', newUser);
+      console.log('User role:', newUser.role);
       redirectToDashboard();
     }
-  } catch (error) {
-    console.error('Login error:', error);
-  }
-}
-
-const loginWithGoogle = async () => {
-  try {
-    await authStore.signInWithGoogle();
-    console.log('Google sign-in successful, user:', authStore.user);
-    if (authStore.isAuthenticated) {
-      redirectToDashboard();
+  }, { deep: true });
+  
+  const handleSubmit = async () => {
+    try {
+      emailLoginLoading.value = true;
+      await authStore.loginUser({
+        email: form.email,
+        password: form.password
+      });
+      console.log('Login successful, user:', authStore.user);
+      if (authStore.isAuthenticated) {
+        redirectToDashboard();
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+    } finally {
+      emailLoginLoading.value = false;
     }
-  } catch (error) {
-    console.error('Google sign-in error:', error);
   }
-}
-
-const redirectToDashboard = () => {
-  const userRole = authStore.userRole;
-  console.log('Redirecting to dashboard. User role:', userRole);
-  switch (userRole) {
-    case 'admin':
-      console.log('Redirecting to AdminDashboard');
-      router.push({ name: 'AdminDashboard' });
-      break;
-    case 'veterinary':
-      console.log('Redirecting to VetDashboard');
-      router.push({ name: 'VetDashboard' });
-      break;
-    case 'user':
-    default:
-      console.log('Redirecting to UserDashboard');
-      router.push({ name: 'UserDashboard' });
-      break;
+  
+  const loginWithGoogle = async () => {
+    try {
+      googleLoginLoading.value = true;
+      await authStore.signInWithGoogle();
+      console.log('Google sign-in successful, user:', authStore.user);
+      if (authStore.isAuthenticated) {
+        redirectToDashboard();
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+    } finally {
+      googleLoginLoading.value = false;
+    }
   }
-}
-
-const goToHome = () => {
-  router.push('/');
-}
-</script>
-
-<style scoped>
-input[type="password"]::-ms-reveal,
-input[type="password"]::-ms-clear {
-  display: none;
-}
-</style>
+  
+  const redirectToDashboard = () => {
+    const userRole = authStore.userRole;
+    console.log('Redirecting to dashboard. User role:', userRole);
+    switch (userRole) {
+      case 'admin':
+        console.log('Redirecting to AdminDashboard');
+        router.push({ name: 'AdminDashboard' });
+        break;
+      case 'veterinary':
+        console.log('Redirecting to VetDashboard');
+        router.push({ name: 'VetDashboard' });
+        break;
+      case 'user':
+      default:
+        console.log('Redirecting to UserDashboard');
+        router.push({ name: 'UserDashboard' });
+        break;
+    }
+  }
+  
+  const goToHome = () => {
+    router.push('/');
+  }
+  </script>
+  
+  <style scoped>
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+  </style>

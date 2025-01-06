@@ -1,4 +1,4 @@
-<!-- views/auth/Register.vue -->
+<!-- src/views/auth/Register.vue -->
 <template>
     <div class="min-h-screen relative">
       <!-- Arrow button -->
@@ -121,7 +121,7 @@
   
               <p class="text-center text-xs text-gray-600 mt-4">
                 Already have an account? 
-                <a href="/auth/Login" class="text-blue-600 hover:text-blue-700">Login</a>
+                <router-link to="/auth/login" class="text-blue-600 hover:text-blue-700">Login</router-link>
               </p>
             </form>
           </div>
@@ -146,8 +146,7 @@
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    role: 'user'
+    confirmPassword: ''
   });
   
   const togglePassword = (field) => {
@@ -165,21 +164,14 @@
     }
     
     try {
-      await authStore.registerUser({
+      const registeredEmail = await authStore.registerUser({
         email: form.email,
         password: form.password,
         firstName: form.firstName,
-        lastName: form.lastName,
-        role: form.role
+        lastName: form.lastName
       });
-      if (authStore.user) {
-        console.log('Registration successful:', authStore.user);
-        console.log('User email:', authStore.user.email);
-        console.log('User UID:', authStore.user.uid);
-        router.push('/auth/login');
-      } else {
-        console.error('Registration successful but user is null');
-      }
+      // Redirect to login page with email parameter
+      router.push({ name: 'login', query: { email: registeredEmail } });
     } catch (error) {
       console.error('Registration failed:', error);
     }
@@ -194,7 +186,7 @@
         console.log('User display name:', authStore.user.displayName);
         console.log('User photo URL:', authStore.user.photoURL);
         console.log('User UID:', authStore.user.uid);
-        router.push('/dashboard');
+        router.push('/user/dashboard');
       } else {
         console.error('Google sign-in successful but user is null');
       }
@@ -214,5 +206,3 @@
     display: none;
   }
   </style>
-  
-  
