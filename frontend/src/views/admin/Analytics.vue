@@ -6,5 +6,3 @@
     </div>
   </BlankLayout>
 </template>
-
-

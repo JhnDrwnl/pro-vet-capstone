@@ -7,6 +7,7 @@ import VetFeedback from '@/views/vet/VetFeedback.vue';
 import VetHealthRiskAssessment from '@/views/vet/VetHealthRiskAssessment.vue';
 import VetTelehealth from '@/views/vet/VetTelehealth.vue';
 import MedicalRecords from '@/views/vet/MedicalRecords.vue';
+import Settings from '@/views/vet/Settings.vue';
 
 export default [
   {
@@ -48,6 +49,11 @@ export default [
         path: 'vethealthriskassessment',
         name: 'vethealthriskassessment',
         component: VetHealthRiskAssessment,
+      },
+      {
+        path: 'settings',
+        name: 'settings',
+        component: Settings,
       },
     ],
   }

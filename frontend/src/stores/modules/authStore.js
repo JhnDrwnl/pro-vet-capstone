@@ -56,10 +56,15 @@ export const useAuthStore = defineStore('auth', {
       const userId = this.generateUserId(user.uid);
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
+        const userData = userDoc.data();
         this.user = {
           ...user,
           userId: userId,
-          role: userDoc.data().role
+          role: userData.role,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: user.email || userData.email,
+          photoURL: user.photoURL || userData.photoURL
         };
       } else {
         console.error('User document not found');
@@ -77,6 +82,9 @@ export const useAuthStore = defineStore('auth', {
         uid: user.uid,
         createdAt: new Date(),
         role: additionalData.role || 'user',
+        firstName: additionalData.firstName || '',
+        lastName: additionalData.lastName || '',
+        photoURL: user.photoURL || additionalData.photoURL || '',
         ...additionalData
       };
 
