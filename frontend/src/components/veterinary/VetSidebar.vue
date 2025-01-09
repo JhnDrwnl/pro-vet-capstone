@@ -76,7 +76,7 @@ const currentRoute = computed(() => route.path);
 
 const navItems = [
   { href: '/vet/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/vet/vetclientpets', icon: Users, label: 'Client Pets' },
+  { href: '/vet/vetclientpets', icon: Users, label: 'Clients & Pets' },
   { href: '/vet/vetappointments', icon: Calendar, label: 'Appointments' },
   { href: '/vet/vetfeedback', icon: MessageCircle, label: 'Feedback' },
   { href: '/vet/vettelehealth', icon: Video, label: 'Telehealth' },

@@ -4,7 +4,7 @@ import UserDashboard from '@/views/user/UserDashboard.vue';
 import PetProfiles from '@/views/user/PetProfiles.vue';
 import UserAppointments from '@/views/user/UserAppointments.vue';
 import Feedback from '@/views/user/Feedback.vue';
-import Settings from '@/views/user/Settings.vue';
+import UserSettings from '@/views/user/Settings.vue';
 import UserTelehealth from '@/views/user/UserTelehealth.vue';
 
 export default [
@@ -35,8 +35,8 @@ export default [
       },
       {
         path: 'settings',
-        name: 'settings',
-        component: Settings,
+        name: 'UserSettings',
+        component: UserSettings,
       },
       {
         path: 'usertelehealth',

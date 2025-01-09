@@ -1,5 +1,5 @@
 <template>
-  <aside class="fixed inset-y-0 z-10 flex flex-col transition-all duration-300 bg-white border-r border-gray-200"
+  <aside class="fixed inset-y-0 left-0 z-30 flex flex-col transition-all duration-300 bg-white border-r border-gray-200"
          :class="{ 'w-64': isOpen, 'w-16': !isOpen }">
     <!-- Logo and Toggle Button (Shows at top when expanded) -->
     <div v-if="isOpen" class="flex items-center justify-between px-4 py-4 border-b border-gray-200">
@@ -28,7 +28,7 @@
         <span v-if="isOpen">{{ item.label }}</span>
         <!-- Tooltip when collapsed -->
         <div v-if="!isOpen" 
-             class="fixed left-16 ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap">
+             class="fixed left-16 ml-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap z-50">
           {{ item.label }}
         </div>
       </a>

@@ -7,7 +7,7 @@ import UserManagement from '@/views/admin/UserManagement.vue';
 import DataManagement from '@/views/admin/DataManagement.vue';
 import Telehealth from '@/views/admin/Telehealth.vue';
 import Chatbot from '@/views/admin/Chatbot.vue';
-import Settings from '@/views/admin/Settings.vue';
+import AdminSettings from '@/views/admin/Settings.vue';
 
 
 export default [
@@ -53,8 +53,8 @@ export default [
       },
       {
         path: 'settings',
-        name: 'settings',
-        component: Settings,
+        name: 'adminsettings',
+        component: AdminSettings,
       },
     ],
   }
