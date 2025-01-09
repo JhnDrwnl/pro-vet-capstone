@@ -10,5 +10,5 @@
   </template>
   
   <script setup>
-  import Navbar from '@/components/common/LandingNav.vue'
+  import Navbar from '@/components/common/Header.vue'
   </script>

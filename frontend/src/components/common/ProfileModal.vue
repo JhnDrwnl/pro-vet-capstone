@@ -1,7 +1,9 @@
+<!-- components/common/ProfileModal.vue -->
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center transition-all duration-300"
+    :class="{ 'ml-64': isSidebarOpen, 'ml-16': !isSidebarOpen }">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl flex overflow-hidden">
       <!-- Left Sidebar -->
       <div class="w-64 bg-gray-100 p-6 border-r">
@@ -230,6 +232,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  isSidebarOpen: {
+    type: Boolean,
+    required: true,
+  },
 });
 
 const emit = defineEmits(['close', 'save']);
@@ -297,3 +303,5 @@ const handleSave = () => {
   emit('close');
 };
 </script>
+
+

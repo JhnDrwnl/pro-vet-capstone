@@ -8,7 +8,7 @@
       <!-- Dog and Cat Image -->
       <div class="absolute bottom-0 right-4 z-10 max-w-xs sm:max-w-sm md:max-w-md">
         <img
-          src="/view-cats-dogs-being-friends-removebg-preview.png"
+          src="@/assets/media/images/landing/view-cats-dogs-being-friends-removebg-preview.png"
           alt="Happy pets"
           class="dog-cat-image"
         />

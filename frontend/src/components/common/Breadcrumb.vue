@@ -3,7 +3,7 @@
   <div class="px-6 py-4">
     <div class="flex items-center text-sm text-gray-600">
       <router-link 
-        to="/dashboard"
+        :to="dashboardRoute"
         class="hover:text-blue-600"
       >
         Dashboard
@@ -42,17 +42,16 @@ const routeNameMap = {
   'vettelehealth':'Telehealth',
   'medicalrecords':'Medical Records',
   'vethealthriskassessment':'Health Risk Assessment',
-  
 };
 
 const currentPage = computed(() => {
   const path = route.path.split('/').pop();
-  return routeNameMap[path] || (path === 'admin' ? 'Dashboard' : path);
+  return routeNameMap[path] || 'Dashboard';
+});
+
+const dashboardRoute = computed(() => {
+  const baseRoute = route.path.split('/')[1]; // This will be 'admin', 'user', or 'vet'
+  return `/${baseRoute}/dashboard`;
 });
 </script>
 
-
-
-
-  
-  

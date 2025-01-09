@@ -83,7 +83,7 @@
                 class="w-full py-2 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
                 :disabled="googleLoginLoading"
               >
-                <img src="/ant-design--google-circle-filled.png" alt="Google Icon" class="w-7 h-7 mr-3" />
+                <img src="@/assets/media/images/common/ant-design--google-circle-filled.png" alt="Google Icon" class="w-7 h-7 mr-3" />
                 {{ googleLoginLoading ? 'Signing in...' : 'Login with Google' }}
               </button>
   
@@ -100,7 +100,7 @@
           <div class="bg-gray-50 p-6 lg:p-8 flex flex-col items-center justify-center text-center relative">
             <div class="mb-4">
               <img 
-                src="/2-removebg-preview (1).png" 
+                src="@/assets/media/images/auth/2-removebg-preview (1).png" 
                 alt="Pet Health Management Illustration"
                 class="w-48 h-48 object-contain"
               />

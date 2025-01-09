@@ -4,7 +4,7 @@
         <!-- Logo -->
         <router-link to="/" class="flex items-center">
           <img
-            src="/PROVET__1_-removebg-preview.png" 
+            src="@/assets/media/images/logo/PROVET__1_-removebg-preview.png" 
             alt="ProVet Logo"
             class="h-10 w-auto mr-2"
           />

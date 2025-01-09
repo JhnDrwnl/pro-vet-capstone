@@ -3,7 +3,7 @@
     <div class="max-w-md w-full space-y-6">
       <div class="text-center bg-[#4e8dd9]">
         <img 
-          src="/Husky love_.gif" 
+          src="@/assets/media/gif/system/Husky love_.gif" 
           alt="Sleeping cat with wagging tail" 
           class="mx-auto h-64 w-64 rounded-full object-cover"
         />
