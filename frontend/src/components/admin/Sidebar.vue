@@ -1,4 +1,3 @@
-<!-- src/comopents/admin/AdminSidebar -->
 <template>
   <aside class="fixed inset-y-0 z-10 flex flex-col transition-all duration-300 bg-white border-r border-gray-200"
          :class="{ 'w-64': isOpen, 'w-16': !isOpen }">
@@ -16,23 +15,59 @@
 
     <!-- Navigation -->
     <nav class="flex-grow p-4 space-y-2" :class="{ 'overflow-y-auto': isOpen, 'overflow-hidden': !isOpen }">
-      <router-link v-for="(item, index) in navItems" 
-         :key="index" 
-         :to="item.href" 
-         class="flex items-center rounded-lg transition-colors duration-200 relative group"
-         :class="[
-           item.href === currentRoute ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-50',
-           isOpen ? 'px-4 py-2' : 'p-2 justify-center'
-         ]"
-      >
-        <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" />
-        <span v-if="isOpen">{{ item.label }}</span>
-        <!-- Tooltip when collapsed -->
-        <div v-if="!isOpen" 
-             class="fixed left-16 ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap">
-          {{ item.label }}
+      <template v-for="(item, index) in navItems" :key="index">
+        <div v-if="item.subItems" class="relative group">
+          <button 
+            @click="toggleSubmenu(item.label)"
+            class="w-full flex items-center rounded-lg transition-colors duration-200"
+            :class="[
+              isActiveParent(item) ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-50',
+              isOpen ? 'px-4 py-2' : 'p-2 justify-center'
+            ]"
+          >
+            <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" />
+            <span v-if="isOpen">{{ item.label }}</span>
+            <ChevronDown 
+              v-if="isOpen" 
+              class="w-4 h-4 ml-auto transition-transform duration-200"
+              :class="{ 'rotate-180': openSubmenu === item.label }"
+            />
+          </button>
+          <!-- Submenu -->
+          <div v-if="isOpen && openSubmenu === item.label" 
+               class="pl-4 mt-2 space-y-2 transition-all duration-200">
+            <router-link v-for="subItem in item.subItems" 
+                         :key="subItem.href" 
+                         :to="subItem.href"
+                         class="flex items-center px-4 py-2 rounded-lg transition-colors duration-200"
+                         :class="subItem.href === currentRoute ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-50'">
+              <component :is="subItem.icon" class="w-4 h-4 mr-3" />
+              <span>{{ subItem.label }}</span>
+            </router-link>
+          </div>
+          <!-- Tooltip when collapsed -->
+          <div v-if="!isOpen" 
+               class="fixed left-16 ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap">
+            {{ item.label }}
+          </div>
         </div>
-      </router-link>
+        <router-link v-else
+           :to="item.href" 
+           class="flex items-center rounded-lg transition-colors duration-200 relative group"
+           :class="[
+             item.href === currentRoute ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-50',
+             isOpen ? 'px-4 py-2' : 'p-2 justify-center'
+           ]"
+        >
+          <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" />
+          <span v-if="isOpen">{{ item.label }}</span>
+          <!-- Tooltip when collapsed -->
+          <div v-if="!isOpen" 
+               class="fixed left-16 ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap">
+            {{ item.label }}
+          </div>
+        </router-link>
+      </template>
     </nav>
 
     <!-- Toggle Button (Shows at bottom when collapsed) -->
@@ -46,20 +81,24 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   LayoutDashboard,
   BarChart,
   Calendar,
   Users,
+  Clock,
   Database,
   Video,
   MessageSquare,
   PawPrint,
   PanelLeftClose,
   PanelRightClose,
-  Settings
+  Settings,
+  ChevronDown,
+  UserCircle,
+  Stethoscope
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -73,17 +112,52 @@ defineEmits(['toggle']);
 
 const route = useRoute();
 const currentRoute = computed(() => route.path);
+const openSubmenu = ref(null);
+
+const toggleSubmenu = (label) => {
+  openSubmenu.value = openSubmenu.value === label ? null : label;
+};
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/analytics', icon: BarChart, label: 'Analytics' },
-  { href: '/admin/appointments', icon: Calendar, label: 'Appointments' },
   { href: '/admin/usermanagement', icon: Users, label: 'User Management' },
-  { href: '/admin/datamanagement', icon: Database, label: 'Data Management' },
+  { 
+    icon: Calendar, 
+    label: 'Appointments',
+    subItems: [
+      { href: '/admin/appointments/approvedappointments', icon: Video, label: 'Appointment Management' },
+      { href: '/admin/appointments/services', icon: Users, label: 'Services Management' }
+    ]
+  },
+  { 
+    icon: Clock, 
+    label: 'Session',
+    subItems: [
+      { href: '/admin/session/online', icon: Video, label: 'Online' },
+      { href: '/admin/session/walkin', icon: Users, label: 'Walk-in' }
+    ]
+  },
+  { 
+    icon: Database,
+    label: 'Data Management',
+    subItems: [
+      {href: '/admin/datamanagement/petowners', icon: UserCircle, label: 'Pet Owners'},
+      { href: '/admin/datamanagement/petprofiles', icon: PawPrint, label: 'Pet Profiles' },
+      { href: '/admin/datamanagement/veterinarians', icon: Stethoscope, label: 'Veterinarians' }
+  ]
+  },
   { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
   { href: '/admin/chatbot', icon: MessageSquare, label: 'Chatbot' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
+
+const isActiveParent = (item) => {
+  if (item.subItems) {
+    return item.subItems.some(subItem => subItem.href === currentRoute.value);
+  }
+  return false;
+};
 </script>
 
 <style scoped>
@@ -91,3 +165,4 @@ const navItems = [
   visibility: visible;
 }
 </style>
+
