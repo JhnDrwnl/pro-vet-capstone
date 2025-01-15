@@ -11,7 +11,10 @@ import Online from '@/views/admin/session/Online.vue';
 import WalkIn from '@/views/admin/session/Walk-in.vue';
 import Telehealth from '@/views/admin/Telehealth.vue';
 import Chatbot from '@/views/admin/Chatbot.vue';
-import AdminSettings from '@/views/admin/Settings.vue';
+import AdminCalendar from '@/views/admin/AdminCalendar.vue';
+import ProfileModal from '@/components/common/ProfileModal.vue';
+import AdminArchive from '@/views/admin/adminsettings/Archive.vue';
+import AdminAccount from '@/views/admin/adminsettings/AccountSettings.vue';
 
 export default [
   {
@@ -29,6 +32,7 @@ export default [
         name: 'analytics',
         component: Analytics,
       },
+     
       
       {
         path: '/admin/datamanagement',
@@ -83,11 +87,32 @@ export default [
         ]
       },
       {
+        path: 'adminsettings',
+        children: [
+          {
+            path: 'adminarchive',
+            name: 'adminarchive',
+            component: AdminArchive
+          },
+          {
+            path: 'adminaccount',
+            name: 'adminaccount',
+            component: AdminAccount
+          }
+        ]
+      },
+
+     
+      {
         path: 'usermanagement',
         name: 'usermanagement',
         component: UserManagement,
       },
-
+      {
+        path: 'admincalendar',
+        name: 'admincalendar',
+        component: AdminCalendar,
+      },
       {
         path: 'telehealth',
         name: 'telehealth',
@@ -98,10 +123,11 @@ export default [
         name: 'chatbot',
         component: Chatbot,
       },
+     
       {
-        path: 'settings',
-        name: 'adminsettings',
-        component: AdminSettings,
+        path: 'adminprofile',
+        name: 'adminProfile',
+        component: ProfileModal,
       },
     ],
   }

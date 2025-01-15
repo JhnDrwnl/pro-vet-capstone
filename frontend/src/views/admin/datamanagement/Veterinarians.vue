@@ -6,171 +6,209 @@
         <p class="text-gray-500 mt-1">Manage information about veterinarians.</p>
       </div>
   
-      <!-- Search, Filter, Add, and Export -->
-      <div v-if="!showForm" class="flex justify-between items-center mb-6">
-        <div class="flex gap-2">
-          <div class="relative">
-            <input
-              type="text"
-              placeholder="Search veterinarians..."
-              class="w-[300px] pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-              v-model="searchQuery"
-            >
-            <SearchIcon class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-          </div>
-          <div class="relative">
-            <button 
-              class="p-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-              @click="toggleFilters"
-            >
-              <FilterIcon class="w-5 h-5 text-gray-500" />
-            </button>
-            <!-- Filter Dropdown -->
-            <div v-if="showFilters" class="absolute top-full mt-2 right-0 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
-              <div class="px-4 py-2 text-sm font-medium text-gray-700">Filter by:</div>
-              <button 
-                v-for="filter in filters" 
-                :key="filter"
-                @click="toggleFilter(filter)"
-                class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
-                :class="{'text-blue-600': activeFilters.includes(filter)}"
+      <!-- Navigation Tabs -->
+      <div class="px-6 mb-6">
+        <div class="inline-flex rounded-lg bg-gray-100 p-1">
+          <button
+            @click="activeTab = 'overview'"
+            :class="[
+              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+              activeTab === 'overview'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            ]"
+          >
+            Overview
+          </button>
+          <button
+            @click="activeTab = 'profile'"
+            :class="[
+              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+              activeTab === 'profile'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            ]"
+          >
+            Profile
+          </button>
+        </div>
+      </div>
+  
+      <!-- Overview Tab Content -->
+      <div v-if="activeTab === 'overview'">
+        <!-- Search, Filter, Add, and Export -->
+        <div v-if="!showForm" class="flex justify-between items-center mb-6">
+          <div class="flex gap-2">
+            <div class="relative">
+              <input
+                type="text"
+                placeholder="Search veterinarians..."
+                class="w-[300px] pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+                v-model="searchQuery"
               >
-                {{ filter }}
+              <SearchIcon class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+            </div>
+            <div class="relative">
+              <button 
+                class="p-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                @click="toggleFilters"
+              >
+                <FilterIcon class="w-5 h-5 text-gray-500" />
               </button>
+              <!-- Filter Dropdown -->
+              <div v-if="showFilters" class="absolute top-full mt-2 right-0 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                <div class="px-4 py-2 text-sm font-medium text-gray-700">Filter by:</div>
+                <button 
+                  v-for="filter in filters" 
+                  :key="filter"
+                  @click="toggleFilter(filter)"
+                  class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                  :class="{'text-blue-600': activeFilters.includes(filter)}"
+                >
+                  {{ filter }}
+                </button>
+              </div>
             </div>
           </div>
+          <div class="flex gap-2">
+            <button 
+              @click="exportToCSV"
+              class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600"
+            >
+              <DownloadIcon class="w-4 h-4" />
+              Export CSV
+            </button>
+            <button 
+              @click="openAddVeterinarianForm"
+              class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
+            >
+              <LucidePlus class="w-4 h-4" />
+              Add Veterinarian
+            </button>
+          </div>
         </div>
-        <div class="flex gap-2">
-          <button 
-            @click="exportToCSV"
-            class="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600"
-          >
-            <DownloadIcon class="w-4 h-4" />
-            Export CSV
-          </button>
-          <button 
-            @click="openAddVeterinarianForm"
-            class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
-          >
-            <LucidePlus class="w-4 h-4" />
-            Add Veterinarian
-          </button>
+  
+        <!-- Table -->
+        <div v-if="!showForm" class="bg-white rounded-lg border border-gray-200">
+          <table class="min-w-full">
+            <thead class="bg-gray-100">
+              <tr class="border-b border-gray-200">
+                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Profile</th>
+                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Name</th>
+                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Email</th>
+                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Phone</th>
+                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Specialty</th>
+                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Experience (Years)</th>
+                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-for="veterinarian in filteredVeterinarians" :key="veterinarian.id">
+                <td class="py-4 px-6">
+                  <img :src="veterinarian.profile || '/placeholder.svg?height=40&width=40'" 
+                       :alt="veterinarian.name"
+                       class="w-10 h-10 rounded-full object-cover" />
+                </td>
+                <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.name }}</td>
+                <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.email }}</td>
+                <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.phone }}</td>
+                <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.specialty }}</td>
+                <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.experience }}</td>
+                <td class="py-4 px-6 text-sm">
+                  <div class="flex items-center gap-2">
+                    <button 
+                      @click="editVeterinarian(veterinarian)"
+                      class="p-1 text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                    >
+                      <LucideEdit class="w-5 h-5" />
+                    </button>
+                    <button 
+                      @click="archiveVeterinarian(veterinarian)"
+                      class="p-1 text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                    >
+                      <ArchiveIcon class="w-5 h-5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+  
+        <!-- Inline Add/Edit Veterinarian Form -->
+        <div v-if="showForm" class="bg-white rounded-lg border border-gray-200 p-6">
+          <h2 class="text-xl font-semibold mb-4">{{ editingVeterinarian ? 'Edit Veterinarian' : 'Add New Veterinarian' }}</h2>
+          <form @submit.prevent="handleSubmit" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                v-model="veterinarianForm.name"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                v-model="veterinarianForm.email"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input
+                type="tel"
+                v-model="veterinarianForm.phone"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
+              <input
+                type="text"
+                v-model="veterinarianForm.specialty"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
+              <input
+                type="number"
+                v-model="veterinarianForm.experience"
+                required
+                min="0"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
+              >
+            </div>
+            <div class="flex justify-end gap-2 mt-6">
+              <button
+                type="button"
+                @click="closeForm"
+                class="px-4 py-2 text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 text-white bg-blue-500 rounded-full hover:bg-blue-600"
+              >
+                {{ editingVeterinarian ? 'Save Changes' : 'Add Veterinarian' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
   
-      <!-- Table -->
-      <div v-if="!showForm" class="bg-white rounded-lg border border-gray-200">
-        <table class="min-w-full">
-          <thead class="bg-gray-100">
-            <tr class="border-b border-gray-200">
-              <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Profile</th>
-              <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Name</th>
-              <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Email</th>
-              <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Phone</th>
-              <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Specialty</th>
-              <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Experience (Years)</th>
-              <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100">
-            <tr v-for="veterinarian in filteredVeterinarians" :key="veterinarian.id">
-              <td class="py-4 px-6">
-                <img :src="veterinarian.profile || '/placeholder.svg?height=40&width=40'" 
-                     :alt="veterinarian.name"
-                     class="w-10 h-10 rounded-full object-cover" />
-              </td>
-              <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.name }}</td>
-              <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.email }}</td>
-              <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.phone }}</td>
-              <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.specialty }}</td>
-              <td class="py-4 px-6 text-sm text-gray-900">{{ veterinarian.experience }}</td>
-              <td class="py-4 px-6 text-sm">
-                <div class="flex items-center gap-2">
-                  <button 
-                    @click="editVeterinarian(veterinarian)"
-                    class="p-1 text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                  >
-                    <LucideEdit class="w-5 h-5" />
-                  </button>
-                  <button 
-                    @click="archiveVeterinarian(veterinarian)"
-                    class="p-1 text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                  >
-                    <ArchiveIcon class="w-5 h-5" />
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-  
-      <!-- Inline Add/Edit Veterinarian Form -->
-      <div v-if="showForm" class="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 class="text-xl font-semibold mb-4">{{ editingVeterinarian ? 'Edit Veterinarian' : 'Add New Veterinarian' }}</h2>
-        <form @submit.prevent="handleSubmit" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
-              v-model="veterinarianForm.name"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              v-model="veterinarianForm.email"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-            <input
-              type="tel"
-              v-model="veterinarianForm.phone"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Specialty</label>
-            <input
-              type="text"
-              v-model="veterinarianForm.specialty"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
-            <input
-              type="number"
-              v-model="veterinarianForm.experience"
-              required
-              min="0"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-            >
-          </div>
-          <div class="flex justify-end gap-2 mt-6">
-            <button
-              type="button"
-              @click="closeForm"
-              class="px-4 py-2 text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-4 py-2 text-white bg-blue-500 rounded-full hover:bg-blue-600"
-            >
-              {{ editingVeterinarian ? 'Save Changes' : 'Add Veterinarian' }}
-            </button>
-          </div>
-        </form>
+      <!-- Profile Tab Content -->
+      <div v-if="activeTab === 'profile'" class="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 class="text-xl font-semibold mb-4">Veterinarian Profile</h2>
+        <p class="text-gray-600 mb-4">Select a veterinarian from the overview to view and edit their detailed profile.</p>
+        <!-- Add more profile-specific content here -->
       </div>
     </div>
   </template>
@@ -186,6 +224,7 @@
     Archive as ArchiveIcon
   } from 'lucide-vue-next'
   
+  const activeTab = ref('overview')
   const veterinarians = ref([
     {
       id: 1,
@@ -353,4 +392,6 @@
   }
   </script>
   
- 
+  <style scoped>
+  /* Add any component-specific styles here */
+  </style>

@@ -28,7 +28,7 @@
           >
             <div class="relative">
               <img
-                :src="authStore.currentUser?.photoURL || 'https://via.placeholder.com/40'"
+                :src="userPhotoURL"
                 alt="User avatar"
                 class="h-8 w-8 rounded-full object-cover"
               />
@@ -50,7 +50,7 @@
                   class="w-full px-4 py-2 flex items-center space-x-2 hover:bg-gray-100 transition-colors"
                 >
                   <img
-                    :src="authStore.currentUser?.photoURL || 'https://via.placeholder.com/40'"
+                    :src="userPhotoURL"
                     alt="Current profile"
                     class="h-8 w-8 rounded-full"
                   />
@@ -129,7 +129,7 @@
                 >
                   <div class="flex items-center space-x-3">
                     <img
-                      :src="authStore.currentUser?.photoURL || 'https://via.placeholder.com/40'"
+                      :src="userPhotoURL"
                       alt="Profile picture"
                       class="h-10 w-10 rounded-full"
                     />
@@ -179,9 +179,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
+import { useProfileStore } from '@/stores/modules/profileStore';
 import ProfileModal from '@/components/common/ProfileModal.vue';
 import { 
   ChevronDownIcon, 
@@ -196,6 +197,7 @@ import {
 
 const router = useRouter();
 const authStore = useAuthStore();
+const profileStore = useProfileStore();
 
 const isDropdownOpen = ref(false);
 const isNotificationsOpen = ref(false);
@@ -211,9 +213,22 @@ const staticAccount = {
   selected: false
 };
 
-onMounted(() => {
-  console.log('Current user:', authStore.currentUser);
+const userPhotoURL = computed(() => {
+  return profileStore.profile?.photoURL || 'https://via.placeholder.com/40';
 });
+
+onMounted(async () => {
+  console.log('Current user:', authStore.currentUser);
+  if (authStore.user?.userId) {
+    await profileStore.fetchUserProfile(authStore.user.userId);
+  }
+});
+
+watch(() => authStore.user, async (newUser) => {
+  if (newUser?.userId) {
+    await profileStore.fetchUserProfile(newUser.userId);
+  }
+}, { immediate: true });
 
 const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value;
@@ -285,3 +300,4 @@ const handleSwitchAccounts = () => {
   closeProfileSelector();
 };
 </script>
+

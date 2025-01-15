@@ -1,3 +1,4 @@
+<!-- views/admin/Chatbot.vue -->
 <template>
   <BlankLayout>
     <div class="bg-white shadow rounded-lg p-6">

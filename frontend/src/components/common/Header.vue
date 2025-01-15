@@ -48,14 +48,6 @@
     width: auto;
   }
   
-  /* Mobile responsiveness */
-  @media (max-width: 768px) {
-    nav ul {
-      space-x: 4; /* Adjust spacing between links for smaller screens */
-    }
-    nav {
-      flex-wrap: wrap; /* Allow items to wrap for better fit */
-    }
-  }
+  
   </style>
   

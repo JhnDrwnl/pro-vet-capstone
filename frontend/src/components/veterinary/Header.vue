@@ -1,4 +1,4 @@
-<!-- components/common/Header.vue -->
+<!-- components/veterinary/Header.vue -->
 <template>
   <header class="bg-white shadow z-20 relative">
     <div class="px-4 sm:px-6 lg:px-8 py-4 flex justify-end items-center">

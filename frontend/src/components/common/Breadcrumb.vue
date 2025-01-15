@@ -35,6 +35,7 @@ const routeNameMap = {
   'walkin': 'Walk-in',
   'datamanagement': 'Data Management',
   'usermanagement': 'User Management',
+  'admincalendar':'Calendar',
   'telehealth': 'Telehealth',
   'chatbot': 'Chatbot',
   'settings': 'Settings',

@@ -1,4 +1,4 @@
-<!-- src/layouts/AuthLayout.vue -->
+<!-- layouts/AuthLayout.vue -->
 <template>
     <div class="min-h-screen flex flex-col bg-gray-50">
       <main class="flex-grow">

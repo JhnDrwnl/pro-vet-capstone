@@ -1,4 +1,4 @@
-<!-- src/layouts/UserLayout.vue -->
+<!-- layouts/UserLayout.vue -->
 <template>
   <div class="min-h-screen flex bg-gray-50">
     <UserSidebar :isOpen="isSidebarOpen" @toggle="toggleSidebar" class="z-30" />

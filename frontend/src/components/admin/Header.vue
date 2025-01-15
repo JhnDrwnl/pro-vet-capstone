@@ -1,136 +1,166 @@
 <!-- components/admin/Header.vue -->
 <template>
-  <header class="bg-white shadow z-20 relative">
-    <div class="px-4 sm:px-6 lg:px-8 py-4 flex justify-end items-center">
-      <div class="flex items-center space-x-4" v-if="authStore.isAuthenticated">
-        <!-- Notifications -->
-        <div class="relative">
-          <button
-            @click="toggleNotifications"
-            class="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <BellIcon class="h-6 w-6" />
-          </button>
-          <!-- Notifications dropdown -->
-          <div
-            v-if="isNotificationsOpen"
-            class="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-30"
-          >
-            <div class="px-4 py-2 text-sm text-gray-700">No new notifications</div>
-          </div>
-        </div>
-        
-        <!-- User profile -->
-        <div class="relative">
-          <button
-            @click="toggleDropdown"
-            class="relative flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
+  <header data-header class="px-6 py-4">
+    <div class="w-full">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="flex items-center justify-end h-16 px-6">
+          <div class="flex items-center gap-4 md:gap-6">
+            <!-- Notifications Dropdown -->
             <div class="relative">
-              <img
-                :src="authStore.currentUser?.photoURL || 'https://via.placeholder.com/40'"
-                alt="User avatar"
-                class="h-8 w-8 rounded-full object-cover"
-              />
-              <ChevronDownIcon class="h-3 w-3 absolute bottom-0 right-0 text-gray-600 bg-white rounded-full" />
-            </div>
-          </button>
-          <!-- User dropdown -->
-          <div
-            v-if="isDropdownOpen"
-            class="origin-top-right absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-30"
-          >
-            <div class="py-1 border-b border-gray-200">
-              <!-- Current Profile -->
-              <button 
-                @click="openProfileModal"
-                class="w-full px-4 py-2 flex items-center space-x-2 hover:bg-gray-100 transition-colors"
-              >
-                <img
-                  :src="authStore.currentUser?.photoURL || 'https://via.placeholder.com/40'"
-                  alt="Current profile"
-                  class="h-8 w-8 rounded-full"
-                />
-                <div class="flex-1 text-left">
-                  <div class="text-sm font-medium text-gray-900">
-                    {{ authStore.currentUser?.role || 'Admin' }}
-                  </div>
-                  <div class="text-xs text-gray-500">{{ authStore.currentUser?.email }}</div>
-                </div>
-              </button>
-            </div>
-
-            <!-- Main Menu Items -->
-            <div class="p-1">
-              <router-link
-                to="/admin/settings"
-                class="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                @click="closeDropdown"
-              >
-                <div class="flex items-center">
-                  <SettingsIcon class="h-5 w-5 mr-2 text-gray-600" />
-                  <span>Settings</span>
-                </div>
-                <ChevronRightIcon class="h-5 w-5 text-gray-600" />
-              </router-link>
-
               <button
-                @click="handleLogout"
-                class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                @click="toggleNotifications"
+                class="text-gray-500 hover:text-gray-700 transition-colors duration-200 relative"
               >
-                <LogOutIcon class="h-5 w-5 mr-2 text-gray-600" />
-                <span>Log Out</span>
+                <BellIcon class="h-5 w-5" />
+                <span v-if="totalNotificationsCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {{ totalNotificationsCount }}
+                </span>
               </button>
+
+              <div
+                v-if="isNotificationsOpen"
+                class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
+              >
+                <div v-if="totalNotificationsCount === 0" class="px-4 py-2 text-sm text-gray-700">No new notifications</div>
+                <div v-else>
+                  <!-- Notification content -->
+                </div>
+              </div>
             </div>
 
-            <!-- Footer Links -->
-            <div class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500 space-x-2">
-              <a href="#" class="hover:underline">Privacy</a>
-              <span>·</span>
-              <a href="#" class="hover:underline">Terms</a>
-              <span>·</span>
-              <a href="#" class="hover:underline">Cookies</a>
-              <span>·</span>
-              <a href="#" class="hover:underline">More</a>
+            <!-- Calendar button -->
+            <button
+              @click="openCalendarSchedules"
+              class="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+            >
+              <CalendarIcon class="h-5 w-5" />
+            </button>
+
+            <!-- Profile Dropdown -->
+            <div class="relative ml-auto">
+              <button
+                @click="toggleDropdown"
+                class="focus:outline-none focus:ring-2 focus:ring-[#FF9934]/10 rounded-xl transition-all duration-200"
+                aria-haspopup="true"
+                :aria-expanded="isDropdownOpen"
+              >
+                <div class="relative">
+                  <img
+                    :src="userPhotoURL"
+                    :alt="profileStore.profile?.role || 'Admin'"
+                    class="w-9 h-9 rounded-xl object-cover ring-2 ring-gray-100"
+                  />
+                  <ChevronDownIcon class="h-3 w-3 absolute bottom-0 right-0 text-gray-600 bg-white rounded-full" />
+                </div>
+              </button>
+
+              <div
+                v-if="isDropdownOpen"
+                class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
+                style="right: -24px;"
+              >
+                <div class="py-1 border-b border-gray-200">
+                  <!-- Current Profile -->
+                  <button 
+                    @click="openProfileEdit"
+                    class="w-full px-4 py-2 flex items-center space-x-2 hover:bg-gray-100 transition-colors"
+                  >
+                    <img
+                      :src="userPhotoURL"
+                      alt="Current profile"
+                      class="h-8 w-8 rounded-full"
+                    />
+                    <div class="flex-1 text-left">
+                      <div class="text-sm font-medium text-gray-900">
+                        {{ profileStore.profile?.role || 'Admin' }}
+                      </div>
+                      <div class="text-xs text-gray-500">{{ profileStore.profile?.email }}</div>
+                    </div>
+                  </button>
+                </div>
+
+                <!-- Main Menu Items -->
+                <div class="p-1">
+                  <router-link
+                    to="/admin/adminsettings/adminaccount"
+                    class="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    @click="closeDropdown"
+                  >
+                    <div class="flex items-center">
+                      <SettingsIcon class="h-5 w-5 mr-2 text-gray-600" />
+                      <span>Settings</span>
+                    </div>
+                    <ChevronRightIcon class="h-5 w-5 text-gray-600" />
+                  </router-link>
+
+                  <button
+                    @click="handleLogout"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <LogOutIcon class="h-5 w-5 mr-2 text-gray-600" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+
+                <!-- Footer Links -->
+                <div class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500 space-x-2">
+                  <a href="#" class="hover:underline">Privacy</a>
+                  <span>·</span>
+                  <a href="#" class="hover:underline">Terms</a>
+                  <span>·</span>
+                  <a href="#" class="hover:underline">Cookies</a>
+                  <span>·</span>
+                  <a href="#" class="hover:underline">More</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Profile Modal -->
-    <ProfileModal
-      :is-open="isProfileModalOpen"
-      :user="authStore.currentUser"
-      @close="closeProfileModal"
-      @save="handleProfileUpdate"
-    />
   </header>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
-import ProfileModal from '@/components/common/ProfileModal.vue';
+import { useProfileStore } from '@/stores/modules/profileStore';
+
 import { 
-  ChevronDownIcon, 
+  ChevronDownIcon,
   ChevronRightIcon,
   SettingsIcon,
   LogOutIcon,
-  BellIcon
+  BellIcon,
+  CalendarIcon
 } from 'lucide-vue-next';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const profileStore = useProfileStore();
 
 const isDropdownOpen = ref(false);
 const isNotificationsOpen = ref(false);
-const isProfileModalOpen = ref(false);
 
-onMounted(() => {
-  console.log('Current user:', authStore.currentUser);
+const userPhotoURL = computed(() => {
+  return profileStore.profile?.photoURL || 'https://via.placeholder.com/40';
 });
+
+const totalNotificationsCount = ref(0); // Placeholder for notification count
+
+onMounted(async () => {
+  console.log('Current user:', authStore.currentUser);
+  if (authStore.user?.userId) {
+    await profileStore.fetchUserProfile(authStore.user.userId);
+  }
+});
+
+watch(() => authStore.user, async (newUser) => {
+  if (newUser?.userId) {
+    await profileStore.fetchUserProfile(newUser.userId);
+  }
+}, { immediate: true });
 
 const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value;
@@ -150,22 +180,9 @@ const closeDropdown = () => {
   isDropdownOpen.value = false;
 };
 
-const openProfileModal = () => {
-  isProfileModalOpen.value = true;
+const openProfileEdit = () => {
+  router.push('/admin/adminprofile');
   closeDropdown();
-};
-
-const closeProfileModal = () => {
-  isProfileModalOpen.value = false;
-};
-
-const handleProfileUpdate = async (updatedProfile) => {
-  try {
-    await authStore.updateProfile(updatedProfile);
-    closeProfileModal();
-  } catch (error) {
-    console.error('Failed to update profile:', error);
-  }
 };
 
 const handleLogout = async () => {
@@ -177,4 +194,17 @@ const handleLogout = async () => {
     console.error('Logout failed:', error);
   }
 };
+
+const openCalendarSchedules = () => {
+  router.push('/admin/admincalendar');
+};
+
+defineProps({
+  isSidebarOpen: {
+    type: Boolean,
+    required: true
+  }
+});
+
+defineEmits(['toggle-sidebar']);
 </script>

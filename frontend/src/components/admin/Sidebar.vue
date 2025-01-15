@@ -1,6 +1,6 @@
 <template>
-  <aside class="fixed inset-y-0 z-10 flex flex-col transition-all duration-300 bg-white border-r border-gray-200"
-         :class="{ 'w-64': isOpen, 'w-16': !isOpen }">
+  <aside class="fixed inset-y-4 z-10 flex flex-col transition-all duration-300 bg-white border border-gray-100 rounded-2xl shadow-sm"
+         :class="{ 'w-64': isOpen, 'w-16': !isOpen, 'left-4': true, 'md:translate-x-0': true }">
     <!-- Logo and Toggle Button (Shows at top when expanded) -->
     <div v-if="isOpen" class="flex items-center justify-between px-4 py-4 border-b border-gray-200">
       <h1 class="text-xl font-semibold text-blue-600">ProVet</h1>
@@ -14,7 +14,7 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="flex-grow p-4 space-y-2" :class="{ 'overflow-y-auto': isOpen, 'overflow-hidden': !isOpen }">
+    <nav class="flex-grow p-4 space-y-2 overflow-y-auto" :class="{ 'overflow-hidden': !isOpen }">
       <template v-for="(item, index) in navItems" :key="index">
         <div v-if="item.subItems" class="relative group">
           <button 
@@ -98,7 +98,9 @@ import {
   Settings,
   ChevronDown,
   UserCircle,
-  Stethoscope
+  Stethoscope,
+  Settings2,
+  ArchiveIcon
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -145,11 +147,19 @@ const navItems = [
       {href: '/admin/datamanagement/petowners', icon: UserCircle, label: 'Pet Owners'},
       { href: '/admin/datamanagement/petprofiles', icon: PawPrint, label: 'Pet Profiles' },
       { href: '/admin/datamanagement/veterinarians', icon: Stethoscope, label: 'Veterinarians' }
-  ]
+    ]
   },
   { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
   { href: '/admin/chatbot', icon: MessageSquare, label: 'Chatbot' },
-  { href: '/admin/settings', icon: Settings, label: 'Settings' },
+  { 
+    icon: Settings,
+    label: 'Settings',
+    subItems: [
+      {href: '/admin/adminsettings/adminarchive', icon: ArchiveIcon, label: 'Archive'},
+      { href: '/admin/adminsettings/adminaccount', icon: Settings2, label: 'Account Settings' },
+     
+    ]
+  },
 ];
 
 const isActiveParent = (item) => {
@@ -165,4 +175,3 @@ const isActiveParent = (item) => {
   visibility: visible;
 }
 </style>
-
