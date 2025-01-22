@@ -10,6 +10,7 @@ import MedicalRecords from '@/views/vet/MedicalRecords.vue';
 import Settings from '@/views/vet/Settings.vue';
 import VetAppointmentApproval from '@/views/vet/appointments/VetAppointmentApproval.vue';
 import VetCalendar from '@/views/vet/appointments/VetCalendar.vue';
+import Profile from '@/components/common/Profile.vue';
 
 export default [
   {
@@ -71,6 +72,11 @@ export default [
         path: 'settings',
         name: 'settings',
         component: Settings,
+      },
+      {
+        path: 'vetprofile',
+        name: 'vetProfile',
+        component: Profile,
       },
     ],
   }

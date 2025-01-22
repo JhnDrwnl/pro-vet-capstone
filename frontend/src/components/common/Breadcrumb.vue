@@ -9,7 +9,7 @@
         Dashboard
       </router-link>
       <template v-if="currentPage !== 'Dashboard'">
-        <span class="mx-2">/</span>
+        <span class="mx-2">•</span>
         <span class="text-gray-900">{{ currentPage }}</span>
       </template>
     </div>

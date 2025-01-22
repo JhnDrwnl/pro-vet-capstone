@@ -12,7 +12,7 @@ import WalkIn from '@/views/admin/session/Walk-in.vue';
 import Telehealth from '@/views/admin/Telehealth.vue';
 import Chatbot from '@/views/admin/Chatbot.vue';
 import AdminCalendar from '@/views/admin/AdminCalendar.vue';
-import ProfileModal from '@/components/common/ProfileModal.vue';
+import Profile from '@/components/common/Profile.vue';
 import AdminArchive from '@/views/admin/adminsettings/Archive.vue';
 import AdminAccount from '@/views/admin/adminsettings/AccountSettings.vue';
 
@@ -127,7 +127,7 @@ export default [
       {
         path: 'adminprofile',
         name: 'adminProfile',
-        component: ProfileModal,
+        component: Profile,
       },
     ],
   }

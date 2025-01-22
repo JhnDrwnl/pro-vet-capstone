@@ -1,50 +1,75 @@
 <!-- components/veterinary/Header.vue -->
 <template>
-  <header class="bg-white shadow z-20 relative">
-    <div class="px-4 sm:px-6 lg:px-8 py-4 flex justify-end items-center">
-      <div class="flex items-center space-x-4" v-if="authStore.isAuthenticated">
-        <!-- Notifications -->
+  <header data-header class="w-full bg-white rounded-2xl shadow-sm border border-gray-200">
+    <div class="flex items-center justify-between h-16 px-6">
+      <!-- Sidebar toggle button for small screens -->
+      <button
+        v-if="isSmallScreen"
+        @click="$emit('toggle-sidebar')"
+        class="text-gray-500 hover:text-gray-700 transition-colors duration-200"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+        </svg>
+      </button>
+
+      <!-- Spacer for larger screens -->
+      <div v-else class="w-6"></div>
+
+      <div class="flex items-center gap-4 md:gap-6">
+        <!-- Notifications Dropdown -->
         <div class="relative">
           <button
             @click="toggleNotifications"
-            class="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            class="text-gray-500 hover:text-gray-700 transition-colors duration-200 relative"
           >
-            <BellIcon class="h-6 w-6" />
+            <BellIcon class="h-5 w-5" />
+            <span v-if="totalNotificationsCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+              {{ totalNotificationsCount }}
+            </span>
           </button>
-          <!-- Notifications dropdown -->
+
           <div
             v-if="isNotificationsOpen"
-            class="origin-top-right absolute right-0 mt-2 w-80 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-30"
+            class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
           >
-            <div class="px-4 py-2 text-sm text-gray-700">No new notifications</div>
+            <div v-if="totalNotificationsCount === 0" class="px-4 py-2 text-sm text-gray-700">No new notifications</div>
+            <div v-else>
+              <!-- Notification content -->
+            </div>
           </div>
         </div>
-        
-        <!-- User profile -->
+
+
+        <!-- Profile Dropdown -->
         <div class="relative">
           <button
             @click="toggleDropdown"
-            class="relative flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            class="focus:outline-none focus:ring-2 focus:ring-[#FF9934]/10 rounded-xl transition-all duration-200"
+            aria-haspopup="true"
+            :aria-expanded="isDropdownOpen"
           >
             <div class="relative">
               <img
                 :src="authStore.currentUser?.photoURL || 'https://via.placeholder.com/40'"
-                alt="User avatar"
-                class="h-8 w-8 rounded-full object-cover"
+                :alt="authStore.currentUser?.role || 'Veterinary'"
+                class="w-9 h-9 rounded-xl object-cover ring-2 ring-gray-100"
               />
               <ChevronDownIcon class="h-3 w-3 absolute bottom-0 right-0 text-gray-600 bg-white rounded-full" />
             </div>
           </button>
-          <!-- User dropdown -->
+
           <div
             v-if="isDropdownOpen"
-            class="origin-top-right absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-30"
+            class="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
+            style="right: -24px;"
           >
             <div class="py-1 border-b border-gray-200">
               <!-- Current Profile -->
-              <button 
-                @click="openProfileModal"
+              <router-link 
+                to="/vet/vetprofile"
                 class="w-full px-4 py-2 flex items-center space-x-2 hover:bg-gray-100 transition-colors"
+                @click="closeDropdown"
               >
                 <img
                   :src="authStore.currentUser?.photoURL || 'https://via.placeholder.com/40'"
@@ -57,13 +82,13 @@
                   </div>
                   <div class="text-xs text-gray-500">{{ authStore.currentUser?.email }}</div>
                 </div>
-              </button>
+              </router-link>
             </div>
 
             <!-- Main Menu Items -->
             <div class="p-1">
               <router-link
-                to="/vet/settings"
+                to="/veterinary/settings"
                 class="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                 @click="closeDropdown"
               >
@@ -97,40 +122,59 @@
         </div>
       </div>
     </div>
-
-    <!-- Profile Modal -->
-    <ProfileModal
-      :is-open="isProfileModalOpen"
-      :user="authStore.currentUser"
-      @close="closeProfileModal"
-      @save="handleProfileUpdate"
-    />
   </header>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
-import ProfileModal from '@/components/common/ProfileModal.vue';
+import { useProfileStore } from '@/stores/modules/profileStore';
 import { 
-  ChevronDownIcon, 
+  ChevronDownIcon,
   ChevronRightIcon,
   SettingsIcon,
   LogOutIcon,
-  BellIcon
+  BellIcon,
 } from 'lucide-vue-next';
+
+const props = defineProps({
+  isSidebarOpen: {
+    type: Boolean,
+    required: true
+  },
+  isSmallScreen: {
+    type: Boolean,
+    required: true
+  }
+});
+
+const emit = defineEmits(['toggle-sidebar']);
 
 const router = useRouter();
 const authStore = useAuthStore();
+const profileStore = useProfileStore();
 
 const isDropdownOpen = ref(false);
 const isNotificationsOpen = ref(false);
-const isProfileModalOpen = ref(false);
 
-onMounted(() => {
-  console.log('Current user:', authStore.currentUser);
+const userPhotoURL = computed(() => {
+  return profileStore.profile?.photoURL || 'https://via.placeholder.com/40';
 });
+
+const totalNotificationsCount = ref(0);
+
+onMounted(async () => {
+  if (authStore.user?.userId) {
+    await profileStore.fetchUserProfile(authStore.user.userId);
+  }
+});
+
+watch(() => authStore.user, async (newUser) => {
+  if (newUser?.userId) {
+    await profileStore.fetchUserProfile(newUser.userId);
+  }
+}, { immediate: true });
 
 const toggleDropdown = () => {
   isDropdownOpen.value = !isDropdownOpen.value;
@@ -150,24 +194,6 @@ const closeDropdown = () => {
   isDropdownOpen.value = false;
 };
 
-const openProfileModal = () => {
-  isProfileModalOpen.value = true;
-  closeDropdown();
-};
-
-const closeProfileModal = () => {
-  isProfileModalOpen.value = false;
-};
-
-const handleProfileUpdate = async (updatedProfile) => {
-  try {
-    await authStore.updateProfile(updatedProfile);
-    closeProfileModal();
-  } catch (error) {
-    console.error('Failed to update profile:', error);
-  }
-};
-
 const handleLogout = async () => {
   try {
     await authStore.logoutUser();
@@ -177,5 +203,6 @@ const handleLogout = async () => {
     console.error('Logout failed:', error);
   }
 };
+
 </script>
 

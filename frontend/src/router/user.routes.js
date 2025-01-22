@@ -1,11 +1,11 @@
 // src/router/user.routes.js
 import UserLayout from '@/layouts/UserLayout.vue';
-import UserDashboard from '@/views/user/UserDashboard.vue';
-import PetProfiles from '@/views/user/PetProfiles.vue';
-import UserAppointments from '@/views/user/UserAppointments.vue';
-import Feedback from '@/views/user/Feedback.vue';
+import UserDashboard from '@/views/user/Dashboard.vue';
+import Profile from '@/views/user/Profile.vue';
+import UserAppointments from '@/views/user/Appointments.vue';
+import Notifications from '@/views/user/Notifications.vue';
 import UserSettings from '@/views/user/Settings.vue';
-import UserTelehealth from '@/views/user/UserTelehealth.vue';
+import UserTelehealth from '@/views/user/Telehealth.vue';
 
 export default [
   {
@@ -19,9 +19,9 @@ export default [
             component: UserDashboard,
         },
         {
-          path: 'petprofiles',
-          name: 'petprofiles',
-          component: PetProfiles,
+          path: 'profile',
+          name: 'Profile',
+          component: Profile,
        },
        {
         path: 'userappointments',
@@ -29,9 +29,9 @@ export default [
         component: UserAppointments,
       },
       {
-        path: 'feedback',
-        name: 'feedback',
-        component: Feedback,
+        path: 'notifications',
+        name: 'Notifications',
+        component: Notifications,
       },
       {
         path: 'settings',

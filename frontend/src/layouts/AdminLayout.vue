@@ -5,36 +5,50 @@
       <AdminSidebar 
         :isOpen="isSidebarOpen" 
         @toggle="toggleSidebar"
+        :isSmallScreen="isSmallScreen"
+        @item-click="handleSidebarItemClick"
         :class="[
-          'transition-all duration-300 ease-in-out fixed inset-y-0 left-0',
-          isSidebarActive ? 'z-[80]' : 'z-[60]'
+          'transition-all duration-300 ease-in-out fixed inset-y-0 left-0 z-[70]',
+          { 'translate-x-0': isSidebarOpen || !isSmallScreen, '-translate-x-full': !isSidebarOpen && isSmallScreen }
         ]"
       />
     
       <!-- Main Content -->
       <div 
-        class="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out"
-        :class="{ 'ml-64': isSidebarOpen, 'ml-16': !isSidebarOpen }"
+        class="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out px-6"
+        :style="{ marginLeft: isSmallScreen ? '0' : (isSidebarOpen ? '280px' : '96px') }"
       >
-        <!-- Header with dynamic z-index -->
-        <Header 
-          :isSidebarOpen="isSidebarOpen"
-          @toggle-sidebar="toggleSidebar"
-          :class="[
-            'sticky top-0 transition-all duration-300 ease-in-out',
-            isSidebarActive ? 'z-[60]' : 'z-[70]'
-          ]"
-        />
+        <!-- Header with scroll behavior -->
+        <div 
+          ref="headerContainer"
+          class="fixed right-6 z-50 transition-all duration-300 ease-in-out"
+          :style="{ 
+            left: isSmallScreen ? '1.5rem' : (isSidebarOpen ? 'calc(280px + 1.5rem)' : 'calc(96px + 1.5rem)'),
+            top: `${headerTopPosition}px`,
+            width: isSmallScreen ? 'calc(100% - 3rem)' : 'calc(100% - 3rem - ' + (isSidebarOpen ? '280px' : '96px') + ')'
+          }"
+        >
+          <Header 
+            :isSidebarOpen="isSidebarOpen"
+            @toggle-sidebar="toggleSidebar"
+            :isSticky="headerTopPosition === 0"
+            :isSmallScreen="isSmallScreen"
+          />
+        </div>
         
-        <Breadcrumb class="px-6 py-4" :currentRoute="currentRoute" :navItems="navItems" />
-        
-        <main class="flex-1 px-6 py-4">
-          <div class="w-full">
-            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <!-- Main content area -->
+        <div class="flex-1 flex flex-col">
+          <!-- Spacer to push content below fixed header -->
+          <div class="h-[89px]"></div>
+          
+          <Breadcrumb class="py-4" :currentRoute="currentRoute" :navItems="navItems" />
+          
+          <main class="flex-1 py-4 overflow-y-auto">
+            <div class="w-full">
               <router-view></router-view>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
   
         <!-- Modal container -->
         <div class="fixed inset-0 z-50 pointer-events-none">
@@ -44,15 +58,15 @@
     
       <!-- Overlay for mobile -->
       <div 
-        v-if="isSidebarOpen" 
-        class="fixed inset-0 bg-gray-600 bg-opacity-50 transition-opacity md:hidden z-50"
+        v-if="isSidebarOpen && isSmallScreen" 
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 transition-opacity z-50"
         @click="closeSidebarOnMobile"
       ></div>
     </div>
   </template>
   
   <script setup>
-  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import { useRoute } from 'vue-router';
   import AdminSidebar from '@/components/admin/Sidebar.vue';
   import Header from '@/components/admin/Header.vue';
@@ -65,16 +79,28 @@
     Database,
     Video,
     MessageSquare,
-    Settings
+    Settings,
+    UserCircle
   } from 'lucide-vue-next';
   
-  const isSidebarOpen = ref(true);
-  const isSidebarActive = ref(false);
+  const isSidebarOpen = ref(window.innerWidth >= 768);
+  const headerTopPosition = ref(16);
+  const headerContainer = ref(null);
+  const isSmallScreen = ref(false);
+  
+  const toggleBodyScroll = (disable) => {
+    if (disable) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  };
   
   const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value;
-    // When toggling via button, make sidebar active
-    isSidebarActive.value = isSidebarOpen.value;
+    if (isSmallScreen.value) {
+      toggleBodyScroll(isSidebarOpen.value);
+    }
   };
   
   const route = useRoute();
@@ -89,46 +115,61 @@
     { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
     { href: '/admin/chatbot', icon: MessageSquare, label: 'Chatbot' },
     { href: '/admin/settings', icon: Settings, label: 'Settings' },
+    { href: '/admin/profile', icon: UserCircle, label: 'Profile' },
   ];
   
-  // Handle click outside for mobile
-  const handleClickOutside = (event) => {
-    if (window.innerWidth < 768 && isSidebarOpen.value) {
-      // Check if click is outside sidebar
-      const sidebar = document.querySelector('[data-sidebar]');
-      const header = document.querySelector('[data-header]');
-      if (sidebar && !sidebar.contains(event.target) && 
-          header && !header.contains(event.target)) {
-        isSidebarOpen.value = false;
-        isSidebarActive.value = false;
-      }
+  const handleScroll = () => {
+    const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    headerTopPosition.value = Math.max(0, 16 - scrollPosition);
+  };
+  
+  const handleResize = () => {
+    isSmallScreen.value = window.innerWidth < 768;
+    if (!isSmallScreen.value) {
+      isSidebarOpen.value = true;
+    } else {
+      isSidebarOpen.value = false;
     }
   };
   
-  // Handle sidebar interaction
-  const handleSidebarInteraction = (event) => {
-    const sidebar = document.querySelector('[data-sidebar]');
-    if (sidebar && sidebar.contains(event.target)) {
-      isSidebarActive.value = true;
-    } else {
-      isSidebarActive.value = false;
+  const closeSidebarOnMobile = () => {
+    if (isSmallScreen.value) {
+      isSidebarOpen.value = false;
+      toggleBodyScroll(false);
     }
   };
+  
+  const handleSidebarItemClick = () => {
+    if (isSmallScreen.value) {
+      isSidebarOpen.value = false;
+      toggleBodyScroll(false);
+    }
+  };
+  
+  watch(isSmallScreen, (newValue) => {
+    if (!newValue) {
+      toggleBodyScroll(false);
+    }
+  });
   
   onMounted(() => {
-    document.addEventListener('click', handleClickOutside);
-    document.addEventListener('mousedown', handleSidebarInteraction);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial check
   });
   
   onUnmounted(() => {
-    document.removeEventListener('click', handleClickOutside);
-    document.removeEventListener('mousedown', handleSidebarInteraction);
+    window.removeEventListener('scroll', handleScroll);
+    window.removeEventListener('resize', handleResize);
+    toggleBodyScroll(false); // Ensure scroll is enabled when component is unmounted
   });
-  
-  const closeSidebarOnMobile = () => {
-    if (window.innerWidth < 768) {
-      isSidebarOpen.value = false;
-      isSidebarActive.value = false;
-    }
-  };
   </script>
+  
+  
+  
+  
+  
+  
+  
+  
+  

@@ -93,21 +93,6 @@
                   <span>Log Out</span>
                 </button>
               </div>
-
-              <!-- Footer Links -->
-              <div class="px-4 py-2 border-t border-gray-200 text-xs text-gray-500 space-x-2">
-                <a href="#" class="hover:underline">Privacy</a>
-                <span>·</span>
-                <a href="#" class="hover:underline">Terms</a>
-                <span>·</span>
-                <a href="#" class="hover:underline">Advertising</a>
-                <span>·</span>
-                <a href="#" class="hover:underline">Ad Choices</a>
-                <span>·</span>
-                <a href="#" class="hover:underline">Cookies</a>
-                <span>·</span>
-                <a href="#" class="hover:underline">More</a>
-              </div>
             </div>
 
             <!-- Profile Selector Modal -->
@@ -183,7 +168,7 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
-import ProfileModal from '@/components/common/ProfileModal.vue';
+import ProfileModal from '@/components/common/Profile.vue';
 import { 
   ChevronDownIcon, 
   ChevronRightIcon,
