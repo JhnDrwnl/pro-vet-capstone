@@ -405,5 +405,3 @@ watch(() => router.currentRoute.value.name, (newRouteName) => {
   animation: subtle-pulse 2s infinite;
 }
 </style>
-
-
