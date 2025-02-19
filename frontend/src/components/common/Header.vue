@@ -1,53 +1,72 @@
 <template>
-    <header class="bg-blue-600 sticky top-0 shadow-md z-50">
-      <nav class="container mx-auto px-4 py-3 flex items-center justify-between">
-        <!-- Logo -->
-        <router-link to="/" class="flex items-center">
-          <img
-            src="@/assets/media/images/logo/PROVET__1_-removebg-preview.png" 
-            alt="ProVet Logo"
-            class="h-10 w-auto mr-2"
-          />
-          <span class="text-sm font-extrabold text-white hover:text-blue-200 transition duration-200">
-            ProVet
-          </span>
-        </router-link>
-  
-        <!-- Navigation Links -->
-        <ul class="flex space-x-6">
+  <header class="bg-[#3b82f6] sticky top-0 shadow-md z-50">
+    <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
+      <!-- Logo -->
+      <router-link to="/landing/home" class="flex items-center">
+        <img
+          src="@/assets/media/images/logo/LogoProvet-removebg-preview.png" 
+          alt="ProVet Logo"
+          class="h-12 w-auto mr-3"
+        />
+      </router-link>
+
+      <!-- Navigation Links (Centered) -->
+      <div class="flex-grow flex justify-center">
+        <ul class="flex space-x-8">
           <li>
             <router-link 
-              to="/auth/Login" 
-              class="text-white text-base font-medium hover:text-blue-300 transition duration-200"
+              to="/landing/homepage" 
+              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              active-class="border-b-2 border-white"
             >
-              Login
+              Home
             </router-link>
           </li>
           <li>
             <router-link 
-              to="/auth/Register" 
-              class="bg-white text-blue-600 hover:bg-blue-100 px-6 py-2 rounded-full text-base font-semibold transition duration-300 ease-in-out transform hover:scale-105 shadow-sm"
+              to="/landing/about" 
+              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              active-class="border-b-2 border-white"
             >
-              Register
+              About Us
+            </router-link>
+          </li>
+          <li>
+            <router-link 
+              to="/landing/service" 
+              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              active-class="border-b-2 border-white"
+            >
+              Services
+            </router-link>
+          </li>
+          <li>
+            <router-link 
+              to="/landing/contact" 
+              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              active-class="border-b-2 border-white"
+            >
+              Contact Us
             </router-link>
           </li>
         </ul>
-      </nav>
-    </header>
-  </template>
-  
-  <style scoped>
-  /* Shadow styles for elevated look */
-  header {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Logo image styling */
-  header img {
-    height: 40px; /* Adjust size of the logo */
-    width: auto;
-  }
-  
-  
-  </style>
-  
+      </div>
+
+      <!-- Login & Register Buttons (Right) -->
+      <div class="flex space-x-4">
+        <router-link 
+          to="/auth/Login" 
+          class="bg-white text-[#2563eb] hover:bg-blue-100 px-7 py-2 rounded-full text-lg font-semibold transition duration-300 ease-in-out transform hover:scale-105 shadow-md"
+        >
+          Login
+        </router-link>
+        <router-link 
+          to="/auth/Register" 
+          class="bg-[#1e40af] text-white hover:bg-[#1b3a94] px-7 py-2 rounded-full text-lg font-semibold transition duration-300 ease-in-out transform hover:scale-105 shadow-md"
+        >
+          Register
+        </router-link>
+      </div>
+    </nav>
+  </header>
+</template>

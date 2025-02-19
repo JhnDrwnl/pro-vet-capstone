@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 bg-white">
+  <div class="p-6 bg-white rounded-2xl">
     <!-- Header Section -->
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-gray-900">Pet Owner Management</h1>

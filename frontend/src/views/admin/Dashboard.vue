@@ -1,5 +1,5 @@
 <template>
-  <main class="min-h-screen bg-gray-100">
+  <main class="min-h-screen bg-gray-100 rounded-2xl">
     <!-- Combined Month and Year Filter -->
     <div class="mb-4 rounded-md flex justify-end">
       <select

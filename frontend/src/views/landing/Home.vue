@@ -44,11 +44,10 @@
         <div class="grid lg:grid-cols-2 gap-12 items-center w-full">
           <div class="text-white text-center lg:text-left">
             <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 leading-tight">
-              Pets Paradise
+              ProVet
             </h1>
             <p class="text-sm sm:text-lg md:text-xl mb-6 text-blue-100">
-              This is a shelter for homeless animals where everyone is welcome. We care
-              about the fate of our pets and find them new families.
+              Your Professional Partner in Veterinary Healthxare in the Province of Oriental Mindoro.
             </p>
             <button
               @click="navigateToLogin"

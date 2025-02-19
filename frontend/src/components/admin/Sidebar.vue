@@ -92,7 +92,13 @@
              ]"
              @click="handleItemClick(item)"
           >
-            <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" />
+          <component 
+  :is="item.icon" 
+  v-bind="item.iconProps"
+  class="w-6 h-6" 
+  :class="{ 'mr-3': isOpen }" 
+/>
+
             <span v-if="isOpen">{{ item.label }}</span>
             <!-- Tooltip for collapsed state -->
             <div v-if="!isOpen" 
@@ -116,9 +122,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { Icon } from "@iconify/vue";
 import { useRoute } from 'vue-router';
 import {
-  LayoutDashboard,
   BarChart,
   Calendar,
   Users,
@@ -202,8 +208,14 @@ const handleItemClick = (item) => {
 };
 
 const navItems = [
-  { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/analytics', icon: BarChart, label: 'Analytics' },
+{ 
+  href: '/admin/dashboard', 
+  icon: Icon, 
+  label: 'Dashboard', 
+  iconProps: { icon: "mage:dashboard-bar-notification", width: 20, height: 20 } 
+},
+
+  { href: '/admin/analytics', icon: Icon, label: 'Analytics', iconProps: { icon: "lucide:chart-pie"} },
   { href: '/admin/usermanagement', icon: Users, label: 'User Management' },
   { 
     icon: Calendar, 
@@ -222,7 +234,7 @@ const navItems = [
     ]
   },
   { 
-    icon: Database,
+    icon: Database, 
     label: 'Data Management',
     subItems: [
       {href: '/admin/datamanagement/petowners', label: 'Pet Owners'},
@@ -230,8 +242,10 @@ const navItems = [
       { href: '/admin/datamanagement/veterinarians', label: 'Veterinarians' }
     ]
   },
+
+  
   { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
-  { href: '/admin/chatbot', icon: MessageSquare, label: 'Chatbot' },
+  { href: '/admin/chatbot', icon: Icon, label: 'Chatbot', iconProps: { icon: "uiw:message" }},
   { 
     icon: Settings,
     label: 'Settings',
@@ -268,6 +282,7 @@ watch(() => props.isOpen, (newValue) => {
 .group:hover .group-hover\:visible {
   visibility: visible;
 }
+
 </style>
 
 

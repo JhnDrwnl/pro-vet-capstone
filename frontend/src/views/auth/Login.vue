@@ -260,7 +260,7 @@
   }
   
   const goToHome = () => {
-    router.push('/');
+    router.push('/landing/home');
   }
   
   const handleForgotPassword = async () => {

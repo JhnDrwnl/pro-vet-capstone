@@ -1,5 +1,5 @@
 <template>
-    <div class="p-6 bg-white">
+    <div class="p-6 bg-white rounded-2xl">
       <!-- Header Section -->
       <div class="mb-8">
         <h1 class="text-2xl font-semibold text-gray-900">Data Management</h1>
@@ -90,9 +90,9 @@
   
         <!-- Table -->
         <div v-if="!showForm" class="bg-white rounded-lg border border-gray-200">
-          <table class="min-w-full">
-            <thead class="bg-gray-100">
-              <tr class="border-b border-gray-200">
+      <table class="min-w-full">
+        <thead class="bg-gray-100">
+          <tr class="border-b border-gray-200">
                 <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Profile</th>
                 <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Name</th>
                 <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Email</th>

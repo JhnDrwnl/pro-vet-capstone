@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white p-6">
+  <div class="bg-white p-6 rounded-2xl">
     <!-- Header Section -->
     <div class="mb-6">
       <h2 class="text-2xl font-medium text-gray-900">Walk-in Sessions</h2>
@@ -43,10 +43,10 @@
     </div>
 
     <!-- Table -->
-    <div v-if="!showForm" class="border border-gray-200 rounded-lg overflow-hidden">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
+    <div v-if="!showForm" class="bg-white rounded-lg border border-gray-200">
+      <table class="min-w-full">
+        <thead class="bg-gray-100">
+          <tr class="border-b border-gray-200">
             <th v-for="header in headers" :key="header.key" 
                 @click="sortBy(header.key)"
                 class="px-6 py-4 text-left text-sm font-medium text-gray-500 cursor-pointer">

@@ -14,7 +14,7 @@
           :class="[
                   'px-4 py-2 text-sm font-medium rounded-full transition-colors',
             currentTab === tab.id 
-               ? 'bg-blue-500 text-white'
+               ? 'bg-[#EBF5FF] text-[#0066FF]'
               : 'text-gray-800 hover:text-gray-700'
           ]"
         >
