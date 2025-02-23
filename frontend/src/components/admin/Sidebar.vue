@@ -21,9 +21,8 @@
         </button>
       </div>
       <div v-else class="px-4 py-4 border-b border-gray-200">
-        <PawPrint class="w-6 h-6 text-blue-600 mx-auto" />
+        <img src="@/assets/media/images/landing/provetblue.png" alt="ProVet Logo" class="w-8 h-8 mx-auto" />
       </div>
-
       <!-- Navigation -->
       <nav class="flex-grow p-4 space-y-2 overflow-y-auto" :class="{ 'overflow-hidden': !isOpen }">
         <template v-for="(item, index) in navItems" :key="index">

@@ -198,7 +198,7 @@
   };
   
   const goToHome = () => {
-    router.push('/landing/home');
+    router.push('/home');
   };
   </script>
   

@@ -99,24 +99,117 @@
     </div>
 
     <!-- Team Section -->
+    <div class="py-8 bg-gray-100">
     <div class="py-20 container mx-auto px-4">
-      <h2 class="text-4xl font-bold text-center mb-16">Our Team</h2>
-      <div class="grid md:grid-cols-3 gap-8">
-        <div v-for="(member, index) in team" 
-             :key="index"
-             class="group relative overflow-hidden rounded-xl"
-             v-motion
-             :initial="{ opacity: 0, scale: 0.9 }"
-             :enter="{ opacity: 1, scale: 1, delay: 150 * index }">
-          <img :src="member.image" :alt="member.name" 
-               class="w-full aspect-[4/5] object-cover group-hover:scale-105 transition-transform duration-500"/>
-          <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-            <h3 class="text-white text-xl font-semibold">{{ member.name }}</h3>
-            <p class="text-white/80">{{ member.role }}</p>
+  <h2 class="text-4xl font-bold text-center text-[#2B3674] mb-3">Meet Our Dedicated Team</h2>
+  <p class="text-center text-gray-500 mb-16 max-w-2xl mx-auto">
+    Passionate professionals committed to providing the best care for your pets.
+  </p>
+  
+  <div class="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+    <div v-for="(member, index) in team" 
+         :key="index"
+         class="relative pb-16"
+         v-motion
+         :initial="{ opacity: 0, y: 20 }"
+         :enter="{ opacity: 1, y: 0, delay: 150 * index }">
+      <!-- Image Container -->
+      <div class="bg-gray-100 rounded-lg overflow-hidden">
+        <img :src="member.image" 
+             :alt="member.name" 
+             class="w-full h-[350px] object-cover"/>
+      </div>
+      
+      <!-- Overlapping Card -->
+      <div class="absolute -bottom-4 left-4 right-4 bg-white rounded-lg shadow-md p-6 text-center transform transition-transform hover:-translate-y-1">
+        <h3 class="text-lg font-semibold text-gray-900">{{ member.name }}</h3>
+        <p class="text-gray-600 text-sm">{{ member.role }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Agencies Section -->
+<div class="py-16 bg-white"> 
+  <div class="container mx-auto px-4">
+    <h2 class="text-3xl font-bold text-center text-[#2B3674] mb-8">Institutions behind the Project</h2>
+    <p class="text-center text-gray-600 mb-4 max-w-2xl mx-auto">
+      We collaborate with leading organization to ensure the best veterinary services.
+    </p>
+    
+    <div class="flex flex-wrap justify-center items-center gap-12 max-w-6xl mx-auto  p-8 ">
+      <div v-for="(agency, index) in agencies" 
+           :key="index"
+           class="flex items-center justify-center w-48 h-48 rounded-lg p-4 transition-transform duration-300 hover:scale-110">
+        <img :src="agency.logo" 
+             :alt="agency.name" 
+             class="max-w-full max-h-full object-contain transition-transform duration-300 hover:scale-125"/>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- System Development Team Section -->
+<div class="py-16 bg-gray-50">
+  <div class="container mx-auto px-4">
+    <h2 class="text-4xl font-bold text-center text-[#2B3674] mb-3">Meet the Developers</h2>
+    <p class="text-center text-gray-500 mb-16 max-w-2xl mx-auto">
+      The brilliant minds behind the system, dedicated to innovation and excellence.
+    </p>
+
+    <div class="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+      <div v-for="(dev, index) in developers" 
+           :key="index"
+           class="relative group">
+        <!-- Card Container -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 pt-16 transition-transform duration-300 hover:-translate-y-2">
+          <!-- Circular Image with Arc -->
+          <div class="relative w-32 h-32 mx-auto -mt-24 mb-6">
+            <div class="absolute inset-0 rounded-full border-[3px] border-transparent">
+              <!-- Teal Arc -->
+              <div class="absolute inset-0 rounded-full border-[9px] border-blue-500"
+                   style="clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);">
+              </div>
+            </div>
+            <img :src="dev.image" 
+                 :alt="dev.name" 
+                 class="w-full h-full object-cover rounded-full border-4 border-white shadow-lg"/>
+          </div>
+
+          <!-- Content -->
+          <div class="text-center space-y-3">
+            <div class="space-y-1">
+              <h3 class="text-xl font-semibold text-[#2B3674]">
+                {{ dev.name }}
+              </h3>
+              <p class="text-gray-500 text-sm">
+                {{ dev.role }}
+              </p>
+            </div>
+            
+            <!-- Social Media Icons -->
+            <div class="flex justify-center items-center space-x-4 pt-2">
+              <a href="#" class="text-gray-400 hover:text-blue-500 transition-colors">
+                <LinkedinIcon class="w-5 h-5" />
+              </a>
+              <a href="#" class="text-gray-400 hover:text-blue-400 transition-colors">
+                <TwitterIcon class="w-5 h-5" />
+              </a>
+              <a href="#" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <GithubIcon class="w-5 h-5" />
+              </a>
+              <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors">
+                <MailIcon class="w-5 h-5" />
+              </a>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+
   </div>
 </template>
 
@@ -159,20 +252,54 @@ const mvmItems = ref([
 
 const team = ref([
   {
-    name: 'Dr. Sarah Johnson',
+    name: 'Grimaldo C. Catapang, DVM',
     role: 'Chief Veterinarian',
-    image: '/placeholder.svg?height=400&width=300'
+    image:new URL('@/assets/media/images/landing/doc1.jpg', import.meta.url).href,
   },
   {
-    name: 'Dr. Michael Chen',
-    role: 'Senior Veterinarian',
-    image: '/placeholder.svg?height=400&width=300'
+    name: 'Anna Rochelle A. Boongaling, DVM',
+    role: 'Veterinarian',
+    image: new URL('@/assets/media/images/landing/doc2.jpg', import.meta.url).href,
   },
   {
-    name: 'Dr. Emily Rodriguez',
+    name: 'Alfredo P. Magcalimot, DVM',
     role: 'Veterinary Surgeon',
-    image: '/placeholder.svg?height=400&width=300'
+    image: new URL('@/assets/media/images/landing/doc3.jpg', import.meta.url).href,
   }
 ])
+
+const agencies = ref([
+  {
+    name: 'Mindoro State University',
+    logo: new URL('@/assets/media/images/landing/minsu.png', import.meta.url).href,
+  },
+  {
+    name: 'Provincial Veterinarians Office',
+    logo: new URL('@/assets/media/images/landing/logovet.jpg', import.meta.url).href,
+  },
+  {
+    name: 'Province of Oriental Mindoro',
+    logo: new URL('@/assets/media/images/landing/ormin.png', import.meta.url).href,
+  }
+])
+const developers = ref([
+  {
+    name: 'John Doe',
+    role: 'Main Programmer',
+    image: new URL('@/assets/media/images/landing/doc1.jpg', import.meta.url).href,
+  },
+  {
+    name: 'Jane Smith',
+    role: 'Machine Learning Engineer',
+    image: new URL('@/assets/media/images/landing/doc2.jpg', import.meta.url).href,
+  },
+  {
+    name: 'Emily Johnson',
+    role: 'UI/UX Designer',
+    image: new URL('@/assets/media/images/landing/doc2.jpg', import.meta.url).href,
+  }
+])
+
+
 </script>
 

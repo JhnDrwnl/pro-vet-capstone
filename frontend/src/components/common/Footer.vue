@@ -1,5 +1,5 @@
 <template>
-    <footer class="bg-[#1E40AF] text-white py-10">
+    <footer class="bg-[#1E40AF] text-white rounded-t-2xl py-10">
       <div class="container mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
         
         <!-- Logo, Brand Name & Mission -->
