@@ -1,8 +1,9 @@
+
 <template>
   <header class="bg-[#3b82f6] sticky top-0 shadow-md z-50">
     <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
       <!-- Logo -->
-      <router-link to="/landing/home" class="flex items-center">
+      <router-link to="/home" class="flex items-center">
         <img
           src="@/assets/media/images/logo/LogoProvet-removebg-preview.png" 
           alt="ProVet Logo"
@@ -15,8 +16,8 @@
         <ul class="flex space-x-8">
           <li>
             <router-link 
-              to="/landing/homepage" 
-              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              to="/home" 
+              class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
               active-class="border-b-2 border-white"
             >
               Home
@@ -24,8 +25,8 @@
           </li>
           <li>
             <router-link 
-              to="/landing/about" 
-              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              to="/about" 
+              class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
               active-class="border-b-2 border-white"
             >
               About Us
@@ -33,8 +34,8 @@
           </li>
           <li>
             <router-link 
-              to="/landing/service" 
-              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              to="/service" 
+              class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
               active-class="border-b-2 border-white"
             >
               Services
@@ -42,8 +43,8 @@
           </li>
           <li>
             <router-link 
-              to="/landing/contact" 
-              class="text-white text-lg font-medium hover:text-blue-300 transition duration-200 pb-2"
+              to="/contact" 
+              class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
               active-class="border-b-2 border-white"
             >
               Contact Us

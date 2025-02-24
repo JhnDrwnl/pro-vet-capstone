@@ -1,4 +1,3 @@
-<!-- components/user/Sidebar.vue -->
 <template>
   <div class="flex flex-col">
     <!-- Mobile Header -->
@@ -168,6 +167,13 @@
       :isVisible="isSearchOpen"
       @close="closeSearch"
     />
+
+    <!-- Notification Panel -->
+    <NotificationPanel
+      :isMobileView="isMobileView"
+      :isVisible="isNotificationsOpen"
+      @close="closeNotifications"
+    />
   </div>
 </template>
 
@@ -190,6 +196,7 @@ import {
   MessageCircle as MessageCircleIcon
 } from 'lucide-vue-next';
 import SearchPanel from '../common/SearchPanel.vue';
+import NotificationPanel from '../common/NotificationPanel.vue';
 
 const props = defineProps({
   isOpen: {
@@ -198,7 +205,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['toggle', 'toggleSearch']);
+const emit = defineEmits(['toggle', 'toggleSearch', 'toggleNotifications']);
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -206,6 +213,7 @@ const profileStore = useProfileStore();
 
 const isMoreMenuOpen = ref(false);
 const isSearchOpen = ref(false);
+const isNotificationsOpen = ref(false);
 const searchQuery = ref('');
 const isSettingsActive = ref(false); 
 const searchResults = ref([]);
@@ -243,6 +251,7 @@ watch(() => authStore.user, async (newUser) => {
 watch(() => props.isOpen, (newIsOpen) => {
   if (!newIsOpen) {
     isSearchOpen.value = false;
+    isNotificationsOpen.value = false;
   }
 });
 
@@ -258,12 +267,20 @@ const handleNavClick = (item) => {
   if (item.name === 'Search') {
     isSearchOpen.value = !isSearchOpen.value;
     emit('toggleSearch', isSearchOpen.value);
+    if (isSearchOpen.value) {
+      isNotificationsOpen.value = false;
+      emit('toggleNotifications', false);
+    }
+  } else if (item.name === 'Notifications') {
+    toggleNotifications();
   } else {
     mainNavItems.value.find(navItem => navItem.name === item.name).active = true;
     router.push(item.path);
     if (!isMobileView.value) {
       isSearchOpen.value = false;
       emit('toggleSearch', false);
+      isNotificationsOpen.value = false;
+      emit('toggleNotifications', false);
     }
   }
   if (isMobileView.value && isOpen.value) {
@@ -284,6 +301,21 @@ const closeMoreMenu = () => {
 const closeSearch = () => {
   isSearchOpen.value = false;
   emit('toggleSearch', false);
+};
+
+const toggleNotifications = () => {
+  console.log('Toggling notifications');
+  isNotificationsOpen.value = !isNotificationsOpen.value;
+  emit('toggleNotifications', isNotificationsOpen.value);
+  if (isNotificationsOpen.value) {
+    isSearchOpen.value = false;
+    emit('toggleSearch', false);
+  }
+};
+
+const closeNotifications = () => {
+  isNotificationsOpen.value = false;
+  emit('toggleNotifications', false);
 };
 
 const handleLogout = async () => {
@@ -316,13 +348,9 @@ const handleResize = () => {
   isMobileView.value = window.innerWidth < 768;
   if (isMobileView.value) {
     isSearchOpen.value = false;
+    isNotificationsOpen.value = false;
     emit('toggle', false);
   }
-};
-
-const toggleNotifications = () => {
-  console.log('Toggling notifications');
-  handleNavClick(mainNavItems.value.find(item => item.name === 'Notifications'));
 };
 
 const toggleChatbot = () => {

@@ -14,7 +14,7 @@
       </div>
       <div class="mt-6 flex justify-center">
         <router-link
-          to="/landing/home"
+          to="/home"
           class="w-64 inline-flex items-center justify-center px-6 py-3 text-base font-medium text-[#4e8dd9] bg-white rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-colors duration-200"
         >
           Go Back to Home
