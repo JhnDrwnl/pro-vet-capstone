@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-6 md:p-8">
+    <div class="bg-white shadow-lg rounded-lg p-4 mb-8">
     <ProfileDetails 
       v-if="showProfileDetails" 
       :profile="selectedProfile"

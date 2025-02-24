@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white">
+    <div class="bg-white shadow-lg rounded-lg p-4 mb-8">
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div class="grid lg:grid-cols-2 gap-12 items-center">
         <!-- Left Column -->

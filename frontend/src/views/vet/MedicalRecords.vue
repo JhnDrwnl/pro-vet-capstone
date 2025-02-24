@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-6">
+    <div class="bg-white shadow-lg rounded-lg p-4 mb-8">
     <div class="max-w-7xl mx-auto">
       <!-- Header with Search -->
       <div class="flex items-center justify-between mb-8">
