@@ -103,7 +103,13 @@
               />
               <label for="terms" class="text-sm text-gray-600">
                 By creating an account you agree to the 
-                <router-link to="/terms" class="text-blue-600 hover:text-blue-700 hover:underline">Terms and Conditions</router-link>
+                <button 
+                  type="button"
+                  @click="showPolicyModal = true"
+                  class="text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Terms and Conditions
+                </button>
                 and our
                 <router-link to="/privacy" class="text-blue-600 hover:text-blue-700 hover:underline">Privacy Policy</router-link>
               </label>
@@ -143,14 +149,33 @@
         </div>
       </div>
     </div>
+
+    <!-- Policy Modal -->
+    <div v-if="showPolicyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4">
+        <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+          <h2 class="text-xl font-semibold text-gray-900">Terms and Conditions</h2>
+          <button 
+            @click="showPolicyModal = false"
+            class="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200"
+          >
+            <XIcon class="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+        <div class="p-6">
+          <Policies />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue';
-import { EyeIcon, EyeOffIcon, ArrowLeftIcon } from 'lucide-vue-next';
+import { EyeIcon, EyeOffIcon, ArrowLeftIcon, XIcon } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
+import Policies from '@/components/common/Policies.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -158,6 +183,8 @@ const authStore = useAuthStore();
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 const registrationComplete = ref(false);
+const showPolicyModal = ref(false);
+
 const form = reactive({
   firstName: '',
   lastName: '',
