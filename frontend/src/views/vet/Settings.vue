@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 p-8">
+    <div class="bg-white shadow-lg rounded-lg p-4 mb-8">
     <!-- Header -->
     <div class="max-w-4xl mx-auto">
       <h1 class="text-2xl font-semibold text-gray-900">Account Settings</h1>

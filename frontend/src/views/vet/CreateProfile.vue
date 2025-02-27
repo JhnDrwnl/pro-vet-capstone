@@ -385,9 +385,11 @@
             </div>
             <p class="text-gray-600">{{ condition.description }}</p>
           </div>
-          <button @click="addMedicalCondition" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            Add Medical Condition
-          </button>
+
+        <MedicalRecordUpload
+          @save="handleMedicalRecordSave"
+        @cancel="handleMedicalRecordCancel"
+        />
         </div>
 
         <!-- Vaccinations -->
@@ -400,9 +402,10 @@
             </div>
             <CheckIcon v-if="vaccine.completed" class="w-6 h-6 text-green-500" />
           </div>
-          <button @click="addVaccination" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            Add Vaccination
-          </button>
+          <VaccinationUpload
+          @save="handleMedicalRecordSave"
+        @cancel="handleMedicalRecordCancel"
+        />
         </div>
 
         <!-- Documents -->
@@ -415,35 +418,22 @@
             </div>
             <a :href="document.url" target="_blank" class="text-blue-600 hover:underline">View</a>
           </div>
-          <div class="mt-4">
-            <label for="document-upload" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block">
-              Upload Document
-            </label>
-            <input id="document-upload" type="file" @change="onDocumentSelected" class="hidden" />
-          </div>
+          <DocumentUpload
+          @save="handleMedicalRecordSave"
+        @cancel="handleMedicalRecordCancel"
+        />
         </div>
 
-        <!-- Form Actions -->
-        <div class="flex justify-end gap-4 mt-8">
-          <button
-            @click="cancelPetChanges"
-            class="px-6 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            @click="savePetChanges"
-            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Save Changes
-          </button>
-        </div>
+      
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import MedicalRecordUpload from './AddMedicalRecord.vue'
+import VaccinationUpload from './AddVaccination.vue'
+import DocumentUpload from './AddDocument.vue'
 import { ref } from 'vue'
 import { 
   ArrowLeftIcon, 
