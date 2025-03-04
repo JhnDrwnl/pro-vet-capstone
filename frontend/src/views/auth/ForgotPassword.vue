@@ -1,9 +1,112 @@
+<!-- views/auth/ForgotPassword.vue.vue -->
 <template>
   <div class="min-h-screen flex items-center justify-center bg-blue-900 px-4 py-8">
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row">
       <!-- Left Side - Progress Steps -->
       <div class="w-full md:w-2/5 p-8">
-        <div class="relative">
+        <!-- Mobile Steps - Horizontal with equal spacing -->
+        <div class="md:hidden w-full mb-8 relative">
+          <div class="grid grid-cols-4 gap-4 px-4">
+            <!-- Progress Line -->
+            <div class="absolute top-[17px] left-[calc(8%+18px)] right-[calc(8%+18px)] h-[2px] bg-gray-200">
+              <!-- Completed line segments -->
+              <div 
+                class="absolute top-0 left-0 h-full bg-blue-500 transition-all duration-300"
+                :style="{ width: `${((currentStep - 1) / 3) * 100}%` }"
+              ></div>
+            </div>
+            <!-- Step 1 -->
+            <div class="flex flex-col items-center">
+              <div class="relative mb-2">
+                <div v-if="currentStep > 1" 
+                     class="w-9 h-9 rounded-full bg-green-900 flex items-center justify-center">
+                  <CheckIcon class="w-5 h-5 text-white" />
+                </div>
+                <div v-else-if="currentStep === 1"
+                     class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-white"></div>
+                </div>
+                <div v-else
+                     class="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 font-medium text-center">STEP 1</p>
+              <p class="text-sm font-medium text-center" :class="currentStep >= 1 ? 'text-gray-900' : 'text-gray-500'">
+                Email
+              </p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="flex flex-col items-center">
+              <div class="relative mb-2">
+                <div v-if="currentStep > 2" 
+                     class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
+                  <CheckIcon class="w-5 h-5 text-white" />
+                </div>
+                <div v-else-if="currentStep === 2"
+                     class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-white"></div>
+                </div>
+                <div v-else
+                     class="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 font-medium text-center">STEP 2</p>
+              <p class="text-sm font-medium text-center" :class="currentStep >= 2 ? 'text-gray-900' : 'text-gray-500'">
+                Code
+              </p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="flex flex-col items-center">
+              <div class="relative mb-2">
+                <div v-if="currentStep > 3" 
+                     class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
+                  <CheckIcon class="w-5 h-5 text-white" />
+                </div>
+                <div v-else-if="currentStep === 3"
+                     class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-white"></div>
+                </div>
+                <div v-else
+                     class="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 font-medium text-center">STEP 3</p>
+              <p class="text-sm font-medium text-center" :class="currentStep >= 3 ? 'text-gray-900' : 'text-gray-500'">
+                Password
+              </p>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="flex flex-col items-center">
+              <div class="relative mb-2">
+                <div v-if="currentStep > 4" 
+                     class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
+                  <CheckIcon class="w-5 h-5 text-white" />
+                </div>
+                <div v-else-if="currentStep === 4"
+                     class="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-white"></div>
+                </div>
+                <div v-else
+                     class="w-9 h-9 rounded-full border-2 border-gray-200 flex items-center justify-center">
+                  <div class="w-3 h-3 rounded-full bg-gray-200"></div>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 font-medium text-center">STEP 4</p>
+              <p class="text-sm font-medium text-center" :class="currentStep >= 4 ? 'text-gray-900' : 'text-gray-500'">
+                Done
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Desktop Steps - Vertical -->
+        <div class="hidden md:block relative">
           <!-- Vertical line -->
           <div class="absolute left-[17px] top-[30px] bottom-4 w-[2px] bg-gray-200">
             <!-- Completed line segments -->
@@ -114,7 +217,7 @@
         </div>
 
         <!-- Lottie Animation -->
-        <div class="w-full mt-12">
+        <div class="w-full mt-12 hidden md:block">
           <DotLottieVue
             src="https://lottie.host/c8b6eda0-6211-4124-8483-f57f7cf9d0bc/k5Va8KyWd5.lottie"
             autoplay
@@ -126,17 +229,17 @@
 
       <!-- Right Side - Forms with Dog Image -->
       <div class="w-full md:w-3/5 bg-blue-50 p-8 flex flex-col items-center justify-center relative overflow-hidden">
-    <!-- Dog Image -->
-    <div class="absolute top-14 left-1/2 transform -translate-x-1/2 w-64 pointer-events-none z-10">
-      <img 
-        src="@/assets/media/images/auth/doggy.png"
-        alt="Friendly dog"
-        class="w-full h-full object-contain"
-      />
-    </div>
+        <!-- Dog Image -->
+        <div class="absolute -top-5 md:top-14 left-1/2 transform -translate-x-1/2 w-64 pointer-events-none z-20">
+          <img 
+            src="@/assets/media/images/auth/doggy.png"
+            alt="Friendly dog"
+            class="w-full h-full object-contain"
+          />
+        </div>
 
         <!-- Content with white background -->
-        <div class="relative w-full max-w-md mt-16">
+        <div class="relative w-full max-w-md mt-20 md:mt-16">
           <!-- Forms - Each step gets a white background -->
 
           <!-- Step 1: Email Input -->
@@ -167,7 +270,7 @@
             </form>
 
             <button 
-              @click="$router.push('/login')"
+              @click="$router.push('/auth/login')"
               class="w-full text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2"
             >
               <span class="text-sm">← Back to log in</span>
@@ -302,7 +405,7 @@
             </div>
 
             <button 
-              @click="$router.push('/login')"
+              @click="$router.push('/auth/login')"
               class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
             >
               Back to login
@@ -315,9 +418,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { CheckIcon, EyeIcon, EyeOffIcon } from 'lucide-vue-next'
 import { DotLottieVue } from '@lottiefiles/dotlottie-vue'
+import { useAuthStore } from '@/stores/modules/authStore'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 
 // State
 const currentStep = ref(1)
@@ -330,19 +439,33 @@ const showConfirmPassword = ref(false)
 const resendTimer = ref(0)
 let resendInterval = null
 
+// Set email from route query on mount
+onMounted(() => {
+  const emailFromQuery = route.query.email
+  if (emailFromQuery) {
+    email.value = emailFromQuery
+  }
+})
+
 // Computed
 const isCodeComplete = computed(() => {
   return verificationCode.value.every(digit => digit !== '')
 })
 
 // Methods
-const handleEmailSubmit = () => {
+const handleEmailSubmit = async () => {
   if (!validateEmail(email.value)) {
     alert('Please enter a valid email address')
     return
   }
-  currentStep.value = 2
-  startResendTimer()
+
+  try {
+    await authStore.sendPasswordResetEmail(email.value)
+    currentStep.value = 2
+    startResendTimer()
+  } catch (error) {
+    alert('Failed to send reset email. Please try again.')
+  }
 }
 
 const validateEmail = (email) => {
@@ -376,12 +499,18 @@ const handlePaste = (event) => {
   })
 }
 
-const handleVerificationSubmit = () => {
-  currentStep.value = 3
+const handleVerificationSubmit = async () => {
+  try {
+    const code = verificationCode.value.join('')
+    await authStore.verifyPasswordResetCode(email.value, code)
+    currentStep.value = 3
+  } catch (error) {
+    alert('Invalid verification code. Please try again.')
+  }
 }
 
 const startResendTimer = () => {
-  resendTimer.value = 30
+  resendTimer.value = 120 // 2 minutes
   resendInterval = setInterval(() => {
     if (resendTimer.value > 0) {
       resendTimer.value--
@@ -391,11 +520,16 @@ const startResendTimer = () => {
   }, 1000)
 }
 
-const resendCode = () => {
-  startResendTimer()
+const resendCode = async () => {
+  try {
+    await authStore.sendPasswordResetEmail(email.value)
+    startResendTimer()
+  } catch (error) {
+    alert('Failed to resend code. Please try again.')
+  }
 }
 
-const handlePasswordSubmit = () => {
+const handlePasswordSubmit = async () => {
   if (password.value.length < 8) {
     alert('Password must be at least 8 characters long')
     return
@@ -405,8 +539,14 @@ const handlePasswordSubmit = () => {
     alert('Passwords do not match!')
     return
   }
-  
-  currentStep.value = 4
+
+  try {
+    const code = verificationCode.value.join('')
+    await authStore.confirmPasswordReset(email.value, code, password.value)
+    currentStep.value = 4
+  } catch (error) {
+    alert('Failed to reset password. Please try again.')
+  }
 }
 
 // Cleanup
