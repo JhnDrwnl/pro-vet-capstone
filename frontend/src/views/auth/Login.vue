@@ -1,6 +1,6 @@
 <!-- views/auth/Login.vue -->
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-white-900 px-2 sm:px-4 py-8">
+  <div class="min-h-screen flex items-center justify-center bg-white-900 px-4 py-8">
     <button 
       @click="goToHome" 
       class="absolute top-4 left-4 p-1.5 rounded-full bg-white shadow-md hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 z-10"
@@ -9,44 +9,54 @@
       <ArrowLeftIcon class="w-4 h-4 text-blue-600" />
     </button>
 
-    <!-- Dog image - hidden on small screens -->
-    <div class="absolute top-11 left-1/2 transform -translate-x-1/2 w-64 pointer-events-none z-10 hidden md:block">
-      <img 
-        src="@/assets/media/images/auth/doggy.png"
-        alt="Friendly dog"
-        class="w-full h-full object-contain"
-      />
-    </div>
+    <!-- Login form container with relative positioning -->
+    <div class="w-full max-w-4xl relative mt-20 sm:mt-24 flex flex-col items-center">
+      <!-- Dog image container with absolute positioning - responsive sizing -->
+      <div class="absolute -top-24 sm:-top-32 left-1/2 transform -translate-x-1/2 w-48 sm:w-64 pointer-events-none z-20">
+        <img 
+          src="@/assets/media/images/auth/doggy.png"
+          alt="Friendly dog"
+          class="w-full h-full object-contain"
+        />
+      </div>
 
-    <div class="relative min-h-screen flex items-center justify-center p-2 sm:p-4 mt-10">
-      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl grid md:grid-cols-2 overflow-hidden">
+      <!-- Main form card -->
+      <div class="w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
         <!-- Form container -->
-        <div class="p-4 sm:p-6 lg:p-8 flex flex-col items-center">
-          <h1 class="text-xl font-semibold text-gray-800 mb-4 sm:mb-6">Login</h1>
-          <form @submit.prevent="handleSubmit" class="space-y-4 w-[320px] sm:w-[360px] md:w-80">
+        <div class="p-6 lg:p-8 flex flex-col items-center">
+          <h1 class="text-2xl font-semibold text-gray-800 mb-6 text-center mt-4">Login</h1>
+          
+          <form @submit.prevent="handleSubmit" class="space-y-4 w-full max-w-md">
             <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input 
+                id="email"
                 type="text" 
                 v-model="form.email"
                 placeholder="Username or email"
-                class="w-full px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
+                class="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:outline-none"
               />
             </div>
-            <div class="relative">
-              <input 
-                :type="showPassword ? 'text' : 'password'" 
-                v-model="form.password"
-                placeholder="Password"
-                class="w-full px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
-              />
-              <button 
-                type="button"
-                @click="showPassword = !showPassword"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <EyeIcon v-if="!showPassword" class="w-4 h-4" />
-                <EyeOffIcon v-else class="w-4 h-4" />
-              </button>
+            
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div class="relative">
+                <input 
+                  id="password"
+                  :type="showPassword ? 'text' : 'password'" 
+                  v-model="form.password"
+                  placeholder="Password"
+                  class="w-full px-3 py-2.5 rounded-lg border border-gray-300 focus:outline-none"
+                />
+                <button 
+                  type="button"
+                  @click="showPassword = !showPassword"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <EyeIcon v-if="!showPassword" class="w-4 h-4" />
+                  <EyeOffIcon v-else class="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div class="flex items-center justify-between text-xs">
@@ -54,7 +64,7 @@
                 <input 
                   type="checkbox" 
                   v-model="form.remember"
-                  class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:outline-none"
                 />
                 <span class="ml-2 text-gray-600">Remember me</span>
               </label>
@@ -71,7 +81,7 @@
 
             <button 
               type="submit"
-              class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
+              class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
               :disabled="emailLoginLoading"
             >
               {{ emailLoginLoading ? 'Logging in...' : 'Login' }}
@@ -85,19 +95,20 @@
 
             <button 
               @click.prevent="loginWithGoogle" 
-              class="w-full py-2 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
+              class="w-full py-2.5 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
               :disabled="googleLoginLoading"
             >
               <img src="@/assets/media/images/common/ant-design--google-circle-filled.png" alt="Google Icon" class="w-7 h-7 mr-3" />
               {{ googleLoginLoading ? 'Signing in...' : 'Login with Google' }}
             </button>
 
-            <p class="text-center text-xs text-gray-600">
+            <p class="text-center text-sm text-gray-600 mt-4">
               Don't have an account? 
               <router-link to="/auth/register" class="text-blue-600 hover:text-blue-700">Sign up</router-link>
             </p>
           </form>
-          <div v-if="error" class="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
+          
+          <div v-if="error" class="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded text-sm max-w-md">
             {{ error }}
           </div>
         </div>
@@ -276,6 +287,12 @@ const handleSubmit = async () => {
       }
     } else if (result.invalidCredentials) {
       error.value = 'Invalid email or password'
+    } else if (result.errorCode === 'auth/visibility-check-was-unavailable') {
+      error.value = 'Firebase authentication service is temporarily unavailable. Please try again in a moment.'
+    } else if (result.errorCode === 'auth/too-many-requests') {
+      error.value = 'Too many unsuccessful login attempts. Please try again later or reset your password.'
+    } else if (result.errorCode === 'auth/network-request-failed') {
+      error.value = 'Network error. Please check your internet connection and try again.'
     } else {
       error.value = authStore.error || 'Failed to login. Please try again.'
     }
@@ -293,7 +310,7 @@ const loginWithGoogle = async () => {
     error.value = ''
     
     // Call the signInWithGoogle method which now handles both new and existing users
-    await authStore.signInWithGoogle({
+    const success = await authStore.signInWithGoogle({
       isRegistration: false,
       onNewUser: () => {
         console.log('New user detected during Google login')
@@ -301,7 +318,7 @@ const loginWithGoogle = async () => {
     })
     
     // Check if user is authenticated after Google sign-in
-    if (authStore.isAuthenticated) {
+    if (success && authStore.isAuthenticated) {
       redirectToDashboard(authStore.userRole)
     } else {
       error.value = authStore.error || 'Failed to login with Google. Please try again.'
@@ -387,4 +404,3 @@ input[type="password"]::-ms-clear {
   }
 }
 </style>
-

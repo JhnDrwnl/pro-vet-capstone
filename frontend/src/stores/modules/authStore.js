@@ -1,3 +1,4 @@
+// src/stores/modules/authStore.js
 import { defineStore } from "pinia"
 import { auth, db } from "@shared/firebase"
 import {
@@ -26,6 +27,7 @@ export const useAuthStore = defineStore("auth", {
     verificationEmail: null,
     rememberMe: false,
     verificationData: null,
+    otpSentTimestamp: null,
   }),
 
   actions: {
@@ -109,14 +111,40 @@ export const useAuthStore = defineStore("auth", {
 
     setVerificationData(data) {
       this.verificationData = data
+      // Store in localStorage as a backup
+      if (data) {
+        localStorage.setItem(
+          "verificationData",
+          JSON.stringify({
+            ...data,
+            timestamp: Date.now(),
+          }),
+        )
+      }
     },
 
     getVerificationData() {
+      // If we don't have verification data in state, try to get from localStorage
+      if (!this.verificationData) {
+        const storedData = localStorage.getItem("verificationData")
+        if (storedData) {
+          try {
+            const parsedData = JSON.parse(storedData)
+            // Check if the data is still valid (less than 2 minutes old)
+            if (parsedData && Date.now() - parsedData.timestamp < 2 * 60 * 1000) {
+              this.verificationData = parsedData
+            }
+          } catch (e) {
+            console.error("Error parsing stored verification data", e)
+          }
+        }
+      }
       return this.verificationData
     },
 
     clearVerificationData() {
       this.verificationData = null
+      localStorage.removeItem("verificationData")
     },
 
     async initiateRegistration({ email, password, firstName, lastName }) {
@@ -146,8 +174,12 @@ export const useAuthStore = defineStore("auth", {
           status: "pending",
         })
 
-        // Send OTP
+        // Send OTP using Nodemailer service
         await emailService.sendOTP(email, firstName)
+
+        // Store the timestamp when OTP was sent
+        this.otpSentTimestamp = Date.now()
+        localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
 
         // Sign out until verification is complete
         await this.logoutUser()
@@ -166,17 +198,20 @@ export const useAuthStore = defineStore("auth", {
       this.loading = true
       this.error = null
       try {
-        if (!this.verificationData) {
+        const verificationData = this.getVerificationData()
+        if (!verificationData) {
           throw new Error("No verification data found")
         }
 
-        const isValid = await emailService.verifyOTP(this.verificationData.email, otp)
-        if (!isValid) {
-          throw new Error("Invalid verification code")
+        // Verify OTP using Nodemailer service
+        const response = await emailService.verifyOTP(verificationData.email, otp)
+
+        if (!response.success || !response.valid) {
+          throw new Error(response.message || "Invalid verification code")
         }
 
         // Update existing user document status to active
-        const userId = this.generateUserId(this.verificationData.uid)
+        const userId = this.generateUserId(verificationData.uid)
         const userRef = doc(db, "users", userId)
 
         await setDoc(
@@ -191,6 +226,7 @@ export const useAuthStore = defineStore("auth", {
 
         // Clear verification data
         this.clearVerificationData()
+        localStorage.removeItem("otpSentTimestamp")
 
         return true
       } catch (error) {
@@ -205,58 +241,85 @@ export const useAuthStore = defineStore("auth", {
     async loginUser({ email, password, rememberMe }) {
       this.loading = true
       this.error = null
+      
+      // Maximum number of retry attempts
+      const maxRetries = 3;
+      let retryCount = 0;
+      
+      const attemptLogin = async () => {
+        try {
+          await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
+
+          const userCredential = await signInWithEmailAndPassword(auth, email, password)
+          const user = userCredential.user
+
+          // Get user data from Firestore
+          const userId = this.generateUserId(user.uid)
+          const userDoc = await getDoc(doc(db, "users", userId))
+
+          if (!userDoc.exists()) {
+            await signOut(auth)
+            throw new Error("User data not found")
+          }
+
+          const userData = userDoc.data()
+
+          // Check if user is verified
+          if (userData.status === "pending" || !userData.emailVerified) {
+            await signOut(auth)
+
+            // Store verification data for the OTP process
+            this.setVerificationData({
+              email,
+              firstName: userData.firstName || "",
+              lastName: userData.lastName || "",
+              uid: user.uid,
+              role: userData.role || "user",
+              status: "pending",
+            })
+
+            this.error = "Please verify your email before logging in."
+            this.user = null
+            return { success: false, emailVerificationRequired: true }
+          }
+
+          await this.fetchUserData(user)
+
+          this.rememberMe = rememberMe
+          if (rememberMe) {
+            localStorage.setItem("rememberMe", "true")
+            localStorage.setItem("userEmail", email)
+          } else {
+            localStorage.removeItem("rememberMe")
+            localStorage.removeItem("userEmail")
+          }
+
+          return { success: true }
+        } catch (error) {
+          // Check if this is the visibility check error
+          if (error.code === "auth/visibility-check-was-unavailable" && retryCount < maxRetries) {
+            console.log(`Visibility check error, retrying (${retryCount + 1}/${maxRetries})...`);
+            retryCount++;
+            
+            // Wait for a short delay before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            return await attemptLogin();
+          }
+          
+          this.error = error.message
+          console.error("Login error:", error)
+          
+          // Return specific error type for invalid credentials
+          if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+            return { success: false, invalidCredentials: true }
+          }
+          
+          return { success: false, errorCode: error.code }
+        }
+      };
+      
       try {
-        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-
-        const userCredential = await signInWithEmailAndPassword(auth, email, password)
-        const user = userCredential.user
-
-        // Get user data from Firestore
-        const userId = this.generateUserId(user.uid)
-        const userDoc = await getDoc(doc(db, "users", userId))
-
-        if (!userDoc.exists()) {
-          await signOut(auth)
-          throw new Error("User data not found")
-        }
-
-        const userData = userDoc.data()
-
-        // Check if user is verified
-        if (userData.status === "pending" || !userData.emailVerified) {
-          await signOut(auth)
-
-          // Store verification data for the OTP process
-          this.setVerificationData({
-            email,
-            firstName: userData.firstName || "",
-            lastName: userData.lastName || "",
-            uid: user.uid,
-            role: userData.role || "user",
-            status: "pending",
-          })
-
-          this.error = "Please verify your email before logging in."
-          this.user = null
-          return { success: false, emailVerificationRequired: true }
-        }
-
-        await this.fetchUserData(user)
-
-        this.rememberMe = rememberMe
-        if (rememberMe) {
-          localStorage.setItem("rememberMe", "true")
-          localStorage.setItem("userEmail", email)
-        } else {
-          localStorage.removeItem("rememberMe")
-          localStorage.removeItem("userEmail")
-        }
-
-        return { success: true }
-      } catch (error) {
-        this.error = error.message
-        console.error("Login error:", error)
-        return { success: false }
+        return await attemptLogin();
       } finally {
         this.loading = false
       }
@@ -348,26 +411,42 @@ export const useAuthStore = defineStore("auth", {
 
     async resendVerificationEmail(email) {
       try {
-        if (!this.verificationData && !email) {
+        this.loading = true
+        
+        const verificationData = this.getVerificationData()
+        if (!verificationData && !email) {
           throw new Error("No verification data found")
         }
 
-        const verificationEmail = email || this.verificationData.email
-        const firstName = this.verificationData?.firstName || ""
+        const verificationEmail = email || verificationData.email
+        const firstName = verificationData?.firstName || ""
 
-        await emailService.sendOTP(verificationEmail, firstName)
-        return true
+        // Use Nodemailer service to resend OTP
+        const response = await emailService.resendOTP(verificationEmail, firstName)
+        
+        if (response.success) {
+          // Update the timestamp when OTP was sent
+          this.otpSentTimestamp = Date.now()
+          localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
+          return true
+        } else {
+          throw new Error(response.message || "Failed to resend verification code")
+        }
       } catch (error) {
         console.error("Error resending verification email:", error)
         this.error = error.message
-        return false
+        throw error
+      } finally {
+        this.loading = false
       }
     },
 
+    // Legacy method - kept for backward compatibility
     async sendPasswordResetEmail(email) {
       this.loading = true
       this.error = null
       try {
+        // Use Firebase's built-in password reset
         await sendPasswordResetEmail(auth, email)
         return true
       } catch (error) {
@@ -376,6 +455,106 @@ export const useAuthStore = defineStore("auth", {
         return false
       } finally {
         this.loading = false
+      }
+    },
+
+    // New method for OTP-based password reset
+    /**
+     * Send password reset OTP
+     * @param {string} email - User's email
+     */
+    async sendPasswordResetOTP(email) {
+      this.loading = true
+      this.error = null
+      try {
+        // Send password reset OTP via email service
+        await emailService.sendPasswordResetOTP(email)
+        
+        // Store email for later steps
+        this.setPasswordResetData({ email })
+        
+        // Store the timestamp when OTP was sent
+        this.otpSentTimestamp = Date.now()
+        localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
+        
+        return true
+      } catch (error) {
+        this.error = error.message
+        console.error("Password reset initiation error:", error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Verify password reset OTP
+    /**
+     * Verify password reset OTP
+     * @param {string} email - User's email
+     * @param {string} otp - One-time password
+     * @returns {Promise<boolean>} - True if OTP is valid
+     */
+    async verifyPasswordResetOTP(email, otp) {
+      this.loading = true
+      this.error = null
+      try {
+        // Verify OTP specifically for password reset
+        const response = await emailService.verifyOTP(email, otp, 'password-reset')
+        
+        if (response.success) {
+          // Store the OTP for the final password reset step
+          this.setPasswordResetData({ email, otp })
+          return response
+        }
+        
+        throw new Error(response.message || "Invalid verification code")
+      } catch (error) {
+        this.error = error.message
+        console.error("OTP verification error:", error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Complete password reset with new password
+    /**
+     * Reset password with email and OTP
+     * @param {string} email - User's email
+     * @param {string} otp - One-time password
+     * @param {string} newPassword - New password
+     */
+    async resetPasswordWithEmail(email, otp, newPassword) {
+      this.loading = true
+      this.error = null
+      try {
+        if (!email || !otp || !newPassword) {
+          throw new Error("Missing required information for password reset")
+        }
+        
+        // Call the email service to reset the password
+        const result = await emailService.resetPasswordWithOTP(email, otp, newPassword)
+        
+        // Clear verification data
+        this.clearVerificationData()
+        localStorage.removeItem("otpSentTimestamp")
+        
+        return result
+      } catch (error) {
+        this.error = error.response?.data?.message || error.message
+        console.error("Password reset error:", error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Store data for password reset process
+    setPasswordResetData(data) {
+      this.verificationData = {
+        ...this.verificationData,
+        ...data,
+        purpose: 'password-reset'
       }
     },
 
@@ -396,6 +575,23 @@ export const useAuthStore = defineStore("auth", {
     userStatus: (state) => state.user?.status || null,
     isPending: (state) => state.user?.status === "pending",
     isActive: (state) => state.user?.status === "active",
+    
+    // New getter to calculate remaining OTP time
+    otpRemainingTime: (state) => {
+      if (!state.otpSentTimestamp) {
+        // Try to get from localStorage
+        const storedTimestamp = localStorage.getItem('otpSentTimestamp')
+        if (storedTimestamp) {
+          state.otpSentTimestamp = parseInt(storedTimestamp)
+        } else {
+          return 0
+        }
+      }
+      
+      // OTP expires after 2 minutes (120 seconds)
+      const expiryTime = state.otpSentTimestamp + (120 * 1000)
+      const remaining = Math.max(0, Math.floor((expiryTime - Date.now()) / 1000))
+      return remaining
+    }
   },
 })
-

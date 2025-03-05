@@ -1,6 +1,6 @@
 <!-- views/auth/Register.vue -->
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-white-900 px-2 sm:px-4 py-8">
+  <div class="min-h-screen flex items-center justify-center bg-white-900 px-4 py-8 overflow-hidden">
     <button 
       @click="goToHome" 
       class="absolute top-4 left-4 p-1.5 rounded-full bg-white shadow-md hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 z-10"
@@ -9,83 +9,102 @@
       <ArrowLeftIcon class="w-4 h-4 text-blue-600" />
     </button>
 
-    <!-- Dog image - hidden on small screens -->
-    <div class="absolute top-0 -translate-y-7 left-1/2 transform -translate-x-1/2 w-64 pointer-events-none z-20 hidden md:block">
-      <img 
-        src="@/assets/media/images/auth/doggy.png"
-        alt="Friendly dog"
-        class="w-full h-full object-contain"
-      />
-    </div>
+    <!-- Login form container with relative positioning -->
+    <div class="w-full max-w-4xl relative mt-20 sm:mt-24 flex flex-col items-center">
+      <!-- Dog image container with absolute positioning -->
+      <div class="absolute -top-24 sm:-top-32 left-1/2 transform -translate-x-1/2 w-48 sm:w-64 pointer-events-none z-20">
+        <img 
+          src="@/assets/media/images/auth/doggy.png"
+          alt="Friendly dog"
+          class="w-full h-full object-contain"
+        />
+      </div>
 
-    <div class="relative min-h-screen flex items-center justify-center p-2 sm:p-4 mt-10">
-      <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl grid md:grid-cols-2 overflow-hidden">
+      <div class="w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid md:grid-cols-2">
         <!-- Left Side - Registration Form -->
         <div class="p-4 sm:p-6 lg:p-8 flex flex-col items-center">
-          <h1 class="text-xl font-semibold text-gray-800 mb-4 sm:mb-6">Register</h1>
+          <h1 class="text-xl font-semibold text-gray-800 mb-4 sm:mb-6 mt-4">Register</h1>
 
-          <form @submit.prevent="handleRegister" class="space-y-4 w-[320px] sm:w-[360px] md:w-80">
-            <div class="grid grid-cols-2 gap-4">
+          <form @submit.prevent="handleRegister" class="space-y-4 w-full max-w-md">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                <input 
+                  id="firstName"
+                  type="text" 
+                  v-model="form.firstName"
+                  placeholder="First Name"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                <input 
+                  id="lastName"
+                  type="text" 
+                  v-model="form.lastName"
+                  placeholder="Last Name"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input 
-                type="text" 
-                v-model="form.firstName"
-                placeholder="First Name"
-                class="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
-                required
-              />
-              <input 
-                type="text" 
-                v-model="form.lastName"
-                placeholder="Last Name"
-                class="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
+                id="email"
+                type="email" 
+                v-model="form.email"
+                placeholder="Email"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none"
                 required
               />
             </div>
             
             <div>
-              <input 
-                type="email" 
-                v-model="form.email"
-                placeholder="Email"
-                class="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
-                required
-              />
+              <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <div class="relative">
+                <input 
+                  id="password"
+                  :type="showPassword ? 'text' : 'password'" 
+                  v-model="form.password"
+                  placeholder="Password"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                  required
+                />
+                <button 
+                  type="button"
+                  @click="togglePassword('password')"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <EyeIcon v-if="!showPassword" class="w-4 h-4" />
+                  <EyeOffIcon v-else class="w-4 h-4" />
+                </button>
+              </div>
             </div>
             
-            <div class="relative">
-              <input 
-                :type="showPassword ? 'text' : 'password'" 
-                v-model="form.password"
-                placeholder="Password"
-                class="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
-                required
-              />
-              <button 
-                type="button"
-                @click="togglePassword('password')"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <EyeIcon v-if="!showPassword" class="w-4 h-4" />
-                <EyeOffIcon v-else class="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div class="relative">
-              <input 
-                :type="showConfirmPassword ? 'text' : 'password'" 
-                v-model="form.confirmPassword"
-                placeholder="Confirm Password"
-                class="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
-                required
-              />
-              <button 
-                type="button"
-                @click="togglePassword('confirm')"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <EyeIcon v-if="!showConfirmPassword" class="w-4 h-4" />
-                <EyeOffIcon v-else class="w-4 h-4" />
-              </button>
+            <div>
+              <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+              <div class="relative">
+                <input 
+                  id="confirmPassword"
+                  :type="showConfirmPassword ? 'text' : 'password'" 
+                  v-model="form.confirmPassword"
+                  placeholder="Confirm Password"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none"
+                  required
+                />
+                <button 
+                  type="button"
+                  @click="togglePassword('confirm')"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <EyeIcon v-if="!showConfirmPassword" class="w-4 h-4" />
+                  <EyeOffIcon v-else class="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div class="flex items-start space-x-2">
@@ -93,7 +112,7 @@
                 type="checkbox"
                 id="terms"
                 v-model="form.acceptTerms"
-                class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-colors duration-200"
+                class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:outline-none"
                 required
               />
               <label for="terms" class="text-sm text-gray-600">
@@ -115,7 +134,7 @@
             <button 
               type="submit"
               :disabled="loading || !form.acceptTerms"
-              class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm disabled:opacity-50"
+              class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm disabled:opacity-50"
             >
               {{ loading ? 'Sending verification code...' : 'Register' }}
             </button>
@@ -132,13 +151,13 @@
 
             <button 
               @click.prevent="registerWithGoogle" 
-              class="w-full py-2 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
+              class="w-full py-2.5 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
             >
               <img src="@/assets/media/images/common/ant-design--google-circle-filled.png" alt="Google Icon" class="w-7 h-7 mr-3" />
               Continue with Google
             </button>
 
-            <p class="text-center text-xs text-gray-600 mt-4">
+            <p class="text-center text-sm text-gray-600 mt-4">
               Already have an account? 
               <router-link to="/auth/login" class="text-blue-600 hover:text-blue-700">Login</router-link>
             </p>
