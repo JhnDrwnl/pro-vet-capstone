@@ -130,13 +130,13 @@ import {
   Clock,
   Database,
   Video,
-  MessageSquare,
-  PawPrint,
   PanelLeftClose,
   PanelRightClose,
   Settings,
-  ChevronDown
+  ChevronDown,
+  MessageCircleCode
 } from 'lucide-vue-next';
+import { MessageCircleCodeIcon } from 'lucide-react';
 
 const props = defineProps({
   isOpen: {
@@ -244,7 +244,15 @@ const navItems = [
 
   
   { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
-  { href: '/admin/chatbot', icon: Icon, label: 'Chatbot', iconProps: { icon: "uiw:message" }},
+  
+  { 
+    icon: MessageCircleCode,
+    label: 'Chatbot',
+    subItems: [
+      {href: '/admin/chatbot/chatlogs', label: 'Chat Logs'},
+      { href: '/admin/chatbot/responses', label: 'Responses' }
+    ]
+  },
   { 
     icon: Settings,
     label: 'Settings',

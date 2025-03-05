@@ -36,7 +36,7 @@
           @click="addNewSession" 
           class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
         >
-          <PlusIcon class="w-4 h-4" />
+          <PlusCircle class="w-4 h-4" />
           Add Session
         </button>
       </div>
@@ -267,7 +267,7 @@ import {
   Search as SearchIcon,
   Filter as FilterIcon,
   Download as DownloadIcon,
-  Plus as PlusIcon,
+  PlusCircle,
   Edit as LucideEdit,
   Archive as ArchiveIcon
 } from 'lucide-vue-next';

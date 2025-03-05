@@ -14,8 +14,8 @@
           :class="[
                   'px-4 py-2 text-sm font-medium rounded-full transition-colors',
             currentTab === tab.id 
-               ? 'bg-[#EBF5FF] text-[#0066FF]'
-              : 'text-gray-800 hover:text-gray-700'
+              ? 'bg-[#EBF5FF] text-[#0066FF]'
+                : 'text-gray-500 hover:bg-gray-100'
           ]"
         >
           <div class="flex items-center space-x-2">
