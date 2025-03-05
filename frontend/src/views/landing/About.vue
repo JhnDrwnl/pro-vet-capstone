@@ -1,7 +1,11 @@
 <template>
   <div class="min-h-screen bg-white">
     <!-- Hero Section -->
-    <div class="relative w-full bg-[#F0F7FA] overflow-hidden">
+    <div 
+      class="relative w-full bg-[#F0F7FA] overflow-hidden"
+      v-motion
+      :initial="{ opacity: 0 }"
+      :enter="{ opacity: 1, transition: { duration: 800 } }">
       <!-- Paw Print Decorations -->
       <div class="absolute inset-0 z-0 opacity-10">
         <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -22,14 +26,22 @@
       <div class="container mx-auto px-4 py-20 relative z-10">
         <div class="flex flex-col md:flex-row items-center justify-between">
           <!-- Text Content -->
-          <div class="md:w-3/5 space-y-6 text-center md:text-left mb-12 md:mb-0">
+          <div 
+            class="md:w-3/5 space-y-6 text-center md:text-left mb-12 md:mb-0"
+            v-motion
+            :initial="{ opacity: 0, x: -50 }"
+            :enter="{ opacity: 1, x: 0, transition: { duration: 800, delay: 200 } }">
             <h1 class="text-5xl md:text-6xl font-bold text-gray-900">About Us</h1>
             <p class="text-xl text-gray-600 max-w-2xl">
               Your Pet's Health is in Good Hands with Our Vets
             </p>
           </div>
           <!-- Hero Image -->
-          <div class="md:w-2/5 relative">
+          <div 
+            class="md:w-2/5 relative"
+            v-motion
+            :initial="{ opacity: 0, x: 50 }"
+            :enter="{ opacity: 1, x: 0, transition: { duration: 800, delay: 400 } }">
             <div class="relative inline-block md:ml-24 md:-mr-16">
               <img 
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/47dfe018dd9293301b283e047f6ad02c-removebg-qERTD6FNLXv8Z393fpChpm5WBsdWZD.png"
@@ -42,7 +54,11 @@
       </div>
       
       <!-- Single Wave Divider -->
-      <div class="absolute -bottom-1 left-0 right-0 z-20 translate-y-1">
+      <div 
+        class="absolute -bottom-1 left-0 right-0 z-20 translate-y-1"
+        v-motion
+        :initial="{ opacity: 0, y: 20 }"
+        :enter="{ opacity: 1, y: 0, transition: { duration: 800, delay: 600 } }">
         <svg 
           class="w-full h-auto" 
           viewBox="0 0 1440 200" 
@@ -67,7 +83,7 @@
                class="flex-1 px-8 text-center group"
                v-motion
                :initial="{ opacity: 0, y: 20 }"
-               :enter="{ opacity: 1, y: 0, delay: 100 * index }">
+               :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600, delay: 100 * index } }">
             <h3 class="text-6xl font-bold mb-2 text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
               {{ stat.value }}
             </h3>
@@ -85,10 +101,14 @@
         <div class="grid md:grid-cols-3 gap-12">
           <div v-for="(item, index) in mvmItems" 
                :key="index"
-               class="bg-white p-8 rounded-xl shadow-lg"
+               class="bg-white p-8 rounded-xl shadow-lg transform transition-all duration-500"
                v-motion
-               :initial="{ opacity: 0, x: -20 }"
-               :enter="{ opacity: 1, x: 0, delay: 200 * index }">
+               :initial="{ opacity: 0, scale: 0.9 }"
+               :visibleOnce="{ 
+                 opacity: 1, 
+                 scale: 1, 
+                 transition: { duration: 600, delay: 200 * index } 
+               }">
             <h2 class="text-2xl font-bold text-primary mb-4">{{ item.title }}</h2>
             <p class="text-gray-600 leading-relaxed">
               {{ item.content }}
@@ -100,121 +120,175 @@
 
     <!-- Team Section -->
     <div class="py-8 bg-gray-100">
-    <div class="py-20 container mx-auto px-4">
-  <h2 class="text-4xl font-bold text-center text-[#2B3674] mb-3">Meet Our Dedicated Team</h2>
-  <p class="text-center text-gray-500 mb-16 max-w-2xl mx-auto">
-    Passionate professionals committed to providing the best care for your pets.
-  </p>
-  
-  <div class="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
-    <div v-for="(member, index) in team" 
-         :key="index"
-         class="relative pb-16"
-         v-motion
-         :initial="{ opacity: 0, y: 20 }"
-         :enter="{ opacity: 1, y: 0, delay: 150 * index }">
-      <!-- Image Container -->
-      <div class="bg-gray-100 rounded-lg overflow-hidden">
-        <img :src="member.image" 
-             :alt="member.name" 
-             class="w-full h-[350px] object-cover"/>
-      </div>
-      
-      <!-- Overlapping Card -->
-      <div class="absolute -bottom-4 left-4 right-4 bg-white rounded-lg shadow-md p-6 text-center transform transition-transform hover:-translate-y-1">
-        <h3 class="text-lg font-semibold text-gray-900">{{ member.name }}</h3>
-        <p class="text-gray-600 text-sm">{{ member.role }}</p>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- Agencies Section -->
-<div class="py-16 bg-white"> 
-  <div class="container mx-auto px-4">
-    <h2 class="text-3xl font-bold text-center text-[#2B3674] mb-8">Institutions behind the Project</h2>
-    <p class="text-center text-gray-600 mb-4 max-w-2xl mx-auto">
-      We collaborate with leading organization to ensure the best veterinary services.
-    </p>
-    
-    <div class="flex flex-wrap justify-center items-center gap-12 max-w-6xl mx-auto  p-8 ">
-      <div v-for="(agency, index) in agencies" 
-           :key="index"
-           class="flex items-center justify-center w-48 h-48 rounded-lg p-4 transition-transform duration-300 hover:scale-110">
-        <img :src="agency.logo" 
-             :alt="agency.name" 
-             class="max-w-full max-h-full object-contain transition-transform duration-300 hover:scale-125"/>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- System Development Team Section -->
-<div class="py-16 bg-gray-50">
-  <div class="container mx-auto px-4">
-    <h2 class="text-4xl font-bold text-center text-[#2B3674] mb-3">Meet the Developers</h2>
-    <p class="text-center text-gray-500 mb-16 max-w-2xl mx-auto">
-      The brilliant minds behind the system, dedicated to innovation and excellence.
-    </p>
-
-    <div class="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
-      <div v-for="(dev, index) in developers" 
-           :key="index"
-           class="relative group">
-        <!-- Card Container -->
-        <div class="bg-white rounded-2xl shadow-lg p-6 pt-16 transition-transform duration-300 hover:-translate-y-2">
-          <!-- Circular Image with Arc -->
-          <div class="relative w-32 h-32 mx-auto -mt-24 mb-6">
-            <div class="absolute inset-0 rounded-full border-[3px] border-transparent">
-              <!-- Teal Arc -->
-              <div class="absolute inset-0 rounded-full border-[9px] border-blue-500"
-                   style="clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);">
-              </div>
-            </div>
-            <img :src="dev.image" 
-                 :alt="dev.name" 
-                 class="w-full h-full object-cover rounded-full border-4 border-white shadow-lg"/>
-          </div>
-
-          <!-- Content -->
-          <div class="text-center space-y-3">
-            <div class="space-y-1">
-              <h3 class="text-xl font-semibold text-[#2B3674]">
-                {{ dev.name }}
-              </h3>
-              <p class="text-gray-500 text-sm">
-                {{ dev.role }}
-              </p>
+      <div class="py-20 container mx-auto px-4">
+        <div 
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600 } }">
+          <h2 class="text-4xl font-bold text-center text-[#2B3674] mb-3">Meet Our Dedicated Team</h2>
+          <p class="text-center text-gray-500 mb-16 max-w-2xl mx-auto">
+            Passionate professionals committed to providing the best care for your pets.
+          </p>
+        </div>
+        
+        <div class="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+          <div v-for="(member, index) in team" 
+              :key="index"
+              class="relative pb-16"
+              v-motion
+              :initial="{ opacity: 0, y: 40 }"
+              :visibleOnce="{ 
+                opacity: 1, 
+                y: 0, 
+                transition: { duration: 600, delay: 150 * index } 
+              }">
+            <!-- Image Container -->
+            <div class="bg-gray-100 rounded-2xl overflow-hidden">
+              <img :src="member.image" 
+                  :alt="member.name" 
+                  class="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-110"/>
             </div>
             
-            <!-- Social Media Icons -->
-            <div class="flex justify-center items-center space-x-4 pt-2">
-              <a href="#" class="text-gray-400 hover:text-blue-500 transition-colors">
-                <LinkedinIcon class="w-5 h-5" />
-              </a>
-              <a href="#" class="text-gray-400 hover:text-blue-400 transition-colors">
-                <TwitterIcon class="w-5 h-5" />
-              </a>
-              <a href="#" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <GithubIcon class="w-5 h-5" />
-              </a>
-              <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors">
-                <MailIcon class="w-5 h-5" />
-              </a>
+            <!-- Overlapping Card -->
+            <div class="absolute -bottom-4 left-4 right-4 bg-white rounded-2xl shadow-md p-6 text-center transform transition-all duration-500 hover:-translate-y-2 hover:shadow-xl">
+              <h3 class="text-lg font-semibold text-gray-900">{{ member.name }}</h3>
+              <p class="text-gray-600 text-sm">{{ member.role }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agencies Section -->
+    <div class="py-16 relative overflow-hidden transition-all duration-700" 
+         :style="{ 
+           backgroundImage: activeAgencyBg ? `url(${activeAgencyBg})` : 'none',
+           backgroundSize: 'cover',
+           backgroundPosition: 'center'
+         }">
+      <!-- Overlay for better text readability when background image is active -->
+      <div class="absolute inset-0 bg-white" 
+           :class="{ 'bg-opacity-90': activeAgencyBg, 'bg-opacity-100': !activeAgencyBg }"></div>
+      
+      <div class="container mx-auto px-4 relative z-10">
+        <div 
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600 } }">
+          <h2 class="text-3xl font-bold text-center text-[#2B3674] mb-8">Institutions behind the Project</h2>
+          <p class="text-center text-gray-600 mb-4 max-w-2xl mx-auto">
+            We collaborate with leading organization to ensure the best veterinary services.
+          </p>
+        </div>
+        
+        <div class="flex flex-wrap justify-center items-center gap-12 max-w-6xl mx-auto p-8">
+          <div v-for="(agency, index) in agencies" 
+              :key="index"
+              class="flex items-center justify-center w-48 h-48 rounded-lg p-4 transition-all duration-500 hover:scale-110"
+              @mouseenter="setActiveAgency(agency)"
+              @mouseleave="clearActiveAgency"
+              v-motion
+              :initial="{ opacity: 0, rotateY: 90 }"
+              :visibleOnce="{ 
+                opacity: 1, 
+                rotateY: 0, 
+                transition: { duration: 800, delay: 200 * index } 
+              }">
+            <img :src="agency.logo" 
+                :alt="agency.name" 
+                class="max-w-full max-h-full object-contain transition-transform duration-300 hover:scale-125"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Development Team Section -->
+    <div class="py-16 bg-gray-50">
+      <div class="container mx-auto px-4">
+        <div 
+          v-motion
+          :initial="{ opacity: 0, y: 20 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600 } }">
+          <h2 class="text-4xl font-bold text-center text-[#2B3674] mb-3">Meet the Developers</h2>
+          <p class="text-center text-gray-500 mb-16 max-w-2xl mx-auto">
+            The brilliant minds behind the system, dedicated to innovation and excellence.
+          </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+          <div v-for="(dev, index) in developers" 
+              :key="index"
+              class="relative group"
+              v-motion
+              :initial="{ opacity: 0, y: 60 }"
+              :visibleOnce="{ 
+                opacity: 1, 
+                y: 0, 
+                transition: { 
+                  duration: 800, 
+                  delay: 200 * index,
+                  type: 'spring',
+                  stiffness: 50
+                } 
+              }">
+            <!-- Card Container -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 pt-16 transition-all duration-500 hover:-translate-y-2 hover:shadow-xl">
+              <!-- Circular Image with Arc -->
+              <div class="relative w-32 h-32 mx-auto -mt-24 mb-6">
+                <div class="absolute inset-0 rounded-full border-[3px] border-transparent">
+                  <!-- Teal Arc -->
+                  <div class="absolute inset-0 rounded-full border-[9px] border-blue-500"
+                      style="clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);">
+                  </div>
+                </div>
+                <img :src="dev.image" 
+                    :alt="dev.name" 
+                    class="w-full h-full object-cover rounded-full border-4 border-white shadow-lg"/>
+              </div>
+
+              <!-- Content -->
+              <div class="text-center space-y-3">
+                <div class="space-y-1">
+                  <h3 class="text-xl font-semibold text-[#2B3674]">
+                    {{ dev.name }}
+                  </h3>
+                  <p class="text-gray-500 text-sm">
+                    {{ dev.role }}
+                  </p>
+                </div>
+                
+                <!-- Social Media Icons -->
+                <div class="flex justify-center items-center space-x-4 pt-2">
+                  <a href="#" class="text-gray-400 hover:text-blue-500 transition-colors">
+                    <LinkedinIcon class="w-5 h-5" />
+                  </a>
+                  <a href="#" class="text-gray-400 hover:text-blue-400 transition-colors">
+                    <TwitterIcon class="w-5 h-5" />
+                  </a>
+                  <a href="#" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <GithubIcon class="w-5 h-5" />
+                  </a>
+                  <a href="#" class="text-gray-400 hover:text-blue-600 transition-colors">
+                    <MailIcon class="w-5 h-5" />
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-
-
-  </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { LinkedinIcon, TwitterIcon, GithubIcon, MailIcon } from 'lucide-vue-next'
+
+// Register intersection observer for scroll animations
+onMounted(() => {
+  // This is handled by v-motion, but we can add additional scroll effects here if needed
+})
 
 const stats = ref([
   { 
@@ -254,7 +328,7 @@ const team = ref([
   {
     name: 'Grimaldo C. Catapang, DVM',
     role: 'Chief Veterinarian',
-    image:new URL('@/assets/media/images/landing/doc1.jpg', import.meta.url).href,
+    image: new URL('@/assets/media/images/landing/doc1.jpg', import.meta.url).href,
   },
   {
     name: 'Anna Rochelle A. Boongaling, DVM',
@@ -268,38 +342,112 @@ const team = ref([
   }
 ])
 
+// Updated agencies with background images
 const agencies = ref([
   {
     name: 'Mindoro State University',
     logo: new URL('@/assets/media/images/landing/minsu.png', import.meta.url).href,
+    background: new URL('@/assets/media/images/landing/minsu-bg.jpg', import.meta.url).href,
   },
   {
     name: 'Provincial Veterinarians Office',
     logo: new URL('@/assets/media/images/landing/logovet.jpg', import.meta.url).href,
+    background: new URL('@/assets/media/images/landing/vet-bg.jpg', import.meta.url).href,
   },
   {
     name: 'Province of Oriental Mindoro',
     logo: new URL('@/assets/media/images/landing/ormin.png', import.meta.url).href,
+    background: new URL('@/assets/media/images/landing/ormin-bg.jpg', import.meta.url).href,
   }
 ])
+
 const developers = ref([
   {
-    name: 'John Doe',
-    role: 'Main Programmer',
+    name: 'Sharon Caballero',
+    role: 'Machine Learning Engineer',
     image: new URL('@/assets/media/images/landing/doc1.jpg', import.meta.url).href,
   },
   {
-    name: 'Jane Smith',
-    role: 'Machine Learning Engineer',
+    name: 'John Darwin Lambon',
+    role: 'Main Programmer',
     image: new URL('@/assets/media/images/landing/doc2.jpg', import.meta.url).href,
   },
   {
-    name: 'Emily Johnson',
+    name: 'Lhen Dimailig',
     role: 'UI/UX Designer',
     image: new URL('@/assets/media/images/landing/doc2.jpg', import.meta.url).href,
   }
 ])
 
+// Active agency background state
+const activeAgencyBg = ref(null)
 
+// Set active agency background
+const setActiveAgency = (agency) => {
+  activeAgencyBg.value = agency.background
+}
+
+// Clear active agency background
+const clearActiveAgency = () => {
+  activeAgencyBg.value = null
+}
 </script>
+
+<style scoped>
+/* Add any additional custom animations here */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rotateIn {
+  from {
+    opacity: 0;
+    transform: rotateY(90deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0);
+  }
+}
+</style>
 
