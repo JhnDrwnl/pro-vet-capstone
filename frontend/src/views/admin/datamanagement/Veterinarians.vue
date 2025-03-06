@@ -7,32 +7,34 @@
       </div>
   
       <!-- Navigation Tabs -->
-      <div class="px-6 mb-6">
-        <div class="inline-flex rounded-lg bg-gray-100 p-1">
-          <button
-            @click="activeTab = 'overview'"
-            :class="[
-              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              activeTab === 'overview'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            ]"
-          >
-            Overview
-          </button>
-          <button
-            @click="activeTab = 'profile'"
-            :class="[
-              'px-4 py-2 rounded-md text-sm font-medium transition-colors',
-              activeTab === 'profile'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            ]"
-          >
-            Profile
-          </button>
-        </div>
-      </div>
+<!-- Navigation Tabs -->
+<div class="border-b border-gray-200 mb-8">
+  <nav class="flex space-x-4">
+    <button
+      @click="activeTab = 'overview'"
+      :class="[
+       'whitespace-nowrap py-1 px-3 rounded-full font-medium mb-2 text-sm transition-colors duration-200',
+        activeTab === 'overview'
+          ? 'bg-[#EBF5FF] text-[#0066FF]'
+                : 'text-gray-500 hover:bg-gray-100'
+      ]"
+    >
+      Overview
+    </button>
+    <button
+      @click="activeTab = 'profile'"
+      :class="[
+        'whitespace-nowrap py-1 px-3 rounded-full font-medium mb-2 text-sm transition-colors duration-200',
+        activeTab === 'profile'
+          ? 'bg-[#EBF5FF] text-[#0066FF]'
+                : 'text-gray-500 hover:bg-gray-100'
+      ]"
+    >
+      Profile
+    </button>
+  </nav>
+</div>
+
   
       <!-- Overview Tab Content -->
       <div v-if="activeTab === 'overview'">
