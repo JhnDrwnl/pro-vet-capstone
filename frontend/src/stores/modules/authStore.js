@@ -9,13 +9,15 @@ import {
   signInWithPopup,
   getAdditionalUserInfo,
   onAuthStateChanged,
-  sendPasswordResetEmail,
   setPersistence,
   browserSessionPersistence,
   browserLocalPersistence,
 } from "firebase/auth"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import emailService from "@/services/emailService"
+
+// OTP expiry in seconds (5 minutes)
+const OTP_EXPIRY_SECONDS = 300
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -130,8 +132,8 @@ export const useAuthStore = defineStore("auth", {
         if (storedData) {
           try {
             const parsedData = JSON.parse(storedData)
-            // Check if the data is still valid (less than 2 minutes old)
-            if (parsedData && Date.now() - parsedData.timestamp < 2 * 60 * 1000) {
+            // Check if the data is still valid (less than 5 minutes old)
+            if (parsedData && Date.now() - parsedData.timestamp < 5 * 60 * 1000) {
               this.verificationData = parsedData
             }
           } catch (e) {
@@ -441,23 +443,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Legacy method - kept for backward compatibility
-    async sendPasswordResetEmail(email) {
-      this.loading = true
-      this.error = null
-      try {
-        // Use Firebase's built-in password reset
-        await sendPasswordResetEmail(auth, email)
-        return true
-      } catch (error) {
-        this.error = error.message
-        console.error("Password reset email error:", error)
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
-
     // New method for OTP-based password reset
     /**
      * Send password reset OTP
@@ -588,8 +573,8 @@ export const useAuthStore = defineStore("auth", {
         }
       }
       
-      // OTP expires after 2 minutes (120 seconds)
-      const expiryTime = state.otpSentTimestamp + (120 * 1000)
+      // OTP expires after 5 minutes (300 seconds)
+      const expiryTime = state.otpSentTimestamp + (OTP_EXPIRY_SECONDS * 1000)
       const remaining = Math.max(0, Math.floor((expiryTime - Date.now()) / 1000))
       return remaining
     }

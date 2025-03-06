@@ -114,7 +114,7 @@ const otpInputs = ref([])
 const verifying = ref(false)
 const error = ref('')
 const resendTimer = ref(0)
-const otpExpiryTime = ref(120) // 2 minutes in seconds (changed back from 600)
+const otpExpiryTime = ref(300) // 5 minutes in seconds (changed from 120)
 const currentAnimation = ref("https://lottie.host/c8b6eda0-6211-4124-8483-f57f7cf9d0bc/k5Va8KyWd5.lottie")
 let timerInterval = null
 let expiryInterval = null
@@ -193,6 +193,9 @@ const handlePaste = (event) => {
       otpInputs.value[5].focus()
     }
   })
+  
+  // Clear error when user pastes
+  error.value = ''
 }
 
 const startResendTimer = () => {
@@ -201,7 +204,7 @@ const startResendTimer = () => {
     clearInterval(timerInterval)
   }
 
-  resendTimer.value = 120 // 2 minutes (changed back from 600)
+  resendTimer.value = 120 // 2 minutes cooldown for resend button
   timerInterval = setInterval(() => {
     if (resendTimer.value > 0) {
       resendTimer.value--
@@ -217,7 +220,7 @@ const startExpiryTimer = () => {
     clearInterval(expiryInterval)
   }
 
-  otpExpiryTime.value = 120 // 2 minutes (changed back from 600)
+  otpExpiryTime.value = 300 // 5 minutes (changed from 120)
   expiryInterval = setInterval(() => {
     if (otpExpiryTime.value > 0) {
       otpExpiryTime.value--
@@ -258,7 +261,15 @@ const verifyOTP = async () => {
     }
   } catch (err) {
     console.error('Verification error:', err)
-    if (err.message.includes('expired')) {
+    
+    // Use the error status from the emailService interceptor
+    if (err.status === 'expired') {
+      error.value = 'Verification code has expired. Please request a new one.'
+      // Reset expiry timer
+      otpExpiryTime.value = 0
+    } else if (err.status === 'invalid') {
+      error.value = 'The verification code you entered is incorrect. Please try again.'
+    } else if (err.message.includes('expired')) {
       error.value = 'Verification code has expired. Please request a new one.'
       // Reset expiry timer
       otpExpiryTime.value = 0
@@ -330,19 +341,48 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Hide number input spinners */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   margin: 0;
 }
 
-input[type=number] {
+input[type="number"] {
+  -webkit-appearance: textfield;
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
-/* Prevent text selection in OTP inputs */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+/* Remove focus ring styles and use browser defaults */
+input:focus {
+  outline: none;
+}
+
+/* Add vendor prefixes for appearance property */
 input {
-  user-select: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+button:disabled {
+  opacity: 0.7;
+}
+
+/* Add vendor prefixes for any input styling */
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0.5rem;
 }
 </style>

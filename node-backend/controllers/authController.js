@@ -128,8 +128,11 @@ exports.verifyOTP = async (req, res) => {
       });
     }
     
-    // Clear the OTP after successful verification
-    mailer.clearOTP(email, purpose);
+    // Don't clear the OTP for password-reset here
+    // It will be cleared after the actual password reset
+    if (purpose !== 'password-reset') {
+      mailer.clearOTP(email, purpose);
+    }
     
     return res.status(200).json({
       success: true,
@@ -155,7 +158,21 @@ exports.resetPasswordWithOTP = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     
+    console.log('Reset password request received:', { 
+      email, 
+      otpProvided: !!otp, 
+      passwordProvided: !!newPassword,
+      otpLength: otp?.length,
+      passwordLength: newPassword?.length
+    });
+    
     if (!email || !otp || !newPassword) {
+      console.log('Missing required fields:', { 
+        emailMissing: !email, 
+        otpMissing: !otp, 
+        passwordMissing: !newPassword 
+      });
+      
       return res.status(400).json({ 
         success: false, 
         message: 'Email, OTP, and new password are required' 
@@ -163,7 +180,9 @@ exports.resetPasswordWithOTP = async (req, res) => {
     }
     
     // Verify the OTP first
+    console.log('Verifying OTP for email:', email);
     const otpValid = mailer.verifyOTP(email, otp, 'password-reset');
+    console.log('OTP verification result:', otpValid);
     
     if (!otpValid) {
       return res.status(400).json({ 
@@ -171,9 +190,6 @@ exports.resetPasswordWithOTP = async (req, res) => {
         message: 'Invalid or expired OTP' 
       });
     }
-    
-    // Clear the OTP after successful verification
-    mailer.clearOTP(email, 'password-reset');
     
     try {
       // Log for debugging
@@ -189,6 +205,9 @@ exports.resetPasswordWithOTP = async (req, res) => {
       });
       
       console.log('Password updated successfully for user:', userRecord.uid);
+      
+      // Clear the OTP after successful password reset
+      mailer.clearOTP(email, 'password-reset');
       
       return res.status(200).json({
         success: true,

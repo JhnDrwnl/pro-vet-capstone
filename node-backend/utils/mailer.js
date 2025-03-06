@@ -19,9 +19,9 @@ const otpStore = {};
 // Generate and store OTP
 const generateOTP = (email, purpose = 'verification') => {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  // Use the OTP_EXPIRY from .env or default to 2 minutes
-  const expiryMinutes = parseInt(process.env.OTP_EXPIRY || 2);
-  const expiryTime = Date.now() + expiryMinutes * 60 * 1000; // 2 minutes expiry (changed from 10 minutes)
+  // Use the OTP_EXPIRY from .env or default to 5 minutes
+  const expiryMinutes = parseInt(process.env.OTP_EXPIRY || 5);
+  const expiryTime = Date.now() + expiryMinutes * 60 * 1000; // 5 minutes expiry
   
   // Store OTP with purpose
   if (!otpStore[email]) {
@@ -34,6 +34,7 @@ const generateOTP = (email, purpose = 'verification') => {
   };
   
   console.log(`Generated OTP for ${email} (${purpose}): ${otp}, expires at: ${new Date(expiryTime).toLocaleTimeString()}`);
+  console.log('Current OTP store:', JSON.stringify(otpStore, null, 2));
   
   return otp;
 };
@@ -61,6 +62,12 @@ const verifyOTP = (email, otp, purpose = 'verification') => {
   const isValid = storedOTP.code === otp;
   console.log(`OTP validation result: ${isValid ? 'valid' : 'invalid'}`);
   
+  // Important: Don't clear the OTP here for password reset
+  // We need to keep it for the actual password reset step
+  if (isValid && purpose !== 'password-reset') {
+    clearOTP(email, purpose);
+  }
+  
   return isValid;
 };
 
@@ -75,8 +82,8 @@ const clearOTP = (email, purpose = 'verification') => {
 // Send OTP for account verification
 const sendOTP = async (email, firstName) => {
   const otp = generateOTP(email, 'verification');
-  // Use the OTP_EXPIRY from .env or default to 2 minutes
-  const expiryMinutes = parseInt(process.env.OTP_EXPIRY || 2);
+  // Use the OTP_EXPIRY from .env or default to 5 minutes
+  const expiryMinutes = parseInt(process.env.OTP_EXPIRY || 5);
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,
@@ -103,8 +110,8 @@ const sendOTP = async (email, firstName) => {
 // Send OTP for password reset
 const sendPasswordResetOTP = async (email, firstName) => {
   const otp = generateOTP(email, 'password-reset');
-  // Use the OTP_EXPIRY from .env or default to 2 minutes
-  const expiryMinutes = parseInt(process.env.OTP_EXPIRY || 2);
+  // Use the OTP_EXPIRY from .env or default to 5 minutes
+  const expiryMinutes = parseInt(process.env.OTP_EXPIRY || 5);
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,
