@@ -22,7 +22,7 @@
         isMobileView 
           ? 'bottom-1 left-0 right-0 mobile-nav'
           : 'left-4 top-4 h-[calc(100vh-2rem)] w-16 bg-white border border-gray-100 rounded-2xl shadow-sm flex-col justify-between',
-        { 'md:w-64': !isSearchOpen && isOpen && !isMobileView }
+        { 'md:w-64': !isSearchOpen && !isNotificationsOpen && isOpen && !isMobileView }
       ]"
     >
       <!-- Desktop Navigation -->
@@ -34,7 +34,7 @@
             @click.prevent="handleNavClick(item)"
             class="flex items-center px-4 py-3 transition-colors relative group cursor-pointer"
             :class="[
-              { 'justify-center': !isOpen || isSearchOpen },
+              { 'justify-center': !isOpen || isSearchOpen || isNotificationsOpen },
               item.active ? 'text-blue-600 bg-blue-50 rounded-lg' : 'text-gray-600 hover:bg-gray-50 rounded-lg'
             ]"
           >
@@ -46,7 +46,7 @@
               />
             </div>
             <span 
-              v-if="isOpen && !isSearchOpen" 
+              v-if="isOpen && !isSearchOpen && !isNotificationsOpen" 
               class="text-sm transition-opacity duration-300 ml-4"
               :class="item.active ? 'text-blue-600' : 'text-gray-700'"
             >
@@ -56,7 +56,7 @@
             <span 
               v-if="item.badge" 
               class="absolute bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center transition-all duration-300"
-              :class="!isOpen || isSearchOpen ? 'right-1 -top-1' : 'right-4'"
+              :class="!isOpen || isSearchOpen || isNotificationsOpen ? 'right-1 -top-1' : 'right-4'"
             >
               {{ item.badge }}
             </span>
@@ -69,7 +69,7 @@
             @click="toggleMoreMenu"
             class="w-full flex items-center px-4 py-3 transition-colors"
             :class="[
-              { 'justify-center': !isOpen || isSearchOpen },
+              { 'justify-center': !isOpen || isSearchOpen || isNotificationsOpen },
               isMoreMenuOpen ? 'text-blue-600 bg-blue-50 rounded-lg' : 'text-gray-600 hover:bg-gray-50 rounded-lg'
             ]"
           >
@@ -80,7 +80,7 @@
               />
             </div>
             <span 
-              v-if="isOpen && !isSearchOpen" 
+              v-if="isOpen && !isSearchOpen && !isNotificationsOpen" 
               class="text-sm transition-opacity duration-300 ml-4"
               :class="isMoreMenuOpen ? 'text-blue-600' : 'text-gray-700'"
             >
@@ -182,6 +182,7 @@ import { ref, computed, h, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
+import { useNotificationsStore } from '@/stores/modules/notifications';
 import { 
   HomeIcon,
   SearchIcon,
@@ -210,6 +211,7 @@ const emit = defineEmits(['toggle', 'toggleSearch', 'toggleNotifications']);
 const router = useRouter();
 const authStore = useAuthStore();
 const profileStore = useProfileStore();
+const notificationsStore = useNotificationsStore();
 
 const isMoreMenuOpen = ref(false);
 const isSearchOpen = ref(false);
@@ -220,31 +222,113 @@ const searchResults = ref([]);
 const isSearching = ref(false);
 const searchStatus = ref('');
 const isMobileView = ref(window.innerWidth < 768);
-const unreadNotifications = ref(2); // You can update this dynamically
+const unreadNotifications = computed(() => notificationsStore.getUnreadCount || 0);
 let searchTimeout = null;
+let resizeTimeout = null;
+// Remove this duplicate declaration
+// let resizeTimeout = null; // This line should be removed (around line 283)
 
+// Update the userPhotoURL computed property to use the provided SVG as fallback
 const userPhotoURL = computed(() => {
-  return profileStore.profile?.photoURL || 'https://via.placeholder.com/40';
+  return profileStore.profile?.photoURL || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 36 36\'%3E%3Crect width=\'36\' height=\'36\' fill=\'%23f0f2f5\'/%3E%3Cpath d=\'M18 20.5a5.5 5.5 0 1 0 0-11a5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5\' stroke=\'%23bec3c9\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E';
 });
+
+// Add a new function to update active states based on current route
+const updateActiveStateFromRoute = () => {
+  const currentPath = router.currentRoute.value.path;
+  
+  // Reset all active states first
+  resetActiveStates();
+  
+  // Find and activate the matching nav item
+  const matchingItem = mainNavItems.value.find(item => 
+    currentPath === item.path || currentPath.startsWith(item.path + '/')
+  );
+  
+  if (matchingItem) {
+    matchingItem.active = true;
+  }
+  
+  // Special case for settings
+  if (currentPath.includes('/settings')) {
+    isSettingsActive.value = true;
+  }
+  
+  // Handle panels based on route
+  if (currentPath === '/user/notifications') {
+    if (!isMobileView.value) {
+      isNotificationsOpen.value = true;
+      emit('toggleNotifications', true);
+    }
+  }
+};
 
 onMounted(async () => {
   console.log('Sidebar mounted, authStore:', authStore);
   if (authStore.user?.userId) {
     console.log('Fetching user profile for userId:', authStore.user.userId);
     await profileStore.fetchUserProfile(authStore.user.userId);
+    
+    // Initialize notifications
+    await notificationsStore.fetchNotifications(authStore.user.userId);
   }
-  window.addEventListener('resize', handleResize);
+  
+  // Set up resize listener with debounce
+  window.addEventListener('resize', debouncedResize);
+  
+  // Initialize active states based on current route
+  updateActiveStateFromRoute();
 });
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize);
+  // Clean up resize listener
+  window.removeEventListener('resize', debouncedResize);
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout);
+  }
 });
+
+// Debounced resize handler to prevent too many updates
+const debouncedResize = () => {
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout);
+  }
+  resizeTimeout = setTimeout(handleResize, 100);
+};
+
+// Update the handleResize function to properly handle transitions between mobile and desktop views
+const handleResize = () => {
+  const wasMobile = isMobileView.value;
+  isMobileView.value = window.innerWidth < 768;
+  
+  // If transitioning from mobile to desktop
+  if (wasMobile && !isMobileView.value) {
+    console.log('Transitioning from mobile to desktop view');
+    // Restore sidebar state for desktop view
+    emit('toggle', true); // Ensure sidebar is open in desktop view
+    
+    // Update active states based on current route
+    updateActiveStateFromRoute();
+  } 
+  // If transitioning from desktop to mobile
+  else if (!wasMobile && isMobileView.value) {
+    console.log('Transitioning from desktop to mobile view');
+    // Close panels in mobile view
+    isSearchOpen.value = false;
+    isNotificationsOpen.value = false;
+    emit('toggleSearch', false);
+    emit('toggleNotifications', false);
+  }
+};
 
 watch(() => authStore.user, async (newUser) => {
   console.log('AuthStore user changed:', newUser);
   if (newUser?.userId) {
     console.log('Fetching user profile for new userId:', newUser.userId);
     await profileStore.fetchUserProfile(newUser.userId);
+    
+    // Initialize notifications for new user
+    await notificationsStore.fetchNotifications(newUser.userId);
   }
 }, { immediate: true });
 
@@ -252,7 +336,25 @@ watch(() => props.isOpen, (newIsOpen) => {
   if (!newIsOpen) {
     isSearchOpen.value = false;
     isNotificationsOpen.value = false;
+    emit('toggleSearch', false);
+    emit('toggleNotifications', false);
   }
+});
+
+// Watch for route changes to update notification panel state
+watch(() => router.currentRoute.value.path, (newPath) => {
+  if (newPath === '/user/notifications') {
+    isNotificationsOpen.value = true;
+    emit('toggleNotifications', true);
+    isSearchOpen.value = false;
+    emit('toggleSearch', false);
+  } else if (isNotificationsOpen.value && !newPath.includes('/user/notifications')) {
+    isNotificationsOpen.value = false;
+    emit('toggleNotifications', false);
+  }
+  
+  // Update active states when route changes
+  updateActiveStateFromRoute();
 });
 
 const resetActiveStates = () => {
@@ -261,18 +363,76 @@ const resetActiveStates = () => {
   isSettingsActive.value = false; 
 };
 
+// Update the toggleNotifications method to ensure smooth transitions
+const toggleNotifications = () => {
+  console.log('Toggling notifications');
+  
+  // If opening notifications, close search first
+  if (!isNotificationsOpen.value && isSearchOpen.value) {
+    isSearchOpen.value = false;
+    emit('toggleSearch', false);
+    
+    // Small delay before opening notifications to allow search to close
+    setTimeout(() => {
+      isNotificationsOpen.value = true;
+      emit('toggleNotifications', true);
+    }, 50);
+  } else {
+    isNotificationsOpen.value = !isNotificationsOpen.value;
+    emit('toggleNotifications', isNotificationsOpen.value);
+    
+    if (isNotificationsOpen.value) {
+      isSearchOpen.value = false;
+      emit('toggleSearch', false);
+    }
+  }
+};
+
+// Similarly update the handleNavClick method for consistent behavior
 const handleNavClick = (item) => {
   console.log('Nav item clicked:', item.name);
   resetActiveStates();
+  
   if (item.name === 'Search') {
-    isSearchOpen.value = !isSearchOpen.value;
-    emit('toggleSearch', isSearchOpen.value);
-    if (isSearchOpen.value) {
+    // If opening search, close notifications first
+    if (!isSearchOpen.value && isNotificationsOpen.value) {
       isNotificationsOpen.value = false;
       emit('toggleNotifications', false);
+      
+      // Small delay before opening search to allow notifications to close
+      setTimeout(() => {
+        isSearchOpen.value = true;
+        emit('toggleSearch', true);
+      }, 50);
+    } else {
+      isSearchOpen.value = !isSearchOpen.value;
+      emit('toggleSearch', isSearchOpen.value);
+      
+      if (isSearchOpen.value) {
+        isNotificationsOpen.value = false;
+        emit('toggleNotifications', false);
+      }
     }
   } else if (item.name === 'Notifications') {
-    toggleNotifications();
+    // If opening notifications, close search first
+    if (!isNotificationsOpen.value && isSearchOpen.value) {
+      isSearchOpen.value = false;
+      emit('toggleSearch', false);
+      
+      // Small delay before opening notifications to allow search to close
+      setTimeout(() => {
+        isNotificationsOpen.value = true;
+        emit('toggleNotifications', true);
+      }, 50);
+    } else {
+      isNotificationsOpen.value = !isNotificationsOpen.value;
+      emit('toggleNotifications', isNotificationsOpen.value);
+      
+      if (isNotificationsOpen.value) {
+        isSearchOpen.value = false;
+        emit('toggleSearch', false);
+      }
+    }
   } else {
     mainNavItems.value.find(navItem => navItem.name === item.name).active = true;
     router.push(item.path);
@@ -283,6 +443,7 @@ const handleNavClick = (item) => {
       emit('toggleNotifications', false);
     }
   }
+  
   if (isMobileView.value && isOpen.value) {
     emit('toggle');
   }
@@ -301,16 +462,6 @@ const closeMoreMenu = () => {
 const closeSearch = () => {
   isSearchOpen.value = false;
   emit('toggleSearch', false);
-};
-
-const toggleNotifications = () => {
-  console.log('Toggling notifications');
-  isNotificationsOpen.value = !isNotificationsOpen.value;
-  emit('toggleNotifications', isNotificationsOpen.value);
-  if (isNotificationsOpen.value) {
-    isSearchOpen.value = false;
-    emit('toggleSearch', false);
-  }
 };
 
 const closeNotifications = () => {
@@ -344,15 +495,6 @@ const handleSettingsClick = () => {
   closeMoreMenu();
 };
 
-const handleResize = () => {
-  isMobileView.value = window.innerWidth < 768;
-  if (isMobileView.value) {
-    isSearchOpen.value = false;
-    isNotificationsOpen.value = false;
-    emit('toggle', false);
-  }
-};
-
 const toggleChatbot = () => {
   // Implement chatbot toggle logic here
   console.log('Toggling chatbot');
@@ -363,7 +505,7 @@ const mainNavItems = ref([
   { name: 'Search', icon: SearchIcon, path: '/user/search', active: false },
   { name: 'Telehealth', icon: VideoCallIcon, path: '/user/usertelehealth', active: false }, 
   { name: 'Create', icon: PlusCircle, path: '/user/userappointments', active: false },
-  { name: 'Notifications', icon: BellIcon, path: '/user/notifications', badge: '2', active: false },
+  { name: 'Notifications', icon: BellIcon, path: '/user/notifications', badge: unreadNotifications, active: false },
   {
     name: 'Profile',
     icon: {
@@ -399,6 +541,14 @@ watch(() => authStore.isAuthenticated, (isAuthenticated) => {
 watch(() => router.currentRoute.value.name, (newRouteName) => { 
   if (newRouteName !== 'UserSettings') {
     isSettingsActive.value = false;
+  }
+});
+
+// Update badge count when unread notifications change
+watch(() => notificationsStore.getUnreadCount, (newCount) => {
+  const notificationItem = mainNavItems.value.find(item => item.name === 'Notifications');
+  if (notificationItem) {
+    notificationItem.badge = newCount || 0;
   }
 });
 </script>

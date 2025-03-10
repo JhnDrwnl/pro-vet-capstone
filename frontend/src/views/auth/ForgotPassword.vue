@@ -1,5 +1,4 @@
 <!-- views/auth/ForgotPassword.vue.vue -->
-<!-- views/auth/ForgotPassword.vue -->
 <template>
   <div class="min-h-screen flex items-center justify-center bg-white px-4 py-8">
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row">

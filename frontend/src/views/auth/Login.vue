@@ -165,6 +165,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { DotLottieVue } from '@lottiefiles/dotlottie-vue'
 import { useAuthStore } from '@/stores/modules/authStore'
 import emailService from '@/services/emailService'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from '@shared/firebase'
 
 const router = useRouter()
 const route = useRoute()
@@ -233,6 +235,13 @@ onMounted(() => {
     form.email = rememberedEmail
     form.remember = true
   }
+  
+  // Check if user just verified their account
+  const justVerified = route.query.verified === 'true'
+  if (justVerified) {
+    // We'll handle this in the login flow
+    console.log('User just verified their account')
+  }
 })
 
 onUnmounted(() => {
@@ -257,6 +266,32 @@ const handleSubmit = async () => {
 
     if (result.success) {
       const userRole = authStore.userRole
+      
+      // Check if this is the first login after verification
+      const userId = authStore.currentUser.userId
+      const userRef = doc(db, "users", userId)
+      const userDoc = await getDoc(userRef)
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        
+        // If user is newly verified or hasn't configured notifications
+        const justVerified = route.query.verified === 'true'
+        
+        if ((justVerified || userData.emailVerified) && !userData.notificationsConfigured) {
+          // Set flag in localStorage to show notification modal
+          localStorage.setItem('showNotificationModal', 'true')
+          
+          // Update user document to track that we've prompted for notifications
+          await setDoc(userRef, {
+            notificationsPrompted: true,
+            updatedAt: new Date()
+          }, { merge: true })
+          
+          console.log('User will be prompted for notifications')
+        }
+      }
+      
       redirectToDashboard(userRole)
     } else if (result.emailVerificationRequired) {
       // User is not verified, send OTP and redirect to verification page
@@ -314,11 +349,33 @@ const loginWithGoogle = async () => {
       isRegistration: false,
       onNewUser: () => {
         console.log('New user detected during Google login')
+        // For new Google users, we'll set the flag to show notification modal
+        localStorage.setItem('showNotificationModal', 'true')
       }
     })
     
     // Check if user is authenticated after Google sign-in
     if (success && authStore.isAuthenticated) {
+      // For existing Google users, check if they need to configure notifications
+      const userId = authStore.currentUser.userId
+      const userRef = doc(db, "users", userId)
+      const userDoc = await getDoc(userRef)
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data()
+        
+        if (!userData.notificationsConfigured) {
+          // Set flag to show notification modal
+          localStorage.setItem('showNotificationModal', 'true')
+          
+          // Update user document to track that we've prompted for notifications
+          await setDoc(userRef, {
+            notificationsPrompted: true,
+            updatedAt: new Date()
+          }, { merge: true })
+        }
+      }
+      
       redirectToDashboard(authStore.userRole)
     } else {
       error.value = authStore.error || 'Failed to login with Google. Please try again.'

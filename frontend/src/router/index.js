@@ -1,6 +1,8 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@shared/firebase';
 import landingRoutes from './landing.routes.js';
 import userRoutes from './user.routes.js';
 import adminRoutes from './admin.routes.js';
@@ -73,6 +75,34 @@ router.beforeEach(async (to, from, next) => {
   console.log('Router guard - userRole:', userRole);
 
   if (isAuthenticated) {
+    // Check if user is newly logged in after verification
+    if (from.name === 'login' && 
+        (to.name === 'UserDashboard' || to.name === 'VetDashboard' || to.name === 'AdminDashboard')) {
+      try {
+        const userId = authStore.currentUser.userId;
+        const userRef = doc(db, "users", userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          
+          // Check if this is a verified user who hasn't configured notifications
+          if (userData.emailVerified && !userData.notificationsConfigured) {
+            // Set flag to show notification modal
+            localStorage.setItem('showNotificationModal', 'true');
+            
+            // Update user document to track that we've prompted for notifications
+            await setDoc(userRef, {
+              notificationsPrompted: true,
+              updatedAt: new Date()
+            }, { merge: true });
+          }
+        }
+      } catch (error) {
+        console.error('Error checking notification status:', error);
+      }
+    }
+    
     if (to.name === 'login' || to.name === 'register') {
       // If user is authenticated and trying to access login or register, redirect to appropriate dashboard
       const roleBasedRedirect = getRoleBasedRedirect(userRole);

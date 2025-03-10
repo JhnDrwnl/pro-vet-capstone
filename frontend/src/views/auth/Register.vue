@@ -133,10 +133,10 @@
 
             <button 
               type="submit"
-              :disabled="loading || !form.acceptTerms"
+              :disabled="emailLoading || !form.acceptTerms"
               class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm disabled:opacity-50"
             >
-              {{ loading ? 'Sending verification code...' : 'Register' }}
+              {{ emailLoading ? 'Sending verification code...' : 'Register' }}
             </button>
 
             <div v-if="error" class="text-red-500 text-sm text-center">
@@ -151,7 +151,8 @@
 
             <button 
               @click.prevent="registerWithGoogle" 
-              class="w-full py-2.5 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm"
+              :disabled="googleLoading"
+              class="w-full py-2.5 flex items-center justify-center bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm disabled:opacity-50"
             >
               <img src="@/assets/media/images/common/ant-design--google-circle-filled.png" alt="Google Icon" class="w-7 h-7 mr-3" />
               Continue with Google
@@ -233,12 +234,15 @@ import { useRouter } from 'vue-router';
 import { DotLottieVue } from '@lottiefiles/dotlottie-vue';
 import Policies from '@/components/common/Policies.vue';
 import { useAuthStore } from '@/stores/modules/authStore';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '@shared/firebase';
 
 const router = useRouter();
 const authStore = useAuthStore();
 
 // State
-const loading = ref(false);
+const emailLoading = ref(false);
+const googleLoading = ref(false);
 const error = ref(null);
 const showPassword = ref(false);
 const showConfirmPassword = ref(false);
@@ -307,7 +311,7 @@ const handleRegister = async () => {
   }
   
   try {
-    loading.value = true;
+    emailLoading.value = true;
     error.value = null;
     
     await authStore.initiateRegistration({
@@ -326,21 +330,44 @@ const handleRegister = async () => {
     console.error('Registration failed:', err);
     error.value = err.message || "Failed to send verification code. Please try again.";
   } finally {
-    loading.value = false;
+    emailLoading.value = false;
   }
 };
 
 const registerWithGoogle = async () => {
   try {
-    loading.value = true;
+    googleLoading.value = true;
     error.value = null;
-    await authStore.signInWithGoogle();
+    
+    // Call the signInWithGoogle method with isRegistration flag
+    await authStore.signInWithGoogle({
+      isRegistration: true,
+      onNewUser: () => {
+        console.log('New user registered with Google');
+        // Set flag to show notification modal for new Google users
+        localStorage.setItem('showNotificationModal', 'true');
+        
+        // If you have access to the user document, update it to track that we've prompted for notifications
+        if (authStore.currentUser && authStore.currentUser.userId) {
+          const userId = authStore.currentUser.userId;
+          const userRef = doc(db, "users", userId);
+          
+          setDoc(userRef, {
+            notificationsPrompted: true,
+            updatedAt: new Date()
+          }, { merge: true }).catch(err => {
+            console.error('Error updating user document:', err);
+          });
+        }
+      }
+    });
+    
     router.push('/user/dashboard');
   } catch (err) {
     console.error('Google sign-in failed:', err);
     error.value = "Google sign-in failed. Please try again.";
   } finally {
-    loading.value = false;
+    googleLoading.value = false;
   }
 };
 

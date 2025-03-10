@@ -1,4 +1,5 @@
 // src/stores/modules/authStore.js
+// src/stores/modules/authStore.js
 import { defineStore } from "pinia"
 import { auth, db } from "@shared/firebase"
 import {
@@ -243,11 +244,11 @@ export const useAuthStore = defineStore("auth", {
     async loginUser({ email, password, rememberMe }) {
       this.loading = true
       this.error = null
-      
+
       // Maximum number of retry attempts
-      const maxRetries = 3;
-      let retryCount = 0;
-      
+      const maxRetries = 3
+      let retryCount = 0
+
       const attemptLogin = async () => {
         try {
           await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
@@ -300,28 +301,32 @@ export const useAuthStore = defineStore("auth", {
         } catch (error) {
           // Check if this is the visibility check error
           if (error.code === "auth/visibility-check-was-unavailable" && retryCount < maxRetries) {
-            console.log(`Visibility check error, retrying (${retryCount + 1}/${maxRetries})...`);
-            retryCount++;
-            
+            console.log(`Visibility check error, retrying (${retryCount + 1}/${maxRetries})...`)
+            retryCount++
+
             // Wait for a short delay before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return await attemptLogin();
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+            return await attemptLogin()
           }
-          
+
           this.error = error.message
           console.error("Login error:", error)
-          
+
           // Return specific error type for invalid credentials
-          if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+          if (
+            error.code === "auth/invalid-credential" ||
+            error.code === "auth/user-not-found" ||
+            error.code === "auth/wrong-password"
+          ) {
             return { success: false, invalidCredentials: true }
           }
-          
+
           return { success: false, errorCode: error.code }
         }
-      };
-      
+      }
+
       try {
-        return await attemptLogin();
+        return await attemptLogin()
       } finally {
         this.loading = false
       }
@@ -414,7 +419,7 @@ export const useAuthStore = defineStore("auth", {
     async resendVerificationEmail(email) {
       try {
         this.loading = true
-        
+
         const verificationData = this.getVerificationData()
         if (!verificationData && !email) {
           throw new Error("No verification data found")
@@ -425,7 +430,7 @@ export const useAuthStore = defineStore("auth", {
 
         // Use Nodemailer service to resend OTP
         const response = await emailService.resendOTP(verificationEmail, firstName)
-        
+
         if (response.success) {
           // Update the timestamp when OTP was sent
           this.otpSentTimestamp = Date.now()
@@ -454,14 +459,14 @@ export const useAuthStore = defineStore("auth", {
       try {
         // Send password reset OTP via email service
         await emailService.sendPasswordResetOTP(email)
-        
+
         // Store email for later steps
         this.setPasswordResetData({ email })
-        
+
         // Store the timestamp when OTP was sent
         this.otpSentTimestamp = Date.now()
         localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
-        
+
         return true
       } catch (error) {
         this.error = error.message
@@ -484,14 +489,14 @@ export const useAuthStore = defineStore("auth", {
       this.error = null
       try {
         // Verify OTP specifically for password reset
-        const response = await emailService.verifyOTP(email, otp, 'password-reset')
-        
+        const response = await emailService.verifyOTP(email, otp, "password-reset")
+
         if (response.success) {
           // Store the OTP for the final password reset step
           this.setPasswordResetData({ email, otp })
           return response
         }
-        
+
         throw new Error(response.message || "Invalid verification code")
       } catch (error) {
         this.error = error.message
@@ -516,14 +521,14 @@ export const useAuthStore = defineStore("auth", {
         if (!email || !otp || !newPassword) {
           throw new Error("Missing required information for password reset")
         }
-        
+
         // Call the email service to reset the password
         const result = await emailService.resetPasswordWithOTP(email, otp, newPassword)
-        
+
         // Clear verification data
         this.clearVerificationData()
         localStorage.removeItem("otpSentTimestamp")
-        
+
         return result
       } catch (error) {
         this.error = error.response?.data?.message || error.message
@@ -539,7 +544,7 @@ export const useAuthStore = defineStore("auth", {
       this.verificationData = {
         ...this.verificationData,
         ...data,
-        purpose: 'password-reset'
+        purpose: "password-reset",
       }
     },
 
@@ -560,23 +565,24 @@ export const useAuthStore = defineStore("auth", {
     userStatus: (state) => state.user?.status || null,
     isPending: (state) => state.user?.status === "pending",
     isActive: (state) => state.user?.status === "active",
-    
+
     // New getter to calculate remaining OTP time
     otpRemainingTime: (state) => {
       if (!state.otpSentTimestamp) {
         // Try to get from localStorage
-        const storedTimestamp = localStorage.getItem('otpSentTimestamp')
+        const storedTimestamp = localStorage.getItem("otpSentTimestamp")
         if (storedTimestamp) {
-          state.otpSentTimestamp = parseInt(storedTimestamp)
+          state.otpSentTimestamp = Number.parseInt(storedTimestamp)
         } else {
           return 0
         }
       }
-      
+
       // OTP expires after 5 minutes (300 seconds)
-      const expiryTime = state.otpSentTimestamp + (OTP_EXPIRY_SECONDS * 1000)
+      const expiryTime = state.otpSentTimestamp + OTP_EXPIRY_SECONDS * 1000
       const remaining = Math.max(0, Math.floor((expiryTime - Date.now()) / 1000))
       return remaining
-    }
+    },
   },
 })
+
