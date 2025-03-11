@@ -1,7 +1,8 @@
+<!-- components/user/Sidebar.vue -->
 <template>
   <div class="flex flex-col">
     <!-- Mobile Header -->
-    <header v-if="isMobileView" class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center z-30">
+    <header v-if="isMobileView" class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center z-40">
       <h1 class="text-lg font-semibold">Provincial Veterinary</h1>
       <div class="flex items-center space-x-2">
         <button @click="toggleNotifications" class="p-2 rounded-full hover:bg-gray-100 relative">
@@ -17,7 +18,7 @@
     </header>
     <!-- Sidebar that transforms to mobile navigation on small screens -->
     <nav 
-      class="fixed transition-all duration-300 ease-in-out z-20"
+      class="fixed transition-all duration-300 ease-in-out z-40"
       :class="[
         isMobileView 
           ? 'bottom-1 left-0 right-0 mobile-nav'
@@ -54,7 +55,7 @@
             </span>
             
             <span 
-              v-if="item.badge" 
+              v-if="item.badge && item.badge > 0" 
               class="absolute bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center transition-all duration-300"
               :class="!isOpen || isSearchOpen || isNotificationsOpen ? 'right-1 -top-1' : 'right-4'"
             >
@@ -88,10 +89,10 @@
             </span>
           </button>
 
-          <!-- More Menu Modal -->
+          <!-- More Menu Modal - Increased z-index to 999 to ensure it's always on top -->
           <div 
             v-if="isMoreMenuOpen" 
-            class="absolute bottom-full left-0 mb-2 w-[240px] bg-white rounded-xl shadow-xl z-50"
+            class="absolute bottom-full left-0 mb-2 w-[240px] bg-white rounded-xl shadow-xl z-[999]"
           >
             <!-- Main options -->
             <div class="p-1">
@@ -178,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, computed, h, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, h, onMounted, onUnmounted, watch, markRaw } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
@@ -225,8 +226,6 @@ const isMobileView = ref(window.innerWidth < 768);
 const unreadNotifications = computed(() => notificationsStore.getUnreadCount || 0);
 let searchTimeout = null;
 let resizeTimeout = null;
-// Remove this duplicate declaration
-// let resizeTimeout = null; // This line should be removed (around line 283)
 
 // Update the userPhotoURL computed property to use the provided SVG as fallback
 const userPhotoURL = computed(() => {
@@ -434,7 +433,10 @@ const handleNavClick = (item) => {
       }
     }
   } else {
-    mainNavItems.value.find(navItem => navItem.name === item.name).active = true;
+    const navItem = mainNavItems.value.find(navItem => navItem.name === item.name);
+    if (navItem) {
+      navItem.active = true;
+    }
     router.push(item.path);
     if (!isMobileView.value) {
       isSearchOpen.value = false;
@@ -500,15 +502,16 @@ const toggleChatbot = () => {
   console.log('Toggling chatbot');
 };
 
-const mainNavItems = ref([
-  { name: 'Home', icon: HomeIcon, path: '/user/dashboard', active: false },
-  { name: 'Search', icon: SearchIcon, path: '/user/search', active: false },
-  { name: 'Telehealth', icon: VideoCallIcon, path: '/user/usertelehealth', active: false }, 
-  { name: 'Create', icon: PlusCircle, path: '/user/userappointments', active: false },
-  { name: 'Notifications', icon: BellIcon, path: '/user/notifications', badge: unreadNotifications, active: false },
+// Use markRaw to prevent Vue from making components reactive
+const createNavItems = () => [
+  { name: 'Home', icon: markRaw(HomeIcon), path: '/user/dashboard', active: false },
+  { name: 'Search', icon: markRaw(SearchIcon), path: '/user/search', active: false },
+  { name: 'Telehealth', icon: markRaw(VideoCallIcon), path: '/user/usertelehealth', active: false }, 
+  { name: 'Create', icon: markRaw(PlusCircle), path: '/user/userappointments', active: false },
+  { name: 'Notifications', icon: markRaw(BellIcon), path: '/user/notifications', badge: 0, active: false },
   {
     name: 'Profile',
-    icon: {
+    icon: markRaw({
       render: () => h('div', { class: 'w-6 h-6 flex items-center justify-center' }, [
         h('img', {
           src: userPhotoURL.value,
@@ -516,11 +519,13 @@ const mainNavItems = ref([
           class: 'w-6 h-6 rounded-full object-cover'
         })
       ])
-    },
+    }),
     path: '/user/profile',
     active: false
   },
-]);
+];
+
+const mainNavItems = ref(createNavItems());
 
 const mobileNavItems = computed(() => [
   mainNavItems.value[0], // Home

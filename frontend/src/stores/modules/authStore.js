@@ -1,5 +1,4 @@
 // src/stores/modules/authStore.js
-// src/stores/modules/authStore.js
 import { defineStore } from "pinia"
 import { auth, db } from "@shared/firebase"
 import {
@@ -66,6 +65,15 @@ export const useAuthStore = defineStore("auth", {
       const userDoc = await getDoc(doc(db, "users", userId))
       if (userDoc.exists()) {
         const userData = userDoc.data()
+        
+        // Clean and process the photoURL
+        let photoURL = user.photoURL || userData.photoURL || ""
+        
+        // If it's a Google photo URL, remove any size parameters
+        if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+          photoURL = photoURL.split('=')[0]
+        }
+        
         this.user = {
           ...user,
           userId: userId,
@@ -74,8 +82,10 @@ export const useAuthStore = defineStore("auth", {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: user.email || userData.email,
-          photoURL: user.photoURL || userData.photoURL,
+          photoURL: photoURL,
         }
+        
+        console.log("User data fetched successfully:", this.user)
       } else {
         console.error("User document not found")
         this.user = null
@@ -87,6 +97,15 @@ export const useAuthStore = defineStore("auth", {
 
       const userId = this.generateUserId(user.uid)
       const userRef = doc(db, "users", userId)
+      
+      // Process photoURL to ensure it's clean
+      let photoURL = user.photoURL || additionalData.photoURL || ""
+      
+      // If it's a Google photo URL, remove any size parameters
+      if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+        photoURL = photoURL.split('=')[0]
+      }
+      
       const userData = {
         email: user.email,
         uid: user.uid,
@@ -96,7 +115,7 @@ export const useAuthStore = defineStore("auth", {
         status: additionalData.status || "pending",
         firstName: additionalData.firstName || "",
         lastName: additionalData.lastName || "",
-        photoURL: user.photoURL || additionalData.photoURL || "",
+        photoURL: photoURL,
         emailVerified: false,
         ...additionalData,
       }
@@ -390,17 +409,44 @@ export const useAuthStore = defineStore("auth", {
 
           console.log("Parsed firstName:", firstName)
           console.log("Parsed lastName:", lastName)
+          
+          // Clean the photoURL to remove any size parameters
+          let photoURL = user.photoURL || ""
+          if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+            photoURL = photoURL.split('=')[0]
+          }
+          
+          console.log("Cleaned photoURL:", photoURL)
 
           // Create user document with status based on where the sign-in was initiated
           await this.createUserDocument(user, {
             firstName,
             lastName,
-            photoURL: user.photoURL || "",
+            photoURL: photoURL,
             email: user.email || additionalUserInfo?.profile?.email || "",
             role: "user",
             status: "active", // Always set as active for Google sign-in
             emailVerified: true,
           })
+        } else {
+          // For existing users, ensure the photoURL is up to date
+          const userData = userDoc.data()
+          
+          // Clean the photoURL to remove any size parameters
+          let photoURL = user.photoURL || ""
+          if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+            photoURL = photoURL.split('=')[0]
+          }
+          
+          // Update the photoURL if it has changed
+          if (photoURL && (!userData.photoURL || userData.photoURL !== photoURL)) {
+            console.log("Updating photoURL for existing user:", photoURL)
+            
+            await setDoc(doc(db, "users", userId), {
+              photoURL: photoURL,
+              updatedAt: new Date()
+            }, { merge: true })
+          }
         }
 
         await this.fetchUserData(user)
@@ -585,4 +631,3 @@ export const useAuthStore = defineStore("auth", {
     },
   },
 })
-

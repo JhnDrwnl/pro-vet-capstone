@@ -6,20 +6,20 @@
       @toggle="toggleSidebar" 
       @toggleSearch="toggleSearch"
       @toggleNotifications="toggleNotifications"
-      class="z-30" 
+      class="z-40" 
     />
     <SearchPanel 
       v-if="isSearchOpen"
       :isMobileView="isMobileView"
       @close="toggleSearch(false)"
-      class="z-40"
+      class="z-20"
     />
     <NotificationPanel
       v-if="isNotificationsOpen"
       :isMobileView="isMobileView"
       :isVisible="isNotificationsOpen"
       @close="toggleNotifications(false)"
-      class="z-40"
+      class="z-20"
     />
     <div class="flex-1 flex flex-col transition-all duration-300"
          :class="[
@@ -29,9 +29,10 @@
         class="flex-grow px-4 md:px-6 overflow-y-auto pt-safe pb-safe"
         :style="mainContentStyle"
       >
-        <router-view></router-view>
+        <!-- Pass the isSidebarOpen prop to the router-view -->
+        <router-view :isSidebarOpen="isSidebarOpen"></router-view>
       </main>
-      <div class="fixed inset-0 z-50 pointer-events-none">
+      <div class="fixed inset-0 z-10 pointer-events-none">
         <slot name="modal"></slot>
       </div>
     </div>

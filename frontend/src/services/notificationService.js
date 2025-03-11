@@ -1,69 +1,167 @@
 // src/services/notificationService.js
-import { messaging } from '@shared/firebase';
-import { getToken, onMessage } from 'firebase/messaging';
-import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@shared/firebase';
+import { nanoid } from 'nanoid';
 
 class NotificationService {
   constructor() {
-    this.vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    this.messaging = null;
+    this.router = null;
+    this.notificationsStore = null;
     this.initialized = false;
-    this.isEdge = this.detectEdgeBrowser();
-    this.router = null; // Will be set later
-    this.processedNotifications = new Set(); // Track processed notifications
-    this.notificationsStore = null; // Will be set later, NOT in constructor
+    this.userToken = null;
+    this.processedNotifications = new Set(); // Track processed notifications to avoid duplicates
+    this.initializationPromise = null; // Track initialization promise
   }
 
-  // Set router instance
   setRouter(router) {
     this.router = router;
   }
 
-  // Set notifications store - will be called from main.js AFTER Pinia is initialized
   setNotificationsStore(store) {
     this.notificationsStore = store;
   }
 
-  // Detect if browser is Microsoft Edge
-  detectEdgeBrowser() {
-    return navigator.userAgent.indexOf("Edg") !== -1;
-  }
-
-  // Initialize the service
   async initialize() {
-    if (this.initialized || !messaging) return;
+    // If already initialized, return immediately
+    if (this.initialized) return;
     
+    // If initialization is in progress, wait for it to complete
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+    
+    // Start initialization
+    this.initializationPromise = this._doInitialize();
+    return this.initializationPromise;
+  }
+  
+  async _doInitialize() {
     try {
-      // Set up foreground message handler
-      this.setupForegroundHandler();
+      console.log('Initializing notification service...');
+      
+      // Check if notifications are supported in this browser
+      if (!('Notification' in window)) {
+        console.log('This browser does not support notifications');
+        this.initialized = true; // Mark as initialized even though it's not supported
+        return;
+      }
+
+      // Initialize Firebase Messaging
+      // Get messaging from the app instance instead of directly importing firebase
+      const { getMessaging: getMessagingFromApp } = await import('firebase/messaging');
+      const { app } = await import('@shared/firebase');
+      this.messaging = getMessagingFromApp(app);
+
+      // Handle foreground messages
+      onMessage(this.messaging, (payload) => {
+        console.log('Message received in foreground:', payload);
+        
+        // Check if this is a duplicate notification
+        const notificationId = payload.data?.id || `${payload.notification.title}_${Date.now()}`;
+        
+        if (this.processedNotifications.has(notificationId)) {
+          console.log('Duplicate notification detected, ignoring:', notificationId);
+          return;
+        }
+        
+        // Mark this notification as processed
+        this.processedNotifications.add(notificationId);
+        
+        // Clean up old processed notifications (keep only last 50)
+        this.cleanupProcessedNotifications();
+
+        // Show the notification
+        this.showNotification(
+          payload.notification.title,
+          payload.notification.body,
+          { ...(payload.data || {}), id: notificationId }
+        );
+        
+        // Store in Firestore if store is available
+        this.storeNotificationInFirestore(
+          payload.notification.title,
+          payload.notification.body,
+          { ...(payload.data || {}), id: notificationId }
+        );
+      });
+
+      // Set up service worker message listener for notification clicks
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'NOTIFICATION_CLICKED') {
+            console.log('Received notification click event from service worker');
+            
+            // If we have a notifications store, force refresh
+            if (this.notificationsStore) {
+              this.notificationsStore.clearNotifications();
+              
+              // Get current user
+              const user = window.currentUser || null;
+              if (user && user.userId) {
+                this.notificationsStore.fetchNotifications(user.userId);
+              }
+            }
+            
+            // If we have a router and URL, navigate
+            if (this.router && event.data.url) {
+              console.log('Navigating to:', event.data.url);
+              this.router.push(event.data.url);
+            }
+          }
+        });
+      }
+
       this.initialized = true;
-      console.log('Notification service initialized', this.isEdge ? '(Microsoft Edge detected)' : '');
+      console.log('Notification service initialized successfully');
     } catch (error) {
       console.error('Error initializing notification service:', error);
+      this.initialized = false; // Mark as not initialized on error
+      this.initializationPromise = null; // Clear the promise so we can try again
+      throw error;
+    }
+  }
+  
+  // Clean up old processed notifications
+  cleanupProcessedNotifications() {
+    if (this.processedNotifications.size > 100) {
+      // Keep only the 50 most recent notifications
+      const toRemove = this.processedNotifications.size - 50;
+      const iterator = this.processedNotifications.values();
+      
+      for (let i = 0; i < toRemove; i++) {
+        this.processedNotifications.delete(iterator.next().value);
+      }
+      
+      console.log(`Cleaned up processed notifications cache, now tracking ${this.processedNotifications.size} notifications`);
     }
   }
 
-  // Request permission and get FCM token
+  async checkPermission() {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      return 'denied';
+    }
+
+    return Notification.permission;
+  }
+
   async requestPermission() {
     try {
-      if (!messaging) {
-        console.warn('Firebase messaging is not available');
-        return null;
-      }
-
-      // Check if permission is already granted
-      if (Notification.permission === 'granted') {
-        console.log('Notification permission already granted');
-        return await this.getFCMToken();
-      }
-
       // Request permission
-      console.log('Requesting notification permission...');
       const permission = await Notification.requestPermission();
-      console.log('Permission response:', permission);
       
       if (permission === 'granted') {
-        return await this.getFCMToken();
+        console.log('Notification permission granted');
+        
+        // Get token
+        const token = await this.getToken();
+        if (token) {
+          console.log('Notification token obtained');
+          this.userToken = token;
+          return token;
+        }
       } else {
         console.log('Notification permission denied');
         return null;
@@ -72,294 +170,232 @@ class NotificationService {
       console.error('Error requesting notification permission:', error);
       return null;
     }
+
+    return null;
   }
 
-  // Get FCM token
-  async getFCMToken() {
+  async getToken() {
     try {
-      if (!messaging) {
-        console.warn('Firebase messaging is not available');
+      // Check if permission is already granted
+      if (Notification.permission !== 'granted') {
+        console.log('Notification permission not granted');
         return null;
       }
 
-      console.log('Getting FCM token with vapid key...');
-      const currentToken = await getToken(messaging, {
-        vapidKey: this.vapidKey
+      // Ensure messaging is initialized
+      if (!this.messaging) {
+        await this.initialize();
+      }
+
+      // Get token
+      const currentToken = await getToken(this.messaging, {
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY
       });
 
       if (currentToken) {
-        console.log('FCM token obtained:', currentToken.substring(0, 10) + '...');
+        console.log('Current token:', currentToken.substring(0, 10) + '...');
         
-        // For Edge, we need to manually register the token with the service worker
-        if (this.isEdge) {
-          this.registerTokenWithServiceWorker(currentToken);
+        // Notify the service worker about the token (helpful for Edge browser)
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          registration.active.postMessage({
+            type: 'REGISTER_TOKEN',
+            token: currentToken
+          });
         }
         
         return currentToken;
       } else {
-        console.log('No FCM token available');
+        console.log('No token available');
         return null;
       }
     } catch (error) {
-      console.error('Error getting FCM token:', error);
-      
-      // Special handling for Edge-specific errors
-      if (this.isEdge && error.code === 'messaging/permission-blocked') {
-        console.log('Edge-specific permission issue. Trying alternative approach...');
-        return this.getEdgeToken();
-      }
-      
+      console.error('Error getting token:', error);
       return null;
-    }
-  }
-  
-  // Edge-specific token retrieval
-  async getEdgeToken() {
-    try {
-      // For Edge, we might need to use a different approach
-      // This is a fallback method that might work in some Edge versions
-      if ('serviceWorker' in navigator && 'PushManager' in window) {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: this.urlBase64ToUint8Array(this.vapidKey)
-        });
-        
-        // Generate a pseudo-token from the subscription
-        const token = btoa(JSON.stringify(subscription));
-        console.log('Edge alternative token generated');
-        return token;
-      }
-      return null;
-    } catch (error) {
-      console.error('Edge alternative token error:', error);
-      return null;
-    }
-  }
-  
-  // Helper function to convert base64 to Uint8Array for push subscription
-  urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-    
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  }
-  
-  // Register token with service worker for Edge
-  async registerTokenWithServiceWorker(token) {
-    if ('serviceWorker' in navigator) {
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        registration.active.postMessage({
-          type: 'REGISTER_TOKEN',
-          token: token
-        });
-        console.log('Token registered with service worker for Edge');
-      } catch (error) {
-        console.error('Error registering token with service worker:', error);
-      }
     }
   }
 
-  // Save FCM token to user document
   async saveTokenToDatabase(token) {
     try {
-      // Get current user from global window object if available
-      const user = window.currentUser || null;
+      const user = window.currentUser;
       
+      // Return if no user is logged in
       if (!user || !user.userId) {
-        console.warn('No user logged in or user data not available');
+        console.log('No user logged in, cannot save token');
         return false;
       }
 
+      // Save the token to the user's document
       const userId = user.userId;
       const userRef = doc(db, 'users', userId);
       
-      await setDoc(userRef, {
-        fcmToken: token,
-        notificationsEnabled: true,
-        notificationsConfigured: true,
-        browser: this.isEdge ? 'edge' : navigator.userAgent,
-        updatedAt: new Date()
-      }, { merge: true });
+      // First, check if user document exists
+      const userDoc = await getDoc(userRef);
       
-      console.log('FCM token saved to database');
-      return true;
+      if (userDoc.exists()) {
+        // Update the user's FCM tokens
+        await setDoc(userRef, {
+          fcmTokens: {
+            [token]: true
+          },
+          notificationsEnabled: true,
+          notificationsConfigured: true,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+        
+        console.log('Token saved to database for user:', userId);
+        return true;
+      } else {
+        console.log('User document does not exist');
+        return false;
+      }
     } catch (error) {
-      console.error('Error saving FCM token to database:', error);
+      console.error('Error saving token to database:', error);
       return false;
     }
   }
 
-  // Set up foreground message handler
-  setupForegroundHandler() {
-    if (!messaging) {
-      console.warn('Firebase messaging is not available');
-      return;
+  // Check if a notification already exists in Firestore
+  async isNotificationAlreadyInFirestore(userId, notificationId) {
+    try {
+      if (!userId || !notificationId) return false;
+      
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(
+        notificationsRef,
+        where('userId', '==', userId),
+        where('notificationId', '==', notificationId)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return !querySnapshot.empty;
+    } catch (error) {
+      console.error('Error checking for existing notification in Firestore:', error);
+      return false;
     }
-
-    onMessage(messaging, (payload) => {
-      console.log('Message received in foreground:', payload);
-      
-      // Check if this notification has already been processed
-      const notificationId = payload.data?.id || `${payload.notification.title}_${Date.now()}`;
-      
-      if (this.processedNotifications.has(notificationId)) {
-        console.log('Duplicate notification detected, ignoring:', notificationId);
-        return;
-      }
-      
-      // Mark this notification as processed
-      this.processedNotifications.add(notificationId);
-      
-      // Display a notification
-      if (payload.notification) {
-        this.showNotification(
-          payload.notification.title,
-          payload.notification.body,
-          payload.data || { url: '/user/notifications', id: notificationId } // Default to user notifications panel
-        );
-        
-        // Store notification in Firestore
-        this.storeNotificationInFirestore(
-          payload.notification.title,
-          payload.notification.body,
-          payload.data
-        );
-      }
-      
-      // Clean up old processed notifications (keep only last 50)
-      if (this.processedNotifications.size > 50) {
-        const iterator = this.processedNotifications.values();
-        this.processedNotifications.delete(iterator.next().value);
-      }
-    });
   }
 
-  // Store notification in Firestore
+  showNotification(title, body, data = {}) {
+    // Default notification options
+    const options = {
+      body: body,
+      icon: '/favicon.ico',
+      badge: '/notification-badge.png',
+      data: {
+        ...data,
+        url: data.url || '/user/notifications'
+      },
+      requireInteraction: true
+    };
+    
+    // Generate a unique ID for this notification
+    const notificationId = data.id || `notification_${nanoid(8)}`;
+    options.data.id = notificationId;
+    options.tag = notificationId; // Use tag to replace existing notifications with the same ID
+
+    // Check if this notification has already been processed
+    if (this.processedNotifications.has(notificationId)) {
+      console.log('Duplicate notification detected, ignoring:', notificationId);
+      return null;
+    }
+    
+    // Mark this notification as processed
+    this.processedNotifications.add(notificationId);
+    
+    // Clean up old processed notifications
+    this.cleanupProcessedNotifications();
+
+    // If we have permission, show native notification
+    if (Notification.permission === 'granted') {
+      // Create and show the notification
+      const notification = new Notification(title, options);
+      
+      // Handle notification click
+      notification.onclick = () => {
+        console.log('Notification clicked:', options.data);
+        notification.close();
+        
+        // Focus window
+        window.focus();
+        
+        // Handle navigation if URL is provided
+        if (options.data.url && this.router) {
+          console.log('Navigating to:', options.data.url);
+          this.router.push(options.data.url);
+        }
+      };
+      
+      // Store in Firestore if store is available
+      this.storeNotificationInFirestore(title, body, { ...data, id: notificationId });
+      
+      return notification;
+    } else {
+      console.log('Notification permission not granted');
+      return null;
+    }
+  }
+
   async storeNotificationInFirestore(title, body, data = {}) {
     try {
       // Check if store is available
       if (!this.notificationsStore) {
         console.warn('Notifications store not available, cannot store notification');
-        return null;
+        return;
       }
       
       // Get current user
       const user = window.currentUser || null;
-      
       if (!user || !user.userId) {
         console.warn('No user logged in, cannot store notification');
-        return null;
+        return;
       }
       
       const userId = user.userId;
+      const notificationId = data.id || `notification_${nanoid(8)}`;
       
-      // Prepare notification data
+      // Check if this notification already exists in Firestore
+      const alreadyExists = await this.isNotificationAlreadyInFirestore(userId, notificationId);
+      if (alreadyExists) {
+        console.log('Notification already exists in Firestore, skipping:', notificationId);
+        return;
+      }
+      
+      // Create notification object
       const notificationData = {
         userId: userId,
+        notificationId: notificationId, // Store the ID for deduplication
         title: title,
         description: body,
         type: data.type || 'general',
         read: false,
         url: data.url || '/user/notifications',
-        createdAt: serverTimestamp(),
-        data: data || {}
+        data: data || {},
+        createdAt: serverTimestamp()
       };
       
-      // Use the notifications store to add the notification
-      const notificationId = await this.notificationsStore.addNotification(notificationData);
-      
+      // Add to Firestore via the store
+      await this.notificationsStore.addNotification(notificationData);
       console.log('Notification stored in Firestore:', notificationId);
-      return notificationId;
     } catch (error) {
       console.error('Error storing notification in Firestore:', error);
-      return null;
-    }
-  }
-
-  // Show a notification
-  showNotification(title, body, data = {}) {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      try {
-        // If no URL is provided, default to the notifications panel
-        if (!data.url) {
-          data.url = '/user/notifications';
-        }
-        
-        // Check if this notification has already been processed
-        const notificationId = data.id || `${title}_${Date.now()}`;
-        
-        if (this.processedNotifications.has(notificationId)) {
-          console.log('Duplicate notification detected, ignoring:', notificationId);
-          return false;
-        }
-        
-        // Mark this notification as processed
-        this.processedNotifications.add(notificationId);
-        
-        const notification = new Notification(title, {
-          body: body,
-          icon: '/favicon.ico',
-          data: data,
-          requireInteraction: true, // Keep notification until user interacts with it
-          tag: notificationId // Use tag to replace existing notifications with the same ID
-        });
-
-        notification.onclick = () => {
-          notification.close();
-          window.focus();
-          
-          // Handle click action
-          if (data && data.url) {
-            // If we have a router instance, use it for navigation
-            if (this.router) {
-              this.router.push(data.url);
-            } else {
-              // Fallback to direct navigation
-              window.location.href = data.url;
-            }
-          }
-        };
-        
-        // Store notification in Firestore
-        this.storeNotificationInFirestore(title, body, data);
-        
-        console.log('Client-side notification shown');
-        return true;
-      } catch (error) {
-        console.error('Error showing notification:', error);
-        return false;
-      }
-    } else {
-      console.warn('Notifications not available or permission not granted');
-      return false;
     }
   }
   
-  // Test notification (for debugging)
-  async testNotification() {
-    const notificationData = { 
-      url: '/user/notifications',
-      id: `test_${Date.now()}`, // Add unique ID
-      type: 'test'
-    };
+  // Clear the processed notifications cache (for testing)
+  clearProcessedNotifications() {
+    this.processedNotifications.clear();
+    console.log('Cleared processed notifications cache');
     
-    const shown = this.showNotification(
-      'Test Notification',
-      'This is a test notification to verify if notifications are working.',
-      notificationData
-    );
-    
-    return shown;
+    // Also clear the service worker's cache if available
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(registration => {
+        registration.active.postMessage({
+          type: 'CLEAR_DUPLICATE_CACHE'
+        });
+      }).catch(err => {
+        console.error('Error clearing service worker cache:', err);
+      });
+    }
   }
 }
 

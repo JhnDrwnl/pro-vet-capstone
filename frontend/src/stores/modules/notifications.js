@@ -20,7 +20,8 @@ export const useNotificationsStore = defineStore('notifications', {
     loading: false,
     error: null,
     unreadCount: 0,
-    lastFetched: null
+    lastFetched: null,
+    processedIds: new Set() // Track processed notification IDs
   }),
   
   getters: {
@@ -53,7 +54,6 @@ export const useNotificationsStore = defineStore('notifications', {
       if (!userId) return;
       
       console.log('fetchNotifications called for userId:', userId);
-      console.log('Store state before fetch:', this.$state);
       
       this.loading = true;
       this.error = null;
@@ -73,6 +73,12 @@ export const useNotificationsStore = defineStore('notifications', {
           const notifications = [];
           
           querySnapshot.forEach((doc) => {
+            // Skip if we've already processed this notification
+            if (this.processedIds.has(doc.id)) return;
+            
+            // Add to processed IDs
+            this.processedIds.add(doc.id);
+            
             notifications.push({
               id: doc.id,
               ...doc.data(),
@@ -80,11 +86,12 @@ export const useNotificationsStore = defineStore('notifications', {
             });
           });
           
-          this.notifications = notifications;
+          // Merge with existing notifications, avoiding duplicates
+          this.mergeNotifications(notifications);
           this.calculateUnreadCount();
           this.lastFetched = new Date();
           
-          console.log('Notifications fetched:', this.notifications);
+          console.log('Notifications fetched:', this.notifications.length);
         } catch (indexError) {
           // If the index error occurs, try a simpler query without orderBy
           if (indexError.message && indexError.message.includes('requires an index')) {
@@ -101,6 +108,12 @@ export const useNotificationsStore = defineStore('notifications', {
             const notifications = [];
             
             querySnapshot.forEach((doc) => {
+              // Skip if we've already processed this notification
+              if (this.processedIds.has(doc.id)) return;
+              
+              // Add to processed IDs
+              this.processedIds.add(doc.id);
+              
               notifications.push({
                 id: doc.id,
                 ...doc.data(),
@@ -111,11 +124,12 @@ export const useNotificationsStore = defineStore('notifications', {
             // Sort manually since we can't use orderBy
             notifications.sort((a, b) => b.date - a.date);
             
-            this.notifications = notifications;
+            // Merge with existing notifications, avoiding duplicates
+            this.mergeNotifications(notifications);
             this.calculateUnreadCount();
             this.lastFetched = new Date();
             
-            console.log('Notifications fetched with fallback query:', this.notifications);
+            console.log('Notifications fetched with fallback query:', this.notifications.length);
             
             // Still throw the original error so the user knows to create the index
             throw indexError;
@@ -130,6 +144,32 @@ export const useNotificationsStore = defineStore('notifications', {
         throw error;
       } finally {
         this.loading = false;
+      }
+    },
+    
+    // Merge notifications, avoiding duplicates
+    mergeNotifications(newNotifications) {
+      if (!newNotifications || newNotifications.length === 0) return;
+      
+      // Create a map of existing notifications by ID for quick lookup
+      const existingMap = new Map();
+      this.notifications.forEach(notification => {
+        existingMap.set(notification.id, notification);
+      });
+      
+      // Add only new notifications
+      newNotifications.forEach(notification => {
+        if (!existingMap.has(notification.id)) {
+          this.notifications.push(notification);
+        }
+      });
+      
+      // Sort by date (newest first)
+      this.notifications.sort((a, b) => b.date - a.date);
+      
+      // Limit to 100 notifications to prevent memory issues
+      if (this.notifications.length > 100) {
+        this.notifications = this.notifications.slice(0, 100);
       }
     },
     
@@ -148,19 +188,23 @@ export const useNotificationsStore = defineStore('notifications', {
         );
         
         return onSnapshot(q, (snapshot) => {
+          const newNotifications = [];
+          
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
+              // Skip if we've already processed this notification
+              if (this.processedIds.has(change.doc.id)) return;
+              
+              // Add to processed IDs
+              this.processedIds.add(change.doc.id);
+              
               const notification = {
                 id: change.doc.id,
                 ...change.doc.data(),
                 date: change.doc.data().createdAt?.toDate() || new Date()
               };
               
-              // Check if notification already exists to avoid duplicates
-              const exists = this.notifications.some(n => n.id === notification.id);
-              if (!exists) {
-                this.notifications.unshift(notification);
-              }
+              newNotifications.push(notification);
             }
             
             if (change.type === 'modified') {
@@ -177,8 +221,8 @@ export const useNotificationsStore = defineStore('notifications', {
             }
           });
           
-          // Sort notifications by date (newest first)
-          this.notifications.sort((a, b) => b.date - a.date);
+          // Merge new notifications with existing ones
+          this.mergeNotifications(newNotifications);
           this.calculateUnreadCount();
         }, (error) => {
           console.error('Error in notifications subscription:', error);
@@ -196,19 +240,23 @@ export const useNotificationsStore = defineStore('notifications', {
             );
             
             return onSnapshot(simpleQ, (snapshot) => {
+              const newNotifications = [];
+              
               snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
+                  // Skip if we've already processed this notification
+                  if (this.processedIds.has(change.doc.id)) return;
+                  
+                  // Add to processed IDs
+                  this.processedIds.add(change.doc.id);
+                  
                   const notification = {
                     id: change.doc.id,
                     ...change.doc.data(),
                     date: change.doc.data().createdAt?.toDate() || new Date()
                   };
                   
-                  // Check if notification already exists to avoid duplicates
-                  const exists = this.notifications.some(n => n.id === notification.id);
-                  if (!exists) {
-                    this.notifications.push(notification);
-                  }
+                  newNotifications.push(notification);
                 }
                 
                 if (change.type === 'modified') {
@@ -225,8 +273,8 @@ export const useNotificationsStore = defineStore('notifications', {
                 }
               });
               
-              // Sort manually since we can't use orderBy
-              this.notifications.sort((a, b) => b.date - a.date);
+              // Merge new notifications with existing ones
+              this.mergeNotifications(newNotifications);
               this.calculateUnreadCount();
             }, (fallbackError) => {
               console.error('Error in fallback notifications subscription:', fallbackError);
@@ -244,6 +292,12 @@ export const useNotificationsStore = defineStore('notifications', {
     // Add a new notification to Firestore
     async addNotification(notification) {
       try {
+        // Check if this notification has a notificationId and if we've already processed it
+        if (notification.notificationId && this.processedIds.has(notification.notificationId)) {
+          console.log('Notification already processed, skipping:', notification.notificationId);
+          return null;
+        }
+        
         const notificationsRef = collection(db, 'notifications');
         const notificationData = {
           ...notification,
@@ -252,6 +306,13 @@ export const useNotificationsStore = defineStore('notifications', {
         };
         
         const docRef = await addDoc(notificationsRef, notificationData);
+        
+        // Add to processed IDs
+        if (notification.notificationId) {
+          this.processedIds.add(notification.notificationId);
+        }
+        this.processedIds.add(docRef.id);
+        
         return docRef.id;
       } catch (error) {
         console.error('Error adding notification:', error);
@@ -328,6 +389,7 @@ export const useNotificationsStore = defineStore('notifications', {
       this.unreadCount = 0;
       this.lastFetched = null;
       this.error = null;
+      this.processedIds.clear();
     }
   }
 });
