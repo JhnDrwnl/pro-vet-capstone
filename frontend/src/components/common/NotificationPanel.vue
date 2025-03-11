@@ -86,6 +86,14 @@
           >
             Unread
           </button>
+          <button 
+            @click="refreshNotifications"
+            class="px-3 py-1 rounded-full text-sm font-medium text-gray-500 hover:bg-gray-100"
+            :disabled="isRefreshing"
+          >
+            <RefreshCwIcon v-if="!isRefreshing" class="w-4 h-4" />
+            <LoaderIcon v-else class="w-4 h-4 animate-spin" />
+          </button>
         </div>
 
         <!-- Notification Filter & Mark All as Read Button -->
@@ -109,9 +117,9 @@
           <button 
             @click="markAllAsRead"
             class="text-blue-500 hover:underline"
-            :disabled="loading"
+            :disabled="loading || !hasUnreadNotifications"
           >
-            <Icon icon="mdi:bell-check-outline" width="24" height="24" style="color: #3b82f6" />
+            <Icon icon="mdi:bell-check-outline" width="24" height="24" :style="{ color: hasUnreadNotifications ? '#3b82f6' : '#94a3b8' }" />
           </button>
         </div>
 
@@ -119,7 +127,9 @@
         <div class="px-6 overflow-y-auto flex-grow">
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-semibold">Recent Notifications</h3>
-            <span v-if="loading" class="text-xs text-gray-500">Loading...</span>
+            <span v-if="loading || isRefreshing" class="text-xs text-gray-500">
+              {{ isRefreshing ? 'Refreshing...' : 'Loading...' }}
+            </span>
           </div>
           
           <div v-if="filteredNotifications.length > 0">
@@ -147,6 +157,13 @@
                 <div class="text-sm text-gray-500">{{ notification.description }}</div>
                 <div class="text-xs text-gray-400 mt-1">{{ formatDate(notification.date) }}</div>
               </div>
+              <button 
+                @click.stop="deleteNotification(notification.id)"
+                class="text-gray-400 hover:text-red-500 p-1"
+                title="Delete notification"
+              >
+                <TrashIcon class="w-4 h-4" />
+              </button>
             </div>
           </div>
           <div v-else-if="loading" class="py-10 text-center">
@@ -167,9 +184,19 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { Icon } from '@iconify/vue';
-import { XIcon, CalendarIcon, BellIcon, CheckCircleIcon, AlertCircleIcon, ArrowLeftIcon } from 'lucide-vue-next';
+import { 
+  XIcon, 
+  CalendarIcon, 
+  BellIcon, 
+  CheckCircleIcon, 
+  AlertCircleIcon, 
+  ArrowLeftIcon,
+  RefreshCwIcon,
+  LoaderIcon,
+  Trash as TrashIcon
+} from 'lucide-vue-next';
 import { useNotificationsStore } from '../../stores/modules/notifications';
 import { useRouter } from 'vue-router';
 
@@ -194,12 +221,18 @@ const filterStatus = ref('');
 const filterType = ref('all');
 const unsubscribe = ref(null);
 const selectedNotification = ref(null);
+const isRefreshing = ref(false);
 
 // Computed properties
 const loading = computed(() => notificationsStore.loading);
 const filteredNotifications = computed(() => {
   return notificationsStore.getFilteredNotifications(filterType.value, filterQuery.value);
 });
+
+// Add this computed property to watch for changes in the notifications array
+const notificationsCount = computed(() => notificationsStore.notifications.length);
+const unreadCount = computed(() => notificationsStore.getUnreadCount);
+const hasUnreadNotifications = computed(() => unreadCount.value > 0);
 
 // Methods
 const closeNotifications = () => {
@@ -311,9 +344,51 @@ const handleActionClick = (notification) => {
 };
 
 const markAllAsRead = async () => {
+  if (!hasUnreadNotifications.value) return;
+  
   const user = window.currentUser || null;
   if (user && user.userId) {
     await notificationsStore.markAllAsRead(user.userId);
+  }
+};
+
+const refreshNotifications = async () => {
+  if (isRefreshing.value) return;
+  
+  isRefreshing.value = true;
+  const user = window.currentUser || null;
+  
+  if (user && user.userId) {
+    try {
+      // Clear existing notifications first
+      notificationsStore.clearNotifications();
+      
+      // Then fetch fresh notifications
+      await notificationsStore.fetchNotifications(user.userId);
+      
+      // Re-subscribe to real-time updates
+      if (unsubscribe.value) {
+        unsubscribe.value();
+      }
+      unsubscribe.value = notificationsStore.subscribeToNotifications(user.userId);
+      
+      console.log('Notifications refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing notifications:', error);
+    } finally {
+      isRefreshing.value = false;
+    }
+  } else {
+    console.warn('No user found or user ID missing. Cannot refresh notifications.');
+    isRefreshing.value = false;
+  }
+};
+
+const deleteNotification = async (notificationId) => {
+  try {
+    await notificationsStore.deleteNotification(notificationId);
+  } catch (error) {
+    console.error('Error deleting notification:', error);
   }
 };
 
@@ -353,6 +428,7 @@ onUnmounted(() => {
   // Clean up subscription when component is unmounted
   if (unsubscribe.value) {
     unsubscribe.value();
+    unsubscribe.value = null;
   }
 });
 
@@ -362,18 +438,35 @@ watch(() => props.isVisible, (newValue) => {
     // Reset selected notification when panel is opened
     selectedNotification.value = null;
     
-    // Defer data loading until after animation
-    setTimeout(() => {
-      const user = window.currentUser || null;
-      if (user && user.userId) {
-        notificationsStore.fetchNotifications(user.userId);
+    // Fetch notifications immediately when panel becomes visible
+    const user = window.currentUser || null;
+    if (user && user.userId) {
+      // Don't clear notifications here, just fetch new ones
+      notificationsStore.fetchNotifications(user.userId);
+      
+      // Ensure we have an active subscription
+      if (!unsubscribe.value) {
+        unsubscribe.value = notificationsStore.subscribeToNotifications(user.userId);
       }
-    }, 300);
+    }
   } else {
     selectedNotification.value = null;
   }
 });
 
+// Add this watch to refresh the UI when notifications change
+watch(notificationsCount, (newCount, oldCount) => {
+  console.log(`Notifications count changed from ${oldCount} to ${newCount}`);
+  // Force a UI update
+  nextTick(() => {
+    // This ensures the UI is updated after the reactive state changes
+  });
+});
+
+// Add this watch to refresh the UI when unread count changes
+watch(unreadCount, (newCount, oldCount) => {
+  console.log(`Unread count changed from ${oldCount} to ${newCount}`);
+});
 </script>
 
 <style scoped>

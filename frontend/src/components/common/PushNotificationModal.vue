@@ -1,5 +1,6 @@
 <!-- components/common/PushNotificationModal.vue -->
-<template>
+```vue type="vue" project="Provincial Veterinary" file="components/common/PushNotificationModal.vue"
+[v0-no-op-code-block-prefix]<template>
   <Transition name="fade">
     <div v-if="show" class="fixed inset-0 z-50 overflow-hidden">
       <!-- Semi-transparent backdrop -->
@@ -11,12 +12,12 @@
           <!-- Header -->
           <div class="bg-gradient-to-r from-blue-600 to-blue-500 p-6 text-white">
             <div class="flex items-center justify-between">
-              <h2 class="text-xl font-semibold">Enable Notifications</h2>
+              <h2 class="text-xl font-semibold">Notification Settings</h2>
               <button @click="emit('close')" class="text-white/80 hover:text-white transition-colors">
                 <XIcon class="w-5 h-5" />
               </button>
             </div>
-            <p class="text-blue-100 mt-1 text-sm">Stay updated with your pet's health information</p>
+            <p class="text-blue-100 mt-1 text-sm">Manage your notification preferences</p>
           </div>
           
           <!-- Content -->
@@ -69,7 +70,7 @@
                 @click="skipNotifications" 
                 class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-sm"
               >
-                Maybe Later
+                Skip for Now
               </button>
             </div>
             
@@ -95,7 +96,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { BellIcon, CheckCircleIcon, XIcon, AlertCircleIcon } from 'lucide-vue-next';
 import notificationService from '@/services/notificationService';
 import welcomeNotificationService from '@/services/welcomeNotificationService';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '@shared/firebase';
 import { useAuthStore } from '@/stores/modules/authStore';
 
@@ -106,7 +107,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'enabled', 'skipped']);
+const emit = defineEmits(['close', 'enabled', 'skipped', 'disabled']);
 
 const showModal = ref(props.show);
 const loading = ref(false);
@@ -118,11 +119,13 @@ const authStore = useAuthStore();
 // Initialize notification service when component is mounted
 onMounted(async () => {
   try {
-    await notificationService.initialize();
+    // Check if notifications are already enabled in the database
+    await checkUserPreference();
     
-    // Check if notifications are already enabled
-    const permission = await notificationService.checkPermission();
-    notificationsEnabled.value = permission === 'granted';
+    // Only initialize if user has enabled notifications
+    if (notificationsEnabled.value) {
+      await notificationService.initialize();
+    }
   } catch (error) {
     console.error('Error initializing notification service:', error);
   }
@@ -160,18 +163,73 @@ watch(() => props.show, (newValue) => {
 watch(() => authStore.currentUser, (newUser) => {
   if (newUser) {
     window.currentUser = newUser;
+    checkUserPreference();
   }
 });
+
+// Check user's notification preference in database
+const checkUserPreference = async () => {
+  try {
+    const user = authStore.currentUser;
+    if (!user) return;
+    
+    const userId = user.userId;
+    const userRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      notificationsEnabled.value = userData.notificationsEnabled === true;
+    }
+  } catch (error) {
+    console.error('Error checking user notification preference:', error);
+  }
+};
 
 const toggleNotifications = async () => {
   if (notificationsEnabled.value) {
     await enableNotifications();
   } else {
-    // Handle disabling notifications if needed
-    // Note: Browsers don't provide a way to programmatically revoke permissions
-    // So we can only update our database to reflect user preference
-    statusMessage.value = 'Please disable notifications in your browser settings.';
+    await disableNotifications();
+  }
+};
+
+const disableNotifications = async () => {
+  try {
+    loading.value = true;
+    
+    // Update user document to indicate notifications were disabled
+    const user = authStore.currentUser;
+    if (user) {
+      const userId = user.userId;
+      const userRef = doc(db, "users", userId);
+      
+      await setDoc(userRef, {
+        notificationsConfigured: true,
+        notificationsEnabled: false,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      
+      // Update service worker preference
+      await notificationService.updateServiceWorkerPreference(userId, false);
+      
+      statusMessage.value = 'Notifications disabled. You will no longer receive notifications.';
+      statusSuccess.value = true;
+      
+      // Emit disabled event
+      emit('disabled');
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        emit('close');
+      }, 2000);
+    }
+  } catch (error) {
+    console.error('Error disabling notifications:', error);
+    statusMessage.value = 'An error occurred. Please try again.';
     statusSuccess.value = false;
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -179,6 +237,9 @@ const enableNotifications = async () => {
   try {
     loading.value = true;
     statusMessage.value = '';
+    
+    // Initialize notification service if not already initialized
+    await notificationService.initialize();
     
     // Request permission and get token
     const token = await notificationService.requestPermission();
@@ -189,27 +250,20 @@ const enableNotifications = async () => {
       
       if (success) {
         console.log('Notifications enabled successfully');
+        
+        // Update service worker preference
+        const user = authStore.currentUser;
+        if (user) {
+          await notificationService.updateServiceWorkerPreference(user.userId, true);
+        }
+        
         statusMessage.value = 'Notifications enabled successfully!';
         statusSuccess.value = true;
         
-        // Send welcome notification - Option 1: Direct HTTP call
-        const user = authStore.currentUser;
+        // Send welcome notification
         if (user) {
           welcomeNotificationService.sendWelcomeNotification(user.userId, token)
-            .then(sent => {
-              if (sent) {
-                console.log('Welcome notification sent via HTTP function');
-              } else {
-                console.warn('Failed to send welcome notification');
-                // Try client-side fallback
-                notificationService.showNotification(
-                  'Welcome to Provincial Veterinary!',
-                  `Hi ${user.firstName || 'there'}, thanks for enabling notifications.`,
-                  { type: 'welcome', url: '/dashboard' }
-                );
-              }
-            })
-            .catch(err => console.error('Error sending welcome notification via HTTP:', err));
+            .catch(err => console.error('Error sending welcome notification:', err));
         }
         
         emit('enabled', true);
@@ -253,8 +307,11 @@ const skipNotifications = async () => {
       await setDoc(userRef, {
         notificationsConfigured: true,
         notificationsEnabled: false,
-        updatedAt: new Date()
+        updatedAt: serverTimestamp()
       }, { merge: true });
+      
+      // Update service worker preference
+      await notificationService.updateServiceWorkerPreference(userId, false);
     }
     
     emit('skipped');

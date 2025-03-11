@@ -549,8 +549,12 @@ watch(() => router.currentRoute.value.name, (newRouteName) => {
   }
 });
 
+// Add this computed property to directly access the unread count
+const unreadCount = computed(() => notificationsStore.getUnreadCount);
+
 // Update badge count when unread notifications change
-watch(() => notificationsStore.getUnreadCount, (newCount) => {
+watch(unreadCount, (newCount) => {
+  console.log('Unread notifications count changed:', newCount);
   const notificationItem = mainNavItems.value.find(item => item.name === 'Notifications');
   if (notificationItem) {
     notificationItem.badge = newCount || 0;
@@ -588,3 +592,4 @@ watch(() => notificationsStore.getUnreadCount, (newCount) => {
   animation: subtle-pulse 2s infinite;
 }
 </style>
+
