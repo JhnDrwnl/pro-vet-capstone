@@ -9,13 +9,15 @@ import {
   signInWithPopup,
   getAdditionalUserInfo,
   onAuthStateChanged,
-  sendPasswordResetEmail,
   setPersistence,
   browserSessionPersistence,
   browserLocalPersistence,
 } from "firebase/auth"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import emailService from "@/services/emailService"
+
+// OTP expiry in seconds (5 minutes)
+const OTP_EXPIRY_SECONDS = 300
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -63,6 +65,15 @@ export const useAuthStore = defineStore("auth", {
       const userDoc = await getDoc(doc(db, "users", userId))
       if (userDoc.exists()) {
         const userData = userDoc.data()
+        
+        // Clean and process the photoURL
+        let photoURL = user.photoURL || userData.photoURL || ""
+        
+        // If it's a Google photo URL, remove any size parameters
+        if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+          photoURL = photoURL.split('=')[0]
+        }
+        
         this.user = {
           ...user,
           userId: userId,
@@ -71,8 +82,10 @@ export const useAuthStore = defineStore("auth", {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: user.email || userData.email,
-          photoURL: user.photoURL || userData.photoURL,
+          photoURL: photoURL,
         }
+        
+        console.log("User data fetched successfully:", this.user)
       } else {
         console.error("User document not found")
         this.user = null
@@ -84,6 +97,15 @@ export const useAuthStore = defineStore("auth", {
 
       const userId = this.generateUserId(user.uid)
       const userRef = doc(db, "users", userId)
+      
+      // Process photoURL to ensure it's clean
+      let photoURL = user.photoURL || additionalData.photoURL || ""
+      
+      // If it's a Google photo URL, remove any size parameters
+      if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+        photoURL = photoURL.split('=')[0]
+      }
+      
       const userData = {
         email: user.email,
         uid: user.uid,
@@ -93,7 +115,7 @@ export const useAuthStore = defineStore("auth", {
         status: additionalData.status || "pending",
         firstName: additionalData.firstName || "",
         lastName: additionalData.lastName || "",
-        photoURL: user.photoURL || additionalData.photoURL || "",
+        photoURL: photoURL,
         emailVerified: false,
         ...additionalData,
       }
@@ -130,8 +152,8 @@ export const useAuthStore = defineStore("auth", {
         if (storedData) {
           try {
             const parsedData = JSON.parse(storedData)
-            // Check if the data is still valid (less than 2 minutes old)
-            if (parsedData && Date.now() - parsedData.timestamp < 2 * 60 * 1000) {
+            // Check if the data is still valid (less than 5 minutes old)
+            if (parsedData && Date.now() - parsedData.timestamp < 5 * 60 * 1000) {
               this.verificationData = parsedData
             }
           } catch (e) {
@@ -241,11 +263,11 @@ export const useAuthStore = defineStore("auth", {
     async loginUser({ email, password, rememberMe }) {
       this.loading = true
       this.error = null
-      
+
       // Maximum number of retry attempts
-      const maxRetries = 3;
-      let retryCount = 0;
-      
+      const maxRetries = 3
+      let retryCount = 0
+
       const attemptLogin = async () => {
         try {
           await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
@@ -298,28 +320,32 @@ export const useAuthStore = defineStore("auth", {
         } catch (error) {
           // Check if this is the visibility check error
           if (error.code === "auth/visibility-check-was-unavailable" && retryCount < maxRetries) {
-            console.log(`Visibility check error, retrying (${retryCount + 1}/${maxRetries})...`);
-            retryCount++;
-            
+            console.log(`Visibility check error, retrying (${retryCount + 1}/${maxRetries})...`)
+            retryCount++
+
             // Wait for a short delay before retrying
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return await attemptLogin();
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+            return await attemptLogin()
           }
-          
+
           this.error = error.message
           console.error("Login error:", error)
-          
+
           // Return specific error type for invalid credentials
-          if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+          if (
+            error.code === "auth/invalid-credential" ||
+            error.code === "auth/user-not-found" ||
+            error.code === "auth/wrong-password"
+          ) {
             return { success: false, invalidCredentials: true }
           }
-          
+
           return { success: false, errorCode: error.code }
         }
-      };
-      
+      }
+
       try {
-        return await attemptLogin();
+        return await attemptLogin()
       } finally {
         this.loading = false
       }
@@ -383,17 +409,44 @@ export const useAuthStore = defineStore("auth", {
 
           console.log("Parsed firstName:", firstName)
           console.log("Parsed lastName:", lastName)
+          
+          // Clean the photoURL to remove any size parameters
+          let photoURL = user.photoURL || ""
+          if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+            photoURL = photoURL.split('=')[0]
+          }
+          
+          console.log("Cleaned photoURL:", photoURL)
 
           // Create user document with status based on where the sign-in was initiated
           await this.createUserDocument(user, {
             firstName,
             lastName,
-            photoURL: user.photoURL || "",
+            photoURL: photoURL,
             email: user.email || additionalUserInfo?.profile?.email || "",
             role: "user",
             status: "active", // Always set as active for Google sign-in
             emailVerified: true,
           })
+        } else {
+          // For existing users, ensure the photoURL is up to date
+          const userData = userDoc.data()
+          
+          // Clean the photoURL to remove any size parameters
+          let photoURL = user.photoURL || ""
+          if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+            photoURL = photoURL.split('=')[0]
+          }
+          
+          // Update the photoURL if it has changed
+          if (photoURL && (!userData.photoURL || userData.photoURL !== photoURL)) {
+            console.log("Updating photoURL for existing user:", photoURL)
+            
+            await setDoc(doc(db, "users", userId), {
+              photoURL: photoURL,
+              updatedAt: new Date()
+            }, { merge: true })
+          }
         }
 
         await this.fetchUserData(user)
@@ -412,7 +465,7 @@ export const useAuthStore = defineStore("auth", {
     async resendVerificationEmail(email) {
       try {
         this.loading = true
-        
+
         const verificationData = this.getVerificationData()
         if (!verificationData && !email) {
           throw new Error("No verification data found")
@@ -423,7 +476,7 @@ export const useAuthStore = defineStore("auth", {
 
         // Use Nodemailer service to resend OTP
         const response = await emailService.resendOTP(verificationEmail, firstName)
-        
+
         if (response.success) {
           // Update the timestamp when OTP was sent
           this.otpSentTimestamp = Date.now()
@@ -441,23 +494,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Legacy method - kept for backward compatibility
-    async sendPasswordResetEmail(email) {
-      this.loading = true
-      this.error = null
-      try {
-        // Use Firebase's built-in password reset
-        await sendPasswordResetEmail(auth, email)
-        return true
-      } catch (error) {
-        this.error = error.message
-        console.error("Password reset email error:", error)
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
-
     // New method for OTP-based password reset
     /**
      * Send password reset OTP
@@ -469,14 +505,14 @@ export const useAuthStore = defineStore("auth", {
       try {
         // Send password reset OTP via email service
         await emailService.sendPasswordResetOTP(email)
-        
+
         // Store email for later steps
         this.setPasswordResetData({ email })
-        
+
         // Store the timestamp when OTP was sent
         this.otpSentTimestamp = Date.now()
         localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
-        
+
         return true
       } catch (error) {
         this.error = error.message
@@ -499,14 +535,14 @@ export const useAuthStore = defineStore("auth", {
       this.error = null
       try {
         // Verify OTP specifically for password reset
-        const response = await emailService.verifyOTP(email, otp, 'password-reset')
-        
+        const response = await emailService.verifyOTP(email, otp, "password-reset")
+
         if (response.success) {
           // Store the OTP for the final password reset step
           this.setPasswordResetData({ email, otp })
           return response
         }
-        
+
         throw new Error(response.message || "Invalid verification code")
       } catch (error) {
         this.error = error.message
@@ -531,14 +567,14 @@ export const useAuthStore = defineStore("auth", {
         if (!email || !otp || !newPassword) {
           throw new Error("Missing required information for password reset")
         }
-        
+
         // Call the email service to reset the password
         const result = await emailService.resetPasswordWithOTP(email, otp, newPassword)
-        
+
         // Clear verification data
         this.clearVerificationData()
         localStorage.removeItem("otpSentTimestamp")
-        
+
         return result
       } catch (error) {
         this.error = error.response?.data?.message || error.message
@@ -554,7 +590,7 @@ export const useAuthStore = defineStore("auth", {
       this.verificationData = {
         ...this.verificationData,
         ...data,
-        purpose: 'password-reset'
+        purpose: "password-reset",
       }
     },
 
@@ -575,23 +611,23 @@ export const useAuthStore = defineStore("auth", {
     userStatus: (state) => state.user?.status || null,
     isPending: (state) => state.user?.status === "pending",
     isActive: (state) => state.user?.status === "active",
-    
+
     // New getter to calculate remaining OTP time
     otpRemainingTime: (state) => {
       if (!state.otpSentTimestamp) {
         // Try to get from localStorage
-        const storedTimestamp = localStorage.getItem('otpSentTimestamp')
+        const storedTimestamp = localStorage.getItem("otpSentTimestamp")
         if (storedTimestamp) {
-          state.otpSentTimestamp = parseInt(storedTimestamp)
+          state.otpSentTimestamp = Number.parseInt(storedTimestamp)
         } else {
           return 0
         }
       }
-      
-      // OTP expires after 2 minutes (120 seconds)
-      const expiryTime = state.otpSentTimestamp + (120 * 1000)
+
+      // OTP expires after 5 minutes (300 seconds)
+      const expiryTime = state.otpSentTimestamp + OTP_EXPIRY_SECONDS * 1000
       const remaining = Math.max(0, Math.floor((expiryTime - Date.now()) / 1000))
       return remaining
-    }
+    },
   },
 })

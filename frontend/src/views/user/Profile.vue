@@ -1,3 +1,4 @@
+<!-- views/user/Profile.vue -->
 <template>
   <div class="min-h-screen bg-gray-50 rounded-2xl overflow-hidden">
     <!-- Banner with gradient background -->
