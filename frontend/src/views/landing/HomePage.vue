@@ -52,108 +52,189 @@
       </div>
     </section>
 
-    <!-- About Section -->
+    <!-- About Section - Updated to match About.vue design -->
     <section class="py-20 bg-white">
-      <div class="container mx-auto px-4">
-        <h2 
-          class="text-4xl font-bold text-center mb-16"
-          v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :visibleOnce="{ opacity: 1, y: 0 }"
-        >
-          About Us
-        </h2>
+      <div class="container mx-auto px-8">
+        <!-- Updated heading style -->
+        <div class="text-center mb-16">
+          <p class="text-sm uppercase tracking-wider text-blue-500 mb-1"
+             v-motion
+             :initial="{ opacity: 0 }"
+             :visibleOnce="{ opacity: 1 }">
+            Our Core Values
+          </p>
+          <h2 class="text-2xl font-bold"
+              v-motion
+              :initial="{ opacity: 0, y: 20 }"
+              :visibleOnce="{ opacity: 1, y: 0 }">
+            <span class="text-blue-800">Guiding Principles</span>
+            <span class="text-blue-500"> of Our Practice</span>
+          </h2>
+        </div>
         
-        <div class="grid md:grid-cols-3 gap-12">
-          <div 
-            v-for="(item, index) in mvmItems" 
-            :key="index"
-            class="bg-white p-8 rounded-xl shadow-lg transform transition-all duration-500 hover:-translate-y-2 hover:shadow-xl"
-            v-motion
-            :initial="{ opacity: 0, scale: 0.9 }"
-            :visibleOnce="{ 
-              opacity: 1, 
-              scale: 1, 
-              transition: { duration: 600, delay: 200 * index } 
-            }"
-          >
-            <h2 class="text-2xl font-bold text-blue-600 mb-4">{{ item.title }}</h2>
-            <p class="text-gray-600 leading-relaxed">
-              {{ item.content }}
-            </p>
+        <!-- Updated MVM items with new design from About.vue -->
+        <div class="grid md:grid-cols-3 gap-6">
+          <div v-for="(item, index) in mvmItems" 
+               :key="index"
+               class="bg-blue-50/50 border border-blue-100 rounded-lg p-6 hover:shadow-md transition-all duration-300"
+               v-motion
+               :initial="{ opacity: 0, scale: 0.9 }"
+               :visibleOnce="{ 
+                 opacity: 1, 
+                 scale: 1, 
+                 transition: { duration: 600, delay: 200 * index } 
+               }">
+            <div class="flex flex-col items-center text-center">
+              <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <component :is="item.icon" class="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 class="text-xl font-bold text-blue-800 mb-3">{{ item.title }}</h3>
+              <p class="text-gray-600">
+                {{ item.content }}
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Services Section with Parallax -->
-    <section class="relative py-24 overflow-hidden">
-      <!-- Parallax Background with Zoom -->
-      <div 
-        ref="servicesBackground" 
-        class="absolute inset-0 bg-cover bg-center transition-transform duration-[15000ms] ease-out"
-        :style="{ 
-          backgroundImage: `url(${servicesImage})`,
-          transform: `scale(${servicesZoomScale})` 
-        }"
-      ></div>
-      
-      <!-- Dark Overlay -->
-      <div class="absolute inset-0 bg-black bg-opacity-70"></div>
-      
-      <!-- Content -->
-      <div class="relative z-10 container mx-auto px-4">
-        <h2 
-          class="text-4xl font-bold text-white text-center mb-16"
-          v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :visibleOnce="{ opacity: 1, y: 0 }"
-        >
-          Our Services
-        </h2>
-        
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <div 
-            v-for="(service, index) in services" 
-            :key="index"
-            class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 text-white border border-white border-opacity-20 transform transition-all duration-500 hover:-translate-y-2 hover:bg-opacity-20"
+   
+    <!-- Services Section -->
+    <section class="py-20 bg-gray-50">
+    <div class="container mx-auto px-8">
+      <!-- Heading with consistent style -->
+      <div class="text-center mb-16">
+        <p class="text-sm uppercase tracking-wider text-blue-500 mb-1"
+           v-motion
+           :initial="{ opacity: 0 }"
+           :visibleOnce="{ opacity: 1 }">
+          What We Offer
+        </p>
+        <h2 class="text-2xl font-bold"
             v-motion
-            :initial="{ opacity: 0, y: 30 }"
-            :visibleOnce="{ 
-              opacity: 1, 
-              y: 0, 
-              transition: { duration: 600, delay: 150 * index } 
-            }"
-          >
-            <h3 class="text-xl font-semibold mb-3">{{ service.title }}</h3>
-            <p class="text-gray-200 mb-4">{{ service.description }}</p>
-            <button class="text-blue-300 hover:text-blue-100 text-sm font-medium transition duration-300">
-              Learn More →
-            </button>
+            :initial="{ opacity: 0, y: 20 }"
+            :visibleOnce="{ opacity: 1, y: 0 }">
+          <span class="text-blue-800">Our</span>
+          <span class="text-blue-500"> Services</span>
+        </h2>
+      </div>
+      
+      <!-- Services Grid - Fixed to ensure equal height white sections -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <!-- Walk-in Veterinary -->
+        <div 
+          class="w-full max-w-[280px] mx-auto rounded-2xl border border-transparent hover:border-blue-200 transition-all duration-300 group overflow-hidden shadow-sm flex flex-col"
+          v-motion
+          :initial="{ opacity: 0, y: 30 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600, delay: 150 } }"
+        >
+          <div class="bg-blue-50 p-6 flex items-center justify-center h-44">
+            <StethoscopeIcon class="h-12 w-12 text-blue-600" />
+          </div>
+          <div class="p-5 bg-white flex-1 flex flex-col">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Walk-in Veterinary</h3>
+            <p class="text-gray-600 text-sm mb-3 flex-grow">
+              Immediate care for your pets with no appointment needed. Our experienced veterinarians are ready to help.
+            </p>
+            <div class="mt-auto">
+              <a href="#" class="text-blue-600 text-sm font-medium inline-block learn-more-link">
+                Learn More
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Elective Services -->
+        <div 
+          class="w-full max-w-[280px] mx-auto rounded-2xl border border-transparent hover:border-blue-200 transition-all duration-300 group overflow-hidden shadow-sm flex flex-col"
+          v-motion
+          :initial="{ opacity: 0, y: 30 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600, delay: 300 } }"
+        >
+          <div class="bg-blue-50 p-6 flex items-center justify-center h-44">
+            <CalendarIcon class="h-12 w-12 text-blue-600" />
+          </div>
+          <div class="p-5 bg-white flex-1 flex flex-col">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Elective Services</h3>
+            <p class="text-gray-600 text-sm mb-3 flex-grow">
+              Scheduled procedures including spaying, neutering, dental care, and other planned treatments.
+            </p>
+            <div class="mt-auto">
+              <a href="#" class="text-blue-600 text-sm font-medium inline-block learn-more-link">
+                Learn More
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Health Certificate -->
+        <div 
+          class="w-full max-w-[280px] mx-auto rounded-2xl border border-transparent hover:border-blue-200 transition-all duration-300 group overflow-hidden shadow-sm flex flex-col"
+          v-motion
+          :initial="{ opacity: 0, y: 30 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600, delay: 450 } }"
+        >
+          <div class="bg-blue-50 p-6 flex items-center justify-center h-44">
+            <FileTextIcon class="h-12 w-12 text-blue-600" />
+          </div>
+          <div class="p-5 bg-white flex-1 flex flex-col">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Health Certificate</h3>
+            <p class="text-gray-600 text-sm mb-3 flex-grow">
+              Official documentation for travel, breeding, or other purposes requiring proof of pet health status.
+            </p>
+            <div class="mt-auto">
+              <a href="#" class="text-blue-600 text-sm font-medium inline-block learn-more-link">
+                Learn More
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telehealth Services -->
+        <div 
+          class="w-full max-w-[280px] mx-auto rounded-2xl border border-transparent hover:border-blue-200 transition-all duration-300 group overflow-hidden shadow-sm flex flex-col"
+          v-motion
+          :initial="{ opacity: 0, y: 30 }"
+          :visibleOnce="{ opacity: 1, y: 0, transition: { duration: 600, delay: 600 } }"
+        >
+          <div class="bg-blue-50 p-6 flex items-center justify-center h-44">
+            <MonitorIcon class="h-12 w-12 text-blue-600" />
+          </div>
+          <div class="p-5 bg-white flex-1 flex flex-col">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Telehealth Services</h3>
+            <p class="text-gray-600 text-sm mb-3 flex-grow">
+              Virtual consultations and follow-ups for convenient pet care from the comfort of your home.
+            </p>
+            <div class="mt-auto">
+              <a href="#" class="text-blue-600 text-sm font-medium inline-block learn-more-link">
+                Learn More
+              </a>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
     <!-- SDG Section -->
     <section class="py-20 bg-white">
-      <div class="container mx-auto px-4">
-        <h2 
-          class="text-4xl font-bold text-center mb-4"
-          v-motion
-          :initial="{ opacity: 0, y: 20 }"
-          :visibleOnce="{ opacity: 1, y: 0 }"
-        >
-          Sustainable Development Goals
-        </h2>
-        <p 
-          class="text-center text-gray-600 mb-16 max-w-3xl mx-auto"
-          v-motion
-          :initial="{ opacity: 0 }"
-          :visibleOnce="{ opacity: 1, transition: { delay: 200 } }"
-        >
-          We are committed to supporting the UN Sustainable Development Goals
-        </p>
+      <div class="container mx-auto px-8">
+        <!-- Updated heading style -->
+        <div class="text-center mb-16">
+          <p class="text-sm uppercase tracking-wider text-blue-500 mb-1"
+             v-motion
+             :initial="{ opacity: 0 }"
+             :visibleOnce="{ opacity: 1 }">
+            Our Commitment
+          </p>
+          <h2 class="text-2xl font-bold"
+              v-motion
+              :initial="{ opacity: 0, y: 20 }"
+              :visibleOnce="{ opacity: 1, y: 0 }">
+            <span class="text-blue-800">Sustainable Development</span>
+            <span class="text-blue-500"> Goals</span>
+          </h2>
+        </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <div
@@ -197,7 +278,24 @@
 
     <!-- Contact Section -->
     <section class="py-20 bg-gray-50">
-      <div class="container mx-auto px-4">
+      <div class="container mx-auto px-8">
+        <!-- Updated heading style -->
+        <div class="text-center mb-16">
+          <p class="text-sm uppercase tracking-wider text-blue-500 mb-1"
+             v-motion
+             :initial="{ opacity: 0 }"
+             :visibleOnce="{ opacity: 1 }">
+            Reach Out
+          </p>
+          <h2 class="text-2xl font-bold"
+              v-motion
+              :initial="{ opacity: 0, y: 20 }"
+              :visibleOnce="{ opacity: 1, y: 0 }">
+            <span class="text-blue-800">Contact</span>
+            <span class="text-blue-500"> Us Today</span>
+          </h2>
+        </div>
+        
         <div 
           class="bg-white rounded-2xl shadow-xl overflow-hidden"
           v-motion
@@ -277,40 +375,28 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import { 
+  StethoscopeIcon, 
+  CalendarIcon, 
+  FileTextIcon, 
+  MonitorIcon,
+  Target,
+  Eye,
+  Compass
+} from 'lucide-vue-next';
 
-// Background images
+// Background image for hero only
 const heroImage = 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?q=80&w=2000&auto=format&fit=crop';
-const servicesImage = 'https://images.unsplash.com/photo-1548767797-d8c844163c4c?q=80&w=2000&auto=format&fit=crop';
 
 // Zoom effect state
 const zoomScale = ref(1);
-const servicesZoomScale = ref(1);
 const heroBackground = ref(null);
-const servicesBackground = ref(null);
 
-// Scroll handler for zoom effect
+// Scroll handler for zoom effect (simplified to only handle hero)
 const handleScroll = () => {
   const scrollPosition = window.scrollY;
-  
   // Hero section zoom (increases as you scroll down)
   zoomScale.value = 1 + (scrollPosition * 0.0005);
-  
-  // Services section (check if in viewport)
-  const servicesSection = document.querySelector('section:nth-child(3)');
-  if (servicesSection) {
-    const servicesSectionTop = servicesSection.offsetTop;
-    const servicesSectionHeight = servicesSection.offsetHeight;
-    
-    if (scrollPosition > servicesSectionTop - window.innerHeight && 
-        scrollPosition < servicesSectionTop + servicesSectionHeight) {
-      // Calculate how far into the section we've scrolled (0 to 1)
-      const scrollProgress = (scrollPosition - (servicesSectionTop - window.innerHeight)) / 
-                            (servicesSectionHeight + window.innerHeight);
-      
-      // Apply zoom based on scroll progress
-      servicesZoomScale.value = 1 + (scrollProgress * 0.15);
-    }
-  }
 };
 
 // Form data
@@ -334,43 +420,22 @@ const submitForm = () => {
   };
 };
 
-// Mission, Vision, Mandate items
+// Updated Mission, Vision, Mandate items with icons
 const mvmItems = ref([
   {
     title: 'Mandate',
-    content: 'To provide animal health care services and contribute to food security through improved livestock and poultry production.'
+    content: 'To provide animal health care services and contribute to food security through improved livestock and poultry production.',
+    icon: Target
   },
   {
     title: 'Vision',
-    content: 'A progressive and service-oriented office creating an environment conducive for sustainable livestock production and robust animal health.'
+    content: 'A progressive and service-oriented office creating an environment conducive for sustainable livestock production and robust animal health.',
+    icon: Eye
   },
   {
     title: 'Mission',
-    content: 'The Provincial Veterinary Office is committed to provide effective animal health and production service based on sustainable technological practices and in accordance with existing laws and regulations.'
-  }
-]);
-
-// Services
-const services = ref([
-  {
-    title: 'Walk-in Veterinary',
-    description: 'Immediate care for your pets with no appointment needed. Our experienced veterinarians are ready to help.',
-    image: 'https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def'
-  },
-  {
-    title: 'Elective Services',
-    description: 'Scheduled procedures including spaying, neutering, dental care, and other planned treatments.',
-    image: 'https://images.unsplash.com/photo-1576073719676-aa95576db207'
-  },
-  {
-    title: 'Health Certificate',
-    description: 'Official documentation for travel, breeding, or other purposes requiring proof of pet health status.',
-    image: 'https://images.unsplash.com/photo-1516714435131-44d6b64dc6a2'
-  },
-  {
-    title: 'Telehealth Services',
-    description: 'Virtual consultations and follow-ups for convenient pet care from the comfort of your home.',
-    image: 'https://images.unsplash.com/photo-1591604021695-0c69b7c05981'
+    content: 'The Provincial Veterinary Office is committed to provide effective animal health and production service based on sustainable technological practices and in accordance with existing laws and regulations.',
+    icon: Compass
   }
 ]);
 
@@ -459,5 +524,71 @@ html {
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom pulse animations for potential use */
+@keyframes pulse-slow {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.6;
+  }
+}
+
+@keyframes pulse-slower {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse-slowest {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s infinite ease-in-out;
+}
+
+.animate-pulse-slower {
+  animation: pulse-slower 4s infinite ease-in-out;
+}
+
+.animate-pulse-slowest {
+  animation: pulse-slowest 5s infinite ease-in-out;
+}
+
+.learn-more-link {
+  position: relative;
+  display: inline-block;
+}
+
+.learn-more-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: currentColor;
+  transition: width 0.3s ease;
+}
+
+.learn-more-link:hover::after {
+  width: 100%;
 }
 </style>
