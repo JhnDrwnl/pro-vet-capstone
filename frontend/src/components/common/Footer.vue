@@ -17,10 +17,10 @@
         <div>
           <h3 class="text-lg font-semibold mb-3">Quick Links</h3>
           <ul class="space-y-2 text-sm">
-            <li>Home</li>
-            <li>About Us</li>
-            <li>Services</li>
-            <li>Contact Us</li>
+            <li><router-link to="/home" class="hover:underline">Home</router-link></li>
+            <li><router-link to="/about" class="hover:underline">About Us</router-link></li>
+            <li><router-link to="/service" class="hover:underline">Services</router-link></li>
+            <li><router-link to="/contact" class="hover:underline">Contact Us</router-link></li>
           </ul>
         </div>
   

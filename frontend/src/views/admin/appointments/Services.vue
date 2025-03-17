@@ -59,7 +59,7 @@
             @click="addNew" 
             class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition duration-200"
           >
-            <Plus class="w-4 h-4" />
+          <PlusCircle class="w-4 h-4" />
             {{ activeTab === 'categories' ? 'Add Category' : 'Add Service' }}
           </button>
         </div>
@@ -256,7 +256,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Search, Download, Plus, LucideEdit, ArchiveIcon} from 'lucide-vue-next';
+import { Search, Download, PlusCircle, LucideEdit, ArchiveIcon} from 'lucide-vue-next';
 
 const activeTab = ref('categories');
 const search = ref('');

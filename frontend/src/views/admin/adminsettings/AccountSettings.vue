@@ -1,34 +1,32 @@
 <!-- views/adminsettings/AccountSettings.vue -->
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <!-- Main container with rounded corners -->
-    <div class="bg-white shadow-md rounded-2xl p-4 sm:p-6 md:p-8 mb-6">
-      <div class="mb-6">
-        <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">Account Settings</h1>
-        <p class="text-sm sm:text-base text-gray-500 mt-1">Manage your account preferences.</p>
-      </div>
-
-      <!-- Navigation Tabs - Left aligned, compact, and scrollable when needed -->
-      <div class="border-b mb-6 sm:mb-8 overflow-x-auto">
-        <ul class="flex justify-start space-x-2 sm:space-x-8 md:space-x-12 pb-4 min-w-max">
-          <li v-for="tab in tabs" :key="tab.id">
-            <button
-              @click="currentTab = tab.id"
-              :class="[
-                'px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-colors',
-                currentTab === tab.id 
-                  ? 'bg-[#EBF5FF] text-[#0066FF]'
-                  : 'text-gray-800 hover:text-gray-700'
-              ]"
-            >
-              <div class="flex items-center">
-                <component :is="tab.icon" class="w-4 h-4 sm:w-5 sm:h-5" />
-                <span class="ml-1 sm:ml-2">{{ tab.name }}</span>
-              </div>
-            </button>
-          </li>
-        </ul>
-      </div>
+  <div class="min-h-screen p-6 bg-white rounded-lg ">
+    <div class="mb-8">
+      <h1 class="text-2xl font-semibold text-gray-900">Account Settings</h1>
+      <p class="text-gray-500 mt-1">Manage your account preferences.</p>
+    </div>
+  <!-- Navigation Tabs -->
+  <div class="bg-white border-b px-4 pb-2 mb-6">
+    <ul class="flex space-x-8 px-6">
+      <li v-for="tab in tabs" :key="tab.id">
+        <button
+          @click="currentTab = tab.id"
+       
+          :class="[
+                  'px-4 py-2 text-sm font-medium rounded-full transition-colors',
+            currentTab === tab.id 
+               ? 'bg-[#EBF5FF] text-[#0066FF]'
+              : 'text-gray-800 hover:text-gray-700'
+          ]"
+        >
+          <div class="flex items-center space-x-2">
+            <component :is="tab.icon" class="w-5 h-5" />
+            <span>{{ tab.name }}</span>
+          </div>
+        </button>
+      </li>
+    </ul>
+  </div>
 
       <!-- Main Content -->
       <div>
@@ -314,7 +312,7 @@
         </div>
       </div>
     </div>
-  </div>
+  
   
   <!-- Delete Account Confirmation Modal -->
   <div v-if="showDeleteConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
