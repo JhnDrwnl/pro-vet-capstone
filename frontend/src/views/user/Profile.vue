@@ -6,7 +6,7 @@
       class="h-32 sm:h-40 md:h-60 w-full bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl"
       style="background-image: linear-gradient(to right, rgb(110, 231, 183), rgb(59, 130, 246));"
     ></div>
-
+  
     <!-- Profile Section -->
     <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
       <div class="relative -mt-16 sm:-mt-20 md:-mt-24">
@@ -44,7 +44,7 @@
                   <!-- Profile Image Container -->
                   <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gray-300 p-1 relative z-10">
                     <img
-                      :src="form.photoURL || defaultPhotoURL"
+                      :src="previewPhotoURL || form.photoURL || defaultPhotoURL"
                       alt="Profile"
                       class="w-full h-full rounded-full object-cover bg-white"
                     />
@@ -75,7 +75,7 @@
                     {{ progressPercentage }}%
                   </div>
                 </div>
-
+  
                 <!-- Profile Info -->
                 <div class="text-center">
                   <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ form.firstName }} {{ form.lastName }}</h1>
@@ -83,7 +83,7 @@
                 </div>
               </div>
             </div>
-
+  
             <!-- Tabs -->
             <div class="border-b pb-1 sm:pb-2 border-gray-200 mb-2 sm:mb-6 overflow-x-auto">
               <nav class="flex space-x-2 justify-center sm:space-x-4 whitespace-nowrap">
@@ -102,7 +102,7 @@
                 </button>
               </nav>
             </div>
-
+  
             <!-- Form Content -->
             <form @submit.prevent="handleSave" class="mt-4 sm:mt-6 w-full">
               <div class="space-y-6 sm:space-y-8" style="min-height: 300px;">
@@ -158,6 +158,20 @@
                               @blur="validateDate"
                               ref="dateInputRef"
                             />
+                            <!-- Add the placeholder overlay -->
+                            <span 
+                              class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
+                              aria-hidden="true"
+                            >
+                              <template v-for="(char, index) in dateOfBirthPlaceholder" :key="index">
+                                <span 
+                                  :class="getCharClass(index)"
+                                  :style="{ visibility: char.visible ? 'visible' : 'hidden' }"
+                                >
+                                  {{ char.value }}
+                                </span>
+                              </template>
+                            </span>
                             <CalendarIcon 
                               class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 cursor-pointer"
                               @click.stop="toggleCalendar"
@@ -312,177 +326,13 @@
                     </div>
                   </div>
                 </div>
-
+  
                 <!-- Pet Info Tab -->
-                <div v-show="currentTab === 'pet-info'" class="space-y-6">
-                  <!-- Pet Selection -->
-                  <div class="flex flex-wrap gap-2 pb-4">
-                    <button
-                      v-for="(pet, index) in form.pets"
-                      :key="index"
-                      @click="selectPet(index)"
-                      :class="[
-                        'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                        selectedPetIndex === index
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      ]"
-                    >
-                      {{ pet.name }}
-                    </button>
-                    <button
-                      @click="addPet"
-                      class="px-3 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center"
-                    >
-                      <PlusIcon class="w-4 h-4 mr-1" />
-                      Add Pet
-                    </button>
-                  </div>
-
-                  <!-- Selected Pet Details -->
-                  <div v-if="selectedPetIndex !== null && form.pets[selectedPetIndex]" class="space-y-6">
-                    <div class="flex items-center mb-4">
-                      <div class="relative group mr-4">
-                        <img
-                          :src="form.pets[selectedPetIndex].photoURL || '/placeholder.svg?height=64&width=64'"
-                          :alt="form.pets[selectedPetIndex].name"
-                          class="w-20 h-20 rounded-full object-cover"
-                        />
-                        <button
-                          @click="triggerPetPhotoUpload(selectedPetIndex)"
-                          class="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md hover:bg-gray-100"
-                        >
-                          <CameraIcon class="w-4 h-4 text-gray-600" />
-                        </button>
-                      </div>
-                      <div>
-                        <h2 class="text-2xl font-bold text-gray-900">{{ form.pets[selectedPetIndex].name }}</h2>
-                        <p class="text-sm text-gray-500">
-                          {{ form.pets[selectedPetIndex].breed }}, {{ form.pets[selectedPetIndex].age }} years old
-                        </p>
-                      </div>
-                    </div>
-          
-                    <!-- Pet Info Tabs -->
-                    <div class="border-b border-gray-200">
-                      <nav class="flex -mb-px space-x-8">
-                        <button
-                          v-for="tab in petTabs"
-                          :key="tab.id"
-                          @click="selectedPetTab = tab.id"
-                          :class="[
-                            'py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center',
-                            selectedPetTab === tab.id
-                              ? 'border-gray-900 text-gray-900'
-                              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                          ]"
-                        >
-                          <component :is="tab.icon" class="w-5 h-5 mr-2" />
-                          {{ tab.name }}
-                        </button>
-                      </nav>
-                    </div>
-
-                    <!-- Tab Content -->
-                    <div v-if="selectedPetTab === 'basic-details'" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <label class="block text-sm font-medium text-gray-700">Name</label>
-                        <input
-                          v-model="form.pets[selectedPetIndex].name"
-                          type="text"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label class="block text-sm font-medium text-gray-700">Species</label>
-                        <input
-                          v-model="form.pets[selectedPetIndex].species"
-                          type="text"
-                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label class="block text-sm font-medium text-gray-700">Breed</label>
-                        <input
-                          v-model="form.pets[selectedPetIndex].breed"
-                          type="text"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                        />
-                      </div>
-                      <div>
-                      <label class="block text-sm font-medium text-gray-700">Age (Weeks, Month, Year)</label>
-                      <div class="grid grid-cols-3 gap-2">
-                        <div>
-                          <input
-                            v-model="form.pets[selectedPetIndex].ageYears"
-                            type="number"
-                            min="0"
-                            placeholder="Years"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <input
-                            v-model="form.pets[selectedPetIndex].ageMonths"
-                            type="number"
-                            min="0"
-                            max="11"
-                            placeholder="Months"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <input
-                            v-model="form.pets[selectedPetIndex].ageWeeks"
-                            type="number"
-                            min="0"
-                            max="3"
-                            placeholder="Weeks"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                      <div>
-                        <label class="block text-sm font-medium text-gray-700">Weight</label>
-                        <input
-                          v-model="form.pets[selectedPetIndex].weight"
-                          type="number"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label class="block text-sm font-medium text-gray-700">Gender</label>
-                        <select
-                          v-model="form.pets[selectedPetIndex].gender"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                        >
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div v-else-if="selectedPetTab === 'medical-history'" class="space-y-4">
-                      <p class="text-gray-500 text-sm">Medical history records will be displayed here.</p>
-                    </div>
-
-                    <div v-else-if="selectedPetTab === 'vaccinations'" class="space-y-4">
-                      <p class="text-gray-500 text-sm">Vaccination records will be displayed here.</p>
-                    </div>
-
-                    <div v-else-if="selectedPetTab === 'documents'" class="space-y-4">
-                      <p class="text-gray-500 text-sm">Pet documents will be displayed here.</p>
-                    </div>
-                  </div>
-
-                  <!-- Empty State -->
-                  <div v-else class="text-center py-12">
-                    <p class="text-gray-500">No pets added yet. Click the + button to add a pet.</p>
-                  </div>
+                <div v-show="currentTab === 'pet-info'">
+                  <Pets ref="petsComponent" />
                 </div>
               </div>
-
+  
               <!-- Submit and Cancel Buttons -->
               <div class="mt-6 flex flex-col sm:flex-row justify-start sm:justify-end space-y-2 sm:space-y-0 sm:space-x-4">
                 <button
@@ -506,31 +356,25 @@
       </div>
     </div>
   </div>
-
-  <!-- Hidden file inputs for pet photos -->
-  <input
-    v-for="(pet, index) in form.pets"
-    :key="index"
-    type="file"
-    :ref="el => { if (el) petPhotoInputs[index] = el }"
-    @change="event => handlePetPhotoSelect(event, index)"
-    accept="image/*"
-    class="hidden"
-  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { CameraIcon, CalendarIcon, UserIcon, PhoneIcon, MapPinIcon, PlusIcon, TrashIcon, FileTextIcon, ActivityIcon, SyringeIcon, FolderIcon, EditIcon, PawPrint } from 'lucide-vue-next';
+import { CameraIcon, CalendarIcon, UserIcon, PhoneIcon, MapPinIcon } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
 import Calendar from '@/components/common/Calendar.vue';
+import Pets from '@/views/user/Pets.vue'; // Import the new Pets component
+import { usePetsStore } from '@/stores/modules/petsStore';
+// Import Firebase Storage functions
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '@shared/firebase';
 
 const props = defineProps({
   isSidebarOpen: {
     type: Boolean,
-    required: true,
+    default: true, // Make it optional with a default value of true
   },
 });
 
@@ -539,10 +383,11 @@ const emit = defineEmits(['close', 'save', 'update:modelValue']);
 const router = useRouter();
 const authStore = useAuthStore();
 const profileStore = useProfileStore();
+const petsStore = usePetsStore();
 
 const tabs = [
-  { id: 'edit-profile', name: 'Edit Profile Info', icon: EditIcon },
-  { id: 'pet-info', name: 'Pet Info', icon: PawPrint },
+  { id: 'edit-profile', name: 'Edit Profile Info' },
+  { id: 'pet-info', name: 'My Pets' },
 ];
 
 const currentTab = ref('edit-profile');
@@ -567,28 +412,47 @@ const form = ref({
 });
 const displayedProfile = ref({});
 const showCalendar = ref(false);
+const dateInput = ref('');
+const datePlaceholder = ref('YYYY-MM-DD');
 const dateInputRef = ref(null);
 const fileInput = ref(null);
+const addressInput = ref(null);
 const showCameraHover = ref(false);
 const isCameraClicked = ref(false);
 const isSaving = ref(false);
+const petsComponent = ref(null);
 let autocomplete = null;
 let googleMapsLoaded = false;
 
-const defaultPhotoURL = ref('/images/default-avatar.png');
+// Add refs for profile picture handling
+const selectedProfilePicture = ref(null);
+const previewPhotoURL = ref(null);
+const photoChanged = ref(false);
+
+const orientalMindoroPostalCodes = {
+  'Baco': '5201',
+  'Bansud': '5210',
+  'Bongabong': '5211',
+  'Bulalacao': '5214',
+  'Calapan City': '5200',
+  'Gloria': '5209',
+  'Mansalay': '5212',
+  'Naujan': '5204',
+  'Pinamalayan': '5208',
+  'Pola': '5206',
+  'Puerto Galera': '5203',
+  'Roxas': '5213',
+  'San Teodoro': '5202',
+  'Socorro': '5207',
+  'Victoria': '5205'
+};
+
+// Fixed SVG placeholder
+const defaultPhotoURL = ref('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 36 36\'%3E%3Crect width=\'36\' height=\'36\' fill=\'%23f0f2f5\'/%3E%3Cpath d=\'M18 20.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5\' stroke=\'%23bec3c9\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E');
 
 const tempForm = ref({});
 
 const isMobile = ref(window.innerWidth < 640);
-
-const selectedPetIndex = ref(null);
-const selectedPetTab = ref('basic-details');
-const petTabs = [
-  { id: 'basic-details', name: 'Basic Details', icon: FileTextIcon },
-  { id: 'medical-history', name: 'Medical History', icon: ActivityIcon },
-  { id: 'vaccinations', name: 'Vaccinations', icon: SyringeIcon },
-  { id: 'documents', name: 'Documents', icon: FolderIcon },
-];
 
 watch(form, (newForm) => {
   profileStore.calculateCompletionPercentage(newForm);
@@ -636,6 +500,7 @@ const handleResize = () => {
 watch(() => props.isSidebarOpen, async (newValue) => {
   if (newValue && authStore.user && authStore.user.userId) {
     await fetchUserProfile();
+    dateInput.value = form.value.dateOfBirth || '';
   }
 });
 
@@ -645,32 +510,118 @@ const fetchUserProfile = async () => {
     form.value = { ...profile };
     tempForm.value = { ...profile };
     displayedProfile.value = { ...profile };
+    dateInput.value = profile.dateOfBirth || '';
+    
+    // Reset photo change tracking
+    selectedProfilePicture.value = null;
+    previewPhotoURL.value = null;
+    photoChanged.value = false;
   }
 };
 
+// Modified handleSave to separate profile and pet saving
 const handleSave = async () => {
   if (isSaving.value) return;
   isSaving.value = true;
+
   try {
     if (authStore.user && authStore.user.userId) {
-      form.value = { ...form.value, ...tempForm.value };
-      const success = await profileStore.updateUserProfile(authStore.user.userId, form.value);
-      if (success) {
-        displayedProfile.value = { ...form.value };
-        console.log('Profile updated successfully!');
-      } else {
-        console.error('Failed to update profile. Please try again.');
+      const userId = authStore.user.userId;
+      
+      // Check which tab is active to determine what to save
+      if (currentTab.value === 'edit-profile') {
+        // Only save profile data when on the profile tab
+        console.log('Saving only profile data...');
+        
+        // Create a complete form data object with all profile fields
+        const updatedFormData = {
+          // Start with the original profile data
+          ...displayedProfile.value,
+          // Add all regular form fields
+          ...form.value,
+          // Add fields from tempForm (like dateOfBirth and age)
+          dateOfBirth: tempForm.value.dateOfBirth,
+          age: tempForm.value.age
+        };
+        
+        // Handle profile picture upload if changed
+        if (photoChanged.value && selectedProfilePicture.value) {
+          const file = selectedProfilePicture.value;
+          
+          // Create a reference to the storage location
+          const fileRef = storageRef(storage, `profile-pictures/${userId}/${Date.now()}_${file.name}`);
+          
+          // Upload the file
+          console.log('Uploading file to Firebase Storage...');
+          const snapshot = await uploadBytes(fileRef, file);
+          
+          // Get the download URL
+          const downloadURL = await getDownloadURL(snapshot.ref);
+          console.log('File uploaded successfully. Download URL:', downloadURL);
+          
+          // Update the photoURL in the form data
+          updatedFormData.photoURL = downloadURL;
+        }
+        
+        console.log('Saving profile data to Firestore:', updatedFormData);
+        
+        // Save only profile data to Firestore
+        const success = await profileStore.updateUserProfile(userId, updatedFormData);
+        
+        if (success) {
+          // Update displayed profile with the new data
+          displayedProfile.value = { ...updatedFormData };
+          
+          // Important: Update form.value with the new data including the photoURL
+          form.value = { ...updatedFormData };
+          
+          // Reset photo change tracking but keep the new photoURL visible
+          if (photoChanged.value) {
+            selectedProfilePicture.value = null;
+            previewPhotoURL.value = null;
+            photoChanged.value = false;
+          }
+          
+          console.log('Profile updated successfully!');
+        } else {
+          console.error('Failed to update profile. Please try again.');
+        }
+      } 
+      else if (currentTab.value === 'pet-info' && petsComponent.value) {
+        // Only save pet data when on the pet tab
+        console.log('Saving only pet data...');
+        
+        // Check if the component has pending changes
+        if (petsComponent.value.hasPendingChanges && petsComponent.value.hasPendingChanges()) {
+          const petSaveSuccess = await petsComponent.value.saveAllChanges();
+          
+          if (!petSaveSuccess) {
+            console.error('Failed to save pet changes. Please try again.');
+          } else {
+            console.log('Pet changes saved successfully!');
+          }
+        } else {
+          console.log('No pet changes to save.');
+        }
       }
     }
   } catch (error) {
-    console.error('Error updating profile:', error);
+    console.error('Error updating data:', error);
   } finally {
     isSaving.value = false;
   }
 };
 
 const closeAttachment = () => {
+  // Reset form to displayed profile
+  form.value = { ...displayedProfile.value };
   tempForm.value = { ...displayedProfile.value };
+  
+  // Clear any selected file that wasn't saved
+  selectedProfilePicture.value = null;
+  previewPhotoURL.value = null;
+  photoChanged.value = false;
+  
   router.push('/admin/dashboard');
 };
 
@@ -694,7 +645,13 @@ const calculateProgress = computed(() => {
     'photoURL'
   ];
 
-  const filledFields = fields.filter(field => form.value[field] && String(form.value[field]).trim() !== '').length;
+  const filledFields = fields.filter(field => {
+    const value = photoChanged.value && field === 'photoURL' 
+      ? previewPhotoURL.value || form.value[field]
+      : form.value[field];
+    return value && value !== null && value !== undefined && String(value).trim() !== '';
+  }).length;
+  
   return Math.round((filledFields / fields.length) * 100);
 });
 
@@ -735,6 +692,11 @@ const calculateAge = (birthDate) => {
   }
   return age;
 };
+
+const calculatedAge = computed(() => {
+  if (!form.value.dateOfBirth) return null;
+  return calculateAge(form.value.dateOfBirth);
+});
 
 const handleCalendarChange = (newValue) => {
   tempForm.value.dateOfBirth = newValue;
@@ -792,15 +754,27 @@ const validateDate = () => {
   }
 };
 
-const handleFileSelect = (event) => {
+// Modified handleFileSelect to only store the file and show a preview
+const handleFileSelect = async (event) => {
   const file = event.target.files[0];
-  if (file) {
+  if (!file) return;
+  
+  try {
+    // Store the file for later upload
+    selectedProfilePicture.value = file;
+    photoChanged.value = true;
+    
+    // Show a temporary preview immediately for better UX
     const reader = new FileReader();
     reader.onload = (e) => {
-      form.value.photoURL = e.target.result;
-      displayedProfile.value.photoURL = e.target.result;
+      previewPhotoURL.value = e.target.result; // Temporary local preview
     };
     reader.readAsDataURL(file);
+    
+    console.log('Profile picture selected and preview shown. Will upload on save.');
+  } catch (error) {
+    console.error('Error handling profile picture selection:', error);
+    alert('Failed to preview profile picture. Please try again.');
   }
 };
 
@@ -828,16 +802,32 @@ const handlePlaceSelect = () => {
 
   form.value.streetAddress = `${addressComponents.street_number} ${addressComponents.route}`.trim();
   form.value.city = addressComponents.locality || addressComponents.sublocality_level_1 || addressComponents.administrative_area_level_2;
-  form.value.province = addressComponents.administrative_area_level_1 || '';
+  
+  if (addressComponents.administrative_area_level_1 === 'MIMAROPA') {
+    const orientalMindoroCities = Object.keys(orientalMindoroPostalCodes);
+    if (orientalMindoroCities.includes(form.value.city)) {
+      form.value.province = 'Oriental Mindoro';
+    } else {
+      form.value.province = 'MIMAROPA';
+    }
+  } else if (addressComponents.administrative_area_level_1 === 'Oriental Mindoro') {
+    form.value.province = 'Oriental Mindoro';
+  } else {
+    form.value.province = addressComponents.administrative_area_level_1 || '';
+  }
+
   form.value.country = addressComponents.country;
-  form.value.postalCode = addressComponents.postal_code || '';
+
+  if (addressComponents.postal_code) {
+    form.value.postalCode = addressComponents.postal_code;
+  } else {
+    const city = form.value.city.trim();
+    form.value.postalCode = orientalMindoroPostalCodes[city] || '';
+  }
 
   if (!form.value.streetAddress) {
     form.value.streetAddress = place.formatted_address;
   }
-
-  console.log('Selected place details:', place);
-  console.log('Address components:', addressComponents);
 };
 
 const initializeAutocomplete = () => {
@@ -872,6 +862,44 @@ const handleCameraClick = () => {
     isCameraClicked.value = false;
   }, 300);
 };
+
+const getCharClass = (index) => {
+  if (!tempForm.value.dateOfBirth) return 'text-gray-300';
+  const parts = tempForm.value.dateOfBirth.split('-');
+  
+  let currentIndex = 0;
+  for (let i = 0; i < parts.length; i++) {
+    if (index < currentIndex + parts[i].length) {
+      return 'text-transparent';
+    } else if (index === currentIndex + parts[i].length && i < 2) {
+      return 'text-gray-400';
+    }
+    currentIndex += parts[i].length + 1;
+  }
+  
+  return 'text-gray-300';
+};
+
+const isPlaceholderVisible = (index) => {
+  if (!tempForm.value.dateOfBirth) return true;
+  const parts = tempForm.value.dateOfBirth.split('-');
+  let currentIndex = 0;
+  for (let i = 0; i < parts.length; i++) {
+    if (index < currentIndex + parts[i].length) {
+      return false;
+    }
+    currentIndex += parts[i].length + 1;
+  }
+  return true;
+};
+
+const dateOfBirthPlaceholder = computed(() => {
+  const placeholder = 'YYYY-MM-DD';
+  return placeholder.split('').map((char, index) => ({
+    value: char,
+    visible: isPlaceholderVisible(index)
+  }));
+});
 
 const getCalendarPosition = () => {
   if (isMobile.value) {
@@ -916,70 +944,9 @@ const handleKeyDown = (event) => {
 };
 
 const handleAgeInput = (event) => {
+  // Allow manual editing of age without recalculating from date of birth
   tempForm.value.age = event.target.value;
 };
-
-const petPhotoInputs = ref([]);
-
-const triggerPetPhotoUpload = (index) => {
-  petPhotoInputs.value[index].click();
-};
-
-const handlePetPhotoSelect = (event, index) => {
-  const file = event.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      form.value.pets[index].photoURL = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-};
-
-const addPet = () => {
-  if (!form.value.pets) {
-    form.value.pets = [];
-  }
-  const newPet = {
-    name: 'New Pet',
-    species: '',
-    breed: '',
-    ageYears: 0,
-    ageMonths: 0,
-    ageWeeks: 0,
-    gender: 'male',
-    photoURL: '/placeholder.svg?height=64&width=64'
-  };
-  form.value.pets.push(newPet);
-  selectedPetIndex.value = form.value.pets.length - 1;
-  selectedPetTab.value = 'basic-details';
-};
-
-const removePet = (index) => {
-  form.value.pets.splice(index, 1);
-  if (form.value.pets.length === 0) {
-    selectedPetIndex.value = null;
-  } else if (index === selectedPetIndex.value) {
-    selectedPetIndex.value = Math.min(index, form.value.pets.length - 1);
-  } else if (index < selectedPetIndex.value) {
-    selectedPetIndex.value--;
-  }
-};
-
-const selectPet = (index) => {
-  selectedPetIndex.value = index;
-  selectedPetTab.value = 'basic-details';
-};
-
-watch(() => tempForm.value.dateOfBirth, (newDateOfBirth) => {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(newDateOfBirth)) {
-    tempForm.value.age = calculateAge(newDateOfBirth);
-  }
-});
-
-if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
-  console.error('Google Maps API key is not set. Please check your environment variables.');
-}
 </script>
 
 <style scoped>
@@ -993,27 +960,5 @@ if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY) {
   input, select {
     font-size: 16px; /* Prevents zoom on focus in iOS */
   }
-}
-.pet-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  overflow: hidden;
-}
-
-.pet-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Hide scrollbar for pet selection */
-.overflow-x-auto {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.overflow-x-auto::-webkit-scrollbar {
-  display: none;
 }
 </style>

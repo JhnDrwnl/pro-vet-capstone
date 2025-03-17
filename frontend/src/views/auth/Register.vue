@@ -372,7 +372,7 @@ const registerWithGoogle = async () => {
 };
 
 const goToHome = () => {
-  router.push('/home');
+  router.push('/');
 };
 
 // Lifecycle hooks

@@ -1,9 +1,9 @@
-
+<!-- components/common/Header.vue -->
 <template>
   <header class="bg-[#3b82f6] sticky top-0 shadow-md z-50">
     <nav class="container mx-auto px-6 py-4 flex items-center justify-between">
       <!-- Logo -->
-      <router-link to="/home" class="flex items-center">
+      <router-link to="/" class="flex items-center">
         <img
           src="@/assets/media/images/logo/LogoProvet-removebg-preview.png" 
           alt="ProVet Logo"
@@ -16,9 +16,9 @@
         <ul class="flex space-x-8">
           <li>
             <router-link 
-              to="/home" 
+              to="/" 
               class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
-              active-class="border-b-2 border-white"
+              :class="{ 'border-b-2 border-white': $route.path === '/' }"
             >
               Home
             </router-link>
@@ -27,7 +27,7 @@
             <router-link 
               to="/about" 
               class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
-              active-class="border-b-2 border-white"
+              :class="{ 'border-b-2 border-white': $route.path === '/about' }"
             >
               About Us
             </router-link>
@@ -36,7 +36,7 @@
             <router-link 
               to="/service" 
               class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
-              active-class="border-b-2 border-white"
+              :class="{ 'border-b-2 border-white': $route.path === '/service' }"
             >
               Services
             </router-link>
@@ -45,7 +45,7 @@
             <router-link 
               to="/contact" 
               class="text-white text-lg font-medium hover:text-blue-800 transition duration-200 pb-2"
-              active-class="border-b-2 border-white"
+              :class="{ 'border-b-2 border-white': $route.path === '/contact' }"
             >
               Contact Us
             </router-link>

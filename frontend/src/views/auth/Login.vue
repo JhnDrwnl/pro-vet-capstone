@@ -405,7 +405,7 @@ const redirectToDashboard = (userRole) => {
 }
 
 const goToHome = () => {
-  router.push('/home')
+  router.push('/')
 }
 </script>
 

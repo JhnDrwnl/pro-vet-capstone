@@ -11,7 +11,7 @@ export default [
     component: LandingLayout,
     children: [
       {
-        path: 'home',
+        path: '',
         name: 'home',
         component: HomePage,
       },
