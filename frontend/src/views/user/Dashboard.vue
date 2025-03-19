@@ -1,3 +1,4 @@
+<!-- views/user/Dashboard.vue -->
 <template>
   <div class="min-h-screen bg-white rounded-2xl p-6">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

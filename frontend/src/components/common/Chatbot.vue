@@ -5,11 +5,11 @@
       v-if="lottieLoaded"
       id="custom-chat-bubble" 
       ref="lottieContainer"
-      style="position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; z-index: 1000; cursor: pointer;"
+      style="position: fixed; bottom: 60px; right: 20px; width: 56px; height: 56px; z-index: 1000; cursor: pointer;"
       @click="openChat"
     ></div>
     
-    <div class="fixed bottom-20 right-6 z-30" v-if="isVisible">
+    <div class="fixed bottom-24 right-6 z-30" v-if="isVisible">
       <button 
         @click="toggleChatbot"
         class="bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-all duration-300"

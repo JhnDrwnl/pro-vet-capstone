@@ -1,8 +1,11 @@
 <!-- components/user/Sidebar.vue -->
 <template>
   <div class="flex flex-col">
-    <!-- Mobile Header -->
-    <header v-if="isMobileView" class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center z-40">
+    <!-- Mobile Header - Only visible on home/dashboard page AND when panels are closed -->
+    <header 
+      v-if="isMobileView && isHomePage && !isSearchOpen && !isNotificationsOpen" 
+      class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center z-40"
+    >
       <h1 class="text-lg font-semibold">Provincial Veterinary</h1>
       <div class="flex items-center space-x-2">
         <button @click="toggleNotifications" class="p-2 rounded-full hover:bg-gray-100 relative">
@@ -11,11 +14,11 @@
             {{ unreadNotifications }}
           </span>
         </button>
-        <button @click="toggleChatbot" class="p-2 rounded-full hover:bg-gray-100">
-          <MessageCircleIcon class="w-6 h-6" />
-        </button>
+        <!-- Chat button removed as requested -->
       </div>
     </header>
+    
+    <!-- Rest of the component remains unchanged -->
     <!-- Sidebar that transforms to mobile navigation on small screens -->
     <nav 
       class="fixed transition-all duration-300 ease-in-out z-40"
@@ -227,6 +230,12 @@ const unreadNotifications = computed(() => notificationsStore.getUnreadCount || 
 let searchTimeout = null;
 let resizeTimeout = null;
 
+// Add computed property to check if current route is home/dashboard
+const isHomePage = computed(() => {
+  const currentPath = router.currentRoute.value.path;
+  return currentPath === '/user/dashboard' || currentPath === '/user/home';
+});
+
 // Update the userPhotoURL computed property to use the provided SVG as fallback
 const userPhotoURL = computed(() => {
   return profileStore.profile?.photoURL || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 36 36\'%3E%3Crect width=\'36\' height=\'36\' fill=\'%23f0f2f5\'/%3E%3Cpath d=\'M18 20.5a5.5 5.5 0 1 0 0-11a5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5\' stroke=\'%23bec3c9\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E';
@@ -433,20 +442,22 @@ const handleNavClick = (item) => {
       }
     }
   } else {
+    // For all other navigation items, always close both panels
+    isSearchOpen.value = false;
+    emit('toggleSearch', false);
+    isNotificationsOpen.value = false;
+    emit('toggleNotifications', false);
+    
+    // Then activate the selected item and navigate
     const navItem = mainNavItems.value.find(navItem => navItem.name === item.name);
     if (navItem) {
       navItem.active = true;
     }
     router.push(item.path);
-    if (!isMobileView.value) {
-      isSearchOpen.value = false;
-      emit('toggleSearch', false);
-      isNotificationsOpen.value = false;
-      emit('toggleNotifications', false);
-    }
   }
   
-  if (isMobileView.value && isOpen.value) {
+  // Fix: Use props.isOpen instead of isOpen.value
+  if (isMobileView.value && props.isOpen) {
     emit('toggle');
   }
 };
@@ -497,6 +508,7 @@ const handleSettingsClick = () => {
   closeMoreMenu();
 };
 
+// Keep the function but it won't be used in the UI anymore
 const toggleChatbot = () => {
   // Implement chatbot toggle logic here
   console.log('Toggling chatbot');
@@ -592,4 +604,3 @@ watch(unreadCount, (newCount) => {
   animation: subtle-pulse 2s infinite;
 }
 </style>
-

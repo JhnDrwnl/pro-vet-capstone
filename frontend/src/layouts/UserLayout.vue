@@ -37,8 +37,10 @@
       </div>
     </div>
     
-    <!-- Chatbot Button -->
-    <ChatbotButton @toggle="toggleChatbot" :isVisible="!isMobileView" />
+    <!-- Chatbot Button - Now visible on all devices with custom positioning -->
+    <div class="chatbot-wrapper">
+      <ChatbotButton @toggle="toggleChatbot" :isVisible="true" />
+    </div>
     
     <!-- Push Notification Modal -->
     <PushNotificationModal 
@@ -211,6 +213,22 @@ onUnmounted(() => {
   }
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Custom positioning for the chatbot button */
+.chatbot-wrapper {
+  position: fixed;
+  right: 20px;
+  bottom: 100px; /* Higher position from the bottom */
+  z-index: 50; /* Make sure it's above other elements */
+}
+
+/* Adjust position for mobile devices */
+@media (max-width: 767px) {
+  .chatbot-wrapper {
+    bottom: 300px; /* Much higher on mobile to avoid the bottom navigation */
+    right: 16px;
   }
 }
 </style>
