@@ -1,0 +1,6 @@
+{
+  "reportInvalidTypeForm": false,
+  "exclude": [
+    "**/venv/**"
+  ]
+}

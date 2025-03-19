@@ -173,22 +173,38 @@
                   <ChevronRight class="w-5 h-5" />
                 </button>
               </div>
-              <div class="grid grid-cols-7 gap-2 mb-2">
-                <div v-for="day in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']" :key="day" class="text-center text-sm font-medium text-gray-500">
+              
+              <div class="grid grid-cols-7 gap-2">
+                <div 
+                  v-for="day in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']" 
+                  :key="day" 
+                  class="text-center text-sm font-medium p-2"
+                  :class="day === 'Sun' || day === 'Sat' ? 'text-red-500' : 'text-gray-500'"
+                >
                   {{ day }}
                 </div>
               </div>
               <div class="grid grid-cols-7 gap-2">
+                <!-- Add empty cells for days before the month starts -->
+                <div
+                  v-for="emptyDay in startingDayOffset"
+                  :key="'empty-' + emptyDay"
+                  class="p-2"
+                ></div>
+                
                 <button
-                  v-for="{ date, isCurrentMonth, isToday } in calendarDays"
+                  v-for="{ date, isCurrentMonth, isToday, isWeekend } in calendarDays"
                   :key="date.toISOString()"
-                  @click="selectDate(date)"
-                  :disabled="!isCurrentMonth"
+                  @click="isWeekend ? showWeekendModal() : selectDate(date)"
+                  :disabled="!isCurrentMonth || isWeekend"
+                  class="p-2 rounded-full text-sm relative"
                   :class="[
-                    'p-2 rounded-full text-sm',
-                    isCurrentMonth ? 'hover:bg-blue-800' : 'text-gray-300',
+                    isCurrentMonth ? (
+                      isWeekend ? 'text-red-400 hover:bg-red-50 cursor-not-allowed' : 'hover:bg-blue-800'
+                    ) : 'text-gray-300',
                     isToday ? 'bg-blue-100 text-blue-600 font-semibold' : '',
-                    selectedDate && date.toDateString() === selectedDate.toDateString() ? 'bg-blue-500 text-white' : ''
+                    selectedDate && date.toDateString() === selectedDate.toDateString() ? 'bg-blue-500 text-white' : '',
+                    isWeekend && isCurrentMonth ? 'bg-red-50' : ''
                   ]"
                 >
                   {{ date.getDate() }}
@@ -199,18 +215,34 @@
             <!-- Time Selection -->
             <div class="space-y-4">
               <h3 class="text-lg font-semibold text-gray-900">Select Time</h3>
-              <div class="grid grid-cols-3 gap-2">
+              
+              <div v-if="selectedServices.length === 0" class="text-center py-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p class="text-yellow-700">Please select a service first to see available time slots.</p>
+              </div>
+              
+              <div v-else-if="isLoadingTimeSlots" class="text-center py-4">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <p class="mt-2 text-gray-600">Loading available time slots...</p>
+              </div>
+              
+              <div v-else class="grid grid-cols-3 gap-2">
                 <button
-                  v-for="time in availableTimes"
-                  :key="time"
-                  @click="selectTime(time)"
-                  class="p-2 rounded-full text-center"
+                  v-for="timeSlot in availableTimeSlots"
+                  :key="timeSlot.startTime"
+                  @click="selectTime(timeSlot.startTime)"
+                  :disabled="timeSlot.isBooked"
+                  class="p-3 rounded-lg text-center flex flex-col items-center"
                   :class="[
-                    selectedTime === time ? 'bg-blue-500 text-white' : 'bg-gray-100 hover:bg-gray-200',
+                    selectedTime === timeSlot.startTime ? 'bg-blue-500 text-white' : 
+                    timeSlot.isBooked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500'
                   ]"
                 >
-                  {{ time }}
+                  <span class="font-medium">{{ timeSlot.startTime }}</span>
+                  <span class="text-xs mt-1" :class="selectedTime === timeSlot.startTime ? 'text-blue-100' : 'text-gray-500'">
+                    {{ timeSlot.timeRange }}
+                  </span>
+                  <span v-if="timeSlot.isBooked" class="text-xs mt-1 text-red-400">Booked</span>
                 </button>
               </div>
             </div>
@@ -269,6 +301,9 @@
                   />
                 </div>
                 <h3 class="text-sm font-semibold text-center mb-2">{{ service.name }}</h3>
+                <p v-if="serviceDurations[service.name]" class="text-xs text-blue-600 font-medium">
+                  {{ serviceDurations[service.name] }} minutes
+                </p>
               </div>
               <div class="flex justify-between items-center px-4 py-3 bg-gray-50 border-t border-gray-100">
                 <span class="text-sm font-semibold">{{ service.price }}</span>
@@ -376,15 +411,31 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Appointment Summary</h2>
 
             <div class="rounded-xl space-y-4">
-              <div v-if="selectedService" class="flex items-center space-x-4 bg-white rounded-lg p-4 shadow-md">
+              <div v-if="selectedServices.length > 0" class="flex items-center space-x-4 bg-white rounded-lg p-4 shadow-md">
                 <div class="bg-blue-100 rounded-full p-2">
                   <Stethoscope class="w-6 h-6 text-blue-600" />
                 </div>
-                <div>
-                  <p class="text-base font-medium text-gray-500">Service</p>
-                  <p class="text-xl font-semibold text-gray-900">{{ selectedService }}</p>
+                <div class="flex-1">
+                  <p class="text-base font-medium text-gray-500">Services</p>
+                  <div>
+                    <p v-for="service in selectedServices" :key="service" class="text-lg font-semibold text-gray-900">
+                      {{ service }}
+                    </p>
+                  </div>
                 </div>
               </div>
+              
+              <!-- Estimated Duration -->
+              <div v-if="selectedServices.length > 0 && totalDuration" class="flex items-center space-x-4 bg-white rounded-lg p-4 shadow-md">
+                <div class="bg-purple-100 rounded-full p-2">
+                  <Clock class="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p class="text-base font-medium text-gray-500">Estimated Duration</p>
+                  <p class="text-xl font-semibold text-gray-900">{{ totalDuration }} minutes</p>
+                </div>
+              </div>
+              
               <div v-if="selectedPet" class="flex items-center space-x-4 bg-white rounded-lg p-4 shadow-md">
                 <div class="bg-green-100 rounded-full p-2">
                   <PawPrint class="w-6 h-6 text-green-600" />
@@ -418,7 +469,9 @@
                 </div>
                 <div>
                   <p class="text-base font-medium text-gray-500">Time</p>
-                  <p class="text-xl font-semibold text-gray-900">{{ selectedTime }}</p>
+                  <p class="text-xl font-semibold text-gray-900">
+                    {{ getTimeRangeForDisplay(selectedTime) }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -443,12 +496,70 @@
       </div>
     </div>
   </div>
+
+  <!-- Success Modal -->
+  <div v-if="showSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4 transform transition-all">
+      <div class="flex flex-col items-center text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <Check class="w-8 h-8 text-green-600" />
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">Appointment Booked!</h2>
+        <p class="text-gray-600 mb-6">
+          Your appointment has been successfully booked. We look forward to seeing you and {{ selectedBookingDetails.petName }} on {{ selectedBookingDetails.formattedDate }} at {{ selectedBookingDetails.time }}.
+        </p>
+        <div class="bg-gray-50 rounded-lg p-4 w-full mb-6">
+          <div class="space-y-2">
+            <div class="flex justify-between">
+              <span class="text-gray-500">Services:</span>
+              <span class="text-gray-900 font-medium">{{ selectedBookingDetails.services.join(', ') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500">Doctor:</span>
+              <span class="text-gray-900 font-medium">{{ selectedBookingDetails.doctorName }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-500">Duration:</span>
+              <span class="text-gray-900 font-medium">{{ selectedBookingDetails.duration }} minutes</span>
+            </div>
+          </div>
+        </div>
+        <button 
+          @click="closeSuccessModal" 
+          class="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Weekend Modal -->
+  <div v-if="showWeekendModalState" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4 transform transition-all">
+      <div class="flex flex-col items-center text-center">
+        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+          <Calendar class="w-8 h-8 text-red-600" />
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 mb-2">Office Closed on Weekends</h2>
+        <p class="text-gray-600 mb-6">
+          Provincial Veterinary Office is closed every weekends. Please select a weekday (Monday to Friday) for your appointment.
+        </p>
+        <button 
+          @click="closeWeekendModal" 
+          class="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          Understood
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getFirestore, collection, addDoc } from 'firebase/firestore'
+import { getFirestore, collection, addDoc, getDocs, query, where, Timestamp } from 'firebase/firestore'
 import { 
   Stethoscope, 
   User2,
@@ -466,12 +577,66 @@ import {
   Plus,
   Check,
 } from 'lucide-vue-next'
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths } from 'date-fns'
+import { startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths, parse, addMinutes, setHours, setMinutes, startOfDay, endOfDay } from 'date-fns'
 import docuImage from '@/assets/media/images/appointment/docu.png'
 const db = getFirestore()
 const router = useRouter()
 
+// Service durations in minutes
+const serviceDurations = {
+  'Consultation': 30,
+  'Treatment': 60,
+  'Vaccination': 30,
+  'Deworming': 20,
+  'Supplementation': 30,
+  'Technical Assistance': 40,
+  'Mass Rabies vaccination': 30,
+  'Large animal castration': 60,
+  'Spay and neuter services': 90,
+  'Estrus synchronization and artificial insemination': 60,
+  'Epidemiological surveillance': 45,
+  'Veterinary medical mission': 60,
+  'Dog and Cat': 20,
+  'Pigs, Goat, Sheep': 20,
+  'Cattle, Carabao': 30,
+  'Poultry': 20,
+  'Ducks (1-500 heads)': 30,
+  'Ducks (501-1000 heads)': 45,
+  'Ducks (1001-2000 heads)': 60,
+  'Ducks (2001 above heads)': 90,
+  'Video Consultation': 30,
+  'Follow-up Consultation': 20
+}
 
+// Business hours
+const businessHours = {
+  start: { hour: 9, minute: 0 },  // 9:00 AM
+  end: { hour: 17, minute: 0 }    // 5:00 PM
+}
+
+// Lunch break
+const lunchBreak = {
+  start: { hour: 12, minute: 0 }, // 12:00 PM
+  end: { hour: 14, minute: 0 }    // 2:00 PM
+}
+
+// State for success modal
+const showSuccessModal = ref(false)
+const selectedBookingDetails = ref({
+  petName: '',
+  formattedDate: '',
+  time: '',
+  services: [],
+  doctorName: '',
+  duration: 0
+})
+
+// State for weekend modal
+const showWeekendModalState = ref(false)
+
+// State for tracking booked appointments
+const bookedAppointments = ref([])
+const isLoadingTimeSlots = ref(false)
 
 const closePage = () => {
   window.close()
@@ -480,6 +645,7 @@ const closePage = () => {
     window.history.back()
   }
 }
+
 const steps = [
   { 
     id: 'service', 
@@ -587,8 +753,8 @@ const pets = [
 const doctors = [
   {
     id: 1,
-    name: 'Dr. Liza Martin',
-    specialization: 'Cardiologist',
+    name: 'Dr. Anna Rochelle Boongaling',
+    specialization: 'Veterinarian',
     rating: 5.0,
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-oVmg5oLuNeuUvIQ9vHK5ZK1V1UBL7u.png',
     biography: 'Dr. Liza Martin is a renowned cardiologist from a leading university medical school. Lisa received her degree in biology from Stanford University before she became a cardiologist.',
@@ -596,25 +762,14 @@ const doctors = [
   },
   {
     id: 2,
-    name: 'Dr. Robert Wilson',
-    specialization: 'Cardiologist',
+    name: 'Dr. Alfredo Manglicmot',
+    specialization: 'Veterinarian',
     rating: 4.5,
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-oVmg5oLuNeuUvIQ9vHK5ZK1V1UBL7u.png',
     biography: 'Dr. Robert Wilson is a board-certified cardiologist with over 15 years of experience in treating various heart conditions.',
     address: '456 Park Avenue, New York, USA'
   },
-  {
-    id: 3,
-    name: 'Dr. Sarah Johnson',
-    specialization: 'Veterinary Surgeon',
-    rating: 4.8,
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-oVmg5oLuNeuUvIQ9vHK5ZK1V1UBL7u.png',
-    biography: 'Dr. Sarah Johnson specializes in advanced veterinary surgical procedures with a focus on minimally invasive techniques.',
-    address: '789 Oak Street, New York, USA'
-  }
-]
-
-const availableTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM']
+] 
 
 const currentStepIndex = ref(0)
 const currentStep = computed(() => steps[currentStepIndex.value])
@@ -629,15 +784,199 @@ const selectedTime = ref(null)
 const selectedServices = ref([])
 const currentDate = ref(new Date())
 
+// Calculate total duration from all selected services
+const totalDuration = computed(() => {
+  if (selectedServices.value.length === 0) return null;
+  
+  return selectedServices.value.reduce((total, service) => {
+    return total + (serviceDurations[service] || 0);
+  }, 0);
+});
+
+// Generate dynamic time slots based on total duration of selected services
+const dynamicTimeSlots = computed(() => {
+  if (selectedServices.value.length === 0 || !totalDuration.value) {
+    return [];
+  }
+
+  const duration = totalDuration.value;
+  const slots = [];
+  
+  // Create a date object for calculations
+  const baseDate = new Date();
+  
+  // Start from business hours start
+  let currentHour = businessHours.start.hour;
+  let currentMinute = businessHours.start.minute;
+  
+  while (currentHour < businessHours.end.hour || 
+        (currentHour === businessHours.end.hour && currentMinute < businessHours.end.minute)) {
+    
+    // Skip lunch break
+    if ((currentHour > lunchBreak.start.hour || 
+        (currentHour === lunchBreak.start.hour && currentMinute >= lunchBreak.start.minute)) && 
+        (currentHour < lunchBreak.end.hour || 
+        (currentHour === lunchBreak.end.hour && currentMinute < lunchBreak.end.minute))) {
+      
+      // Jump to after lunch
+      currentHour = lunchBreak.end.hour;
+      currentMinute = lunchBreak.end.minute;
+      continue;
+    }
+    
+    // Set the current time
+    const startTime = setHours(setMinutes(baseDate, currentMinute), currentHour);
+    
+    // Calculate end time based on total service duration
+    const endTime = addMinutes(startTime, duration);
+    
+    // Check if the appointment would end after business hours
+    if (endTime.getHours() > businessHours.end.hour || 
+        (endTime.getHours() === businessHours.end.hour && endTime.getMinutes() > businessHours.end.minute)) {
+      break;
+    }
+    
+    // Format times
+    const startTimeFormatted = format(startTime, 'h:mm a');
+    const endTimeFormatted = format(endTime, 'h:mm a');
+    const timeRange = `${startTimeFormatted}-${endTimeFormatted}`;
+    
+    slots.push({
+      startTime: startTimeFormatted,
+      endTime: endTimeFormatted,
+      timeRange: timeRange
+    });
+    
+    // Move to next slot based on the service duration
+    currentMinute += duration;
+    if (currentMinute >= 60) {
+      currentHour += Math.floor(currentMinute / 60);
+      currentMinute = currentMinute % 60;
+    }
+  }
+  
+  return slots;
+});
+
+// Available time slots (filtered to exclude booked slots)
+const availableTimeSlots = computed(() => {
+  if (!dynamicTimeSlots.value.length) return [];
+  
+  return dynamicTimeSlots.value.map(slot => {
+    // Check if this time slot is already booked
+    const isBooked = bookedAppointments.value.some(appointment => {
+      return appointment.time === slot.startTime;
+    });
+    
+    return {
+      ...slot,
+      isBooked
+    };
+  });
+});
+
+// Function to get time range for display in the appointment summary
+const getTimeRangeForDisplay = (startTime) => {
+  if (selectedServices.value.length === 0 || !totalDuration.value) return startTime;
+  
+  const duration = totalDuration.value;
+  const timeFormat = startTime.includes('AM') ? 'h:mm a' : 'h:mm a';
+  const parsedStartTime = parse(startTime, timeFormat, new Date());
+  const endTime = addMinutes(parsedStartTime, duration);
+  const formattedEndTime = format(endTime, 'h:mm a');
+  
+  return `${startTime} - ${formattedEndTime}`;
+}
+
+// Function to check if a date is a weekend (Saturday or Sunday)
+const isWeekend = (date) => {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+}
+
+// Show weekend modal
+const showWeekendModal = () => {
+  showWeekendModalState.value = true;
+}
+
+// Close weekend modal
+const closeWeekendModal = () => {
+  showWeekendModalState.value = false;
+}
+
+// Fetch booked appointments for the selected date
+const fetchBookedAppointments = async () => {
+  if (!selectedDate.value) return;
+  
+  isLoadingTimeSlots.value = true;
+  
+  try {
+    // Create start and end of day timestamps for the selected date
+    const start = startOfDay(selectedDate.value);
+    const end = endOfDay(selectedDate.value);
+    
+    // Query Firestore for appointments on the selected date
+    const appointmentsRef = collection(db, 'appointments');
+    const q = query(
+      appointmentsRef,
+      where('date', '>=', start),
+      where('date', '<=', end)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    bookedAppointments.value = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      bookedAppointments.value.push({
+        id: doc.id,
+        time: data.time,
+        doctorId: data.doctorId,
+        duration: data.duration
+      });
+    });
+  } catch (error) {
+    console.error('Error fetching booked appointments:', error);
+  } finally {
+    isLoadingTimeSlots.value = false;
+  }
+};
+
+// Watch for changes in selected services to reset time if needed
+watch(selectedServices, (newServices, oldServices) => {
+  if (newServices.length !== oldServices.length || 
+      !newServices.every((service, index) => service === oldServices[index])) {
+    selectedTime.value = null;
+  }
+});
+
+// Watch for changes in selected date to fetch booked appointments
+watch(selectedDate, (newDate) => {
+  if (newDate) {
+    selectedTime.value = null;
+    fetchBookedAppointments();
+  }
+});
+
+// Add this computed property to calculate the offset for the first day of the month
+const startingDayOffset = computed(() => {
+  const start = startOfMonth(currentDate.value);
+  return start.getDay(); // Returns 0-6 (Sunday-Saturday)
+});
+
+// Modify the calendarDays computed property
 const calendarDays = computed(() => {
-  const start = startOfMonth(currentDate.value)
-  const end = endOfMonth(currentDate.value)
+  const start = startOfMonth(currentDate.value);
+  const end = endOfMonth(currentDate.value);
+  
+  // Get all days in the month
   return eachDayOfInterval({ start, end }).map(date => ({
     date,
     isCurrentMonth: true,
-    isToday: date.toDateString() === new Date().toDateString()
-  }))
-})
+    isToday: date.toDateString() === new Date().toDateString(),
+    isWeekend: isWeekend(date)
+  }));
+});
 
 const currentMonthYear = computed(() => format(currentDate.value, 'MMMM yyyy'))
 
@@ -646,7 +985,7 @@ const filteredPets = computed(() => {
 })
 
 const canBook = computed(() => 
-  selectedService.value && 
+  selectedServices.value.length > 0 && 
   selectedPet.value && 
   selectedDoctor.value && 
   selectedDate.value &&
@@ -670,7 +1009,6 @@ const canProceed = computed(() => {
 
 const formatDate = (date) => {
   return format(date, 'EEEE, MMMM d, yyyy')
-  
 }
 
 const selectServiceType = (serviceType) => {
@@ -686,6 +1024,8 @@ const selectService = (service) => {
   } else {
     selectedServices.value.splice(index, 1)
   }
+  
+  // Update the primary selected service for display purposes
   selectedService.value = selectedServices.value.length > 0 ? selectedServices.value[0] : null
 }
 
@@ -703,8 +1043,12 @@ const selectDoctor = (doctor) => {
 }
 
 const selectDate = (date) => {
-  selectedDate.value = date
-  selectedTime.value = null
+  // Only select the date if it's not a weekend
+  if (!isWeekend(date)) {
+    selectedDate.value = date
+    selectedTime.value = null
+    fetchBookedAppointments()
+  }
 }
 
 const selectTime = (time) => {
@@ -731,40 +1075,76 @@ const previousMonth = () => {
   currentDate.value = subMonths(currentDate.value, 1)
 }
 
+const closeSuccessModal = () => {
+  showSuccessModal.value = false
+  
+  // Reset form after closing the modal
+  selectedServiceType.value = null
+  selectedService.value = null
+  selectedSpecies.value = null
+  selectedPet.value = null
+  selectedDoctor.value = null
+  selectedDate.value = null
+  selectedTime.value = null
+  selectedServices.value = []
+  currentStepIndex.value = 0
+}
+
 const bookAppointment = async () => {
   if (!canBook.value) return
 
   try {
-    await addDoc(collection(db, 'appointments'), {
+    // Create appointment data
+    const appointmentData = {
       serviceType: selectedServiceType.value.name,
-      service: selectedService.value,
+      services: selectedServices.value,
+      duration: totalDuration.value,
       petId: selectedPet.value.id,
       petName: selectedPet.value.name,
       doctorId: selectedDoctor.value.id,
       doctorName: selectedDoctor.value.name,
       date: selectedDate.value,
       time: selectedTime.value,
+      timeRange: getTimeRangeForDisplay(selectedTime.value),
       userId: 'current-user-id',
       status: 'pending',
       createdAt: new Date()
+    }
+
+    // Add to Firestore
+    const docRef = await addDoc(collection(db, 'appointments'), appointmentData)
+    
+    // Update booked appointments list
+    bookedAppointments.value.push({
+      id: docRef.id,
+      time: selectedTime.value,
+      doctorId: selectedDoctor.value.id,
+      duration: totalDuration.value
     })
-
-    // Reset form after successful booking
-    selectedServiceType.value = null
-    selectedService.value = null
-    selectedSpecies.value = null
-    selectedPet.value = null
-    selectedDoctor.value = null
-    selectedDate.value = null
-    selectedTime.value = null
-    selectedServices.value = []
-    currentStepIndex.value = 0
-
-    alert('Appointment booked successfully!')
+    
+    // Set booking details for success modal
+    selectedBookingDetails.value = {
+      petName: selectedPet.value.name,
+      formattedDate: formatDate(selectedDate.value),
+      time: selectedTime.value,
+      services: selectedServices.value,
+      doctorName: selectedDoctor.value.name,
+      duration: totalDuration.value
+    }
+    
+    // Show success modal
+    showSuccessModal.value = true
+    
   } catch (error) {
     console.error('Error booking appointment:', error)
     alert('Failed to book appointment. Please try again.')
   }
 }
-</script>
 
+// Fetch initial booked appointments on component mount
+onMounted(() => {
+  if (selectedDate.value) {
+    fetchBookedAppointments()
+  }
+})
+</script>
