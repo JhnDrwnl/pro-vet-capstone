@@ -14,7 +14,7 @@
                 {{ slides[currentSlide].subtitle }}
               </p>
             </div>
-
+  
             <!-- Meeting Controls -->
             <div class="space-y-4 mb-auto">
               <div class="flex flex-col sm:flex-row gap-4">
@@ -38,7 +38,7 @@
               </a>
             </div>
           </div>
-
+  
           <!-- Right Column -->
           <div class="relative">
             <!-- Navigation Arrows -->
@@ -54,7 +54,7 @@
             >
               <ChevronRightIcon class="w-6 h-6 text-gray-600" />
             </button>
-
+  
             <!-- Main Illustration -->
             <div class="relative aspect-square max-w-md mx-auto">
               <div class="absolute inset-0 bg-blue-50 rounded-full overflow-hidden">
@@ -70,7 +70,7 @@
                 </TransitionGroup>
               </div>
             </div>
-
+  
             <!-- Carousel Dots -->
             <div class="flex justify-center gap-2 mt-8">
               <button 
@@ -90,7 +90,7 @@
         </div>
       </main>
     </div>
-
+  
     <!-- Sessions View -->
     <div v-else-if="currentView === 'sessions'">
       <div class="max-w-3xl mx-auto px-4 sm:px-6 py-12">
@@ -208,7 +208,7 @@
         </div>
       </div>
     </div>
-
+  
     <!-- Meetings View (placeholder) -->
     <div v-else-if="currentView === 'meetings'">
       <div class="max-w-3xl mx-auto px-4 sm:px-6 py-12">
@@ -225,52 +225,100 @@
         <p class="text-gray-600">Upcoming meetings view</p>
       </div>
     </div>
-
-    <!-- Calling View - Shows while waiting for the other person to answer -->
-    <div v-else-if="currentView === 'calling'" class="h-screen bg-white">
-      <div class="h-full flex flex-col items-center justify-center bg-gray-50">
-        <div class="text-center">
-          <div class="w-24 h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-6 relative">
-            <img 
-              :src="currentMeeting?.doctorAvatar || '/placeholder.svg?height=96&width=96'" 
-              alt="Doctor" 
-              class="w-full h-full object-cover rounded-full"
-            />
-            <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-              <PhoneIcon class="w-4 h-4 text-white" />
+  
+    <!-- Calling View - Modern, clean and visually appealing design -->
+    <div v-else-if="currentView === 'calling'" class="h-screen w-full overflow-hidden">
+      <!-- Subtle paw pattern background with gradient overlay -->
+      <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div class="absolute inset-0 opacity-10" 
+             style="background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDYwIDYwIj48cGF0aCBkPSJNMTIgMTJDOSAxMiA2IDkgNiA2QzYgMyA5IDAgMTIgMEMxNSAwIDE4IDMgMTggNkMxOCA5IDE1IDEyIDEyIDEyWk00MiAxMkMzOSAxMiAzNiA5IDM2IDZDMzYgMyAzOSAwIDQyIDBDNDUgMCA0OCAzIDQ4IDZDNDggOSA0NSAxMiA0MiAxMlpNMTIgNDJDOSA0MiA2IDM5IDYgMzZDNiAzMyA5IDMwIDEyIDMwQzE1IDMwIDE4IDMzIDE4IDM2QzE4IDM5IDE1IDQyIDEyIDQyWk00MiA0MkMzOSA0MiAzNiAzOSAzNiAzNkMzNiAzMyAzOSAzMCA0MiAzMEM0NSAzMCA0OCAzMyA0OCAzNkM0OCAzOSA0NSA0MiA0MiA0MlpNMjcgMjdDMjQgMjcgMjEgMjQgMjEgMjFDMjEgMTggMjQgMTUgMjcgMTVDMzAgMTUgMzMgMTggMzMgMjFDMzMgMjQgMzAgMjcgMjcgMjdaIiBmaWxsPSIjMzQ4MmY2IiBmaWxsLW9wYWNpdHk9IjAuMiIvPjwvc3ZnPg=='); 
+              background-repeat: repeat;"></div>
+      </div>
+      
+      <!-- Main content container with glass effect -->
+      <div class="relative h-full flex flex-col items-center justify-center p-4">
+        <div class="max-w-md w-full mx-auto">
+          <!-- Top status bar -->
+          <div class="flex justify-between items-center mb-8">
+            <button 
+              @click="cancelCall" 
+              class="p-2 rounded-full bg-white/80 backdrop-blur-sm text-gray-600 hover:bg-white hover:text-gray-800 transition-all duration-300 shadow-sm"
+            >
+              <ArrowLeftIcon class="w-5 h-5" />
+            </button>
+            
+            <div class="bg-white/80 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm font-medium shadow-sm flex items-center">
+              <span class="w-2 h-2 bg-blue-600 rounded-full mr-2 animate-pulse"></span>
+              <span class="text-blue-700">Connecting...</span>
             </div>
           </div>
-          <h2 class="text-2xl font-semibold text-gray-900 mb-2">Calling {{ currentMeeting?.doctor || 'Doctor' }}...</h2>
-          <p class="text-gray-500 mb-8">Please wait while we connect you</p>
           
-          <!-- Pulsing dots animation -->
-          <div class="flex justify-center space-x-2 mb-8">
-            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style="animation-delay: 0s"></div>
-            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
-            <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+          <!-- Doctor profile and call info -->
+          <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-xl p-8 mb-6 transform transition-all duration-500 ease-out">
+            <!-- Doctor avatar with animated ring -->
+            <div class="relative mx-auto mb-6 w-32 h-32">
+              <div class="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400 to-indigo-500 animate-spin-slow opacity-70 blur-sm"></div>
+              <div class="absolute inset-1 rounded-full bg-white"></div>
+              <div class="absolute inset-2 rounded-full overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50 p-1">
+                <img 
+                  :src="currentMeeting?.doctorAvatar || '/placeholder.svg?height=112&width=112'" 
+                  alt="Doctor" 
+                  class="w-full h-full object-cover rounded-full"
+                />
+              </div>
+              <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-10">
+                <PhoneIcon class="w-5 h-5 text-white" />
+              </div>
+            </div>
+            
+            <!-- Call info -->
+            <div class="text-center">
+              <h2 class="text-2xl font-bold text-gray-900 mb-1">{{ currentMeeting?.doctor || 'Doctor' }}</h2>
+              <p class="text-gray-500 mb-4">{{ currentMeeting?.title || 'Video Consultation' }}</p>
+              
+              <!-- Animated dots -->
+              <div class="flex justify-center space-x-2 mb-2">
+                <div class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+                <div class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                <div class="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+              </div>
+              <p class="text-sm text-gray-500 font-medium">Waiting for response</p>
+            </div>
           </div>
           
-          <!-- Local video preview -->
-          <div class="w-48 h-36 mx-auto bg-gray-800 rounded-lg overflow-hidden shadow-lg border-2 border-white mb-8">
+          <!-- Local video preview with glass effect -->
+          <div class="relative mb-8 overflow-hidden rounded-2xl shadow-lg border border-white/50 backdrop-blur-sm bg-black/10">
             <video 
               ref="localVideoPreview" 
-              class="w-full h-full object-cover" 
+              class="w-full h-56 object-cover" 
               autoplay 
               playsinline 
               muted
             ></video>
+            
+            <!-- Video overlay with gradient -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent pointer-events-none"></div>
+            
+            <!-- Video label -->
+            <div class="absolute bottom-3 left-3 bg-black/40 backdrop-blur-sm text-white text-xs px-2.5 py-1.5 rounded-md flex items-center">
+              <VideoIcon class="w-3.5 h-3.5 mr-1.5" />
+              Your camera
+            </div>
           </div>
           
-          <button 
-            @click="cancelCall" 
-            class="p-4 rounded-full bg-red-600 text-white hover:bg-red-700 focus:outline-none transition-colors"
-          >
-            <PhoneOffIcon class="w-6 h-6" />
-          </button>
+          <!-- Call actions -->
+          <div class="flex justify-center">
+            <button 
+              @click="cancelCall" 
+              class="p-4 rounded-full bg-red-500 text-white hover:bg-red-600 focus:outline-none transition-all duration-300 shadow-lg transform hover:scale-105"
+            >
+              <PhoneOffIcon class="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
-
+  
     <!-- Incoming Call View -->
     <div v-else-if="currentView === 'incomingCall'" class="h-screen bg-white">
       <div class="h-full flex flex-col items-center justify-center bg-gray-50">
@@ -305,7 +353,7 @@
         </div>
       </div>
     </div>
-
+  
     <!-- Video Call View with WebRTC - Designed to match the reference image -->
     <div v-else-if="currentView === 'videoCall'" class="h-screen bg-white">
       <div class="h-full flex flex-col">
@@ -407,17 +455,26 @@
                 </div>
               </div>
             </div>
-
+  
             <!-- Notes Content -->
             <div v-else-if="chatTab === 'notes'" class="flex-1 overflow-y-auto p-4 bg-gray-50">
               <h3 class="font-medium text-gray-900 mb-2">Session Notes</h3>
               <textarea 
                 v-model="sessionNotes" 
-                class="w-full h-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-800 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                class="w-full h-[calc(100%-80px)] bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-800 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Add notes about this session..."
               ></textarea>
+              <div class="mt-3 flex justify-end">
+                <button 
+                  @click="saveNotes" 
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                >
+                  <SaveIcon class="w-4 h-4 mr-1 inline-block" />
+                  Save Notes
+                </button>
+              </div>
             </div>
-
+  
             <!-- Record Content -->
             <div v-else-if="chatTab === 'record'" class="flex-1 overflow-y-auto p-4 bg-gray-50 flex flex-col items-center justify-center">
               <div class="text-center">
@@ -438,33 +495,15 @@
                 </p>
               </div>
             </div>
-
+  
             <!-- Docs Content -->
             <div v-else-if="chatTab === 'docs'" class="flex-1 overflow-y-auto p-4 bg-gray-50">
               <h3 class="font-medium text-gray-900 mb-3">Documents</h3>
               <div class="space-y-3">
-                <div class="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                <div v-for="(doc, index) in documents" :key="index" class="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
                   <div class="flex items-center">
                     <FileTextIcon class="w-5 h-5 text-blue-500 mr-2" />
-                    <span class="text-sm text-gray-800">Medical History.pdf</span>
-                  </div>
-                  <button class="text-blue-500 hover:text-blue-600">
-                    <DownloadIcon class="w-4 h-4" />
-                  </button>
-                </div>
-                <div class="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
-                  <div class="flex items-center">
-                    <FileTextIcon class="w-5 h-5 text-blue-500 mr-2" />
-                    <span class="text-sm text-gray-800">Lab Results.pdf</span>
-                  </div>
-                  <button class="text-blue-500 hover:text-blue-600">
-                    <DownloadIcon class="w-4 h-4" />
-                  </button>
-                </div>
-                <div class="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
-                  <div class="flex items-center">
-                    <FileTextIcon class="w-5 h-5 text-blue-500 mr-2" />
-                    <span class="text-sm text-gray-800">Prescription.pdf</span>
+                    <span class="text-sm text-gray-800">{{ doc.name }}</span>
                   </div>
                   <button class="text-blue-500 hover:text-blue-600">
                     <DownloadIcon class="w-4 h-4" />
@@ -472,9 +511,17 @@
                 </div>
               </div>
               <div class="mt-4">
-                <button class="w-full py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
-                  + Upload Document
-                </button>
+                <label for="document-upload" class="w-full py-2 border border-dashed border-gray-300 rounded-lg text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center cursor-pointer">
+                  <UploadIcon class="w-4 h-4 mr-2" />
+                  Upload Document
+                </label>
+                <input 
+                  id="document-upload" 
+                  type="file" 
+                  class="hidden" 
+                  @change="uploadDocument"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                />
               </div>
             </div>
             
@@ -499,14 +546,70 @@
           </div>
           
           <!-- Main Video Area -->
-          <div class="flex-1 relative bg-white">
-            <!-- Remote Video -->
-            <video 
-              ref="remoteVideo" 
-              class="w-full h-full object-cover" 
-              autoplay 
-              playsinline
-            ></video>
+          <div class="flex-1 relative bg-white flex items-center justify-center overflow-hidden">
+            <!-- Remote Video Container with floating effect -->
+            <div class="w-[95%] h-[95%] rounded-3xl shadow-xl overflow-hidden relative">
+              <!-- Remote Video -->
+              <video 
+                ref="remoteVideo" 
+                class="w-full h-full object-cover rounded-3xl" 
+                autoplay 
+                playsinline
+              ></video>
+              
+              <!-- Soft overlay for edges -->
+              <div class="absolute inset-0 pointer-events-none rounded-3xl shadow-inner" 
+                   style="box-shadow: inset 0 0 20px 10px rgba(255,255,255,0.2)"></div>
+              
+              <!-- Local Video (Small) - Now inside the remote video container -->
+              <div class="absolute top-4 right-4 w-32 h-24 bg-gray-800 rounded-lg overflow-hidden shadow-lg border-2 border-white z-10">
+                <video 
+                  ref="localVideo" 
+                  class="w-full h-full object-cover" 
+                  autoplay 
+                  playsinline 
+                  muted
+                ></video>
+              </div>
+              
+              <!-- Call Controls - Now inside the remote video container at the bottom -->
+              <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-4 z-10">
+                <button 
+                  @click="toggleMute" 
+                  class="p-3 rounded-full focus:outline-none transition-colors shadow-lg"
+                  :class="isMuted ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                >
+                  <component :is="isMuted ? MicOffIcon : MicIcon" class="w-5 h-5" />
+                </button>
+                <button 
+                  @click="toggleVideo" 
+                  class="p-3 rounded-full focus:outline-none transition-colors shadow-lg"
+                  :class="isVideoOff ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                >
+                  <component :is="isVideoOff ? VideoOffIcon : VideoIcon" class="w-5 h-5" />
+                </button>
+                <button 
+                  @click="toggleScreenShare" 
+                  class="p-3 rounded-full focus:outline-none transition-colors shadow-lg"
+                  :class="isScreenSharing ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                >
+                  <ShareIcon class="w-5 h-5" />
+                </button>
+                <button 
+                  @click="toggleRecording" 
+                  class="p-3 rounded-full focus:outline-none transition-colors shadow-lg"
+                  :class="isRecording ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
+                >
+                  <CircleRecordIcon class="w-5 h-5" />
+                </button>
+                <button 
+                  @click="endCall" 
+                  class="p-3 rounded-full bg-red-600 text-white hover:bg-red-700 focus:outline-none transition-colors shadow-lg"
+                >
+                  <PhoneOffIcon class="w-5 h-5" />
+                </button>
+              </div>
+            </div>
             
             <!-- Loading state when remote video is not connected -->
             <div 
@@ -516,171 +619,16 @@
               <div class="w-16 h-16 mb-4 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
               <p class="text-lg">Connecting to {{ currentMeeting ? currentMeeting.doctor : 'remote user' }}...</p>
             </div>
-            
-            <!-- Local Video (Small) -->
-            <div class="absolute top-4 right-4 w-32 h-24 bg-gray-800 rounded-lg overflow-hidden shadow-lg border-2 border-white">
-              <video 
-                ref="localVideo" 
-                class="w-full h-full object-cover" 
-                autoplay 
-                playsinline 
-                muted
-              ></video>
-            </div>
-            
-            <!-- Call Controls -->
-            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-4">
-              <button 
-                @click="toggleMute" 
-                class="p-3 rounded-full focus:outline-none transition-colors"
-                :class="isMuted ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
-              >
-                <component :is="isMuted ? MicOffIcon : MicIcon" class="w-5 h-5" />
-              </button>
-              <button 
-                @click="toggleVideo" 
-                class="p-3 rounded-full focus:outline-none transition-colors"
-                :class="isVideoOff ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
-              >
-                <component :is="isVideoOff ? VideoOffIcon : VideoIcon" class="w-5 h-5" />
-              </button>
-              <button 
-                @click="endCall" 
-                class="p-3 rounded-full bg-red-600 text-white hover:bg-red-700 focus:outline-none transition-colors"
-              >
-                <PhoneOffIcon class="w-5 h-5" />
-              </button>
-            </div>
           </div>
-        </div>
-        
-        <!-- Bottom Toolbar -->
-        <div class="bg-white border-t border-gray-200 py-3 px-6 flex justify-between">
-          <div class="flex space-x-8">
-            <button 
-              @click="toggleRecording"
-              class="flex flex-col items-center"
-              :class="isRecording ? 'text-red-600' : 'text-gray-500 hover:text-gray-700'"
-            >
-              <VideoIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Record</span>
-            </button>
-            <button 
-              @click="toggleScreenShare"
-              class="flex flex-col items-center"
-              :class="isScreenSharing ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'"
-            >
-              <Share2Icon class="w-5 h-5" />
-              <span class="text-xs mt-1">Share screen</span>
-            </button>
-            <button 
-              @click="toggleSubtitles"
-              class="flex flex-col items-center"
-              :class="subtitlesEnabled ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'"
-            >
-              <MessageSquareIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Subtitles</span>
-            </button>
-            <button 
-              @click="toggleWhiteboard"
-              class="flex flex-col items-center"
-              :class="whiteboardActive ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'"
-            >
-              <LayoutIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">White board</span>
-            </button>
-            <button 
-              @click="showMeetingPlan"
-              class="flex flex-col items-center text-gray-500 hover:text-gray-700"
-            >
-              <FileTextIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Meeting plan</span>
-            </button>
-            <button 
-              @click="showExercises"
-              class="flex flex-col items-center text-gray-500 hover:text-gray-700"
-            >
-              <DumbbellIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Exercise</span>
-            </button>
-            <button 
-              @click="showSlides"
-              class="flex flex-col items-center text-gray-500 hover:text-gray-700"
-            >
-              <SlidersIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Slides</span>
-            </button>
-          </div>
-          <button 
-            @click="showMoreOptions"
-            class="flex flex-col items-center text-gray-500 hover:text-gray-700"
-          >
-            <MoreVerticalIcon class="w-5 h-5" />
-            <span class="text-xs mt-1">More</span>
-          </button>
-        </div>
-
-        <!-- Whiteboard Overlay -->
-        <div v-if="whiteboardActive" class="absolute inset-0 bg-white bg-opacity-90 z-10 flex flex-col">
-          <div class="p-4 bg-white border-b border-gray-200 flex justify-between items-center">
-            <h3 class="font-medium">Whiteboard</h3>
-            <button @click="toggleWhiteboard" class="text-gray-500 hover:text-gray-700">
-              <XIcon class="w-5 h-5" />
-            </button>
-          </div>
-          <div class="flex-1 p-4">
-            <div class="bg-white border border-gray-200 rounded-lg h-full w-full flex items-center justify-center">
-              <p class="text-gray-500">Whiteboard functionality would be implemented here</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Meeting Plan Modal -->
-        <div v-if="meetingPlanVisible" class="absolute inset-0 bg-black bg-opacity-50 z-10 flex items-center justify-center">
-          <div class="bg-white rounded-lg w-full max-w-lg p-6">
-            <div class="flex justify-between items-center mb-4">
-              <h3 class="font-medium text-lg">Meeting Plan</h3>
-              <button @click="meetingPlanVisible = false" class="text-gray-500 hover:text-gray-700">
-                <XIcon class="w-5 h-5" />
-              </button>
-            </div>
-            <div class="space-y-4">
-              <div class="p-3 bg-gray-50 rounded-lg">
-                <h4 class="font-medium text-sm text-gray-900 mb-1">1. Review Previous Symptoms</h4>
-                <p class="text-sm text-gray-600">Discuss previous symptoms and any changes since the last appointment.</p>
-              </div>
-              <div class="p-3 bg-gray-50 rounded-lg">
-                <h4 class="font-medium text-sm text-gray-900 mb-1">2. Current Health Status</h4>
-                <p class="text-sm text-gray-600">Evaluate current health status and any new concerns.</p>
-              </div>
-              <div class="p-3 bg-gray-50 rounded-lg">
-                <h4 class="font-medium text-sm text-gray-900 mb-1">3. Treatment Plan</h4>
-                <p class="text-sm text-gray-600">Discuss treatment options and next steps.</p>
-              </div>
-            </div>
-            <div class="mt-6 flex justify-end">
-              <button 
-                @click="meetingPlanVisible = false"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Subtitles Overlay -->
-        <div v-if="subtitlesEnabled" class="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 bg-black bg-opacity-70 text-white px-6 py-2 rounded-lg text-center max-w-lg">
-          <p>{{ currentSubtitle }}</p>
         </div>
       </div>
     </div>
   </div>
-</template>
-
-<script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
-import { 
+  </template>
+  
+  <script setup>
+  import { ref, onMounted, onUnmounted, watch, computed, h } from 'vue'
+  import { 
   VideoIcon, 
   ChevronLeftIcon, 
   ChevronRightIcon, 
@@ -701,7 +649,7 @@ import {
   PhoneIcon,
   MonitorIcon,
   SendIcon,
-  Share2Icon,
+  ArrowUp,
   MessageSquareIcon,
   LayoutIcon,
   FileTextIcon,
@@ -709,53 +657,114 @@ import {
   SlidersIcon,
   MoreVerticalIcon,
   XIcon,
-  DownloadIcon
-} from 'lucide-vue-next'
-import lottie from 'lottie-web'
-
-// View state
-const currentView = ref('home')
-const activeTab = ref('upcoming')
-const chatTab = ref('chat')
-const messageText = ref('')
-const chatMessages = ref([])
-
-// Video call state
-const localVideo = ref(null)
-const localVideoPreview = ref(null)
-const remoteVideo = ref(null)
-const isMuted = ref(false)
-const isVideoOff = ref(false)
-const isScreenSharing = ref(false)
-const isRemoteConnected = ref(false)
-const sessionNotes = ref('')
-const currentMeeting = ref(null)
-const callStartTime = ref(null)
-const currentTime = ref(0)
-const callState = ref('idle') // idle, calling, connected, ended
-
-// Incoming call state
-const incomingCall = ref(null)
-
-// Feature states
-const isRecording = ref(false)
-const recordingTime = ref('00:00')
-let recordingInterval = null
-const subtitlesEnabled = ref(false)
-const currentSubtitle = ref('This is what the speaker is saying right now...')
-const whiteboardActive = ref(false)
-const meetingPlanVisible = ref(false)
-
-// WebRTC variables
-let localStream = null
-let screenStream = null
-let peerConnection = null
-let timerInterval = null
-let callTimeout = null
-let doctorStream = null // Separate stream for the doctor
-
-// Slides for home view
-const slides = [
+  DownloadIcon,
+  SaveIcon,
+  UploadIcon
+  } from 'lucide-vue-next'
+  import lottie from 'lottie-web'
+  
+  // Custom icons
+  const CircleRecordIcon = {
+  name: 'CircleRecordIcon',
+  render() {
+    return h('svg', {
+      xmlns: 'http://www.w3.org/2000/svg',
+      width: '24',
+      height: '24',
+      viewBox: '0 0 24 24',
+      fill: 'currentColor',
+      stroke: 'none'
+    }, [
+      h('circle', {
+        cx: '12',
+        cy: '12',
+        r: '8',
+        fill: 'currentColor'
+      })
+    ])
+  }
+  }
+  
+  const ShareIcon = {
+  name: 'ShareIcon',
+  render() {
+    return h('svg', {
+      xmlns: 'http://www.w3.org/2000/svg',
+      width: '24',
+      height: '24',
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      strokeWidth: '2',
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round'
+    }, [
+      h('path', {
+        d: 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8'
+      }),
+      h('polyline', {
+        points: '16 6 12 2 8 6'
+      }),
+      h('line', {
+        x1: '12',
+        y1: '2',
+        x2: '12',
+        y2: '15'
+      })
+    ])
+  }
+  }
+  
+  // View state
+  const currentView = ref('home')
+  const activeTab = ref('upcoming')
+  const chatTab = ref('chat')
+  const messageText = ref('')
+  const chatMessages = ref([])
+  
+  // Video call state
+  const localVideo = ref(null)
+  const localVideoPreview = ref(null)
+  const remoteVideo = ref(null)
+  const isMuted = ref(false)
+  const isVideoOff = ref(false)
+  const isScreenSharing = ref(false)
+  const isRemoteConnected = ref(false)
+  const sessionNotes = ref('')
+  const currentMeeting = ref(null)
+  const callStartTime = ref(null)
+  const currentTime = ref(0)
+  const callState = ref('idle') // idle, calling, connected, ended
+  
+  // Incoming call state
+  const incomingCall = ref(null)
+  
+  // Feature states
+  const isRecording = ref(false)
+  const recordingTime = ref('00:00')
+  let recordingInterval = null
+  const subtitlesEnabled = ref(false)
+  const currentSubtitle = ref('This is what the speaker is saying right now...')
+  const whiteboardActive = ref(false)
+  const meetingPlanVisible = ref(false)
+  
+  // Documents state
+  const documents = ref([
+  { name: 'Medical History.pdf', url: '#' },
+  { name: 'Lab Results.pdf', url: '#' },
+  { name: 'Prescription.pdf', url: '#' }
+  ])
+  
+  // WebRTC variables
+  let localStream = null
+  let screenStream = null
+  let peerConnection = null
+  let timerInterval = null
+  let callTimeout = null
+  let doctorStream = null // Separate stream for the doctor
+  
+  // Slides for home view
+  const slides = [
   {
     id: 1,
     title: "Video calls and meetings for everyone",
@@ -780,10 +789,10 @@ const slides = [
     subtitle: "Access counseling whenever you need it",
     lottieUrl: "https://lottie.host/61024576-6d81-4689-a26b-377afb392172/gNHIvH2Tin.json"
   }
-]
-
-// Sample data for upcoming meetings
-const upcomingMeetings = [
+  ]
+  
+  // Sample data for upcoming meetings
+  const upcomingMeetings = [
   {
     id: 1,
     title: 'Vaccination',
@@ -814,10 +823,10 @@ const upcomingMeetings = [
     doctorAge: '48',
     icon: HeartPulse
   }
-];
-
-// Sample data for previous meetings
-const previousMeetings = [
+  ];
+  
+  // Sample data for previous meetings
+  const previousMeetings = [
   {
     id: 101,
     title: 'Annual Physical',
@@ -838,10 +847,10 @@ const previousMeetings = [
     doctorAge: '45',
     icon: Stethoscope
   }
-];
-
-// Chat methods
-const sendMessage = () => {
+  ];
+  
+  // Chat methods
+  const sendMessage = () => {
   if (messageText.value.trim()) {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
@@ -868,37 +877,60 @@ const sendMessage = () => {
       });
     }, 2000);
   }
-}
-
-// Computed call duration
-const callDuration = computed(() => {
+  }
+  
+  // Save notes
+  const saveNotes = () => {
+  // In a real app, this would save the notes to a database
+  alert("Notes saved successfully!");
+  }
+  
+  // Upload document
+  const uploadDocument = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    // In a real app, this would upload the file to a server
+    documents.value.push({
+      name: file.name,
+      url: '#'
+    });
+    
+    // Reset the file input
+    event.target.value = '';
+    
+    alert(`Document "${file.name}" uploaded successfully!`);
+  }
+  }
+  
+  // Computed call duration
+  const callDuration = computed(() => {
   if (!callStartTime.value) return '11:29';
   
   const seconds = Math.floor(currentTime.value / 1000) % 60;
   const minutes = Math.floor(currentTime.value / (1000 * 60)) % 60;
   
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-});
-
-// Home view state
-const currentSlide = ref(0)
-let lottieInstances = []
-
-// Home view methods
-const previousSlide = () => {
+  });
+  
+  // Home view state
+  const currentSlide = ref(0)
+  let lottieInstances = []
+  
+  // Home view methods
+  const previousSlide = () => {
   currentSlide.value = (currentSlide.value - 1 + slides.length) % slides.length
-}
-
-const nextSlide = () => {
+  }
+  
+  const nextSlide = () => {
   currentSlide.value = (currentSlide.value + 1) % slides.length
-}
-
-const goToSlide = (index) => {
+  }
+  
+  const goToSlide = (index) => {
   currentSlide.value = index
-}
-
-// Call methods
-const initiateCall = async (meeting) => {
+  }
+  
+  // Call methods
+  const initiateCall = async (meeting) => {
   console.log('Initiating call to:', meeting);
   currentMeeting.value = meeting;
   callState.value = 'calling';
@@ -930,9 +962,9 @@ const initiateCall = async (meeting) => {
     alert('Failed to access camera and microphone. Please check your permissions.');
     cancelCall();
   }
-}
-
-const simulateCallAnswer = () => {
+  }
+  
+  const simulateCallAnswer = () => {
   // In a real app, this would be triggered by signaling from the remote peer
   callState.value = 'connected';
   currentView.value = 'videoCall';
@@ -941,9 +973,9 @@ const simulateCallAnswer = () => {
   setTimeout(() => {
     initializeWebRTC();
   }, 0);
-}
-
-const cancelCall = () => {
+  }
+  
+  const cancelCall = () => {
   console.log('Call cancelled');
   
   // Clear timeout if it exists
@@ -961,10 +993,10 @@ const cancelCall = () => {
   // Reset state
   callState.value = 'idle';
   currentView.value = 'sessions';
-}
-
-// Simulate an incoming call
-const simulateIncomingCall = () => {
+  }
+  
+  // Simulate an incoming call
+  const simulateIncomingCall = () => {
   incomingCall.value = {
     id: Date.now(),
     name: 'Dr. Smith',
@@ -973,9 +1005,9 @@ const simulateIncomingCall = () => {
   };
   
   currentView.value = 'incomingCall';
-}
-
-const answerCall = async () => {
+  }
+  
+  const answerCall = async () => {
   try {
     // Get user media
     localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -1007,28 +1039,28 @@ const answerCall = async () => {
     alert('Failed to access camera and microphone. Please check your permissions.');
     rejectCall();
   }
-}
-
-const rejectCall = () => {
+  }
+  
+  const rejectCall = () => {
   incomingCall.value = null;
   currentView.value = 'sessions';
-}
-
-// Sessions view methods
-const joinMeeting = (meeting) => {
+  }
+  
+  // Sessions view methods
+  const joinMeeting = (meeting) => {
   initiateCall(meeting);
-}
-
-const viewRecording = (meeting) => {
+  }
+  
+  const viewRecording = (meeting) => {
   console.log('Viewing recording:', meeting)
-}
-
-const scheduleMeeting = () => {
+  }
+  
+  const scheduleMeeting = () => {
   console.log('Scheduling a new meeting')
-}
-
-// Feature toggle methods
-const toggleRecording = () => {
+  }
+  
+  // Feature toggle methods
+  const toggleRecording = () => {
   isRecording.value = !isRecording.value;
   
   if (isRecording.value) {
@@ -1046,9 +1078,9 @@ const toggleRecording = () => {
     clearInterval(recordingInterval);
     recordingTime.value = '00:00';
   }
-}
-
-const toggleSubtitles = () => {
+  }
+  
+  const toggleSubtitles = () => {
   subtitlesEnabled.value = !subtitlesEnabled.value;
   
   if (subtitlesEnabled.value) {
@@ -1067,30 +1099,30 @@ const toggleSubtitles = () => {
       subtitleIndex++;
     }, 5000);
   }
-}
-
-const toggleWhiteboard = () => {
+  }
+  
+  const toggleWhiteboard = () => {
   whiteboardActive.value = !whiteboardActive.value;
-}
-
-const showMeetingPlan = () => {
+  }
+  
+  const showMeetingPlan = () => {
   meetingPlanVisible.value = true;
-}
-
-const showExercises = () => {
+  }
+  
+  const showExercises = () => {
   alert("Exercise functionality would be implemented here");
-}
-
-const showSlides = () => {
+  }
+  
+  const showSlides = () => {
   alert("Slides functionality would be implemented here");
-}
-
-const showMoreOptions = () => {
+  }
+  
+  const showMoreOptions = () => {
   alert("More options would be shown here");
-}
-
-// WebRTC methods
-const initializeWebRTC = async () => {
+  }
+  
+  // WebRTC methods
+  const initializeWebRTC = async () => {
   try {
     // If we already have a local stream from the calling screen, use it
     if (!localStream) {
@@ -1172,10 +1204,10 @@ const initializeWebRTC = async () => {
     console.error('Error initializing WebRTC:', error);
     alert("There was an error initializing the video call. Please try again.");
   }
-}
-
-// Create a separate doctor stream to simulate the doctor's video
-const createDoctorStream = async () => {
+  }
+  
+  // Create a separate doctor stream to simulate the doctor's video
+  const createDoctorStream = async () => {
   try {
     // In a real app, this would be the doctor's stream received via WebRTC
     // For demo purposes, we'll create a fake doctor stream
@@ -1299,34 +1331,34 @@ const createDoctorStream = async () => {
       console.error('Error creating canvas stream:', canvasError);
     }
   }
-}
-
-const startCallTimer = () => {
+  }
+  
+  const startCallTimer = () => {
   callStartTime.value = Date.now();
   timerInterval = setInterval(() => {
     currentTime.value = Date.now() - callStartTime.value;
   }, 1000);
-}
-
-const toggleMute = () => {
+  }
+  
+  const toggleMute = () => {
   if (localStream) {
     isMuted.value = !isMuted.value;
     localStream.getAudioTracks().forEach(track => {
       track.enabled = !isMuted.value;
     });
   }
-}
-
-const toggleVideo = () => {
+  }
+  
+  const toggleVideo = () => {
   if (localStream) {
     isVideoOff.value = !isVideoOff.value;
     localStream.getVideoTracks().forEach(track => {
       track.enabled = !isVideoOff.value;
     });
   }
-}
-
-const toggleScreenShare = async () => {
+  }
+  
+  const toggleScreenShare = async () => {
   try {
     if (isScreenSharing.value) {
       // Stop screen sharing
@@ -1387,9 +1419,9 @@ const toggleScreenShare = async () => {
   } catch (error) {
     console.error('Error toggling screen share:', error);
   }
-}
-
-const endCall = () => {
+  }
+  
+  const endCall = () => {
   // Stop timer
   clearInterval(timerInterval);
   
@@ -1446,9 +1478,9 @@ const endCall = () => {
   
   // Navigate back to sessions view
   currentView.value = 'sessions';
-}
-
-const initializeLottieAnimations = () => {
+  }
+  
+  const initializeLottieAnimations = () => {
   slides.forEach((slide, index) => {
     const container = document.querySelector(`#lottie-container-${index}`);
     if (container) {
@@ -1462,21 +1494,21 @@ const initializeLottieAnimations = () => {
       lottieInstances.push(animation);
     }
   });
-}
-
-// Auto-advance slides
-let autoplayInterval;
-const startAutoplay = () => {
+  }
+  
+  // Auto-advance slides
+  let autoplayInterval;
+  const startAutoplay = () => {
   autoplayInterval = setInterval(() => {
     nextSlide();
   }, 5000);
-}
-
-const stopAutoplay = () => {
+  }
+  
+  const stopAutoplay = () => {
   clearInterval(autoplayInterval);
-}
-
-onMounted(() => {
+  }
+  
+  onMounted(() => {
   initializeLottieAnimations();
   startAutoplay();
   if (lottieInstances[currentSlide.value]) {
@@ -1487,9 +1519,9 @@ onMounted(() => {
   // setTimeout(() => {
   //   simulateIncomingCall();
   // }, 10000);
-})
-
-onUnmounted(() => {
+  })
+  
+  onUnmounted(() => {
   stopAutoplay();
   
   lottieInstances.forEach(instance => instance.destroy());
@@ -1522,19 +1554,19 @@ onUnmounted(() => {
   if (peerConnection) {
     peerConnection.close();
   }
-})
-
-watch(currentSlide, (newValue, oldValue) => {
+  })
+  
+  watch(currentSlide, (newValue, oldValue) => {
   if (lottieInstances[oldValue]) {
     lottieInstances[oldValue].stop();
   }
   if (lottieInstances[newValue]) {
     lottieInstances[newValue].play();
   }
-})
-
-// Watch for view changes to reinitialize animations when returning to home
-watch(currentView, (newValue) => {
+  })
+  
+  // Watch for view changes to reinitialize animations when returning to home
+  watch(currentView, (newValue) => {
   if (newValue === 'home') {
     // Need to wait for DOM to update
     setTimeout(() => {
@@ -1544,32 +1576,32 @@ watch(currentView, (newValue) => {
       }
     }, 0);
   }
-})
-</script>
-
-<style scoped>
-.slide-enter-active,
-.slide-leave-active {
+  })
+  </script>
+  
+  <style scoped>
+  .slide-enter-active,
+  .slide-leave-active {
   transition: all 0.3s ease;
-}
-
-.slide-enter-from {
+  }
+  
+  .slide-enter-from {
   opacity: 0;
   transform: translateX(100%);
-}
-
-.slide-leave-to {
+  }
+  
+  .slide-leave-to {
   opacity: 0;
   transform: translateX(-100%);
-}
-
-.slide-enter-to,
-.slide-leave-from {
+  }
+  
+  .slide-enter-to,
+  .slide-leave-from {
   opacity: 1;
   transform: translateX(0);
-}
-
-@keyframes pulse {
+  }
+  
+  @keyframes pulse {
   0% {
     transform: scale(0.95);
     opacity: 0.7;
@@ -1582,9 +1614,35 @@ watch(currentView, (newValue) => {
     transform: scale(0.95);
     opacity: 0.7;
   }
-}
-
-.animate-pulse {
+  }
+  
+  .animate-pulse {
   animation: pulse 1.5s infinite;
-}
-</style>
+  }
+  
+  @keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  }
+  
+  .animate-bounce {
+  animation: bounce 1s infinite;
+  }
+  
+  @keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+  }
+  
+  .animate-spin-slow {
+  animation: spin-slow 10s linear infinite;
+  }
+  </style>
