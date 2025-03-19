@@ -313,7 +313,7 @@ const resendCode = async () => {
 }
 
 const goToHome = () => {
-  router.push('/home')
+  router.push('/')
 }
 
 onMounted(() => {

@@ -13,7 +13,7 @@ import {
   browserSessionPersistence,
   browserLocalPersistence,
 } from "firebase/auth"
-import { doc, setDoc, getDoc } from "firebase/firestore"
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore"
 import emailService from "@/services/emailService"
 
 // OTP expiry in seconds (5 minutes)
@@ -61,17 +61,29 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async fetchUserData(user) {
-      const userId = this.generateUserId(user.uid)
-      const userDoc = await getDoc(doc(db, "users", userId))
+      const userId = this.generateUserId(user.uid);
+      const userDoc = await getDoc(doc(db, "users", userId));
+      
       if (userDoc.exists()) {
-        const userData = userDoc.data()
+        const userData = userDoc.data();
         
         // Clean and process the photoURL
-        let photoURL = user.photoURL || userData.photoURL || ""
+        let photoURL = user.photoURL || userData.photoURL || "";
         
         // If it's a Google photo URL, remove any size parameters
         if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-          photoURL = photoURL.split('=')[0]
+          const cleanPhotoURL = photoURL.split('=')[0];
+          
+          // If the stored URL is different from the clean one, update it
+          if (userData.photoURL !== cleanPhotoURL) {
+            console.log("Updating photoURL in fetchUserData:", cleanPhotoURL);
+            await updateDoc(doc(db, "users", userId), { 
+              photoURL: cleanPhotoURL,
+              updatedAt: new Date()
+            });
+          }
+          
+          photoURL = cleanPhotoURL;
         }
         
         this.user = {
@@ -82,13 +94,13 @@ export const useAuthStore = defineStore("auth", {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: user.email || userData.email,
-          photoURL: photoURL,
-        }
+          photoURL: photoURL, // Use the cleaned URL
+        };
         
-        console.log("User data fetched successfully:", this.user)
+        console.log("User data fetched with photo URL:", photoURL);
       } else {
-        console.error("User document not found")
-        this.user = null
+        console.error("User document not found");
+        this.user = null;
       }
     },
 
@@ -385,6 +397,16 @@ export const useAuthStore = defineStore("auth", {
         console.log("User photo URL:", user.photoURL)
         console.log("User UID:", user.uid)
 
+        // Always clean the photoURL immediately when we get it from Google
+        let photoURL = user.photoURL || ""
+        if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+          // Remove any size parameters and make sure we get the full-size image
+          photoURL = photoURL.split('=')[0]
+          console.log("Cleaned photoURL from Google:", photoURL)
+          // Update the user object with the cleaned URL
+          user.photoURL = photoURL
+        }
+
         const additionalUserInfo = getAdditionalUserInfo(result)
         const isNewUser = additionalUserInfo?.isNewUser
         console.log("Is new user:", isNewUser)
@@ -409,14 +431,6 @@ export const useAuthStore = defineStore("auth", {
 
           console.log("Parsed firstName:", firstName)
           console.log("Parsed lastName:", lastName)
-          
-          // Clean the photoURL to remove any size parameters
-          let photoURL = user.photoURL || ""
-          if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-            photoURL = photoURL.split('=')[0]
-          }
-          
-          console.log("Cleaned photoURL:", photoURL)
 
           // Create user document with status based on where the sign-in was initiated
           await this.createUserDocument(user, {
@@ -432,20 +446,14 @@ export const useAuthStore = defineStore("auth", {
           // For existing users, ensure the photoURL is up to date
           const userData = userDoc.data()
           
-          // Clean the photoURL to remove any size parameters
-          let photoURL = user.photoURL || ""
-          if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-            photoURL = photoURL.split('=')[0]
-          }
-          
           // Update the photoURL if it has changed
           if (photoURL && (!userData.photoURL || userData.photoURL !== photoURL)) {
             console.log("Updating photoURL for existing user:", photoURL)
             
-            await setDoc(doc(db, "users", userId), {
+            await updateDoc(doc(db, "users", userId), {
               photoURL: photoURL,
               updatedAt: new Date()
-            }, { merge: true })
+            });
           }
         }
 
