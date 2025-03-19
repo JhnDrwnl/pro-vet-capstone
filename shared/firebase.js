@@ -4,6 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics"; // Import isSupported for conditional analytics
+import { getMessaging } from "firebase/messaging"; // Add this import
 
 // Firebase configuration using environment variables
 const firebaseConfig = {
@@ -36,4 +37,15 @@ isSupported()
   })
   .catch((err) => console.error("Error initializing Firebase Analytics:", err));
 
-export { app, auth, db, storage, analytics };
+  // Initialize Firebase Messaging (only in browser environments)
+let messaging = null;
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  try {
+    messaging = getMessaging(app);
+    console.log("Firebase Messaging initialized");
+  } catch (error) {
+    console.error("Error initializing Firebase Messaging:", error);
+  }
+}
+
+export { app, auth, db, storage, analytics, messaging };

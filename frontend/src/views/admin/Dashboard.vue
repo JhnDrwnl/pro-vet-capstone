@@ -40,7 +40,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
       <!-- Appointments Overview (Larger) -->
       <div class="lg:col-span-2 bg-white rounded-lg shadow p-6">
-        <div class="flex justify-between items-center mb-20">
+        <div class="flex justify-between items-center mb-6">
           <div>
             <h3 class="text-lg font-semibold text-gray-800">Appointments Overview</h3>
             <div class="flex items-center gap-4 mt-2">
@@ -64,84 +64,7 @@
           </div>
         </div>
         <div class="h-[400px]">
-          <svg viewBox="0 0 800 300" class="w-full h-full">
-            <!-- Gradient definition -->
-            <defs>
-              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#a855f7" stop-opacity="0.2"/>
-                <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
-              </linearGradient>
-            </defs>
-
-            <!-- Grid lines -->
-            <g stroke="#f0f0f0" stroke-width="1">
-              <line v-for="i in 5" :key="i"
-                    x1="40" 
-                    :y1="50 + (i * 40)" 
-                    x2="760" 
-                    :y2="50 + (i * 40)" />
-            </g>
-
-            <!-- Current month vertical line -->
-            <line 
-              x1="680" 
-              y1="50" 
-              x2="680" 
-              y2="250" 
-              stroke="#e5e7eb" 
-              stroke-width="2" 
-              stroke-dasharray="4,4"/>
-
-            <!-- Area fill -->
-            <path
-              :d="`${getLinePath(filteredAppointments)} L 760,250 L 40,250 Z`"
-              fill="url(#areaGradient)"
-            />
-
-            <!-- Main line -->
-            <path
-              :d="getLinePath(filteredAppointments)"
-              fill="none"
-              stroke="#a855f7"
-              stroke-width="2"
-            />
-
-            <!-- Data points for comparison -->
-            <circle
-              cx="680"
-              :cy="getYPosition(filteredAppointments[filteredAppointments.length - 2])"
-              r="4"
-              class="fill-white stroke-purple-500 stroke-2"
-            />
-            <circle
-              cx="700"
-              :cy="getYPosition(filteredAppointments[filteredAppointments.length - 1])"
-              r="4"
-              class="fill-white stroke-purple-500 stroke-2"
-            />
-
-            <!-- X-axis labels -->
-            <g class="text-xs text-gray-500">
-              <text v-for="(month, index) in months" :key="month"
-                    :x="40 + ((720) / (months.length-1) * index)"
-                    y="280"
-                    text-anchor="middle"
-                    class="fill-gray-500 text-xs">
-                {{ month }}
-              </text>
-            </g>
-
-            <!-- Y-axis labels -->
-            <g class="text-xs text-gray-500">
-              <text v-for="(value, index) in yAxisLabels" :key="index"
-                    x="35"
-                    :y="50 + (index * 40)"
-                    text-anchor="end"
-                    class="fill-gray-500 text-xs">
-                {{ value }}
-              </text>
-            </g>
-          </svg>
+          <canvas ref="appointmentsChart"></canvas>
         </div>
       </div>
 
@@ -181,17 +104,7 @@
         </div>
         <div class="flex items-center justify-center">
           <div class="relative w-48 h-48">
-            <svg viewBox="0 0 100 100" class="transform -rotate-90">
-              <circle cx="50" cy="50" r="40" class="fill-white" />
-              <circle cx="50" cy="50" r="40" class="fill-none stroke-gray-300 stroke-2" />
-              <path
-                v-for="(segment, index) in filteredSegments"
-                :key="segment.label"
-                :d="describeArc(50, 50, 39, getStartAngle(index), getEndAngle(index))"
-                :fill="segment.color"
-              />
-              <circle cx="50" cy="50" r="32" class="fill-white" />
-            </svg>
+            <canvas ref="petDistributionChart"></canvas>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
               <span class="text-3xl font-bold text-gray-800">{{ totalPets }}</span>
               <span class="flex items-center text-sm text-green-500 mt-1">
@@ -250,7 +163,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { 
   Calendar, 
   Users,  
@@ -264,9 +177,21 @@ import {
   PawPrint,
   Cat
 } from 'lucide-vue-next'
+import { Chart, registerables } from 'chart.js'
+
+// Register Chart.js components
+Chart.register(...registerables)
+
+// References for chart canvases
+const appointmentsChart = ref(null)
+const petDistributionChart = ref(null)
+
+// Chart instances
+let lineChart = null
+let doughnutChart = null
 
 const selectedDate = ref('')
-const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'Septembar', 'October', 'November', 'December']
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const yAxisLabels = ['300', '250', '200', '150', '100', '50']
 
 const dateOptions = computed(() => {
@@ -302,7 +227,7 @@ const todaysAppointments = ref([
 ])
 
 const segments = ref([
-{ label: 'Dogs', value: 1257, color: '#ef4444', percentage: '35' },  // Red
+  { label: 'Dogs', value: 1257, color: '#ef4444', percentage: '35' },  // Red
   { label: 'Cats', value: 984, color: '#f97316', percentage: '32' },   // Orange
   { label: 'Birds', value: 612, color: '#3b82f6', percentage: '20' },  // Blue
   { label: 'Rabbits', value: 306, color: '#a855f7', percentage: '8' }, // Purple
@@ -372,86 +297,165 @@ const filteredRecentActivities = computed(() => {
 
 const totalPets = computed(() => filteredSegments.value.reduce((sum, segment) => sum + segment.value, 0))
 
-const getYPosition = (value) => {
-  const maxValue = 300
-  const minValue = 50
-  const yScale = 200 / (maxValue - minValue)
-  return 250 - ((value - minValue) * yScale)
-}
-
-const getLinePath = (data) => {
-  const points = data.map((value, index) => ({
-    x: 40 + ((720) / (data.length - 1) * index),
-    y: getYPosition(value)
-  }))
-
-  return points.reduce((acc, point, index, points) => {
-    if (index === 0) {
-      return `M ${point.x},${point.y}`
-    }
-
-    const prev = points[index - 1]
-    const curr = point
-
-    const controlPoint1X = prev.x + (curr.x - prev.x) * 0.5
-    const controlPoint1Y = prev.y
-    const controlPoint2X = curr.x - (curr.x - prev.x) * 0.5
-    const controlPoint2Y = curr.y
-
-    return `${acc} C ${controlPoint1X},${controlPoint1Y} ${controlPoint2X},${controlPoint2Y} ${curr.x},${curr.y}`
-  }, '')
-}
-
-const generateNewData = () => {
-  appointments.value = Array.from({ length: 12 }, () => Math.floor(Math.random() * (300 - 50 + 1) + 50))
-}
-
 const formatDate = (date, offset = 0) => {
   const d = new Date(date)
   d.setDate(d.getDate() + offset)
   return `${months[d.getMonth()]} ${d.getDate()}`
 }
 
-const getStartAngle = (index) => {
-  const prevSegments = filteredSegments.value.slice(0, index)
-  const prevTotal = prevSegments.reduce((sum, segment) => sum + segment.value, 0)
-  return (prevTotal / totalPets.value) * 360
-}
-
-const getEndAngle = (index) => {
-  const prevSegments = filteredSegments.value.slice(0, index + 1)
-  const prevTotal = prevSegments.reduce((sum, segment) => sum + segment.value, 0)
-  return (prevTotal / totalPets.value) * 360
-}
-
-const describeArc = (x, y, radius, startAngle, endAngle) => {
-  const start = polarToCartesian(x, y, radius, endAngle)
-  const end = polarToCartesian(x, y, radius, startAngle)
-  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1'
-  return [
-    'M', start.x, start.y,
-    'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y,
-    'L', x, y,
-    'Z'
-  ].join(' ')
-}
-
-const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-  const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0
-  return {
-    x: centerX + (radius * Math.cos(angleInRadians)),
-    y: centerY + (radius * Math.sin(angleInRadians))
-  }
+const generateNewData = () => {
+  appointments.value = Array.from({ length: 12 }, () => Math.floor(Math.random() * (300 - 50 + 1) + 50))
 }
 
 const updateDashboard = () => {
   // In a real application, you would fetch new data based on selectedDate
   generateNewData()
+  updateCharts()
 }
+
+// Initialize and update the line chart for appointments overview
+const initLineChart = () => {
+  if (!appointmentsChart.value) return
+  
+  const ctx = appointmentsChart.value.getContext('2d')
+  
+  // Destroy existing chart if it exists
+  if (lineChart) lineChart.destroy()
+  
+  // Create gradient for area fill
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400)
+  gradient.addColorStop(0, 'rgba(168, 85, 247, 0.2)')
+  gradient.addColorStop(1, 'rgba(168, 85, 247, 0)')
+  
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [{
+        label: 'Total Appointments',
+        data: filteredAppointments.value,
+        backgroundColor: gradient,
+        borderColor: 'rgba(168, 85, 247, 1)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: 'white',
+        pointBorderColor: 'rgba(168, 85, 247, 1)',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: false,
+          min: 50,
+          max: 300,
+          grid: {
+            color: '#f0f0f0'
+          },
+          ticks: {
+            stepSize: 50
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          titleColor: '#333',
+          bodyColor: '#666',
+          borderColor: '#ddd',
+          borderWidth: 1,
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            label: function(context) {
+              return `${context.parsed.y} appointments`;
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
+// Initialize and update the doughnut chart for pet distribution
+const initDoughnutChart = () => {
+  if (!petDistributionChart.value) return
+  
+  const ctx = petDistributionChart.value.getContext('2d')
+  
+  // Destroy existing chart if it exists
+  if (doughnutChart) doughnutChart.destroy()
+  
+  doughnutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: filteredSegments.value.map(segment => segment.label),
+      datasets: [{
+        data: filteredSegments.value.map(segment => segment.value),
+        backgroundColor: filteredSegments.value.map(segment => segment.color),
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          titleColor: '#333',
+          bodyColor: '#666',
+          borderColor: '#ddd',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            label: function(context) {
+              const value = context.parsed;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = Math.round((value / total) * 100);
+              return `${context.label}: ${value} (${percentage}%)`;
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
+const updateCharts = () => {
+  initLineChart()
+  initDoughnutChart()
+}
+
+// Watch for changes in filtered data to update charts
+watch([filteredAppointments, filteredSegments], () => {
+  updateCharts()
+}, { deep: true })
 
 onMounted(() => {
   selectedDate.value = dateOptions.value[0].value
   generateNewData()
+  
+  // Initialize charts after the DOM has been updated
+  nextTick(() => {
+    updateCharts()
+  })
 })
 </script>
-

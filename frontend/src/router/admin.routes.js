@@ -10,11 +10,13 @@ import UserManagement from '@/views/admin/UserManagement.vue';
 import Online from '@/views/admin/session/Online.vue';
 import WalkIn from '@/views/admin/session/Walk-in.vue';
 import Telehealth from '@/views/admin/Telehealth.vue';
-import Chatbot from '@/views/admin/Chatbot.vue';
+
 import AdminCalendar from '@/views/admin/AdminCalendar.vue';
 import Profile from '@/components/common/Profile.vue';
 import AdminArchive from '@/views/admin/adminsettings/Archive.vue';
 import AdminAccount from '@/views/admin/adminsettings/AccountSettings.vue';
+import Responses from '@/views/admin/chatbot/Responses.vue';
+import ChatLogs from '@/views/admin/chatbot/ChatLogs.vue';
 
 export default [
   {
@@ -119,9 +121,20 @@ export default [
         component: Telehealth,
       },
       {
-        path: 'chatbot',
+        path: '/admin/chatbot',
         name: 'chatbot',
-        component: Chatbot,
+        children: [
+          {
+            path: 'chatlogs',
+            name: 'chatlogs',
+            component: ChatLogs
+          },
+          {
+            path: 'responses',
+            name: 'responses',
+            component: Responses,
+          }
+        ]
       },
      
       {

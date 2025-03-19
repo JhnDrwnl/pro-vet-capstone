@@ -18,7 +18,7 @@
     "chart.js": "^4.4.7",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
-    "firebase": "^11.4.0",
+    "firebase": "^9.23.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.0",
     "lord-icon-element": "^4.1.2",
@@ -31,6 +31,7 @@
     "vue3-apexcharts": "^1.8.0"
   },
   "devDependencies": {
+    "@iconify-json/mingcute": "^1.2.3",
     "@iconify/tailwind": "^1.2.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vitejs/plugin-vue-jsx": "^4.1.1",

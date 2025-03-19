@@ -52,7 +52,7 @@
           @click="openAddPetForm"
           class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
         >
-          <LucidePlus class="w-4 h-4" />
+        <PlusCircle class="w-4 h-4" />
           Add Pet
         </button>
       </div>
@@ -205,7 +205,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { 
-  Plus as LucidePlus,
+  PlusCircle,
   Edit as LucideEdit,
   Search as SearchIcon,
   Filter as FilterIcon,

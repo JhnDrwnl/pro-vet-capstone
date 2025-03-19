@@ -91,13 +91,12 @@
              ]"
              @click="handleItemClick(item)"
           >
-          <component 
-  :is="item.icon" 
-  v-bind="item.iconProps"
-  class="w-6 h-6" 
-  :class="{ 'mr-3': isOpen }" 
-/>
-
+            <component 
+              :is="item.icon" 
+              v-bind="item.iconProps"
+              class="w-6 h-6" 
+              :class="{ 'mr-3': isOpen }" 
+            />
             <span v-if="isOpen">{{ item.label }}</span>
             <!-- Tooltip for collapsed state -->
             <div v-if="!isOpen" 
@@ -130,13 +129,15 @@ import {
   Clock,
   Database,
   Video,
-  MessageSquare,
-  PawPrint,
   PanelLeftClose,
   PanelRightClose,
   Settings,
-  ChevronDown
+  ChevronDown,
+  MessageCircleCode
 } from 'lucide-vue-next';
+
+// Remove this import - it's causing the error
+// import { MessageCircleCodeIcon } from 'lucide-react';
 
 const props = defineProps({
   isOpen: {
@@ -207,13 +208,12 @@ const handleItemClick = (item) => {
 };
 
 const navItems = [
-{ 
-  href: '/admin/dashboard', 
-  icon: Icon, 
-  label: 'Dashboard', 
-  iconProps: { icon: "mage:dashboard-bar-notification", width: 20, height: 20 } 
-},
-
+  { 
+    href: '/admin/dashboard', 
+    icon: Icon, 
+    label: 'Dashboard', 
+    iconProps: { icon: "mage:dashboard-bar-notification", width: 20, height: 20 } 
+  },
   { href: '/admin/analytics', icon: Icon, label: 'Analytics', iconProps: { icon: "lucide:chart-pie"} },
   { href: '/admin/usermanagement', icon: Users, label: 'User Management' },
   { 
@@ -241,10 +241,15 @@ const navItems = [
       { href: '/admin/datamanagement/veterinarians', label: 'Veterinarians' }
     ]
   },
-
-  
   { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
-  { href: '/admin/chatbot', icon: Icon, label: 'Chatbot', iconProps: { icon: "uiw:message" }},
+  { 
+    icon: MessageCircleCode,
+    label: 'Chatbot',
+    subItems: [
+      {href: '/admin/chatbot/chatlogs', label: 'Chat Logs'},
+      { href: '/admin/chatbot/responses', label: 'Responses' }
+    ]
+  },
   { 
     icon: Settings,
     label: 'Settings',
@@ -281,10 +286,4 @@ watch(() => props.isOpen, (newValue) => {
 .group:hover .group-hover\:visible {
   visibility: visible;
 }
-
 </style>
-
-
-
-
-

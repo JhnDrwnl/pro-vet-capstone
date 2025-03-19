@@ -1,5 +1,4 @@
 <!-- views/admin/UserManagement.vue -->
-<!-- views/admin/UserManagement.vue -->
 <template>
   <div class="p-6 bg-white rounded-2xl">
     <!-- Header Section -->
@@ -55,7 +54,7 @@
           @click="openAddUserForm"
           class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-800"
         >
-          <PlusIcon class="w-4 h-4" />
+        <PlusCircle class="w-4 h-4" />
           Add New User
         </button>
       </div>
@@ -184,7 +183,7 @@ import { collection, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore'
 import { db } from '@shared/firebase'
 import { 
   Filter as FilterIcon,
-  Plus as PlusIcon,
+  PlusCircle,
   Edit as LucideEdit,
   Power as PowerIcon,
   Search as SearchIcon
