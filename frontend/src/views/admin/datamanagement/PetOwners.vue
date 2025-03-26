@@ -1,3 +1,4 @@
+<!-- views/admin/datamanagement/PetOwners.vue -->
 <template>
   <div class="p-6 bg-white rounded-2xl">
     <!-- Header Section -->
@@ -6,7 +7,7 @@
       <p class="text-gray-500 mt-1">Manage pet owner profiles.</p>
     </div>
 
-    <!-- Search, Filter, Add, and Export -->
+    <!-- Search, Filter, and Export -->
     <div v-if="!showForm" class="flex justify-between items-center mb-6">
       <div class="flex gap-2">
         <div class="relative">
@@ -48,13 +49,6 @@
           <DownloadIcon class="w-4 h-4" />
           Export CSV
         </button>
-        <button 
-          @click="openAddClientForm"
-          class="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
-        >
-        <PlusCircle class="w-4 h-4" />
-          Add Pet Owner
-        </button>
       </div>
     </div>
 
@@ -85,7 +79,21 @@
             <td class="py-4 px-6 text-sm text-gray-900">{{ client.phone }}</td>
             <td class="py-4 px-6 text-sm text-gray-900">{{ formatDate(client.birthday) }}</td>
             <td class="py-4 px-6 text-sm text-gray-900">{{ client.address }}</td>
-            <td class="py-4 px-6 text-sm text-gray-900">{{ client.pets }}</td>
+            <td class="py-4 px-6 text-sm text-gray-900">
+              <div class="flex items-center">
+                <div class="flex -space-x-2 mr-2">
+                  <img 
+                    v-for="(pet, index) in parsePets(client.pets)" 
+                    :key="index"
+                    :src="`/placeholder.svg?height=24&width=24`" 
+                    :alt="pet"
+                    class="w-6 h-6 rounded-full border-2 border-white object-cover"
+                    v-show="index < 2"
+                  />
+                </div>
+                <span class="text-blue-600 font-medium">{{ formatPetNames(client.pets) }}</span>
+              </div>
+            </td>
             <td class="py-4 px-6 text-sm">
               <div class="flex items-center gap-2">
                 <button 
@@ -96,9 +104,9 @@
                 </button>
                 <button 
                   @click="archiveClient(client)"
-                  class="p-1 text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                  class="p-1 text-red-500 hover:text-red-700"
                 >
-                  <ArchiveIcon class="w-5 h-5" />
+                  <Trash2 class="w-5 h-5" />
                 </button>
               </div>
             </td>
@@ -189,12 +197,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { 
-  PlusCircle,
   Edit as LucideEdit,
   Search as SearchIcon,
   Filter as FilterIcon,
   Download as DownloadIcon,
-  Archive as ArchiveIcon
+  Trash2
 } from 'lucide-vue-next'
 
 const clients = ref([
@@ -252,6 +259,23 @@ const filteredClients = computed(() => {
     return matchesSearch && matchesFilters
   })
 })
+
+// Parse pets string into array of pet names
+const parsePets = (petsString) => {
+  if (!petsString) return []
+  
+  // Split by comma and extract pet names (without type in parentheses)
+  return petsString.split(',').map(pet => {
+    const petName = pet.trim().split('(')[0].trim()
+    return petName
+  })
+}
+
+// Format pet names for display
+const formatPetNames = (petsString) => {
+  const petNames = parsePets(petsString)
+  return petNames.join(', ')
+}
 
 const toggleFilters = () => {
   showFilters.value = !showFilters.value
@@ -358,4 +382,3 @@ const exportToCSV = () => {
   }
 }
 </script>
-

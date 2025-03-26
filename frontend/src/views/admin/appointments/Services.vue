@@ -603,9 +603,9 @@
   const categoryHeaders = [
   { key: 'name', label: 'Category Name' },
   { key: 'description', label: 'Description' },
-  { key: 'serviceCount', label: 'Services Count' },
-  { key: 'createdAt', label: 'Time Added' },
-  { key: 'updatedAt', label: 'Time Updated' },
+  { key: 'serviceCount', label: 'Services' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'updatedAt', label: 'Updated' },
   { key: 'actions', label: 'Actions' }
   ];
   
@@ -615,8 +615,8 @@
   { key: 'transactionType', label: 'Transaction Type' },
   { key: 'processingTime', label: 'Service Duration' },
   { key: 'fees', label: 'Fees' },
-  { key: 'createdAt', label: 'Time Added' },
-  { key: 'updatedAt', label: 'Time Updated' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'updatedAt', label: 'Updated' },
   { key: 'actions', label: 'Actions' }
   ];
   
