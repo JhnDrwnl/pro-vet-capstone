@@ -25,4 +25,11 @@ router.post('/verify-otp', authController.verifyOTP);
 // Password reset routes
 router.post('/reset-password', authController.resetPasswordWithOTP);
 
+// User management routes
+router.post('/update-auth-status', authController.updateUserAuthStatus);
+
+router.post('/create-user', authController.createUser);
+
+router.get('/users-sign-in-data', authController.getUsersSignInData);
+
 module.exports = router;

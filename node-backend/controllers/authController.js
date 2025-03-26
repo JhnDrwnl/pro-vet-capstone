@@ -291,3 +291,151 @@ exports.completeRegistration = async (req, res) => {
     });
   }
 };
+
+/**
+ * Update user authentication status (enable/disable)
+ * This function will disable or enable a user in Firebase Authentication
+ */
+exports.updateUserAuthStatus = async (req, res) => {
+  try {
+    const { uid, disabled } = req.body;
+    
+    if (!uid) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User ID (uid) is required' 
+      });
+    }
+    
+    if (typeof disabled !== 'boolean') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Disabled status must be a boolean' 
+      });
+    }
+    
+    console.log(`Updating auth status for user ${uid}: disabled=${disabled}`);
+    
+    // Update the user in Firebase Auth
+    await admin.auth().updateUser(uid, { disabled });
+    
+    return res.status(200).json({
+      success: true,
+      message: `User ${disabled ? 'disabled' : 'enabled'} successfully`
+    });
+  } catch (error) {
+    console.error('Error updating user auth status:', error);
+    
+    // Check for specific Firebase errors
+    if (error.code === 'auth/user-not-found') {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update user authentication status',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Create a new user (admin function)
+ * This allows admins to create users without being logged out
+ */
+exports.createUser = async (req, res) => {
+  try {
+    const { email, password, displayName, firstName, lastName, role = 'user' } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email and password are required' 
+      });
+    }
+    
+    console.log(`Admin creating new user: ${email}, role: ${role}`);
+    
+    // Create the user with Firebase Admin SDK
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+      displayName: displayName || `${firstName || ''} ${lastName || ''}`.trim(),
+      emailVerified: false
+    });
+    
+    console.log(`User created with UID: ${userRecord.uid}`);
+    
+    return res.status(200).json({ 
+      success: true, 
+      uid: userRecord.uid,
+      message: 'User created successfully' 
+    });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    
+    // Check for specific Firebase errors
+    if (error.code === 'auth/email-already-exists') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already exists'
+      });
+    } else if (error.code === 'auth/invalid-password') {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters'
+      });
+    } else if (error.code === 'auth/invalid-email') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email format'
+      });
+    }
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Failed to create user' 
+    });
+  }
+};
+
+/**
+ * Get users sign-in data
+ * This function retrieves the last sign-in time and provider data for all users
+ */
+exports.getUsersSignInData = async (req, res) => {
+  try {
+    console.log('Fetching users sign-in data');
+    
+    // List all users from Firebase Auth
+    const listUsersResult = await admin.auth().listUsers();
+    
+    // Map to include only the necessary data
+    const users = listUsersResult.users.map(user => ({
+      uid: user.uid,
+      email: user.email,
+      displayName: user.displayName,
+      lastSignInTime: user.metadata.lastSignInTime,
+      creationTime: user.metadata.creationTime,
+      providerData: user.providerData || [], // Include provider data
+      disabled: user.disabled
+    }));
+    
+    console.log(`Retrieved sign-in data for ${users.length} users`);
+    
+    return res.status(200).json({
+      success: true,
+      users
+    });
+  } catch (error) {
+    console.error('Error fetching users sign-in data:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch users sign-in data',
+      error: error.message
+    });
+  }
+};
