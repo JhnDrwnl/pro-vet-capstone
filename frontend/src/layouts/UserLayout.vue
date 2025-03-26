@@ -26,7 +26,8 @@
            isSidebarOpen ? 'md:ml-64' : 'md:ml-16'
          ]">
       <main 
-        class="flex-grow px-4 md:px-6 overflow-y-auto pt-safe pb-safe"
+        class="flex-grow px-4 md:px-6 overflow-y-auto"
+        :class="{'pt-safe pb-safe': !isMobileView}"
         :style="mainContentStyle"
       >
         <!-- Pass the isSidebarOpen prop to the router-view -->
@@ -156,9 +157,9 @@ const checkMobile = () => {
 };
 
 const mainContentStyle = computed(() => ({
-  height: isMobileView.value ? 'calc(100vh - 12rem)' : 'auto',
-  paddingTop: isMobileView.value ? '5rem' : '1rem',
-  paddingBottom: isMobileView.value ? '6rem' : '1rem'
+  height: isMobileView.value ? 'calc(100vh - 8rem)' : 'auto',
+  paddingTop: isMobileView.value ? '2.5rem' : '1rem', // Increased from 1rem to 2.5rem for mobile
+  paddingBottom: isMobileView.value ? '5rem' : '1rem'
 }));
 
 onMounted(() => {
@@ -229,6 +230,20 @@ onUnmounted(() => {
   .chatbot-wrapper {
     bottom: 300px; /* Much higher on mobile to avoid the bottom navigation */
     right: 16px;
+  }
+}
+
+/* Additional mobile optimizations */
+@media (max-width: 767px) {
+  /* Add top margin for mobile view to lower the content */
+  main {
+    margin-top: 1.5rem !important; /* Add margin to push content down */
+    padding-top: 0 !important; /* Override inline style with !important */
+  }
+  
+  /* Adjust router view to have some space at the top */
+  main > * {
+    margin-top: 1rem;
   }
 }
 </style>

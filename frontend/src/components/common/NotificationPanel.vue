@@ -302,6 +302,8 @@ const getNotificationColor = (type) => {
       return 'bg-red-100 text-red-500';
     case 'test':
       return 'bg-purple-100 text-purple-500';
+    case 'welcome':
+      return 'bg-blue-100 text-blue-500';
     default:
       return 'bg-gray-100 text-gray-500';
   }
@@ -317,6 +319,8 @@ const getNotificationIcon = (type) => {
       return BellIcon;
     case 'alert':
       return AlertCircleIcon;
+    case 'welcome':
+      return BellIcon;
     default:
       return BellIcon;
   }

@@ -78,7 +78,9 @@
   
                 <!-- Profile Info -->
                 <div class="text-center">
-                  <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ form.firstName }} {{ form.lastName }}</h1>
+                  <h1 class="text-xl sm:text-2xl font-bold text-gray-900">
+                    {{ form.firstName }} {{ displayedProfile.lastName }}
+                  </h1>
                   <p class="text-sm sm:text-base text-gray-500">{{ form.role || 'Role not set' }}</p>
                 </div>
               </div>
@@ -201,15 +203,45 @@
                         </div>
                         <div>
                           <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                          <select
-                            v-model="form.gender"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                          >
-                            <option value="">Select gender</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                          </select>
+                          <div class="relative gender-dropdown">
+                            <button
+                              type="button"
+                              @click="isGenderOpen = !isGenderOpen"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm flex justify-between items-center bg-white"
+                            >
+                              <span class="text-left">{{ form.gender ? (form.gender.charAt(0).toUpperCase() + form.gender.slice(1)) : 'Select gender' }}</span>
+                              <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                            
+                            <div 
+                              v-if="isGenderOpen" 
+                              class="absolute z-50 mt-1 w-full bg-white shadow-lg rounded-md py-1 text-sm"
+                            >
+                              <button
+                                type="button"
+                                @click="selectGender('male')"
+                                class="w-full px-3 py-2 text-left hover:bg-gray-100"
+                              >
+                                Male
+                              </button>
+                              <button
+                                type="button"
+                                @click="selectGender('female')"
+                                class="w-full px-3 py-2 text-left hover:bg-gray-100"
+                              >
+                                Female
+                              </button>
+                              <button
+                                type="button"
+                                @click="selectGender('other')"
+                                class="w-full px-3 py-2 text-left hover:bg-gray-100"
+                              >
+                                Other
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -329,7 +361,14 @@
   
                 <!-- Pet Info Tab -->
                 <div v-show="currentTab === 'pet-info'">
-                  <Pets ref="petsComponent" />
+                  <Pets 
+                    ref="petsComponent" 
+                    :key="petsRefreshKey"
+                    @pet-added="handlePetAdded"
+                    @pet-updated="handlePetUpdated"
+                    @pet-deleted="handlePetDeleted"
+                    @pets-changed="handlePetsChanged"
+                  />
                 </div>
               </div>
   
@@ -421,6 +460,7 @@ const showCameraHover = ref(false);
 const isCameraClicked = ref(false);
 const isSaving = ref(false);
 const petsComponent = ref(null);
+const petsRefreshKey = ref(0); // Add this for forced re-rendering
 let autocomplete = null;
 let googleMapsLoaded = false;
 
@@ -428,6 +468,9 @@ let googleMapsLoaded = false;
 const selectedProfilePicture = ref(null);
 const previewPhotoURL = ref(null);
 const photoChanged = ref(false);
+
+// Add this new ref for gender dropdown
+const isGenderOpen = ref(false);
 
 const orientalMindoroPostalCodes = {
   'Baco': '5201',
@@ -457,6 +500,14 @@ const isMobile = ref(window.innerWidth < 640);
 watch(form, (newForm) => {
   profileStore.calculateCompletionPercentage(newForm);
 }, { deep: true });
+
+// Watch for tab changes to refresh pets data when switching to pet tab
+watch(currentTab, (newTab) => {
+  if (newTab === 'pet-info' && petsComponent.value && petsComponent.value.fetchPets) {
+    // Refresh pets data when switching to the pet tab
+    petsComponent.value.fetchPets();
+  }
+});
 
 const loadGoogleMapsAPI = () => {
   if (typeof google === 'undefined') {
@@ -519,7 +570,13 @@ const fetchUserProfile = async () => {
   }
 };
 
-// Modified handleSave to separate profile and pet saving
+// Add this new method for gender selection
+const selectGender = (gender) => {
+  form.value.gender = gender;
+  isGenderOpen.value = false;
+};
+
+// Modified handleSave to refresh pet data after saving
 const handleSave = async () => {
   if (isSaving.value) return;
   isSaving.value = true;
@@ -599,6 +656,17 @@ const handleSave = async () => {
             console.error('Failed to save pet changes. Please try again.');
           } else {
             console.log('Pet changes saved successfully!');
+            
+            // Force refresh the pets list by incrementing the key
+            petsRefreshKey.value++;
+            
+            // Also explicitly call fetchPets to ensure data is refreshed
+            if (petsComponent.value && petsComponent.value.fetchPets) {
+              await petsComponent.value.fetchPets();
+            }
+            
+            // Refresh the pets store data as well
+            await petsStore.fetchUserPets(userId);
           }
         } else {
           console.log('No pet changes to save.');
@@ -610,6 +678,32 @@ const handleSave = async () => {
   } finally {
     isSaving.value = false;
   }
+};
+
+// Add these methods to handle Pets component events
+const handlePetAdded = (pet) => {
+  console.log('Pet added locally:', pet);
+  // Force refresh the pets list
+  petsRefreshKey.value++;
+};
+
+const handlePetUpdated = (pet) => {
+  console.log('Pet updated locally:', pet);
+  // Force refresh the pets list
+  petsRefreshKey.value++;
+};
+
+const handlePetDeleted = (pet) => {
+  console.log('Pet deleted locally:', pet);
+  // Force refresh the pets list
+  petsRefreshKey.value++;
+};
+
+// FIXED: Modified to not increment petsRefreshKey to prevent infinite loop
+const handlePetsChanged = (pets) => {
+  console.log('Pets list changed:', pets);
+  // Do not increment petsRefreshKey here to prevent infinite loop
+  // petsRefreshKey.value++;
 };
 
 const closeAttachment = () => {
@@ -716,6 +810,11 @@ const handleClickOutside = (event) => {
       !event.target.closest('.date-of-birth-input') &&
       (isMobile.value || !dateInputRef.value.contains(event.target))) {
     handleCalendarCancel();
+  }
+  
+  // Improved gender dropdown logic
+  if (isGenderOpen.value && !event.target.closest('.gender-dropdown')) {
+    isGenderOpen.value = false;
   }
 };
 
@@ -960,5 +1059,10 @@ const handleAgeInput = (event) => {
   input, select {
     font-size: 16px; /* Prevents zoom on focus in iOS */
   }
+}
+/* Add this to ensure the dropdown appears above other elements */
+.gender-dropdown {
+  position: relative;
+  z-index: 30;
 }
 </style>

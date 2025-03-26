@@ -38,8 +38,8 @@
                 isOpen ? 'px-4 py-2' : 'p-2 justify-center'
               ]"
             >
-              <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" />
-              <span v-if="isOpen">{{ item.label }}</span>
+              <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" v-bind="item.iconProps || {}" />
+              <span v-if="isOpen" class="truncate">{{ item.label }}</span>
               <ChevronDown 
                 v-if="isOpen" 
                 class="w-4 h-4 ml-auto transition-transform duration-200"
@@ -93,14 +93,14 @@
           >
             <component 
               :is="item.icon" 
-              v-bind="item.iconProps"
-              class="w-6 h-6" 
+              v-bind="item.iconProps || {}"
+              class="w-5 h-5" 
               :class="{ 'mr-3': isOpen }" 
             />
             <span v-if="isOpen">{{ item.label }}</span>
             <!-- Tooltip for collapsed state -->
             <div v-if="!isOpen" 
-                 class="fixed left-16 ml-2 px-3 py-2 bg-white border border-gray-200 text-gray-800 text-sm rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap">
+                 class="fixed left-16 ml-2 px-3 py-2 bg-white border border-gray-200 text-gray-800 text-sm rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap z-50">
               {{ item.label }}
             </div>
           </router-link>
@@ -133,11 +133,9 @@ import {
   PanelRightClose,
   Settings,
   ChevronDown,
-  MessageCircleCode
+  MessageCircleCode,
+  Building
 } from 'lucide-vue-next';
-
-// Remove this import - it's causing the error
-// import { MessageCircleCodeIcon } from 'lucide-react';
 
 const props = defineProps({
   isOpen: {
@@ -186,8 +184,8 @@ const getDropdownStyle = (label) => {
   const itemRect = menuItemRefs.value[label].getBoundingClientRect();
   
   return {
-    top: `${itemRect.top - sidebarRect.top}px`,
-    left: `${sidebarRect.width}px`,
+    top: `${itemRect.top}px`,
+    left: `${sidebarRect.width + 8}px`,
   };
 };
 
@@ -214,14 +212,23 @@ const navItems = [
     label: 'Dashboard', 
     iconProps: { icon: "mage:dashboard-bar-notification", width: 20, height: 20 } 
   },
-  { href: '/admin/analytics', icon: Icon, label: 'Analytics', iconProps: { icon: "lucide:chart-pie"} },
-  { href: '/admin/usermanagement', icon: Users, label: 'User Management' },
+  { 
+    href: '/admin/analytics', 
+    icon: Icon, 
+    label: 'Analytics', 
+    iconProps: { icon: "lucide:chart-pie", width: 20, height: 20 } 
+  },
+  { 
+    href: '/admin/usermanagement', 
+    icon: Users, 
+    label: 'Users' 
+  },
   { 
     icon: Calendar, 
     label: 'Appointments',
     subItems: [
-      { href: '/admin/appointments/approvedappointments', label: 'Appointment Management' },
-      { href: '/admin/appointments/services', label: 'Services Management' }
+      { href: '/admin/appointments/approvedappointments', label: 'Appointments' },
+      { href: '/admin/appointments/services', label: 'Services' }
     ]
   },
   { 
@@ -234,28 +241,40 @@ const navItems = [
   },
   { 
     icon: Database, 
-    label: 'Data Management',
+    label: 'Data',
     subItems: [
-      {href: '/admin/datamanagement/petowners', label: 'Pet Owners'},
+      { href: '/admin/datamanagement/petowners', label: 'Pet Owners' },
       { href: '/admin/datamanagement/petprofiles', label: 'Pet Profiles' },
       { href: '/admin/datamanagement/veterinarians', label: 'Veterinarians' }
     ]
   },
-  { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
+  { 
+    href: '/admin/telehealth', 
+    icon: Video, 
+    label: 'Telehealth' 
+  },
   { 
     icon: MessageCircleCode,
     label: 'Chatbot',
     subItems: [
-      {href: '/admin/chatbot/chatlogs', label: 'Chat Logs'},
+      { href: '/admin/chatbot/chatlogs', label: 'Chat Logs' },
       { href: '/admin/chatbot/responses', label: 'Responses' }
+    ]
+  },
+  { 
+    icon: Building,
+    label: 'Office',
+    subItems: [
+      { href: '/admin/office-settings/office-hours', label: 'Office Hours' },
+      { href: '/admin/office-settings/office-contact', label: 'Office Contact' }
     ]
   },
   { 
     icon: Settings,
     label: 'Settings',
     subItems: [
-      {href: '/admin/adminsettings/adminarchive', label: 'Archive'},
-      { href: '/admin/adminsettings/adminaccount', label: 'Account Settings' }
+      { href: '/admin/adminsettings/adminarchive', label: 'Archive' },
+      { href: '/admin/adminsettings/adminaccount', label: 'Account' }
     ]
   },
 ];
@@ -268,11 +287,16 @@ const isActiveParent = (item) => {
 };
 
 onMounted(() => {
-  sidebarRef.value = document.querySelector('aside');
+  document.addEventListener('click', (event) => {
+    if (sidebarRef.value && !sidebarRef.value.contains(event.target)) {
+      openSubmenu.value = null;
+    }
+  });
 });
 
 onUnmounted(() => {
   clearTimeout(hoverTimeout.value);
+  document.removeEventListener('click', () => {});
 });
 
 watch(() => props.isOpen, (newValue) => {

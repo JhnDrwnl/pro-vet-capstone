@@ -1,4 +1,3 @@
-//main.js
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from '@/App.vue';
@@ -30,6 +29,9 @@ notificationService.setRouter(router);
 // Make notification service available globally
 app.config.globalProperties.$notifications = notificationService;
 
+// Initialize the notifications store here, before mounting the app
+const notificationsStore = useNotificationsStore();
+
 // Mount the app
 app.mount('#app');
 
@@ -38,15 +40,15 @@ app.mount('#app');
 setTimeout(async () => {
   try {
     // Use the already imported store
-    const notificationsStore = useNotificationsStore();
-    
+    // const notificationsStore = useNotificationsStore();  // No longer needed here
+
     // Set the store in the services
     notificationService.setNotificationsStore(notificationsStore);
     notificationSyncService.setNotificationsStore(notificationsStore);
     
     // Initialize services
-    notificationService.initialize();
-    notificationSyncService.initialize();
+    await notificationService.initialize();
+    await notificationSyncService.initialize();
     
     console.log('Notification services initialized successfully');
   } catch (error) {

@@ -17,6 +17,8 @@ import AdminArchive from '@/views/admin/adminsettings/Archive.vue';
 import AdminAccount from '@/views/admin/adminsettings/AccountSettings.vue';
 import Responses from '@/views/admin/chatbot/Responses.vue';
 import ChatLogs from '@/views/admin/chatbot/ChatLogs.vue';
+import OfficeHours from '@/views/admin/officesettings/OfficeHours.vue';
+import OfficeContact from '@/views/admin/officesettings/Officecontact.vue';
 
 export default [
   {
@@ -142,6 +144,24 @@ export default [
         name: 'adminProfile',
         component: Profile,
       },
+
+      {
+        path: '/admin/office-settings',
+        name: 'officesettings',
+        children: [
+          {
+            path: 'office-hours',
+            name: 'officehours',
+            component: OfficeHours
+          },
+          {
+            path: 'office-contact',
+            name: 'officecontact',
+            component: OfficeContact,
+          }
+        ]
+      }
+
     ],
   }
 ];

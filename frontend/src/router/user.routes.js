@@ -5,7 +5,7 @@ import UserAppointments from '@/views/user/Appointments.vue';
 import Notifications from '@/components/common/NotificationPanel.vue';
 import UserSettings from '@/views/user/Settings.vue';
 import UserTelehealth from '@/views/user/Telehealth.vue';
-import Profile from '../views/user/Profile.vue';
+import Profile from '@/views/user/Profile.vue';
 
 
 export default [
