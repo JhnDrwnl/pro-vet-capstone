@@ -167,6 +167,12 @@
                   >
                     <PowerIcon class="w-5 h-5" />
                   </button>
+                  <button 
+                    @click="confirmDeleteUser(user)"
+                    class="p-1 text-red-500 hover:text-red-600"
+                  >
+                    <Trash2 class="w-5 h-5" />
+                  </button>
                 </div>
               </td>
             </tr>
@@ -401,6 +407,34 @@
     </div>
   </div>
   
+  <!-- Delete Confirmation Modal -->
+  <div v-if="showModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-auto p-6">
+      <div class="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+        <AlertTriangleIcon class="h-6 w-6 text-red-600" />
+      </div>
+      <h3 class="text-lg font-medium text-center text-gray-900 mb-2">{{ modalTitle }}</h3>
+      <p class="text-sm text-gray-500 text-center mb-6">
+        {{ modalMessage }}
+      </p>
+      <div class="flex justify-center gap-3">
+        <button 
+          @click="showModal = false" 
+          class="px-4 py-2 border border-gray-300 rounded-full shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button 
+          @click="confirmAction" 
+          class="px-4 py-2 border border-transparent rounded-full shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+          :disabled="loading"
+        >
+          {{ modalAction === 'delete' ? 'Delete' : modalAction === 'restore' ? 'Restore' : 'Delete Permanently' }}
+        </button>
+      </div>
+    </div>
+  </div>
+  
   <!-- Success Modal -->
   <div v-if="showSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-auto p-6">
@@ -470,7 +504,8 @@
     CheckCircle as CheckCircleIcon,
     XCircle as XCircleIcon,
     Eye as EyeIcon,
-    EyeOff as EyeOffIcon
+    EyeOff as EyeOffIcon,
+    Trash2
   } from 'lucide-vue-next'
   
   // Define your API URL here
@@ -517,6 +552,12 @@
   const showErrorModal = ref(false)
   const selectedUser = ref(null)
   const statusMessage = ref('')
+  
+  // Delete modal state
+  const showModal = ref(false)
+  const modalTitle = ref('')
+  const modalMessage = ref('')
+  const modalAction = ref('')
   
   const filters = ['All', 'Veterinarians', 'Pet Owners', 'Active', 'Inactive', 'Pending']
   const activeFilters = ref([])
@@ -785,6 +826,58 @@
   showStatusModal.value = false
   await toggleUserStatus(selectedUser.value.userId)
   selectedUser.value = null
+  }
+  
+  // Confirm delete user
+  const confirmDeleteUser = (user) => {
+    selectedUser.value = user
+    modalTitle.value = 'Archive User'
+    modalMessage.value = `Are you sure you want to archive ${user.firstName} ${user.lastName}? This user will be moved to the archive and can be restored within 30 days.`
+    modalAction.value = 'delete'
+    showModal.value = true
+  }
+  
+  // Confirm action from modal
+  const confirmAction = async () => {
+    if (!selectedUser.value) return
+    
+    showModal.value = false
+    
+    try {
+      if (modalAction.value === 'delete') {
+        await archiveUser(selectedUser.value)
+      } else if (modalAction.value === 'restore') {
+        await restoreUser(selectedUser.value)
+      } else if (modalAction.value === 'permanent-delete') {
+        await permanentlyDeleteUser(selectedUser.value)
+      }
+    } catch (error) {
+      console.error(`Error performing ${modalAction.value} action:`, error)
+      showStatus(`Error: ${error.message}`, 'error')
+    }
+    
+    selectedUser.value = null
+  }
+  
+  // Archive user
+  const archiveUser = async (user) => {
+    try {
+      loading.value = true
+      const response = await axios.post(`${API_URL}/api/auth/delete-user`, { uid: user.uid })
+      
+      if (response.data.success) {
+        showStatus(`User ${user.firstName} ${user.lastName} archived successfully`, 'success')
+        await fetchUsers()
+      } else {
+        throw new Error(response.data.message || 'Failed to archive user')
+      }
+    } catch (error) {
+      console.error('Error archiving user:', error)
+      showStatus(`Error archiving user: ${error.message}`, 'error')
+      throw error
+    } finally {
+      loading.value = false
+    }
   }
   
   // OTP verification related functions

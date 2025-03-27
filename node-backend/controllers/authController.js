@@ -1,6 +1,8 @@
 // server/controllers/authController.js
 const mailer = require('../utils/mailer');
 const admin = require('../config/firebase');
+const userDataUtils = require('../utils/userDataUtils');
+const logger = require('../utils/logger');
 
 /**
 * User registration - sends OTP for email verification
@@ -435,6 +437,67 @@ exports.getUsersSignInData = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to fetch users sign-in data',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete a user (soft delete - move to archive)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.deleteUser = async (req, res) => {
+  try {
+    const { uid } = req.body;
+    
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+    
+    logger.info(`Archiving user with ID: ${uid}`);
+    
+    // Archive the user and related data
+    const archiveResult = await userDataUtils.archiveUser(uid);
+    
+    if (!archiveResult.success) {
+      throw new Error(archiveResult.message);
+    }
+    
+    // Send email notification to the user
+    try {
+      // Get user email from Firebase Auth since the Firestore document is now deleted
+      const userRecord = await admin.auth().getUser(uid);
+      if (userRecord.email) {
+        await mailer.sendEmail({
+          to: userRecord.email,
+          subject: 'Your account has been archived',
+          text: `Your account has been archived. It will be permanently deleted in 30 days if not restored.`,
+          html: `
+            <h2>Your account has been archived</h2>
+            <p>Your account has been archived and will be permanently deleted in 30 days if not restored.</p>
+            <p>If you believe this was done in error, please contact our support team.</p>
+          `
+        });
+      }
+    } catch (emailError) {
+      logger.error('Error sending email notification:', emailError);
+      // Continue with the process even if email fails
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'User archived successfully',
+      data: archiveResult
+    });
+  } catch (error) {
+    logger.error('Error archiving user:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to archive user',
       error: error.message
     });
   }

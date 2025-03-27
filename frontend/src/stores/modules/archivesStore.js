@@ -9,14 +9,18 @@ import {
   deleteDoc, 
   query, 
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 import { db } from '@shared/firebase';
 import { useServiceCategoryStore } from './ServiceCategoryStore';
+import { useAuthStore } from './authStore';
+import axios from 'axios';
 
 export const useArchivesStore = defineStore('archives', {
   state: () => ({
     archivedItems: [],
+    archivedUsers: [],
     loading: false,
     error: null,
     selectedArchivedItem: null
@@ -111,6 +115,15 @@ export const useArchivesStore = defineStore('archives', {
       } finally {
         this.loading = false;
       }
+    },
+    
+    /**
+     * Generate a consistent user ID from Firebase UID
+     * @param {string} uid - Firebase UID
+     * @returns {string} - Formatted user ID
+     */
+    generateUserId(uid) {
+      return `user_${uid.substring(0, 8)}`;
     },
     
     /**
@@ -215,18 +228,47 @@ export const useArchivesStore = defineStore('archives', {
           
           console.log('Category restored successfully:', originalId);
           
+        } else if (archiveData.itemType === 'user') {
+          console.log('Restoring user with server-side endpoint');
+          
+          // Get the original Firebase UID
+          const originalUid = archiveData.originalId;
+          
+          try {
+            // Call the server endpoint to restore the user
+            // Updated to use the plural 'archives' to match server.js
+            const restoreResponse = await axios.post('/api/archives/restore-user', {
+              uid: originalUid
+            });
+            
+            if (!restoreResponse.data.success) {
+              console.error('Failed to restore user:', restoreResponse.data.message);
+              throw new Error('Failed to restore user: ' + restoreResponse.data.message);
+            }
+            
+            console.log('User restored successfully:', originalUid);
+            
+            // Update local state - the server-side restore already deletes from archives
+            this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
+            
+          } catch (error) {
+            console.error('Error restoring user:', error);
+            throw new Error('Error restoring user: ' + error.message);
+          }
         } else {
           throw new Error('Unknown item type: ' + archiveData.itemType);
         }
         
-        // Delete from archives collection
-        console.log('Deleting item from archives collection:', archiveId);
-        const archiveRef = doc(db, 'archives', archiveId);
-        await deleteDoc(archiveRef);
-        console.log('Item deleted from archives collection:', archiveId);
-        
-        // Update local state
-        this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
+        // For non-user items, delete from archives collection
+        if (archiveData.itemType !== 'user') {
+          console.log('Deleting item from archives collection:', archiveId);
+          const archiveRef = doc(db, 'archives', archiveId);
+          await deleteDoc(archiveRef);
+          console.log('Item deleted from archives collection:', archiveId);
+          
+          // Update local state
+          this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
+        }
         
         // Refresh the ServiceCategoryStore data
         if (archiveData.itemType === 'service') {
@@ -258,16 +300,50 @@ export const useArchivesStore = defineStore('archives', {
       this.error = null;
       
       try {
-        // Delete from archives collection
+        // Get the archived item data first to check if it's a user
         const archiveRef = doc(db, 'archives', archiveId);
-        await deleteDoc(archiveRef);
+        const archiveDoc = await getDoc(archiveRef);
         
-        console.log('Archived item permanently deleted:', archiveId);
+        if (!archiveDoc.exists()) {
+          throw new Error('Archived item not found');
+        }
         
-        // Update local state
-        this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
+        const archiveData = archiveDoc.data();
         
-        return true;
+        // If it's a user, we need to use the server endpoint
+        if (archiveData.itemType === 'user' && archiveData.originalId) {
+          try {
+            // Call the server endpoint to permanently delete the user
+            const response = await axios.delete('/api/archives/permanently-delete-user', {
+              data: { uid: archiveData.originalId }
+            });
+            
+            if (!response.data.success) {
+              console.error('Failed to permanently delete user:', response.data.message);
+              throw new Error('Failed to permanently delete user: ' + response.data.message);
+            }
+            
+            console.log('User permanently deleted:', archiveData.originalId);
+            
+            // Update local state - the server-side delete already removes from archives
+            this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
+            
+            return true;
+          } catch (error) {
+            console.error('Error permanently deleting user:', error);
+            throw new Error('Error permanently deleting user: ' + error.message);
+          }
+        } else {
+          // For non-user items, just delete from archives collection
+          await deleteDoc(archiveRef);
+          
+          console.log('Archived item permanently deleted:', archiveId);
+          
+          // Update local state
+          this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
+          
+          return true;
+        }
       } catch (error) {
         console.error('Error permanently deleting archived item:', error);
         this.error = error.message;
@@ -319,12 +395,112 @@ export const useArchivesStore = defineStore('archives', {
       } finally {
         this.loading = false;
       }
+    },
+
+    /**
+     * Fetch all archived users
+     * @returns {Array} - Array of archived user objects
+     */
+    async fetchArchivedUsers() {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        console.log('Fetching archived users');
+        // Query archives collection for users
+        const archivesRef = collection(db, 'archives');
+        const q = query(
+          archivesRef, 
+          where('itemType', '==', 'user'),
+          orderBy('archivedAt', 'desc')
+        );
+        const archivesSnapshot = await getDocs(q);
+        
+        if (!archivesSnapshot.empty) {
+          const archivedUsersData = archivesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          console.log('Fetched archived users data:', archivedUsersData);
+          this.archivedUsers = archivedUsersData;
+          return archivedUsersData;
+        } else {
+          console.log('No archived users found');
+          this.archivedUsers = [];
+          return [];
+        }
+      } catch (error) {
+        console.error('Error fetching archived users:', error);
+        this.error = error.message;
+        return [];
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    /**
+     * Restore an archived user
+     * @param {string} archiveId - The ID of the archived user to restore
+     * @returns {boolean} - Success status
+     */
+    async restoreArchivedUser(archiveId) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // Use the existing restoreArchivedItem method since it now handles users
+        const result = await this.restoreArchivedItem(archiveId);
+        
+        // Refresh the archived users list
+        if (result) {
+          await this.fetchArchivedUsers();
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('Error restoring archived user:', error);
+        this.error = error.message;
+        return false;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    /**
+     * Permanently delete an archived user
+     * @param {string} archiveId - The ID of the archived user to delete
+     * @returns {boolean} - Success status
+     */
+    async permanentlyDeleteArchivedUser(archiveId) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        // Use the existing permanentlyDeleteArchivedItem method
+        const result = await this.permanentlyDeleteArchivedItem(archiveId);
+        
+        // Refresh the archived users list
+        if (result) {
+          await this.fetchArchivedUsers();
+        }
+        
+        return result;
+      } catch (error) {
+        console.error('Error permanently deleting archived user:', error);
+        this.error = error.message;
+        return false;
+      } finally {
+        this.loading = false;
+      }
     }
   },
 
   getters: {
     getArchivedItems: (state) => state.archivedItems,
     getArchivedItemCount: (state) => state.archivedItems.length,
+    getArchivedUsers: (state) => state.archivedUsers,
+    getArchivedUserCount: (state) => state.archivedUsers.length,
     isLoading: (state) => state.loading,
     getError: (state) => state.error,
     getSelectedArchivedItem: (state) => state.selectedArchivedItem

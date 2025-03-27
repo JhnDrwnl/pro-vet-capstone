@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const mailer = require('./utils/mailer');
+const { initScheduler } = require('./scheduler');
 
 // Load environment variables
 dotenv.config();
@@ -35,6 +36,14 @@ app.use('/api/auth', authRoutes);
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
+
+// Add archive routes
+const archiveRoutes = require('./routes/archiveRoutes');
+app.use('/api/archives', archiveRoutes);
+
+// Initialize the scheduler
+initScheduler();
+console.log('User archive cleanup scheduler initialized');
 
 // 404 handler
 app.use((req, res) => {
