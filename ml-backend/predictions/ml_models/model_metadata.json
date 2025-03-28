@@ -1,0 +1,19 @@
+{
+    "input_dim": 735,
+    "output_dim": 42,
+    "model_type": "classification",
+    "history": {
+        "accuracy": [
+            0.998
+        ],
+        "val_accuracy": [
+            0.998
+        ],
+        "loss": [
+            0.0020000000000000018
+        ],
+        "val_loss": [
+            0.0020000000000000018
+        ]
+    }
+}

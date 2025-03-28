@@ -1,0 +1,9 @@
+Species,Count,File
+Dog,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_dog_disease.csv
+Cat,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_cat_disease.csv
+Fish,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_fish_disease.csv
+Rabbit,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_rabbit_disease.csv
+Hamster,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_hamster_disease.csv
+Turtle,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_turtle_disease.csv
+Snake,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_snake_disease.csv
+Chicken,10000,C:\Users\DELL\capstone-provett\pro-vet-capstone\ml-backend\predictions\ml_pipeline\..\..\species_data\future_chicken_disease.csv
