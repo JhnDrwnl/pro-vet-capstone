@@ -33,36 +33,20 @@ export const useAuthStore = defineStore("auth", {
   }),
 
   actions: {
-    // Add this new method to properly process Google photo URLs
+    // Improved method to handle Google photo URLs
     async processGooglePhotoURL(photoURL) {
-      if (!photoURL || !photoURL.startsWith('https://lh3.googleusercontent.com')) {
+      if (!photoURL) return "";
+      
+      // Only process Google URLs
+      if (!photoURL.startsWith('https://lh3.googleusercontent.com')) {
         return photoURL;
       }
       
-      // First approach: Remove size parameters to get full-size image
-      const cleanURL = photoURL.split('=')[0];
+      console.log("Processing Google photo URL:", photoURL);
       
-      try {
-        // Verify the URL is accessible
-        const response = await fetch(cleanURL, { method: 'HEAD' });
-        if (response.ok) {
-          console.log("Successfully verified Google photo URL:", cleanURL);
-          return cleanURL;
-        }
-        
-        // If the clean URL doesn't work, try the original
-        const originalResponse = await fetch(photoURL, { method: 'HEAD' });
-        if (originalResponse.ok) {
-          console.log("Using original Google photo URL:", photoURL);
-          return photoURL;
-        }
-        
-        console.warn("Both cleaned and original Google photo URLs failed");
-        return ""; // Return empty if both fail
-      } catch (error) {
-        console.error("Error verifying Google photo URL:", error);
-        return ""; // Return empty on error
-      }
+      // For Google photos, simply return the original URL
+      // This ensures the sidebar can display the actual Google profile photo
+      return photoURL;
     },
 
     generateUserId(uid) {
@@ -99,11 +83,12 @@ export const useAuthStore = defineStore("auth", {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         
-        // Clean and process the photoURL
-        let photoURL = user.photoURL || userData.photoURL || "";
+        // IMPORTANT: Prioritize the stored Firestore photoURL over the Google one
+        // This ensures custom profile photos aren't overwritten on login
+        let photoURL = userData.photoURL || user.photoURL || "";
         
-        // If it's a Google photo URL, process it properly
-        if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
+        // Only process Google URLs for new users who haven't set a custom photo
+        if (!userData.photoURL && photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
           const processedPhotoURL = await this.processGooglePhotoURL(photoURL);
           
           // If the stored URL is different from the processed one, update it
@@ -126,7 +111,7 @@ export const useAuthStore = defineStore("auth", {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: user.email || userData.email,
-          photoURL: photoURL, // Use the processed URL
+          photoURL: photoURL, // Use the prioritized URL
         };
         
         console.log("User data fetched with photo URL:", photoURL);
@@ -429,9 +414,24 @@ export const useAuthStore = defineStore("auth", {
         console.log("User photo URL:", user.photoURL)
         console.log("User UID:", user.uid)
 
-        // Process the Google photo URL properly
-        const photoURL = await this.processGooglePhotoURL(user.photoURL || "")
-        console.log("Processed photoURL from Google:", photoURL)
+        // Parse the user's name
+        const nameParts = user.displayName ? user.displayName.split(" ") : ["", ""]
+        let firstName, lastName
+
+        if (nameParts.length >= 2) {
+          lastName = nameParts.pop()
+          firstName = nameParts.join(" ")
+        } else {
+          firstName = nameParts[0] || ""
+          lastName = ""
+        }
+
+        console.log("Parsed firstName:", firstName)
+        console.log("Parsed lastName:", lastName)
+
+        // Use the original photo URL directly
+        const photoURL = user.photoURL || ""
+        console.log("Using original Google photo URL:", photoURL)
 
         const additionalUserInfo = getAdditionalUserInfo(result)
         const isNewUser = additionalUserInfo?.isNewUser
@@ -444,20 +444,6 @@ export const useAuthStore = defineStore("auth", {
           // Call the onNewUser callback
           onNewUser()
 
-          const nameParts = user.displayName ? user.displayName.split(" ") : ["", ""]
-          let firstName, lastName
-
-          if (nameParts.length >= 2) {
-            lastName = nameParts.pop()
-            firstName = nameParts.join(" ")
-          } else {
-            firstName = nameParts[0] || ""
-            lastName = ""
-          }
-
-          console.log("Parsed firstName:", firstName)
-          console.log("Parsed lastName:", lastName)
-
           // Create user document with status based on where the sign-in was initiated
           await this.createUserDocument(user, {
             firstName,
@@ -469,17 +455,20 @@ export const useAuthStore = defineStore("auth", {
             emailVerified: true,
           })
         } else {
-          // For existing users, ensure the photoURL is up to date
-          const userData = userDoc.data()
+          // For existing users, DO NOT update the photoURL if one already exists
+          // This ensures custom profile photos aren't overwritten on login
+          const userData = userDoc.data();
           
-          // Update the photoURL if it has changed
-          if (photoURL && (!userData.photoURL || userData.photoURL !== photoURL)) {
-            console.log("Updating photoURL for existing user:", photoURL)
+          // Only update the photoURL if the user doesn't have one yet
+          if (photoURL && !userData.photoURL) {
+            console.log("Setting initial photoURL for user:", photoURL);
             
             await updateDoc(doc(db, "users", userId), {
               photoURL: photoURL,
               updatedAt: new Date()
             });
+          } else {
+            console.log("Keeping existing photoURL:", userData.photoURL);
           }
         }
 
