@@ -33,6 +33,38 @@ export const useAuthStore = defineStore("auth", {
   }),
 
   actions: {
+    // Add this new method to properly process Google photo URLs
+    async processGooglePhotoURL(photoURL) {
+      if (!photoURL || !photoURL.startsWith('https://lh3.googleusercontent.com')) {
+        return photoURL;
+      }
+      
+      // First approach: Remove size parameters to get full-size image
+      const cleanURL = photoURL.split('=')[0];
+      
+      try {
+        // Verify the URL is accessible
+        const response = await fetch(cleanURL, { method: 'HEAD' });
+        if (response.ok) {
+          console.log("Successfully verified Google photo URL:", cleanURL);
+          return cleanURL;
+        }
+        
+        // If the clean URL doesn't work, try the original
+        const originalResponse = await fetch(photoURL, { method: 'HEAD' });
+        if (originalResponse.ok) {
+          console.log("Using original Google photo URL:", photoURL);
+          return photoURL;
+        }
+        
+        console.warn("Both cleaned and original Google photo URLs failed");
+        return ""; // Return empty if both fail
+      } catch (error) {
+        console.error("Error verifying Google photo URL:", error);
+        return ""; // Return empty on error
+      }
+    },
+
     generateUserId(uid) {
       return `user_${uid.substring(0, 8)}`
     },
@@ -70,20 +102,20 @@ export const useAuthStore = defineStore("auth", {
         // Clean and process the photoURL
         let photoURL = user.photoURL || userData.photoURL || "";
         
-        // If it's a Google photo URL, remove any size parameters
+        // If it's a Google photo URL, process it properly
         if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-          const cleanPhotoURL = photoURL.split('=')[0];
+          const processedPhotoURL = await this.processGooglePhotoURL(photoURL);
           
-          // If the stored URL is different from the clean one, update it
-          if (userData.photoURL !== cleanPhotoURL) {
-            console.log("Updating photoURL in fetchUserData:", cleanPhotoURL);
+          // If the stored URL is different from the processed one, update it
+          if (processedPhotoURL && userData.photoURL !== processedPhotoURL) {
+            console.log("Updating photoURL in fetchUserData:", processedPhotoURL);
             await updateDoc(doc(db, "users", userId), { 
-              photoURL: cleanPhotoURL,
+              photoURL: processedPhotoURL,
               updatedAt: new Date()
             });
           }
           
-          photoURL = cleanPhotoURL;
+          photoURL = processedPhotoURL || photoURL;
         }
         
         this.user = {
@@ -94,7 +126,7 @@ export const useAuthStore = defineStore("auth", {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: user.email || userData.email,
-          photoURL: photoURL, // Use the cleaned URL
+          photoURL: photoURL, // Use the processed URL
         };
         
         console.log("User data fetched with photo URL:", photoURL);
@@ -110,12 +142,12 @@ export const useAuthStore = defineStore("auth", {
       const userId = this.generateUserId(user.uid)
       const userRef = doc(db, "users", userId)
       
-      // Process photoURL to ensure it's clean
+      // Process photoURL to ensure it's clean and accessible
       let photoURL = user.photoURL || additionalData.photoURL || ""
       
-      // If it's a Google photo URL, remove any size parameters
+      // If it's a Google photo URL, process it properly
       if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-        photoURL = photoURL.split('=')[0]
+        photoURL = await this.processGooglePhotoURL(photoURL)
       }
       
       const userData = {
@@ -397,15 +429,9 @@ export const useAuthStore = defineStore("auth", {
         console.log("User photo URL:", user.photoURL)
         console.log("User UID:", user.uid)
 
-        // Always clean the photoURL immediately when we get it from Google
-        let photoURL = user.photoURL || ""
-        if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-          // Remove any size parameters and make sure we get the full-size image
-          photoURL = photoURL.split('=')[0]
-          console.log("Cleaned photoURL from Google:", photoURL)
-          // Update the user object with the cleaned URL
-          user.photoURL = photoURL
-        }
+        // Process the Google photo URL properly
+        const photoURL = await this.processGooglePhotoURL(user.photoURL || "")
+        console.log("Processed photoURL from Google:", photoURL)
 
         const additionalUserInfo = getAdditionalUserInfo(result)
         const isNewUser = additionalUserInfo?.isNewUser
