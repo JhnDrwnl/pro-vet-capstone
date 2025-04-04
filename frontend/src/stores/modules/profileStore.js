@@ -25,17 +25,9 @@ export const useProfileStore = defineStore('profile', {
           const userData = userDoc.data();
           console.log('User profile data:', userData);
           
-          // Fix for Google photoURL - ensure it's properly stored
-          if (userData.photoURL && userData.photoURL.startsWith('https://lh3.googleusercontent.com')) {
-            // Make sure the URL doesn't have any size restrictions that might be causing issues
-            const cleanPhotoURL = userData.photoURL.split('=')[0];
-            
-            // Update the document with the clean URL if needed
-            if (cleanPhotoURL !== userData.photoURL) {
-              console.log('Updating photoURL in profile store:', cleanPhotoURL);
-              await updateDoc(userRef, { photoURL: cleanPhotoURL });
-              userData.photoURL = cleanPhotoURL;
-            }
+          // No special handling needed for Google photos - use the stored URL as is
+          if (userData.photoURL) {
+            console.log('Using stored photo URL:', userData.photoURL);
           }
           
           this.profile = userData;
@@ -62,9 +54,30 @@ export const useProfileStore = defineStore('profile', {
       try {
         const userRef = doc(db, 'users', userId);
         
-        // Process photoURL if present
-        if (profileData.photoURL && profileData.photoURL.startsWith('https://lh3.googleusercontent.com')) {
-          profileData.photoURL = profileData.photoURL.split('=')[0];
+        // Get current user data to check if we're updating a Google photo
+        let shouldUpdatePhoto = true;
+        if (profileData.photoURL) {
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            
+            // If user already has a Google photo and we're trying to set a new Google photo,
+            // make sure we're not downgrading to an older version
+            if (userData.photoURL && 
+                userData.photoURL.startsWith('https://lh3.googleusercontent.com') && 
+                profileData.photoURL.startsWith('https://lh3.googleusercontent.com')) {
+              
+              // If the URLs are different, log them for debugging
+              if (userData.photoURL !== profileData.photoURL) {
+                console.log('Comparing Google photo URLs:');
+                console.log('Current:', userData.photoURL);
+                console.log('New:', profileData.photoURL);
+                
+                // We'll still update, but log it for tracking
+                console.log('Updating Google photo URL in profile store');
+              }
+            }
+          }
         }
         
         // Add updatedAt timestamp
@@ -73,7 +86,15 @@ export const useProfileStore = defineStore('profile', {
           updatedAt: new Date()
         };
         
-        await setDoc(userRef, dataToUpdate, { merge: true });
+        // Clean up undefined values - Firestore doesn't accept undefined values
+        const cleanData = {};
+        for (const [key, value] of Object.entries(dataToUpdate)) {
+          // Replace undefined values with null, which Firestore accepts
+          cleanData[key] = value === undefined ? null : value;
+        }
+        
+        await setDoc(userRef, cleanData, { merge: true });
+        console.log('Profile updated successfully with data:', cleanData);
         
         // Update local profile state
         this.profile = {
@@ -90,6 +111,11 @@ export const useProfileStore = defineStore('profile', {
       } finally {
         this.loading = false;
       }
+    },
+    
+    // Helper method to check if a URL is a Google photo URL
+    isGooglePhotoURL(url) {
+      return url && url.startsWith('https://lh3.googleusercontent.com');
     },
     
     calculateCompletionPercentage(profile) {

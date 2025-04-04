@@ -8,7 +8,7 @@ const userRelatedCollections = [
   'notifications',
   'userPreferences',
   'userActivity',
-  // Add other collections as needed
+  'pets' // Ensure pets collection is in the list
 ];
 
 /**
@@ -59,11 +59,12 @@ exports.archiveUser = async (uid) => {
     // Get user data
     const userData = userDoc.data();
     
-    // Prepare user data for archiving
+    // Prepare user data for archiving - IMPORTANT: Include ALL original fields
     const archiveData = {
       itemType: 'user',
-      originalId: uid,
-      ...userData,
+      originalId: userId, // Store the formatted user ID
+      uid: uid, // Store the original Firebase UID
+      ...userData, // Include ALL user data fields
       archivedAt: admin.firestore.FieldValue.serverTimestamp(),
       archiveReason: 'user_deleted'
     };
@@ -76,7 +77,8 @@ exports.archiveUser = async (uid) => {
     logger.info(`User ${uid} saved to archives with ID: ${archiveId}`);
     
     // Archive related data from other collections
-    const archivedRelatedData = await archiveUserRelatedData(uid);
+    // IMPORTANT: Pass both the raw UID and the formatted userId
+    const archivedRelatedData = await archiveUserRelatedData(uid, userId);
     
     // IMPORTANT: Delete the user document from the users collection
     await userRef.delete();
@@ -103,25 +105,89 @@ exports.archiveUser = async (uid) => {
 
 /**
  * Archive user-related data from other collections
- * @param {string} uid - User ID
+ * @param {string} uid - Firebase UID
+ * @param {string} userId - Formatted user ID (user_XXXXXXXX)
  * @returns {Object} - Summary of archived data
  */
-const archiveUserRelatedData = async (uid) => {
+const archiveUserRelatedData = async (uid, userId) => {
   const summary = {};
   
+  // First, handle pets collection separately since it uses ownerId
+  try {
+    // IMPORTANT: Find pets for this user using the formatted userId
+    // This is because in the pet store, ownerId is stored as the formatted userId
+    const petsRef = admin.firestore().collection('pets');
+    const petsSnapshot = await petsRef.where('ownerId', '==', userId).get();
+    
+    if (petsSnapshot.empty) {
+      logger.info(`No pets found for user ${userId}`);
+      summary['pets'] = 0;
+    } else {
+      let count = 0;
+      for (const doc of petsSnapshot.docs) {
+        const petData = doc.data();
+        const petId = doc.id;
+        
+        logger.info(`Found pet with ID ${petId} for user ${userId}`);
+        
+        // Prepare data for archiving - IMPORTANT: Include ALL original fields
+        const archiveData = {
+          ...petData,
+          itemType: 'pet',
+          originalId: petId,
+          ownerId: userId, // Preserve the formatted userId
+          archivedAt: admin.firestore.FieldValue.serverTimestamp(),
+          archiveReason: 'user_deleted'
+        };
+        
+        // Store in archives collection with a unique ID
+        const archiveId = `pet_${petId}`;
+        await admin.firestore().collection('archives').doc(archiveId).set(archiveData);
+        logger.info(`Pet ${petId} archived with ID: ${archiveId}`);
+        
+        // Delete from original collection
+        await doc.ref.delete();
+        logger.info(`Pet ${petId} deleted from pets collection`);
+        
+        count++;
+      }
+      
+      logger.info(`Archived ${count} pets for user ${userId}`);
+      summary['pets'] = count;
+    }
+  } catch (error) {
+    logger.error(`Error archiving pets for user ${userId}: ${error.message}`);
+    summary['pets'] = `Error: ${error.message}`;
+  }
+  
+  // Now handle other collections that use userId field
   for (const collectionName of userRelatedCollections) {
+    // Skip pets as we already handled it
+    if (collectionName === 'pets') continue;
+    
     try {
       const collectionRef = admin.firestore().collection(collectionName);
-      const snapshot = await collectionRef.where('userId', '==', uid).get();
       
-      if (snapshot.empty) {
-        logger.info(`No ${collectionName} found for user ${uid}`);
+      // Try both the raw UID and formatted userId for maximum compatibility
+      const snapshot1 = await collectionRef.where('userId', '==', uid).get();
+      const snapshot2 = await collectionRef.where('userId', '==', userId).get();
+      
+      // Combine results
+      const docs = [...snapshot1.docs];
+      snapshot2.docs.forEach(doc => {
+        if (!docs.some(existingDoc => existingDoc.id === doc.id)) {
+          docs.push(doc);
+        }
+      });
+      
+      if (docs.length === 0) {
+        logger.info(`No ${collectionName} found for user ${uid} or ${userId}`);
         summary[collectionName] = 0;
         continue;
       }
       
       let count = 0;
-      for (const doc of snapshot.docs) {
+      for (const doc of docs) {
         const data = doc.data();
         const archiveData = {
           itemType: collectionName,
@@ -131,8 +197,8 @@ const archiveUserRelatedData = async (uid) => {
           archiveReason: 'user_deleted'
         };
         
-        // Use the same document ID for the archive
-        const archiveId = doc.id;
+        // Use a unique ID for the archive to avoid conflicts
+        const archiveId = `${collectionName}_${doc.id}`;
         
         // Save to archives
         await admin.firestore().collection('archives').doc(archiveId).set(archiveData);
@@ -143,10 +209,10 @@ const archiveUserRelatedData = async (uid) => {
         count++;
       }
       
-      logger.info(`Archived ${count} ${collectionName} for user ${uid}`);
+      logger.info(`Archived ${count} ${collectionName} for user ${uid}/${userId}`);
       summary[collectionName] = count;
     } catch (error) {
-      logger.error(`Error archiving ${collectionName} for user ${uid}: ${error.message}`);
+      logger.error(`Error archiving ${collectionName} for user ${uid}/${userId}: ${error.message}`);
       summary[collectionName] = `Error: ${error.message}`;
     }
   }
@@ -180,10 +246,10 @@ exports.restoreUser = async (uid) => {
     
     const archiveData = archiveDoc.data();
     
-    // Prepare user data for restoration
+    // Prepare user data for restoration - IMPORTANT: Preserve ALL original user data
     const userData = { ...archiveData };
     
-    // Remove archive-specific fields
+    // Remove only the archive-specific fields
     delete userData.itemType;
     delete userData.originalId;
     delete userData.archivedAt;
@@ -194,6 +260,7 @@ exports.restoreUser = async (uid) => {
     userData.restoredAt = admin.firestore.FieldValue.serverTimestamp();
     
     // IMPORTANT: Create a new document in the users collection with the same ID
+    // This ensures ALL profile data is restored, not just basic auth data
     await admin.firestore().collection('users').doc(userId).set(userData);
     logger.info(`User ${uid} restored to users collection with ID ${userId}`);
     
@@ -201,8 +268,8 @@ exports.restoreUser = async (uid) => {
     await admin.auth().updateUser(uid, { disabled: false });
     logger.info(`User ${uid} enabled in Firebase Auth`);
     
-    // Restore related data
-    const restoredRelatedData = await restoreUserRelatedData(uid);
+    // Restore related data - pass both the raw UID and formatted userId
+    const restoredRelatedData = await restoreUserRelatedData(uid, userId);
     
     // Delete from archives
     await archiveRef.delete();
@@ -224,28 +291,97 @@ exports.restoreUser = async (uid) => {
 
 /**
  * Restore user-related data from archives
- * @param {string} uid - User ID
+ * @param {string} uid - Firebase UID
+ * @param {string} userId - Formatted user ID (user_XXXXXXXX)
  * @returns {Object} - Summary of restored data
  */
-const restoreUserRelatedData = async (uid) => {
+const restoreUserRelatedData = async (uid, userId) => {
   const summary = {};
   
+  // First, handle pets collection separately since it uses ownerId
+  try {
+    // Find archived pets for this user using the formatted userId
+    const archivesRef = admin.firestore().collection('archives');
+    const petsSnapshot = await archivesRef.where('itemType', '==', 'pet')
+                                        .where('ownerId', '==', userId)
+                                        .get();
+    
+    if (petsSnapshot.empty) {
+      logger.info(`No archived pets found for user ${userId}`);
+      summary['pets'] = 0;
+    } else {
+      let count = 0;
+      for (const doc of petsSnapshot.docs) {
+        const archiveData = doc.data();
+        const originalId = archiveData.originalId;
+        
+        logger.info(`Found archived pet with original ID ${originalId} for user ${userId}`);
+        
+        // Prepare data for restoration - IMPORTANT: Preserve ALL original pet data
+        const petData = { ...archiveData };
+        
+        // Remove only the archive-specific fields
+        delete petData.itemType;
+        delete petData.originalId;
+        delete petData.archivedAt;
+        delete petData.archiveReason;
+        
+        // Update status
+        petData.status = 'active';
+        petData.restoredAt = admin.firestore.FieldValue.serverTimestamp();
+        
+        // Create a new document in the pets collection with the original ID
+        await admin.firestore().collection('pets').doc(originalId).set(petData);
+        logger.info(`Pet ${originalId} restored to pets collection`);
+        
+        // Delete from archives
+        await doc.ref.delete();
+        logger.info(`Pet archive ${doc.id} deleted from archives`);
+        
+        count++;
+      }
+      
+      logger.info(`Restored ${count} pets for user ${userId}`);
+      summary['pets'] = count;
+    }
+  } catch (error) {
+    logger.error(`Error restoring pets for user ${userId}: ${error.message}`);
+    summary['pets'] = `Error: ${error.message}`;
+  }
+  
+  // Now handle other collections that use userId field
   for (const collectionName of userRelatedCollections) {
+    // Skip pets as we already handled it
+    if (collectionName === 'pets') continue;
+    
     try {
       // Find archived items for this collection and user
       const archivesRef = admin.firestore().collection('archives');
-      const snapshot = await archivesRef.where('itemType', '==', collectionName)
-                                       .where('userId', '==', uid)
+      
+      // Try both the raw UID and formatted userId for maximum compatibility
+      const snapshot1 = await archivesRef.where('itemType', '==', collectionName)
+                                      .where('userId', '==', uid)
+                                      .get();
+      const snapshot2 = await archivesRef.where('itemType', '==', collectionName)
+                                       .where('userId', '==', userId)
                                        .get();
       
-      if (snapshot.empty) {
-        logger.info(`No archived ${collectionName} found for user ${uid}`);
+      // Combine results
+      const docs = [...snapshot1.docs];
+      snapshot2.docs.forEach(doc => {
+        if (!docs.some(existingDoc => existingDoc.id === doc.id)) {
+          docs.push(doc);
+        }
+      });
+      
+      if (docs.length === 0) {
+        logger.info(`No archived ${collectionName} found for user ${uid}/${userId}`);
         summary[collectionName] = 0;
         continue;
       }
       
       let count = 0;
-      for (const doc of snapshot.docs) {
+      for (const doc of docs) {
         const archiveData = doc.data();
         const originalId = archiveData.originalId;
         
@@ -271,10 +407,10 @@ const restoreUserRelatedData = async (uid) => {
         count++;
       }
       
-      logger.info(`Restored ${count} ${collectionName} for user ${uid}`);
+      logger.info(`Restored ${count} ${collectionName} for user ${uid}/${userId}`);
       summary[collectionName] = count;
     } catch (error) {
-      logger.error(`Error restoring ${collectionName} for user ${uid}: ${error.message}`);
+      logger.error(`Error restoring ${collectionName} for user ${uid}/${userId}: ${error.message}`);
       summary[collectionName] = `Error: ${error.message}`;
     }
   }
@@ -319,8 +455,8 @@ exports.permanentlyDeleteUser = async (uid) => {
     await archiveRef.delete();
     logger.info(`User ${uid} deleted from archives`);
     
-    // Delete related data from archives
-    const deletedRelatedData = await deleteUserRelatedDataFromArchives(uid);
+    // Delete related data from archives - pass both the raw UID and formatted userId
+    const deletedRelatedData = await deleteUserRelatedDataFromArchives(uid, userId);
     
     return {
       success: true,
@@ -338,35 +474,78 @@ exports.permanentlyDeleteUser = async (uid) => {
 
 /**
  * Delete user-related data from archives
- * @param {string} uid - User ID
+ * @param {string} uid - Firebase UID
+ * @param {string} userId - Formatted user ID (user_XXXXXXXX)
  * @returns {Object} - Summary of deleted data
  */
-const deleteUserRelatedDataFromArchives = async (uid) => {
+const deleteUserRelatedDataFromArchives = async (uid, userId) => {
   const summary = {};
   
+  // First, handle pets collection separately since it uses ownerId
+  try {
+    const archivesRef = admin.firestore().collection('archives');
+    const petsSnapshot = await archivesRef.where('itemType', '==', 'pet')
+                                        .where('ownerId', '==', userId)
+                                        .get();
+    
+    if (petsSnapshot.empty) {
+      logger.info(`No archived pets found for user ${userId}`);
+      summary['pets'] = 0;
+    } else {
+      let count = 0;
+      for (const doc of petsSnapshot.docs) {
+        await doc.ref.delete();
+        count++;
+      }
+      
+      logger.info(`Deleted ${count} pets from archives for user ${userId}`);
+      summary['pets'] = count;
+    }
+  } catch (error) {
+    logger.error(`Error deleting pets from archives for user ${userId}: ${error.message}`);
+    summary['pets'] = `Error: ${error.message}`;
+  }
+  
+  // Now handle other collections that use userId field
   for (const collectionName of userRelatedCollections) {
+    // Skip pets as we already handled it
+    if (collectionName === 'pets') continue;
+    
     try {
       const archivesRef = admin.firestore().collection('archives');
-      const snapshot = await archivesRef.where('itemType', '==', collectionName)
-                                       .where('userId', '==', uid)
+      
+      // Try both the raw UID and formatted userId for maximum compatibility
+      const snapshot1 = await archivesRef.where('itemType', '==', collectionName)
+                                      .where('userId', '==', uid)
+                                      .get();
+      const snapshot2 = await archivesRef.where('itemType', '==', collectionName)
+                                       .where('userId', '==', userId)
                                        .get();
       
-      if (snapshot.empty) {
-        logger.info(`No archived ${collectionName} found for user ${uid}`);
+      // Combine results
+      const docs = [...snapshot1.docs];
+      snapshot2.docs.forEach(doc => {
+        if (!docs.some(existingDoc => existingDoc.id === doc.id)) {
+          docs.push(doc);
+        }
+      });
+      
+      if (docs.length === 0) {
+        logger.info(`No archived ${collectionName} found for user ${uid}/${userId}`);
         summary[collectionName] = 0;
         continue;
       }
       
       let count = 0;
-      for (const doc of snapshot.docs) {
+      for (const doc of docs) {
         await doc.ref.delete();
         count++;
       }
       
-      logger.info(`Deleted ${count} ${collectionName} from archives for user ${uid}`);
+      logger.info(`Deleted ${count} ${collectionName} from archives for user ${uid}/${userId}`);
       summary[collectionName] = count;
     } catch (error) {
-      logger.error(`Error deleting ${collectionName} from archives for user ${uid}: ${error.message}`);
+      logger.error(`Error deleting ${collectionName} from archives for user ${uid}/${userId}: ${error.message}`);
       summary[collectionName] = `Error: ${error.message}`;
     }
   }

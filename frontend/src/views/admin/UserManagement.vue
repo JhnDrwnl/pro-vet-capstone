@@ -4,7 +4,7 @@
   <!-- Header Section -->
   <div class="mb-8">
     <h1 class="text-2xl font-semibold text-gray-900">User Management</h1>
-    <p class="text-gray-500 mt-1">Create, update, or deactivate user accounts for veterinarians and pet owners.</p>
+    <p class="text-gray-500 mt-1">Create, update, deactivate or delete user accounts for veterinarians and pet owners.</p>
   </div>
   
   <!-- Show loading spinner during initial data load -->
@@ -44,7 +44,7 @@
                 :key="filter"
                 @click="toggleFilter(filter)"
                 class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
-                :class="{'text-blue-600': activeFilters.includes(filter) || (filter === 'All' && activeFilters.length === 0)}"
+                :class="{'text-blue-600': isFilterActive(filter)}"
               >
                 {{ filter }}
               </button>
@@ -67,18 +67,97 @@
         <table class="min-w-full">
           <thead class="bg-gray-100">
             <tr class="border-b border-gray-200">
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Name</th>
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Email</th>
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Role</th>
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Status</th>
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Created</th>
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Updated</th>
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Last Sign In</th>
-              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">Actions</th>
+              <th 
+                @click="sortBy('name')"
+                class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+              >
+                <div class="flex items-center">
+                  Name
+                  <div class="flex flex-col ml-1">
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'name' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'name' && sortOrder === 'asc') }">▲</span>
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'name' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'name' && sortOrder === 'desc') }">▼</span>
+                  </div>
+                </div>
+              </th>
+              <th 
+                @click="sortBy('email')"
+                class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+              >
+                <div class="flex items-center">
+                  Email
+                  <div class="flex flex-col ml-1">
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'email' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'email' && sortOrder === 'asc') }">▲</span>
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'email' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'email' && sortOrder === 'desc') }">▼</span>
+                  </div>
+                </div>
+              </th>
+              <th 
+                @click="sortBy('role')"
+                class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+              >
+                <div class="flex items-center">
+                  Role
+                  <div class="flex flex-col ml-1">
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'role' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'role' && sortOrder === 'asc') }">▲</span>
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'role' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'role' && sortOrder === 'desc') }">▼</span>
+                  </div>
+                </div>
+              </th>
+              <th 
+                @click="sortBy('status')"
+                class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+              >
+                <div class="flex items-center">
+                  Status
+                  <div class="flex flex-col ml-1">
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'status' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'status' && sortOrder === 'asc') }">▲</span>
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'status' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'status' && sortOrder === 'desc') }">▼</span>
+                  </div>
+                </div>
+              </th>
+              <th 
+                @click="sortBy('createdAt')"
+                class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+              >
+                <div class="flex items-center">
+                  Created
+                  <div class="flex flex-col ml-1">
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'createdAt' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'createdAt' && sortOrder === 'asc') }">▲</span>
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'createdAt' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'createdAt' && sortOrder === 'desc') }">▼</span>
+                  </div>
+                </div>
+              </th>
+              <th 
+                @click="sortBy('updatedAt')"
+                class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+              >
+                <div class="flex items-center">
+                  Updated
+                  <div class="flex flex-col ml-1">
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'updatedAt' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'updatedAt' && sortOrder === 'asc') }">▲</span>
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'updatedAt' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'updatedAt' && sortOrder === 'desc') }">▼</span>
+                  </div>
+                </div>
+              </th>
+              <th 
+                @click="sortBy('lastSignInTime')"
+                class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+              >
+                <div class="flex items-center">
+                  Last Sign In
+                  <div class="flex flex-col ml-1">
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'lastSignInTime' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'lastSignInTime' && sortOrder === 'asc') }">▲</span>
+                    <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'lastSignInTime' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'lastSignInTime' && sortOrder === 'desc') }">▼</span>
+                  </div>
+                </div>
+              </th>
+              <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="user in filteredUsers" :key="user.userId" class="border-b border-gray-200 last:border-b-0">
+            <tr v-for="user in sortedUsers" :key="user.userId" class="border-b border-gray-200 last:border-b-0">
               <td class="py-4 px-6">{{ user.firstName }} {{ user.lastName }}</td>
               <td class="py-4 px-6">
                 <div class="flex items-center">
@@ -530,6 +609,10 @@
     role: 'Pet Owner'
   })
   
+  // Sorting state
+  const sortKey = ref('firstName')
+  const sortOrder = ref('asc')
+  
   // Store the created user ID for verification flow
   const pendingUserId = ref(null)
   
@@ -587,712 +670,811 @@
   }
   
   const fetchUsers = async () => {
-  try {
-    initialLoading.value = true
-    const usersCollection = collection(db, 'users')
-    const userSnapshot = await getDocs(usersCollection)
-  
-    // Get user sign-in data from Firebase Auth
-    const userSignInData = await fetchUserSignInData();
-    console.log('User sign-in data:', userSignInData);
-  
-    users.value = userSnapshot.docs
-      .map(doc => {
-        const userData = doc.data();
-        const userId = doc.id;
-        const uid = userData.uid; // This is the Firebase UID stored in Firestore
-        
-        console.log(`Processing user ${userData.firstName} ${userData.lastName}, Firestore ID: ${userId}, Firebase UID: ${uid}`);
-        
-        // Find sign-in data for this user if available
-        const signInInfo = userSignInData.find(u => u.uid === uid);
-        
-        if (signInInfo) {
-          console.log(`Found sign-in data for ${userData.firstName} ${userData.lastName}:`, signInInfo);
-        } else {
-          console.log(`No sign-in data found for ${userData.firstName} ${userData.lastName} with UID: ${uid}`);
-        }
-        
-        return {
-          userId: userId,
-          ...userData,
-          // Normalize status to ensure consistent capitalization
-          status: (userData.status || 'Active').toString(),
-          // Add last sign-in time if available
-          lastSignInTime: signInInfo?.lastSignInTime || null,
-          // Add provider data if available
-          providerData: signInInfo?.providerData || []
-        };
-      })
-      .filter(user => user.role !== 'admin') // Exclude admin users
-      .map(user => ({
-        ...user,
-        role: user.role === 'user' ? 'Pet Owner' : (user.role === 'veterinary' ? 'Veterinarian' : user.role)
-      }))
-  
-    // Log statuses to debug
-    console.log('User statuses:', users.value.map(u => ({ 
-      name: `${u.firstName} ${u.lastName}`, 
-      status: u.status,
-      uid: u.uid,
-      lastSignInTime: u.lastSignInTime ? formatDate(u.lastSignInTime) : 'Never',
-      providers: u.providerData?.map(p => p.providerId) || []
-    })))
-  } catch (err) {
-    console.error('Error fetching users:', err)
-    error.value = 'Failed to fetch users. Please try again.'
-  } finally {
-    initialLoading.value = false
-  }
+    try {
+      initialLoading.value = true
+      const usersCollection = collection(db, 'users')
+      const userSnapshot = await getDocs(usersCollection)
+    
+      // Get user sign-in data from Firebase Auth
+      const userSignInData = await fetchUserSignInData();
+      console.log('User sign-in data:', userSignInData);
+    
+      users.value = userSnapshot.docs
+        .map(doc => {
+          const userData = doc.data();
+          const userId = doc.id;
+          const uid = userData.uid; // This is the Firebase UID stored in Firestore
+          
+          console.log(`Processing user ${userData.firstName} ${userData.lastName}, Firestore ID: ${userId}, Firebase UID: ${uid}`);
+          
+          // Find sign-in data for this user if available
+          const signInInfo = userSignInData.find(u => u.uid === uid);
+          
+          if (signInInfo) {
+            console.log(`Found sign-in data for ${userData.firstName} ${userData.lastName}:`, signInInfo);
+          } else {
+            console.log(`No sign-in data found for ${userData.firstName} ${userData.lastName} with UID: ${uid}`);
+          }
+          
+          return {
+            userId: userId,
+            ...userData,
+            // Normalize status to ensure consistent capitalization
+            status: (userData.status || 'Active').toString(),
+            // Add last sign-in time if available
+            lastSignInTime: signInInfo?.lastSignInTime || null,
+            // Add provider data if available
+            providerData: signInInfo?.providerData || []
+          };
+        })
+        .filter(user => user.role !== 'admin') // Exclude admin users
+        .map(user => ({
+          ...user,
+          role: user.role === 'user' ? 'Pet Owner' : (user.role === 'veterinary' ? 'Veterinarian' : user.role)
+        }))
+    
+      // Log statuses to debug
+      console.log('User statuses:', users.value.map(u => ({ 
+        name: `${u.firstName} ${u.lastName}`, 
+        status: u.status,
+        uid: u.uid,
+        lastSignInTime: u.lastSignInTime ? formatDate(u.lastSignInTime) : 'Never',
+        providers: u.providerData?.map(p => p.providerId) || []
+      })))
+    } catch (err) {
+      console.error('Error fetching users:', err)
+      error.value = 'Failed to fetch users. Please try again.'
+    } finally {
+      initialLoading.value = false
+    }
   }
   
   // Fetch user sign-in data from Firebase Auth via API
   const fetchUserSignInData = async () => {
-  try {
-    console.log('Fetching user sign-in data from API:', `${API_URL}/api/auth/users-sign-in-data`);
-    const response = await axios.get(`${API_URL}/api/auth/users-sign-in-data`);
-    
-    if (response.data && response.data.success) {
-      console.log('User sign-in data received:', response.data.users);
-      return response.data.users || [];
-    } else {
-      console.error('API returned unsuccessful response:', response.data);
+    try {
+      console.log('Fetching user sign-in data from API:', `${API_URL}/api/auth/users-sign-in-data`);
+      const response = await axios.get(`${API_URL}/api/auth/users-sign-in-data`);
+      
+      if (response.data && response.data.success) {
+        console.log('User sign-in data received:', response.data.users);
+        return response.data.users || [];
+      } else {
+        console.error('API returned unsuccessful response:', response.data);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching user sign-in data:', error);
+      console.error('Error details:', error.response?.data || error.message);
       return [];
     }
-  } catch (error) {
-    console.error('Error fetching user sign-in data:', error);
-    console.error('Error details:', error.response?.data || error.message);
-    return [];
-  }
   }
   
   onMounted(fetchUsers)
   
-  const filteredUsers = computed(() => {
-  return users.value.filter(user => {
-    const searchLower = searchQuery.value.toLowerCase()
-    const matchesSearch = 
-      user.firstName.toLowerCase().includes(searchLower) ||
-      user.lastName.toLowerCase().includes(searchLower) ||
-      user.email.toLowerCase().includes(searchLower) ||
-      user.role.toLowerCase().includes(searchLower)
-  
-    // If no active filters or "All" is selected, show all users that match the search
-    const matchesFilters = 
-      activeFilters.value.length === 0 ||
-      (activeFilters.value.includes('Veterinarians') && user.role === 'Veterinarian') ||
-      (activeFilters.value.includes('Pet Owners') && user.role === 'Pet Owner') ||
-      (activeFilters.value.includes('Active') && user.status?.toLowerCase() === 'active') ||
-      (activeFilters.value.includes('Inactive') && user.status?.toLowerCase() === 'inactive') ||
-      (activeFilters.value.includes('Pending') && user.status?.toLowerCase() === 'pending')
-  
-    return matchesSearch && matchesFilters
-  })
-  })
-  
-  const toggleFilters = () => {
-  showFilters.value = !showFilters.value
-  }
-  
-  const toggleFilter = (filter) => {
-  if (filter === 'All') {
-    // Clear all filters when "All" is selected
-    activeFilters.value = []
-  } else {
-    const index = activeFilters.value.indexOf(filter)
-    if (index === -1) {
-      activeFilters.value.push(filter)
+  // Sort function for table columns
+  const sortBy = (key) => {
+    // Special handling for name column which is a combination of firstName and lastName
+    if (key === 'name') {
+      if (sortKey.value === 'name') {
+        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+      } else {
+        sortKey.value = 'name'
+        sortOrder.value = 'asc'
+      }
     } else {
-      activeFilters.value.splice(index, 1)
+      if (sortKey.value === key) {
+        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+      } else {
+        sortKey.value = key
+        sortOrder.value = 'asc'
+      }
     }
   }
-  // Hide the filters dropdown after selection
-  showFilters.value = false
+  
+  // Check if a filter is active
+  const isFilterActive = (filter) => {
+    if (filter === 'All') {
+      return activeFilters.value.length === 0;
+    }
+    return activeFilters.value.includes(filter);
+  }
+  
+  // Toggle filter with new rules
+  const toggleFilter = (filter) => {
+    if (filter === 'All') {
+      // Clear all filters when "All" is selected
+      activeFilters.value = [];
+    } else {
+      // Handle role filters (Veterinarians, Pet Owners)
+      if (filter === 'Veterinarians' || filter === 'Pet Owners') {
+        // If the filter is already active, remove it
+        if (activeFilters.value.includes(filter)) {
+          activeFilters.value = activeFilters.value.filter(f => f !== filter);
+        } else {
+          // Remove the other role filter if present
+          const otherRole = filter === 'Veterinarians' ? 'Pet Owners' : 'Veterinarians';
+          activeFilters.value = activeFilters.value.filter(f => f !== otherRole);
+          
+          // Add the selected role filter
+          activeFilters.value.push(filter);
+        }
+      }
+      // Handle status filters (Active, Inactive, Pending)
+      else if (filter === 'Active' || filter === 'Inactive' || filter === 'Pending') {
+        // If the filter is already active, remove it
+        if (activeFilters.value.includes(filter)) {
+          activeFilters.value = activeFilters.value.filter(f => f !== filter);
+        } else {
+          // Remove conflicting status filters
+          if (filter === 'Active') {
+            activeFilters.value = activeFilters.value.filter(f => f !== 'Inactive' && f !== 'Pending');
+          } else if (filter === 'Inactive') {
+            activeFilters.value = activeFilters.value.filter(f => f !== 'Active' && f !== 'Pending');
+          } else if (filter === 'Pending') {
+            activeFilters.value = activeFilters.value.filter(f => f !== 'Active' && f !== 'Inactive');
+          }
+          
+          // Add the selected status filter
+          activeFilters.value.push(filter);
+        }
+      }
+    }
+    
+    // Hide the filters dropdown after selection
+    showFilters.value = false;
+  }
+  
+  // Sorted users based on current sort key and order
+  const sortedUsers = computed(() => {
+    return [...filteredUsers.value].sort((a, b) => {
+      let aValue, bValue;
+      
+      // Special handling for name column
+      if (sortKey.value === 'name') {
+        aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+        bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+      } else {
+        aValue = a[sortKey.value];
+        bValue = b[sortKey.value];
+        
+        // Handle null/undefined values
+        if (aValue === undefined || aValue === null) aValue = '';
+        if (bValue === undefined || bValue === null) bValue = '';
+        
+        // Convert to lowercase for string comparison
+        if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+        if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+        
+        // Handle date objects
+        if (aValue instanceof Date && bValue instanceof Date) {
+          return sortOrder.value === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+      }
+      
+      // Compare values
+      if (aValue < bValue) return sortOrder.value === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder.value === 'asc' ? 1 : -1;
+      return 0;
+    });
+  });
+  
+  const filteredUsers = computed(() => {
+    return users.value.filter(user => {
+      const searchLower = searchQuery.value.toLowerCase();
+      const matchesSearch = 
+        user.firstName.toLowerCase().includes(searchLower) ||
+        user.lastName.toLowerCase().includes(searchLower) ||
+        user.email.toLowerCase().includes(searchLower) ||
+        user.role.toLowerCase().includes(searchLower);
+      
+      // If no active filters, show all users that match the search
+      if (activeFilters.value.length === 0) {
+        return matchesSearch;
+      }
+      
+      // Check if user matches the selected filters
+      const matchesRole = 
+        (activeFilters.value.includes('Veterinarians') && user.role === 'Veterinarian') ||
+        (activeFilters.value.includes('Pet Owners') && user.role === 'Pet Owner') ||
+        (!activeFilters.value.includes('Veterinarians') && !activeFilters.value.includes('Pet Owners'));
+      
+      const matchesStatus = 
+        (activeFilters.value.includes('Active') && user.status?.toLowerCase() === 'active') ||
+        (activeFilters.value.includes('Inactive') && user.status?.toLowerCase() === 'inactive') ||
+        (activeFilters.value.includes('Pending') && user.status?.toLowerCase() === 'pending') ||
+        (!activeFilters.value.includes('Active') && !activeFilters.value.includes('Inactive') && !activeFilters.value.includes('Pending'));
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  });
+  
+  const toggleFilters = () => {
+    showFilters.value = !showFilters.value;
   }
   
   const openAddUserForm = () => {
-  editingUser.value = null
-  userForm.value = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    role: 'Pet Owner'
-  }
-  showForm.value = true
-  showVerificationForm.value = false
-  sendVerificationEmail.value = true
-  pendingUserId.value = null
+    editingUser.value = null;
+    userForm.value = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      role: 'Pet Owner'
+    };
+    showForm.value = true;
+    showVerificationForm.value = false;
+    sendVerificationEmail.value = true;
+    pendingUserId.value = null;
   }
   
   // Modify the editUser function to not delete the password for pending users
   const editUser = (user) => {
-  editingUser.value = user
-  userForm.value = { ...user }
-  
-  // Only delete password if not a pending user
-  if (user.status?.toLowerCase() !== 'pending') {
-    delete userForm.value.password
-  } else {
-    // For pending users, initialize an empty password field
-    userForm.value.password = ''
-    pendingUserId.value = user.userId
-  }
-  
-  showForm.value = true
-  showVerificationForm.value = false
+    editingUser.value = user;
+    userForm.value = { ...user };
+    
+    // Only delete password if not a pending user
+    if (user.status?.toLowerCase() !== 'pending') {
+      delete userForm.value.password;
+    } else {
+      // For pending users, initialize an empty password field
+      userForm.value.password = '';
+      pendingUserId.value = user.userId;
+    }
+    
+    showForm.value = true;
+    showVerificationForm.value = false;
   }
   
   // Modify the sendVerificationForPendingUser function to use the password from the form
   const sendVerificationForPendingUser = async () => {
-  try {
-    // Validate that we have a password
-    if (!userForm.value.password) {
-      showStatus('Please enter a password for this user before sending verification', 'error')
-      return
-    }
-    
-    loading.value = true
-    
-    if (!editingUser.value || !pendingUserId.value) {
-      throw new Error('User information is missing')
-    }
-    
-    // Store the password for later use
-    pendingUserPassword.value = userForm.value.password
-    
-    // Send OTP to user's email
-    await emailService.sendOTP(userForm.value.email, userForm.value.firstName)
-    
-    // Show verification form
-    showVerificationForm.value = true
-    
-    // Start resend timer
-    startResendTimer()
-    
-    // Focus on first OTP input
-    nextTick(() => {
-      if (otpInputs.value[0]) {
-        otpInputs.value[0].focus()
+    try {
+      // Validate that we have a password
+      if (!userForm.value.password) {
+        showStatus('Please enter a password for this user before sending verification', 'error');
+        return;
       }
-    })
-    
-    showStatus('Verification email sent successfully', 'success')
-  } catch (err) {
-    console.error('Error sending verification email:', err)
-    showStatus(err.message || 'Failed to send verification email. Please try again.', 'error')
-  } finally {
-    loading.value = false
-  }
+      
+      loading.value = true;
+      
+      if (!editingUser.value || !pendingUserId.value) {
+        throw new Error('User information is missing');
+      }
+      
+      // Store the password for later use
+      pendingUserPassword.value = userForm.value.password;
+      
+      // Send OTP to user's email
+      await emailService.sendOTP(userForm.value.email, userForm.value.firstName);
+      
+      // Show verification form
+      showVerificationForm.value = true;
+      
+      // Start resend timer
+      startResendTimer();
+      
+      // Focus on first OTP input
+      nextTick(() => {
+        if (otpInputs.value[0]) {
+          otpInputs.value[0].focus();
+        }
+      });
+      
+      showStatus('Verification email sent successfully', 'success');
+    } catch (err) {
+      console.error('Error sending verification email:', err);
+      showStatus(err.message || 'Failed to send verification email. Please try again.', 'error');
+    } finally {
+      loading.value = false;
+    }
   }
   
   const closeForm = () => {
-  showForm.value = false
-  showVerificationForm.value = false
-  editingUser.value = null
-  clearOtpFields()
-  stopResendTimer()
-  pendingUserId.value = null
-  pendingUserPassword.value = '' // Reset the stored password
+    showForm.value = false;
+    showVerificationForm.value = false;
+    editingUser.value = null;
+    clearOtpFields();
+    stopResendTimer();
+    pendingUserId.value = null;
+    pendingUserPassword.value = ''; // Reset the stored password
   }
   
   // Show status message in modal
   const showStatus = (message, type = 'success') => {
-  statusMessage.value = message
-  
-  if (type === 'success') {
-    showSuccessModal.value = true
-  } else {
-    showErrorModal.value = true
-  }
+    statusMessage.value = message;
+    
+    if (type === 'success') {
+      showSuccessModal.value = true;
+    } else {
+      showErrorModal.value = true;
+    }
   }
   
   // Open status change modal
   const openStatusModal = (user) => {
-  selectedUser.value = user
-  showStatusModal.value = true
+    selectedUser.value = user;
+    showStatusModal.value = true;
   }
   
   // Close status change modal
   const closeStatusModal = () => {
-  showStatusModal.value = false
-  selectedUser.value = null
+    showStatusModal.value = false;
+    selectedUser.value = null;
   }
   
   // Confirm status change from modal
   const confirmToggleUserStatus = async () => {
-  if (!selectedUser.value) return
-  
-  showStatusModal.value = false
-  await toggleUserStatus(selectedUser.value.userId)
-  selectedUser.value = null
+    if (!selectedUser.value) return;
+    
+    showStatusModal.value = false;
+    await toggleUserStatus(selectedUser.value.userId);
+    selectedUser.value = null;
   }
   
   // Confirm delete user
   const confirmDeleteUser = (user) => {
-    selectedUser.value = user
-    modalTitle.value = 'Archive User'
-    modalMessage.value = `Are you sure you want to archive ${user.firstName} ${user.lastName}? This user will be moved to the archive and can be restored within 30 days.`
-    modalAction.value = 'delete'
-    showModal.value = true
+    selectedUser.value = user;
+    modalTitle.value = 'Archive User';
+    modalMessage.value = `Are you sure you want to archive ${user.firstName} ${user.lastName}? This user will be moved to the archive and can be restored within 30 days.`;
+    modalAction.value = 'delete';
+    showModal.value = true;
   }
   
   // Confirm action from modal
   const confirmAction = async () => {
-    if (!selectedUser.value) return
+    if (!selectedUser.value) return;
     
-    showModal.value = false
+    showModal.value = false;
     
     try {
       if (modalAction.value === 'delete') {
-        await archiveUser(selectedUser.value)
+        await archiveUser(selectedUser.value);
       } else if (modalAction.value === 'restore') {
-        await restoreUser(selectedUser.value)
+        await restoreUser(selectedUser.value);
       } else if (modalAction.value === 'permanent-delete') {
-        await permanentlyDeleteUser(selectedUser.value)
+        await permanentlyDeleteUser(selectedUser.value);
       }
     } catch (error) {
-      console.error(`Error performing ${modalAction.value} action:`, error)
-      showStatus(`Error: ${error.message}`, 'error')
+      console.error(`Error performing ${modalAction.value} action:`, error);
+      showStatus(`Error: ${error.message}`, 'error');
     }
     
-    selectedUser.value = null
+    selectedUser.value = null;
   }
   
   // Archive user
   const archiveUser = async (user) => {
     try {
-      loading.value = true
-      const response = await axios.post(`${API_URL}/api/auth/delete-user`, { uid: user.uid })
+      loading.value = true;
+      const response = await axios.post(`${API_URL}/api/auth/delete-user`, { uid: user.uid });
       
       if (response.data.success) {
-        showStatus(`User ${user.firstName} ${user.lastName} archived successfully`, 'success')
-        await fetchUsers()
+        showStatus(`User ${user.firstName} ${user.lastName} archived successfully`, 'success');
+        await fetchUsers();
       } else {
-        throw new Error(response.data.message || 'Failed to archive user')
+        throw new Error(response.data.message || 'Failed to archive user');
       }
     } catch (error) {
-      console.error('Error archiving user:', error)
-      showStatus(`Error archiving user: ${error.message}`, 'error')
-      throw error
+      console.error('Error archiving user:', error);
+      showStatus(`Error archiving user: ${error.message}`, 'error');
+      throw error;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
   
   // OTP verification related functions
   const isOtpComplete = computed(() => {
-  return otpDigits.value.every(digit => digit !== '')
-  })
+    return otpDigits.value.every(digit => digit !== '');
+  });
   
   const formatTime = (seconds) => {
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
   
   const handleOtpInput = (event, index) => {
-  const input = event.target
-  const value = input.value
-  
-  // Ensure only numbers
-  if (!/^\d*$/.test(value)) {
-    otpDigits.value[index] = ''
-    return
-  }
-  
-  // Move to next input
-  if (value && index < 5) {
-    nextTick(() => {
-      otpInputs.value[index + 1].focus()
-    })
-  } else if (value && index === 5) {
-    // Auto-verify when all digits are entered
-    if (isOtpComplete.value) {
-      verifyOTP()
+    const input = event.target;
+    const value = input.value;
+    
+    // Ensure only numbers
+    if (!/^\d*$/.test(value)) {
+      otpDigits.value[index] = '';
+      return;
     }
-  }
-  
-  verificationError.value = '' // Clear error when user types
+    
+    // Move to next input
+    if (value && index < 5) {
+      nextTick(() => {
+        otpInputs.value[index + 1].focus();
+      });
+    } else if (value && index === 5) {
+      // Auto-verify when all digits are entered
+      if (isOtpComplete.value) {
+        verifyOTP();
+      }
+    }
+    
+    verificationError.value = ''; // Clear error when user types
   }
   
   const handleKeydown = (event, index) => {
-  // Handle backspace
-  if (event.key === 'Backspace' && !otpDigits.value[index] && index > 0) {
-    nextTick(() => {
-      otpInputs.value[index - 1].focus()
-    })
-  }
+    // Handle backspace
+    if (event.key === 'Backspace' && !otpDigits.value[index] && index > 0) {
+      nextTick(() => {
+        otpInputs.value[index - 1].focus();
+      });
+    }
   }
   
   const handlePaste = (event) => {
-  event.preventDefault()
-  const pastedData = event.clipboardData.getData('text')
-  const numbers = pastedData.replace(/\D/g, '').split('').slice(0, 6)
-  
-  numbers.forEach((num, index) => {
-    if (index < 6) {
-      otpDigits.value[index] = num
-    }
-  })
-  
-  // Focus on the next empty input or the last one if all filled
-  nextTick(() => {
-    const emptyIndex = otpDigits.value.findIndex(digit => digit === '')
-    if (emptyIndex !== -1) {
-      otpInputs.value[emptyIndex].focus()
-    } else if (otpInputs.value[5]) {
-      otpInputs.value[5].focus()
-    }
-  })
-  
-  // Clear error when user pastes
-  verificationError.value = ''
+    event.preventDefault();
+    const pastedData = event.clipboardData.getData('text');
+    const numbers = pastedData.replace(/\D/g, '').split('').slice(0, 6);
+    
+    numbers.forEach((num, index) => {
+      if (index < 6) {
+        otpDigits.value[index] = num;
+      }
+    });
+    
+    // Focus on the next empty input or the last one if all filled
+    nextTick(() => {
+      const emptyIndex = otpDigits.value.findIndex(digit => digit === '');
+      if (emptyIndex !== -1) {
+        otpInputs.value[emptyIndex].focus();
+      } else if (otpInputs.value[5]) {
+        otpInputs.value[5].focus();
+      }
+    });
+    
+    // Clear error when user pastes
+    verificationError.value = '';
   }
   
   const startResendTimer = () => {
-  // Clear any existing timer
-  stopResendTimer()
-  
-  resendTimer.value = 120 // 2 minutes cooldown for resend button
-  timerInterval = setInterval(() => {
-    if (resendTimer.value > 0) {
-      resendTimer.value--
-    } else {
-      stopResendTimer()
-    }
-  }, 1000)
+    // Clear any existing timer
+    stopResendTimer();
+    
+    resendTimer.value = 120; // 2 minutes cooldown for resend button
+    timerInterval = setInterval(() => {
+      if (resendTimer.value > 0) {
+        resendTimer.value--;
+      } else {
+        stopResendTimer();
+      }
+    }, 1000);
   }
   
   const stopResendTimer = () => {
-  if (timerInterval) {
-    clearInterval(timerInterval)
-    timerInterval = null
-  }
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
   }
   
   const clearOtpFields = () => {
-  otpDigits.value = Array(6).fill('')
-  verificationError.value = ''
+    otpDigits.value = Array(6).fill('');
+    verificationError.value = '';
   }
   
   // Modify the verifyOTP function to update the existing document
   const verifyOTP = async () => {
-  try {
-    verifying.value = true
-    verificationError.value = ''
-  
-    const otp = otpDigits.value.join('')
-  
-    // Verify OTP using email service
-    const response = await emailService.verifyOTP(userForm.value.email, otp)
-  
-    if (response.success && response.valid) {
-      // Update the user document to Active status
-      if (pendingUserId.value) {
-        const userRef = doc(db, 'users', pendingUserId.value)
-        await updateDoc(userRef, {
-          status: 'Active',
-          emailVerified: true,
-          updatedAt: new Date()
-        })
-        
-        showStatus('User email verified successfully', 'success')
-        await fetchUsers() // Refresh the user list
-        closeForm()
+    try {
+      verifying.value = true;
+      verificationError.value = '';
+    
+      const otp = otpDigits.value.join('');
+    
+      // Verify OTP using email service
+      const response = await emailService.verifyOTP(userForm.value.email, otp);
+    
+      if (response.success && response.valid) {
+        // Update the user document to Active status
+        if (pendingUserId.value) {
+          const userRef = doc(db, 'users', pendingUserId.value);
+          await updateDoc(userRef, {
+            status: 'Active',
+            emailVerified: true,
+            updatedAt: new Date()
+          });
+          
+          showStatus('User email verified successfully', 'success');
+          await fetchUsers(); // Refresh the user list
+          closeForm();
+        } else {
+          throw new Error('User ID not found for verification');
+        }
       } else {
-        throw new Error('User ID not found for verification')
+        verificationError.value = 'Invalid verification code. Please try again.';
       }
-    } else {
-      verificationError.value = 'Invalid verification code. Please try again.'
+    } catch (err) {
+      console.error('Verification error:', err);
+    
+      if (err.status === 'expired') {
+        verificationError.value = 'Verification code has expired. Please request a new one.';
+      } else if (err.status === 'invalid') {
+        verificationError.value = 'The verification code you entered is incorrect. Please try again.';
+      } else if (err.message?.includes('expired')) {
+        verificationError.value = 'Verification code has expired. Please request a new one.';
+      } else {
+        verificationError.value = err.message || 'Failed to verify email. Please try again.';
+      }
+    } finally {
+      verifying.value = false;
     }
-  } catch (err) {
-    console.error('Verification error:', err)
-  
-    if (err.status === 'expired') {
-      verificationError.value = 'Verification code has expired. Please request a new one.'
-    } else if (err.status === 'invalid') {
-      verificationError.value = 'The verification code you entered is incorrect. Please try again.'
-    } else if (err.message?.includes('expired')) {
-      verificationError.value = 'Verification code has expired. Please request a new one.'
-    } else {
-      verificationError.value = err.message || 'Failed to verify email. Please try again.'
-    }
-  } finally {
-    verifying.value = false
-  }
   }
   
   const resendVerificationCode = async () => {
-  try {
-    loading.value = true
-    verificationError.value = ''
-  
-    // Resend OTP using email service
-    await emailService.sendOTP(userForm.value.email, userForm.value.firstName)
-  
-    // Reset OTP inputs
-    clearOtpFields()
-  
-    // Focus on first input
-    nextTick(() => {
-      if (otpInputs.value[0]) {
-        otpInputs.value[0].focus()
-      }
-    })
-  
-    // Start resend timer
-    startResendTimer()
-  
-    showStatus('Verification code resent successfully', 'success')
-  } catch (err) {
-    console.error('Resend error:', err)
-    verificationError.value = 'Failed to resend verification code. Please try again.'
-  } finally {
-    loading.value = false
-  }
+    try {
+      loading.value = true;
+      verificationError.value = '';
+    
+      // Resend OTP using email service
+      await emailService.sendOTP(userForm.value.email, userForm.value.firstName);
+    
+      // Reset OTP inputs
+      clearOtpFields();
+    
+      // Focus on first input
+      nextTick(() => {
+        if (otpInputs.value[0]) {
+          otpInputs.value[0].focus();
+        }
+      });
+    
+      // Start resend timer
+      startResendTimer();
+    
+      showStatus('Verification code resent successfully', 'success');
+    } catch (err) {
+      console.error('Resend error:', err);
+      verificationError.value = 'Failed to resend verification code. Please try again.';
+    } finally {
+      loading.value = false;
+    }
   }
   
   const cancelVerification = () => {
-  showVerificationForm.value = false
-  clearOtpFields()
-  stopResendTimer()
+    showVerificationForm.value = false;
+    clearOtpFields();
+    stopResendTimer();
   }
   
   // Modify the handleSubmit function to follow the authStore pattern for creating documents
   const handleSubmit = async () => {
-  try {
-    loading.value = true
-  
-    console.log('Form values:', {
-      firstName: userForm.value.firstName,
-      email: userForm.value.email,
-      password: userForm.value.password,
-      role: userForm.value.role
-    })
-  
-    const roleToStore = userForm.value.role === 'Pet Owner' ? 'user' : 'veterinary'
-  
-    // Validation
-    if (!editingUser.value && (!userForm.value.firstName || !userForm.value.email || !userForm.value.password)) {
-      console.log('Validation failed')
-      showStatus('Please fill in all required fields', 'error')
-      loading.value = false
-      return
-    }
-  
-    if (editingUser.value) {
-      // Update user in Firestore
-      const userRef = doc(db, 'users', editingUser.value.userId)
-      await updateDoc(userRef, {
-        firstName: userForm.value.firstName || '',
-        lastName: userForm.value.lastName || '',
-        email: userForm.value.email || '',
-        role: roleToStore,
-        updatedAt: new Date()
-      })
-      showStatus('User updated successfully', 'success')
-      await fetchUsers() // Refresh the user list
-      closeForm()
-    } else {
-      // For new users
-      try {
-        if (sendVerificationEmail.value) {
-          // With email verification - first create in Firebase Auth
-          const response = await axios.post(`${API_URL}/api/auth/create-user`, {
-            email: userForm.value.email,
-            password: userForm.value.password,
-            firstName: userForm.value.firstName,
-            lastName: userForm.value.lastName || '',
-            displayName: `${userForm.value.firstName} ${userForm.value.lastName || ''}`.trim(),
-            role: roleToStore,
-            emailVerified: false // Not verified yet
-          })
-          
-          if (response.data && response.data.success && response.data.uid) {
-            // Get the Firebase UID from the response
-            const firebaseUid = response.data.uid;
-            console.log('Firebase UID from API:', firebaseUid);
-            
-            // Generate the userId using the authStore pattern
-            const userId = authStore.generateUserId(firebaseUid);
-            console.log('Generated userId for Firestore:', userId);
-            
-            // Create user document in Firestore with Pending status
-            await setDoc(doc(db, 'users', userId), {
-              firstName: userForm.value.firstName,
-              lastName: userForm.value.lastName || '',
-              email: userForm.value.email,
-              role: roleToStore,
-              status: 'Pending',
-              emailVerified: false,
-              uid: firebaseUid, // Store the Firebase UID
-              createdAt: new Date(),
-              updatedAt: new Date()
-            })
-            
-            // Send OTP to user's email
-            await emailService.sendOTP(userForm.value.email, userForm.value.firstName)
-            
-            // Store the user ID for later use in verification
-            pendingUserId.value = userId
-            pendingUserPassword.value = userForm.value.password
-            
-            // Show verification form
-            showVerificationForm.value = true
-            startResendTimer()
-            
-            // Focus on first OTP input
-            nextTick(() => {
-              if (otpInputs.value[0]) {
-                otpInputs.value[0].focus()
-              }
-            })
-          } else {
-            throw new Error(response.data?.message || 'Failed to create user account')
-          }
-        } else {
-          // Without email verification - create user directly
-          const response = await axios.post(`${API_URL}/api/auth/create-user`, {
-            email: userForm.value.email,
-            password: userForm.value.password,
-            firstName: userForm.value.firstName,
-            lastName: userForm.value.lastName || '',
-            displayName: `${userForm.value.firstName} ${userForm.value.lastName || ''}`.trim(),
-            role: roleToStore,
-            emailVerified: true // Mark as verified since we're not doing email verification
-          })
-          
-          if (response.data && response.data.success && response.data.uid) {
-            // Get the Firebase UID from the response
-            const firebaseUid = response.data.uid;
-            console.log('Firebase UID from API:', firebaseUid);
-            
-            // Generate the userId using the authStore pattern
-            const userId = authStore.generateUserId(firebaseUid);
-            console.log('Generated userId for Firestore:', userId);
-            
-            // Create user document in Firestore with Active status
-            await setDoc(doc(db, 'users', userId), {
-              firstName: userForm.value.firstName,
-              lastName: userForm.value.lastName || '',
-              email: userForm.value.email,
-              role: roleToStore,
-              status: 'Active',
-              emailVerified: true,
-              uid: firebaseUid, // Store the Firebase UID
-              createdAt: new Date(),
-              updatedAt: new Date()
-            })
-            
-            showStatus('User added successfully', 'success')
-            await fetchUsers() // Refresh the user list
-            closeForm()
-          } else {
-            throw new Error(response.data?.message || 'Failed to create user account')
-          }
-        }
-      } catch (err) {
-        console.error('Error creating user:', err)
-        showStatus(
-          err.response?.data?.message || 
-          err.message || 
-          'Failed to create user. Please try again.', 
-          'error'
-        )
+    try {
+      loading.value = true;
+    
+      console.log('Form values:', {
+        firstName: userForm.value.firstName,
+        email: userForm.value.email,
+        password: userForm.value.password,
+        role: userForm.value.role
+      });
+    
+      const roleToStore = userForm.value.role === 'Pet Owner' ? 'user' : 'veterinary';
+    
+      // Validation
+      if (!editingUser.value && (!userForm.value.firstName || !userForm.value.email || !userForm.value.password)) {
+        console.log('Validation failed')
+        showStatus('Please fill in all required fields', 'error')
         loading.value = false
+        return
       }
+    
+      if (editingUser.value) {
+        // Update user in Firestore
+        const userRef = doc(db, 'users', editingUser.value.userId)
+        await updateDoc(userRef, {
+          firstName: userForm.value.firstName || '',
+          lastName: userForm.value.lastName || '',
+          email: userForm.value.email || '',
+          role: roleToStore,
+          updatedAt: new Date()
+        })
+        showStatus('User updated successfully', 'success')
+        await fetchUsers() // Refresh the user list
+        closeForm()
+      } else {
+        // For new users
+        try {
+          if (sendVerificationEmail.value) {
+            // With email verification - first create in Firebase Auth
+            const response = await axios.post(`${API_URL}/api/auth/create-user`, {
+              email: userForm.value.email,
+              password: userForm.value.password,
+              firstName: userForm.value.firstName,
+              lastName: userForm.value.lastName || '',
+              displayName: `${userForm.value.firstName} ${userForm.value.lastName || ''}`.trim(),
+              role: roleToStore,
+              emailVerified: false // Not verified yet
+            })
+            
+            if (response.data && response.data.success && response.data.uid) {
+              // Get the Firebase UID from the response
+              const firebaseUid = response.data.uid;
+              console.log('Firebase UID from API:', firebaseUid);
+              
+              // Generate the userId using the authStore pattern
+              const userId = authStore.generateUserId(firebaseUid);
+              console.log('Generated userId for Firestore:', userId);
+              
+              // Create user document in Firestore with Pending status
+              await setDoc(doc(db, 'users', userId), {
+                firstName: userForm.value.firstName,
+                lastName: userForm.value.lastName || '',
+                email: userForm.value.email,
+                role: roleToStore,
+                status: 'Pending',
+                emailVerified: false,
+                uid: firebaseUid, // Store the Firebase UID
+                createdAt: new Date(),
+                updatedAt: new Date()
+              })
+              
+              // Send OTP to user's email
+              await emailService.sendOTP(userForm.value.email, userForm.value.firstName)
+              
+              // Store the user ID for later use in verification
+              pendingUserId.value = userId
+              pendingUserPassword.value = userForm.value.password
+              
+              // Show verification form
+              showVerificationForm.value = true
+              startResendTimer()
+              
+              // Focus on first OTP input
+              nextTick(() => {
+                if (otpInputs.value[0]) {
+                  otpInputs.value[0].focus()
+                }
+              })
+            } else {
+              throw new Error(response.data?.message || 'Failed to create user account')
+            }
+          } else {
+            // Without email verification - create user directly
+            const response = await axios.post(`${API_URL}/api/auth/create-user`, {
+              email: userForm.value.email,
+              password: userForm.value.password,
+              firstName: userForm.value.firstName,
+              lastName: userForm.value.lastName || '',
+              displayName: `${userForm.value.firstName} ${userForm.value.lastName || ''}`.trim(),
+              role: roleToStore,
+              emailVerified: true // Mark as verified since we're not doing email verification
+            })
+            
+            if (response.data && response.data.success && response.data.uid) {
+              // Get the Firebase UID from the response
+              const firebaseUid = response.data.uid;
+              console.log('Firebase UID from API:', firebaseUid);
+              
+              // Generate the userId using the authStore pattern
+              const userId = authStore.generateUserId(firebaseUid);
+              console.log('Generated userId for Firestore:', userId);
+              
+              // Create user document in Firestore with Active status
+              await setDoc(doc(db, 'users', userId), {
+                firstName: userForm.value.firstName,
+                lastName: userForm.value.lastName || '',
+                email: userForm.value.email,
+                role: roleToStore,
+                status: 'Active',
+                emailVerified: true,
+                uid: firebaseUid, // Store the Firebase UID
+                createdAt: new Date(),
+                updatedAt: new Date()
+              })
+              
+              showStatus('User added successfully', 'success')
+              await fetchUsers() // Refresh the user list
+              closeForm()
+            } else {
+              throw new Error(response.data?.message || 'Failed to create user account')
+            }
+          }
+        } catch (err) {
+          console.error('Error creating user:', err)
+          showStatus(
+            err.response?.data?.message || 
+            err.message || 
+            'Failed to create user. Please try again.', 
+            'error'
+          )
+          loading.value = false
+        }
+      }
+    } catch (err) {
+      console.error('Error submitting user:', err)
+      showStatus(err.message || 'Failed to save user. Please try again.', 'error')
+    } finally {
+      loading.value = false
     }
-  } catch (err) {
-    console.error('Error submitting user:', err)
-    showStatus(err.message || 'Failed to save user. Please try again.', 'error')
-  } finally {
-    loading.value = false
-  }
   }
   
   const toggleUserStatus = async (userId) => {
-  try {
-    loading.value = true
-    const user = users.value.find(u => u.userId === userId)
-  
-    if (user) {
-      // Normalize status comparison to be case-insensitive
-      const newStatus = user.status?.toLowerCase() === 'active' ? 'Inactive' : 'Active'
-      
-      // Check if the user has a uid property directly
-      let firebaseUid = user.uid
-      
-      // If no direct uid property, try to extract it from userId
-      if (!firebaseUid) {
-        // The error suggests the userId format might be different
-        // Let's log it to see what we're working with
-        console.log('User ID format:', userId)
+    try {
+      loading.value = true
+      const user = users.value.find(u => u.userId === userId)
+    
+      if (user) {
+        // Normalize status comparison to be case-insensitive
+        const newStatus = user.status?.toLowerCase() === 'active' ? 'Inactive' : 'Active'
         
-        // Try different extraction methods based on your actual userId format
-        if (userId.startsWith('user_')) {
-          firebaseUid = userId.replace('user_', '')
-        } else {
-          // If userId is the Firebase UID itself
-          firebaseUid = userId
+        // Check if the user has a uid property directly
+        let firebaseUid = user.uid
+        
+        // If no direct uid property, try to extract it from userId
+        if (!firebaseUid) {
+          // The error suggests the userId format might be different
+          // Let's log it to see what we're working with
+          console.log('User ID format:', userId)
+          
+          // Try different extraction methods based on your actual userId format
+          if (userId.startsWith('user_')) {
+            firebaseUid = userId.replace('user_', '')
+          } else {
+            // If userId is the Firebase UID itself
+            firebaseUid = userId
+          }
         }
-      }
-      
-      console.log('Using Firebase UID:', firebaseUid)
-      
-      try {
-        // Call the API to update Firebase Auth status
-        // Make sure the endpoint matches exactly what's defined in your backend
-        const response = await axios.post(`${API_URL}/api/auth/update-auth-status`, {
-          uid: firebaseUid,
-          disabled: newStatus.toLowerCase() === 'inactive' // true if Inactive, false if Active
-        })
         
-        if (response.data.success) {
-          // If auth update is successful, update Firestore
-          const userRef = doc(db, 'users', userId)
-          await updateDoc(userRef, { 
-            status: newStatus,
-            updatedAt: new Date()
+        console.log('Using Firebase UID:', firebaseUid)
+        
+        try {
+          // Call the API to update Firebase Auth status
+          // Make sure the endpoint matches exactly what's defined in your backend
+          const response = await axios.post(`${API_URL}/api/auth/update-auth-status`, {
+            uid: firebaseUid,
+            disabled: newStatus.toLowerCase() === 'inactive' // true if Inactive, false if Active
           })
           
-          // Update local state
-          user.status = newStatus
+          if (response.data.success) {
+            // If auth update is successful, update Firestore
+            const userRef = doc(db, 'users', userId)
+            await updateDoc(userRef, { 
+              status: newStatus,
+              updatedAt: new Date()
+            })
+            
+            // Update local state
+            user.status = newStatus
+            
+            // Show success message
+            showStatus(`User ${newStatus.toLowerCase() === 'active' ? 'activated' : 'deactivated'} successfully`, 'success')
+          } else {
+            throw new Error(response.data.message || 'Failed to update authentication status')
+          }
+        } catch (apiError) {
+          console.error('API error:', apiError)
           
-          // Show success message
-          showStatus(`User ${newStatus.toLowerCase() === 'active' ? 'activated' : 'deactivated'} successfully`, 'success')
-        } else {
-          throw new Error(response.data.message || 'Failed to update authentication status')
-        }
-      } catch (apiError) {
-        console.error('API error:', apiError)
-        
-        // Check if this is a user not found error
-        if (apiError.response?.status === 404 || 
-            apiError.response?.data?.message?.includes('not found') ||
-            apiError.message?.includes('not found')) {
-          // If the user doesn't exist in Firebase Auth, just update Firestore
-          console.warn('User not found in Firebase Auth, updating only in Firestore')
-          const userRef = doc(db, 'users', userId)
-          await updateDoc(userRef, { 
-            status: newStatus,
-            updatedAt: new Date()
-          })
-          user.status = newStatus
-          
-          // Show success message with a note
-          showStatus(`User status updated in database only. User not found in authentication system.`, 'success')
-        } else {
-          throw new Error(apiError.response?.data?.message || apiError.message || 'Failed to update authentication status')
+          // Check if this is a user not found error
+          if (apiError.response?.status === 404 || 
+              apiError.response?.data?.message?.includes('not found') ||
+              apiError.message?.includes('not found')) {
+            // If the user doesn't exist in Firebase Auth, just update Firestore
+            console.warn('User not found in Firebase Auth, updating only in Firestore')
+            const userRef = doc(db, 'users', userId)
+            await updateDoc(userRef, { 
+              status: newStatus,
+              updatedAt: new Date()
+            })
+            user.status = newStatus
+            
+            // Show success message with a note
+            showStatus(`User status updated in database only. User not found in authentication system.`, 'success')
+          } else {
+            throw new Error(apiError.response?.data?.message || apiError.message || 'Failed to update authentication status')
+          }
         }
       }
+    } catch (err) {
+      console.error('Error toggling user status:', err)
+      showStatus(err.message || 'Failed to update user status. Please try again.', 'error')
+    } finally {
+      loading.value = false
     }
-  } catch (err) {
-    console.error('Error toggling user status:', err)
-    showStatus(err.message || 'Failed to update user status. Please try again.', 'error')
-  } finally {
-    loading.value = false
-  }
   }
   </script>
   

@@ -42,6 +42,7 @@
       <p>Holidays: {{ archivedItems.filter(item => item.itemType === 'holiday').length }}</p>
       <p>Contacts: {{ archivedItems.filter(item => item.itemType === 'contact').length }}</p>
       <p>Users: {{ archivedItems.filter(item => item.itemType === 'user').length }}</p>
+      <p>Pets: {{ archivedItems.filter(item => item.itemType === 'pet').length }}</p>
     </div>
     
     <!-- Content Section -->
@@ -315,6 +316,11 @@
 import { ref, onMounted, computed, onUnmounted, watch } from 'vue';
 import { useArchivesStore } from '@/stores/modules/archivesStore';
 import { useOfficeStore } from '@/stores/modules/officeStore';
+import { useAuthStore } from '@/stores/modules/authStore';
+import { usePetsStore } from '@/stores/modules/petsStore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@shared/firebase';
+import axios from 'axios';
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
 import { 
   Users as UsersIcon,
@@ -332,7 +338,8 @@ import {
   Phone as PhoneIcon,
   CheckCircle as CheckCircleIcon,
   XCircle as XCircleIcon,
-  AlertCircle as AlertCircleIcon
+  AlertCircle as AlertCircleIcon,
+  PawPrint as PawPrintIcon
 } from 'lucide-vue-next';
 
 // Debug mode
@@ -364,6 +371,11 @@ const isProcessing = ref(false);
 // Get stores
 const archivesStore = useArchivesStore();
 const officeStore = useOfficeStore();
+const authStore = useAuthStore();
+const petsStore = usePetsStore();
+
+// Define your API URL here
+const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000';
 
 // Computed property to check if all items are selected
 const isAllSelected = computed(() => {
@@ -424,6 +436,11 @@ const getItemName = (item) => {
     return `${item.label || ''} (${item.type || 'Contact'})`;
   }
   
+  // For pets, show the name and species
+  if (item.itemType === 'pet') {
+    return `${item.name || 'Unnamed Pet'} (${item.species || 'Pet'})`;
+  }
+  
   // Default for other types
   return item.name || item.description || 'Unnamed Item';
 };
@@ -439,6 +456,7 @@ const getItemTypeLabel = (item) => {
     case 'officeHours': return 'Office Hours';
     case 'holiday': return 'Holiday';
     case 'contact': return 'Contact';
+    case 'pet': return 'Pet';
     default: return item.itemType.charAt(0).toUpperCase() + item.itemType.slice(1);
   }
 };
@@ -454,6 +472,7 @@ const getItemTypeClass = (item) => {
     case 'officeHours': return 'bg-purple-100 text-purple-800';
     case 'holiday': return 'bg-red-100 text-red-800';
     case 'contact': return 'bg-yellow-100 text-yellow-800';
+    case 'pet': return 'bg-teal-100 text-teal-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 };
@@ -593,6 +612,11 @@ const getCategoryItemCount = (category) => {
     return archivedItems.value.filter(item => 
       item.itemType === 'service' || item.itemType === 'category'
     ).length;
+  }
+  
+  if (category.name === 'Data Management') {
+    const petCount = archivedItems.value.filter(item => item.itemType === 'pet').length;
+    return petCount;
   }
   
   // For other categories, return 0 for now
@@ -743,6 +767,10 @@ const categories = ref([
     textColor: 'text-red-800',
     subcategories: [
       {
+        name: 'All Items',
+        items: []
+      },
+      {
         name: 'Pet Owners',
         items: []
       },
@@ -852,6 +880,25 @@ const updateCategoriesWithRealData = () => {
       contactsSubcategory.items = contactItems;
     }
   }
+  
+  // Find the Data Management category and update with pet data
+  const dataManagementCategory = categories.value.find(cat => cat.name === 'Data Management');
+  if (dataManagementCategory) {
+    // Filter archived items for pet-related items
+    const petItems = archivedItems.value.filter(item => item.itemType === 'pet');
+    
+    // Update the "All Items" subcategory
+    const allItemsSubcategory = dataManagementCategory.subcategories.find(sub => sub.name === 'All Items');
+    if (allItemsSubcategory) {
+      allItemsSubcategory.items = petItems;
+    }
+    
+    // Update the "Pet Profiles" subcategory
+    const petProfilesSubcategory = dataManagementCategory.subcategories.find(sub => sub.name === 'Pet Profiles');
+    if (petProfilesSubcategory) {
+      petProfilesSubcategory.items = petItems;
+    }
+  }
 };
 
 // Select category with loading state
@@ -927,7 +974,7 @@ const restoreItem = async (item) => {
     switch (item.itemType) {
       case 'user':
         // Use the new method to restore user and re-enable in Firebase Auth
-        success = await archivesStore.restoreArchivedUser(item.id);
+        success = await restoreUser(item);
         break;
       case 'officeHours':
         // Restore office hours using officeStore
@@ -940,6 +987,10 @@ const restoreItem = async (item) => {
       case 'contact':
         // Restore contact using officeStore
         success = await restoreContact(item);
+        break;
+      case 'pet':
+        // Restore pet using petsStore
+        success = await restorePet(item);
         break;
       default:
         // Use default restore method for other types
@@ -975,10 +1026,93 @@ const restoreItem = async (item) => {
   }
 };
 
-// Restore office hours
+// Restore user - UPDATED to preserve ALL user data fields
+const restoreUser = async (item) => {
+  try {
+    // Call the API to restore the user in Firebase Auth
+    const response = await axios.post(`${API_URL}/api/archives/restore-user`, { 
+      uid: item.uid,
+      email: item.email
+    });
+    
+    if (response.data.success) {
+      // Generate the userId using the authStore pattern
+      const userId = authStore.generateUserId(item.uid);
+      
+      // Create a copy of all item data to preserve ALL fields
+      const userData = { ...item };
+      
+      // Remove only the archive-specific fields
+      delete userData.id;
+      delete userData.itemType;
+      delete userData.originalId;
+      delete userData.archivedAt;
+      delete userData.archiveReason;
+      
+      // Update status and add restoration timestamp
+      userData.status = 'active';
+      userData.restoredAt = serverTimestamp();
+      userData.updatedAt = serverTimestamp();
+      
+      // Create user document in Firestore with ALL original data
+      await setDoc(doc(db, 'users', userId), userData);
+      console.log(`User ${item.uid} restored to users collection with ALL profile data`);
+      
+      // The server already deletes the archived item, so we don't need to do it again
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('Error restoring user:', err);
+    throw err;
+  }
+};
+
+// Restore pet - New method to handle pet restoration
+const restorePet = async (item) => {
+  try {
+    // Generate a dynamic document ID for the pet
+    const petName = (item.name || 'pet').toLowerCase().replace(/\s+/g, '-');
+    const shortId = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+    const docId = `${petName}-${shortId}`;
+    
+    // Create a reference to the document with the dynamic ID
+    const petRef = doc(db, 'pets', docId);
+    
+    // Prepare pet data for restoration
+    const petData = {
+      name: item.name || '',
+      species: item.species || '',
+      breed: item.breed || '',
+      gender: item.gender || '',
+      ageYears: item.ageYears || 0,
+      ageMonths: item.ageMonths || 0,
+      ageWeeks: item.ageWeeks || 0,
+      ownerId: item.ownerId || null,
+      notes: item.notes || '',
+      photoURL: item.photoURL || null,
+      // Preserve the original timestamps if available, otherwise use current time
+      createdAt: item.createdAt || serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    // Save to Firestore with the specific ID
+    await setDoc(petRef, petData);
+    
+    // Delete from archives
+    await archivesStore.permanentlyDeleteArchivedItem(item.id);
+    
+    return true;
+  } catch (err) {
+    console.error('Error restoring pet:', err);
+    throw err;
+  }
+};
+
+// Restore office hours - UPDATED to preserve timestamps
 const restoreOfficeHours = async (item) => {
   try {
-    // Create new office hours with the original data
+    // Create new office hours with the original data INCLUDING timestamps
     const result = await officeStore.createOfficeHours({
       day: item.day,
       isOpen: item.isOpen,
@@ -986,7 +1120,10 @@ const restoreOfficeHours = async (item) => {
       closeTime: item.closeTime,
       lunchStart: item.lunchStart,
       lunchEnd: item.lunchEnd,
-      notes: item.notes || ''
+      notes: item.notes || '',
+      // Preserve the original timestamps
+      createdAt: item.createdAt || null,
+      updatedAt: serverTimestamp() // Use current time for updatedAt
     });
     
     if (result) {
@@ -1001,10 +1138,10 @@ const restoreOfficeHours = async (item) => {
   }
 };
 
-// Restore holiday
+// Restore holiday - UPDATED to preserve timestamps
 const restoreHoliday = async (item) => {
   try {
-    // Create new holiday with the original data
+    // Create new holiday with the original data INCLUDING timestamps
     const result = await officeStore.createHoliday({
       name: item.name,
       date: item.date,
@@ -1012,7 +1149,10 @@ const restoreHoliday = async (item) => {
       type: item.type || 'holiday',
       openTime: item.openTime,
       closeTime: item.closeTime,
-      description: item.description || ''
+      description: item.description || '',
+      // Preserve the original timestamps
+      createdAt: item.createdAt || null,
+      updatedAt: serverTimestamp() // Use current time for updatedAt
     });
     
     if (result) {
@@ -1027,16 +1167,19 @@ const restoreHoliday = async (item) => {
   }
 };
 
-// Restore contact
+// Restore contact - UPDATED to preserve timestamps
 const restoreContact = async (item) => {
   try {
-    // Create new contact with the original data
+    // Create new contact with the original data INCLUDING timestamps
     const result = await officeStore.createContact({
       type: item.type,
       value: item.value,
       label: item.label,
       isActive: item.isActive,
-      notes: item.notes || ''
+      notes: item.notes || '',
+      // Preserve the original timestamps
+      createdAt: item.createdAt || null,
+      updatedAt: serverTimestamp() // Use current time for updatedAt
     });
     
     if (result) {
@@ -1085,7 +1228,7 @@ const bulkRestore = async () => {
           switch (fullItem.itemType) {
             case 'user':
               // Use the new method to restore user and re-enable in Firebase Auth
-              success = await archivesStore.restoreArchivedUser(fullItem.id);
+              success = await restoreUser(fullItem);
               break;
             case 'officeHours':
               success = await restoreOfficeHours(fullItem);
@@ -1095,6 +1238,9 @@ const bulkRestore = async () => {
               break;
             case 'contact':
               success = await restoreContact(fullItem);
+              break;
+            case 'pet':
+              success = await restorePet(fullItem);
               break;
             default:
               success = await archivesStore.restoreArchivedItem(fullItem.id);

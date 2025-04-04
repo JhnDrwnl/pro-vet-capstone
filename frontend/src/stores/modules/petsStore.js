@@ -1,4 +1,4 @@
-// stores/modules/petsStore
+// stores/modules/petsStore.js
 import { defineStore } from 'pinia';
 import { 
   collection, 
@@ -14,16 +14,28 @@ import {
 } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@shared/firebase';
+import { useArchivesStore } from './archivesStore';
 
 export const usePetsStore = defineStore('pets', {
   state: () => ({
     pets: [],
     loading: false,
     error: null,
-    selectedPet: null
+    selectedPet: null,
+    archivesStore: useArchivesStore() // Initialize archivesStore here
   }),
 
   actions: {
+    /**
+     * Initialize the archives store
+     */
+    initArchivesStore() {
+      // No longer needed as archivesStore is initialized in the state
+      // if (!this.archivesStore) {
+      //   this.archivesStore = useArchivesStore();
+      // }
+    },
+
     /**
      * Generate a dynamic document ID for a pet
      * @param {Object} petData - The pet data
@@ -197,7 +209,7 @@ export const usePetsStore = defineStore('pets', {
     },
     
     /**
-     * Delete a pet
+     * Delete a pet (archive it instead of permanent deletion)
      * @param {string} userId - The ID of the user
      * @param {string} petId - The ID of the pet to delete
      * @returns {boolean} - Success status
@@ -207,6 +219,9 @@ export const usePetsStore = defineStore('pets', {
       this.error = null;
       
       try {
+        // Initialize archives store if not already done
+        // this.initArchivesStore(); // No longer needed
+
         const petRef = doc(db, 'pets', petId);
         
         // Check if pet exists and belongs to user
@@ -215,35 +230,52 @@ export const usePetsStore = defineStore('pets', {
           throw new Error('Pet not found');
         }
         
-        // Verify ownership
+        // Get the pet data
         const petData = petDoc.data();
-        if (petData.ownerId !== userId) {
+        
+        // For admin users or if the user is the owner
+        if (userId === 'admin' || petData.ownerId === userId) {
+          console.log('Archiving pet before deletion:', petId);
+          
+          // Prepare the pet data for archiving
+          const archiveData = {
+            ...petData,
+            originalId: petId,
+            itemType: 'pet',
+            name: petData.name || 'unnamed',
+            archivedBy: userId
+          };
+          
+          // Archive the pet data first
+          const archiveId = await this.archivesStore.saveToArchivesCollection(archiveData);
+          console.log('Pet archived with ID:', archiveId);
+          
+          // Delete pet photo from storage if it exists
+          if (petData.photoURL && petData.photoURL.startsWith('https://firebasestorage.googleapis.com')) {
+            try {
+              // Extract the path from the URL
+              const url = new URL(petData.photoURL);
+              const path = decodeURIComponent(url.pathname.split('/o/')[1]);
+              const photoRef = storageRef(storage, path);
+              await deleteObject(photoRef);
+              console.log('Pet photo deleted from storage');
+            } catch (photoError) {
+              console.error('Error deleting pet photo:', photoError);
+              // Continue with pet deletion even if photo deletion fails
+            }
+          }
+          
+          // Delete from Firestore
+          await deleteDoc(petRef);
+          
+          // Update local state
+          this.pets = this.pets.filter(p => p.id !== petId);
+          
+          console.log('Pet archived and deleted successfully:', petId);
+          return true;
+        } else {
           throw new Error('Unauthorized to delete this pet');
         }
-        
-        // Delete pet photo from storage if it exists
-        if (petData.photoURL && petData.photoURL.startsWith('https://firebasestorage.googleapis.com')) {
-          try {
-            // Extract the path from the URL
-            const url = new URL(petData.photoURL);
-            const path = decodeURIComponent(url.pathname.split('/o/')[1]);
-            const photoRef = storageRef(storage, path);
-            await deleteObject(photoRef);
-            console.log('Pet photo deleted from storage');
-          } catch (photoError) {
-            console.error('Error deleting pet photo:', photoError);
-            // Continue with pet deletion even if photo deletion fails
-          }
-        }
-        
-        // Delete from Firestore
-        await deleteDoc(petRef);
-        
-        // Update local state
-        this.pets = this.pets.filter(p => p.id !== petId);
-        
-        console.log('Pet deleted successfully:', petId);
-        return true;
       } catch (error) {
         console.error('Error deleting pet:', error);
         this.error = error.message;

@@ -1,4 +1,5 @@
 <!-- views/admin/officesettings/OfficeHours.vue -->
+<!-- views/admin/officesettings/OfficeHours.vue -->
 <template>
     <div class="p-6 bg-white rounded-2xl">
       <!-- Header Section -->
@@ -63,17 +64,28 @@
             <table class="min-w-full">
               <thead class="bg-gray-100">
                 <tr class="border-b border-gray-200">
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Day</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Status</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden sm:table-cell">Open Time</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden sm:table-cell">Close Time</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden md:table-cell">Lunch Break</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden lg:table-cell">Notes</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Actions</th>
+                  <th 
+                    v-for="header in officeHoursHeaders" 
+                    :key="header.key" 
+                    @click="sortBy(header.key)"
+                    class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+                  >
+                    <div class="flex items-center">
+                      {{ header.label }}
+                      <div v-if="header.sortable" class="flex flex-col ml-1">
+                        <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === header.key && sortOrder === 'asc', 'text-gray-400': !(sortKey === header.key && sortOrder === 'asc') }">▲</span>
+                        <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === header.key && sortOrder === 'desc', 'text-gray-400': !(sortKey === header.key && sortOrder === 'desc') }">▼</span>
+                      </div>
+                    </div>
+                  </th>
+                  <!-- Actions column without sorting -->
+                  <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="hours in filteredOfficeHours" :key="hours.id">
+                <tr v-for="hours in sortedOfficeHours" :key="hours.id">
                   <td class="py-4 px-6 text-sm font-medium text-gray-900">{{ hours.day }}</td>
                   <td class="py-4 px-6">
                     <span :class="[
@@ -89,6 +101,12 @@
                     {{ hours.lunchStart && hours.lunchEnd ? `${formatTime(hours.lunchStart)} - ${formatTime(hours.lunchEnd)}` : 'N/A' }}
                   </td>
                   <td class="py-4 px-6 text-sm text-gray-900 hidden lg:table-cell">{{ hours.notes || 'N/A' }}</td>
+                  <td class="py-4 px-6 text-sm text-gray-600 hidden md:table-cell">
+                    {{ formatTimestamp(hours.createdAt) }}
+                  </td>
+                  <td class="py-4 px-6 text-sm text-gray-600 hidden md:table-cell">
+                    {{ formatTimestamp(hours.updatedAt) }}
+                  </td>
                   <td class="py-4 px-6 text-sm">
                     <div class="flex items-center gap-2">
                       <button 
@@ -107,7 +125,7 @@
                   </td>
                 </tr>
                 <tr v-if="officeStore.getOfficeHours.length === 0">
-                  <td colspan="7" class="py-8 text-center text-gray-500">
+                  <td colspan="9" class="py-8 text-center text-gray-500">
                     <Clock class="w-12 h-12 mx-auto text-gray-300 mb-2" />
                     <p>No office hours configured yet.</p>
                   </td>
@@ -259,15 +277,28 @@
             <table class="min-w-full">
               <thead class="bg-gray-100">
                 <tr class="border-b border-gray-200">
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Holiday Name</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Date</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Type</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden md:table-cell">Description</th>
-                  <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Actions</th>
+                  <th 
+                    v-for="header in holidaysHeaders" 
+                    :key="header.key" 
+                    @click="sortHolidaysBy(header.key)"
+                    class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+                  >
+                    <div class="flex items-center">
+                      {{ header.label }}
+                      <div v-if="header.sortable" class="flex flex-col ml-1">
+                        <span class="text-[10px] leading-none" :class="{ 'text-gray-800': holidaySortKey === header.key && holidaySortOrder === 'asc', 'text-gray-400': !(holidaySortKey === header.key && holidaySortOrder === 'asc') }">▲</span>
+                        <span class="text-[10px] leading-none" :class="{ 'text-gray-800': holidaySortKey === header.key && holidaySortOrder === 'desc', 'text-gray-400': !(holidaySortKey === header.key && holidaySortOrder === 'desc') }">▼</span>
+                      </div>
+                    </div>
+                  </th>
+                  <!-- Actions column without sorting -->
+                  <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="holiday in filteredHolidays" :key="holiday.id">
+                <tr v-for="holiday in sortedHolidays" :key="holiday.id">
                   <td class="py-4 px-6 text-sm font-medium text-gray-900">{{ holiday.name }}</td>
                   <td class="py-4 px-6 text-sm text-gray-900">
                     <span v-if="holiday.isRecurringYearly">
@@ -288,6 +319,12 @@
                     </span>
                   </td>
                   <td class="py-4 px-6 text-sm text-gray-900 hidden md:table-cell">{{ holiday.description || 'N/A' }}</td>
+                  <td class="py-4 px-6 text-sm text-gray-600 hidden md:table-cell">
+                    {{ formatTimestamp(holiday.createdAt) }}
+                  </td>
+                  <td class="py-4 px-6 text-sm text-gray-600 hidden md:table-cell">
+                    {{ formatTimestamp(holiday.updatedAt) }}
+                  </td>
                   <td class="py-4 px-6 text-sm">
                     <div class="flex items-center gap-2">
                       <button 
@@ -306,7 +343,7 @@
                   </td>
                 </tr>
                 <tr v-if="officeStore.getHolidays.length === 0">
-                  <td colspan="5" class="py-8 text-center text-gray-500">
+                  <td colspan="7" class="py-8 text-center text-gray-500">
                     <Calendar class="w-12 h-12 mx-auto text-gray-300 mb-2" />
                     <p>No holidays or special closures configured yet.</p>
                   </td>
@@ -552,6 +589,15 @@
   const statusType = ref('success')
   const searchQuery = ref('')
   
+  // Sorting state
+  const sortKey = ref('day')
+  const sortOrder = ref('asc')
+  
+  // Add these variables for holidays sorting with the other refs at the top of the script
+  // after the sortOrder ref
+  const holidaySortKey = ref('date')
+  const holidaySortOrder = ref('asc')
+
   // Holidays state
   const showHolidayForm = ref(false)
   const showDeleteHolidayModal = ref(false)
@@ -564,6 +610,28 @@
   const showSuccessModal = ref(false)
   const showErrorModal = ref(false)
   const initialLoading = ref(true) // Add initialLoading state
+  
+  // Office hours headers for sorting
+  const officeHoursHeaders = [
+    { key: 'day', label: 'Day', sortable: true },
+    { key: 'isOpen', label: 'Status', sortable: true },
+    { key: 'openTime', label: 'Open Time', sortable: true },
+    { key: 'closeTime', label: 'Close Time', sortable: true },
+    { key: 'lunchBreak', label: 'Lunch Break', sortable: false },
+    { key: 'notes', label: 'Notes', sortable: false },
+    { key: 'createdAt', label: 'Created', sortable: true },
+    { key: 'updatedAt', label: 'Updated', sortable: true }
+  ]
+
+  // Add holidays headers definition after the officeHoursHeaders constant
+  const holidaysHeaders = [
+    { key: 'name', label: 'Holiday Name', sortable: true },
+    { key: 'date', label: 'Date', sortable: true },
+    { key: 'type', label: 'Type', sortable: true },
+    { key: 'description', label: 'Description', sortable: false },
+    { key: 'createdAt', label: 'Created', sortable: true },
+    { key: 'updatedAt', label: 'Updated', sortable: true }
+  ]
   
   // Form data
   const formData = ref({
@@ -610,6 +678,61 @@
     )
   })
   
+  // Sorted office hours based on sort key and order
+  const sortedOfficeHours = computed(() => {
+    return [...filteredOfficeHours.value].sort((a, b) => {
+      let aValue = a[sortKey.value];
+      let bValue = b[sortKey.value];
+      
+      // Special handling for lunch break
+      if (sortKey.value === 'lunchBreak') {
+        aValue = a.lunchStart && a.lunchEnd ? `${a.lunchStart}-${a.lunchEnd}` : '';
+        bValue = b.lunchStart && b.lunchEnd ? `${b.lunchStart}-${b.lunchEnd}` : '';
+      }
+      
+      // Handle null or undefined values
+      if (aValue === null || aValue === undefined) aValue = '';
+      if (bValue === null || bValue === undefined) bValue = '';
+      
+      // Handle boolean values
+      if (typeof aValue === 'boolean') aValue = aValue ? 1 : 0;
+      if (typeof bValue === 'boolean') bValue = bValue ? 1 : 0;
+      
+      // Compare values
+      if (aValue < bValue) return sortOrder.value === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder.value === 'asc' ? 1 : -1;
+      return 0;
+    });
+  })
+
+  // Add the sortedHolidays computed property after the filteredHolidays computed property
+  // Sorted holidays based on sort key and order
+  const sortedHolidays = computed(() => {
+    return [...filteredHolidays.value].sort((a, b) => {
+      let aValue = a[holidaySortKey.value];
+      let bValue = b[holidaySortKey.value];
+    
+      // Handle date sorting specially to sort by the actual date
+      if (holidaySortKey.value === 'date') {
+        aValue = new Date(a.date);
+        bValue = new Date(b.date);
+      }
+    
+      // Handle null or undefined values
+      if (aValue === null || aValue === undefined) aValue = '';
+      if (bValue === null || bValue === undefined) bValue = '';
+    
+      // Handle boolean values
+      if (typeof aValue === 'boolean') aValue = aValue ? 1 : 0;
+      if (typeof bValue === 'boolean') bValue = bValue ? 1 : 0;
+    
+      // Compare values
+      if (aValue < bValue) return holidaySortOrder.value === 'asc' ? -1 : 1;
+      if (aValue > bValue) return holidaySortOrder.value === 'asc' ? 1 : -1;
+      return 0;
+    });
+  })
+  
   // Filtered holidays based on search
   const filteredHolidays = computed(() => {
     if (!holidaySearchQuery.value) return officeStore.getHolidays
@@ -626,11 +749,6 @@
     if (error) {
       showStatus(error, 'error')
     }
-  })
-  
-  // Watch for tab changes to refresh data
-  watch(activeTab, () => {
-    // We don't need this watch anymore since we're using the switchTab function
   })
   
   // Format time for display
@@ -665,6 +783,34 @@
     }
   }
   
+  // Format timestamp for display
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+  
+    // If timestamp is a Firestore Timestamp object
+    if (timestamp && typeof timestamp.toDate === 'function') {
+      timestamp = timestamp.toDate();
+    }
+  
+    // If timestamp is a number (Unix timestamp in milliseconds)
+    if (typeof timestamp === 'number') {
+      timestamp = new Date(timestamp);
+    }
+  
+    // Format the date
+    if (timestamp instanceof Date) {
+      return timestamp.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  
+    return 'N/A';
+  }
+  
   // Format recurring date (month and day only)
   const formatRecurringDate = (dateString) => {
     if (!dateString) return 'N/A'
@@ -687,6 +833,35 @@
       case 'special-hours': return 'Special Hours'
       case 'maintenance': return 'Maintenance'
       default: return type
+    }
+  }
+  
+  // Sort by column
+  const sortBy = (key) => {
+    // Check if the column is sortable
+    const header = officeHoursHeaders.find(h => h.key === key);
+    if (!header || !header.sortable) return;
+    
+    if (sortKey.value === key) {
+      sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey.value = key;
+      sortOrder.value = 'asc';
+    }
+  }
+
+  // Add the sortHolidaysBy function after the sortBy function
+  // Sort holidays by column
+  const sortHolidaysBy = (key) => {
+    // Check if the column is sortable
+    const header = holidaysHeaders.find(h => h.key === key);
+    if (!header || !header.sortable) return;
+  
+    if (holidaySortKey.value === key) {
+      holidaySortOrder.value = holidaySortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+      holidaySortKey.value = key;
+      holidaySortOrder.value = 'asc';
     }
   }
   
