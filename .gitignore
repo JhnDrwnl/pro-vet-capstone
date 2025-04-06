@@ -48,3 +48,7 @@ ml-backend/species_models/*/*.pkl
 
 # Ignore virtual environment
 ml-backend/venv/
+
+echo "ml-backend/ml_models/preprocessor.pkl" >> .gitignore
+echo "ml-backend/predictions/ml_models/pet_disease_model.pkl" >> .gitignore
+echo "ml-backend/predictions/ml_models/preprocessor.pkl" >> .gitignore
