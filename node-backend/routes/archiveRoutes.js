@@ -91,10 +91,23 @@ router.delete('/permanently-delete-user', async (req, res) => {
     
     logger.info(`Permanently deleting user with ID: ${uid}`);
     
+    // Log the exact uid being passed to the function for debugging
+    console.log('Calling permanentlyDeleteUser with uid:', uid);
+    
     // Permanently delete the user and related data
     const deleteResult = await userDataUtils.permanentlyDeleteUser(uid);
     
     if (!deleteResult.success) {
+      // If the error is that the user wasn't found in archives, but we still want to
+      // consider this a "success" since the end result is the same (user is gone)
+      if (deleteResult.message && deleteResult.message.includes('not found in archives')) {
+        return res.status(200).json({
+          success: true,
+          message: 'User was already deleted from archives',
+          data: { alreadyDeleted: true }
+        });
+      }
+      
       throw new Error(deleteResult.message);
     }
     

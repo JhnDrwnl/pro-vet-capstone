@@ -1,14 +1,17 @@
 <!-- views/vet/VetClientPets.vue -->
 <template>
-  <div class="p-6 bg-white rounded-2xl">
-  <!-- Header Section -->
-  <div class="mb-8">
+<div class="p-6 bg-white rounded-2xl">
+<!-- Header Section -->
+<div class="mb-8">
   <h1 class="text-2xl font-semibold text-gray-900">Client Pets Management</h1>
   <p class="text-gray-500 mt-1">Manage pet owner profiles and their pets.</p>
-  </div>
-  
-  <!-- Pet View Details -->
-  <div v-if="selectedPet && !showForm">
+</div>
+
+<!-- Loading spinner during initial data load -->
+<LoadingSpinner v-if="initialLoading" isOverlay text="Loading pet owners and pets..." />
+
+<!-- Pet View Details -->
+<div v-if="selectedPet && !showForm">
   <div class="pet-view-details">
     <div class="flex justify-between items-center mb-6">
       <div class="flex items-center">
@@ -29,11 +32,11 @@
         <div class="space-y-3">
           <div>
             <p class="text-sm text-gray-500">Name</p>
-            <p class="font-medium">{{ selectedPet.owner.name }}</p>
+            <p class="font-medium">{{ selectedPet.owner.firstName }} {{ selectedPet.owner.lastName }}</p>
           </div>
           <div>
             <p class="text-sm text-gray-500">Phone</p>
-            <p class="font-medium">{{ selectedPet.owner.phone }}</p>
+            <p class="font-medium">{{ selectedPet.owner.phone || 'No phone' }}</p>
           </div>
           <div>
             <p class="text-sm text-gray-500">Email</p>
@@ -41,7 +44,7 @@
           </div>
           <div>
             <p class="text-sm text-gray-500">Address</p>
-            <p class="font-medium">{{ selectedPet.owner.address }}</p>
+            <p class="font-medium">{{ selectedPet.owner.streetAddress || 'No address' }}</p>
           </div>
         </div>
       </div>
@@ -50,7 +53,7 @@
       <div class="md:col-span-2 bg-white rounded-lg shadow p-6">
         <div class="flex items-start">
           <img 
-            :src="selectedPet.photoUrl || '/placeholder-pet.jpg'" 
+            :src="selectedPet.photoURL || defaultPetPhotoURL" 
             alt="Pet Photo" 
             class="w-24 h-24 object-cover rounded-lg mr-6"
           />
@@ -132,23 +135,23 @@
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="(record, index) in sortedMedicalHistory" :key="index">
                 <td class="px-6 py-4 whitespace-nowrap">
-                  {{ new Date(record.date).toLocaleDateString() }}
+                  {{ formatDate(record.date) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">{{ record.type }}</td>
                 <td class="px-6 py-4">{{ record.description }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">{{ record.vet }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex gap-2">
-                    <button class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                    <button @click="editMedicalRecord(index)" class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
                       <Edit class="w-4 h-4 text-gray-500" />
                     </button>
-                    <button class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                    <button @click="deleteMedicalRecord(index)" class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
                       <TrashIcon class="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 </td>
               </tr>
-              <tr v-if="selectedPet.medicalHistory.length === 0">
+              <tr v-if="!selectedPet.medicalHistory || selectedPet.medicalHistory.length === 0">
                 <td colspan="5" class="px-6 py-8 text-center">
                   <div class="flex flex-col items-center justify-center">
                     <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -215,10 +218,10 @@
               <tr v-for="(vaccination, index) in sortedVaccinations" :key="index">
                 <td class="px-6 py-4 whitespace-nowrap">{{ vaccination.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  {{ new Date(vaccination.date).toLocaleDateString() }}
+                  {{ formatDate(vaccination.date) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  {{ new Date(vaccination.expiryDate).toLocaleDateString() }}
+                  {{ formatDate(vaccination.expiryDate) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span 
@@ -230,16 +233,16 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex gap-2">
-                    <button class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                    <button @click="editVaccination(index)" class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
                       <Edit class="w-4 h-4 text-gray-500" />
                     </button>
-                    <button class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                    <button @click="deleteVaccination(index)" class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
                       <TrashIcon class="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 </td>
               </tr>
-              <tr v-if="selectedPet.vaccinations.length === 0">
+              <tr v-if="!selectedPet.vaccinations || selectedPet.vaccinations.length === 0">
                 <td colspan="5" class="px-6 py-8 text-center">
                   <div class="flex flex-col items-center justify-center">
                     <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -305,7 +308,7 @@
               <tr v-for="(document, index) in sortedDocuments" :key="index">
                 <td class="px-6 py-4 whitespace-nowrap">{{ document.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  {{ new Date(document.date).toLocaleDateString() }}
+                  {{ formatDate(document.date) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap uppercase">{{ document.type }}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -317,16 +320,16 @@
                     >
                       <DownloadIcon class="w-4 h-4 text-blue-500" />
                     </a>
-                    <button class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                    <button @click="editDocument(index)" class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
                       <Edit class="w-4 h-4 text-gray-500" />
                     </button>
-                    <button class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
+                    <button @click="deleteDocument(index)" class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200">
                       <TrashIcon class="w-4 h-4 text-red-500" />
                     </button>
                   </div>
                 </td>
               </tr>
-              <tr v-if="selectedPet.documents.length === 0">
+              <tr v-if="!selectedPet.documents || selectedPet.documents.length === 0">
                 <td colspan="4" class="px-6 py-8 text-center">
                   <div class="flex flex-col items-center justify-center">
                     <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -343,16 +346,16 @@
       </div>
     </div>
   </div>
-  </div>
-  
-  <!-- Inline Add/Edit Pet Form -->
-  <div v-else-if="showForm" class="bg-white rounded-lg border border-gray-200 p-6">
+</div>
+
+<!-- Inline Add/Edit Pet Form -->
+<div v-else-if="showForm" class="bg-white rounded-lg border border-gray-200 p-6">
   <div class="flex justify-between items-center mb-6">
     <div class="flex items-center">
       <button @click="cancelForm" class="mr-4 text-gray-600 hover:text-gray-900">
         <ArrowLeftIcon class="w-5 h-5" />
       </button>
-      <h2 class="text-xl font-semibold">{{ isNewPet ? 'Add New Pet' : 'Edit Info' }}</h2>
+      <h2 class="text-xl font-semibold">{{ isNewPet ? 'Add New Pet' : 'Edit Pet Info' }}</h2>
     </div>
   </div>
   
@@ -459,43 +462,27 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Owner Name</label>
-              <input 
-                type="text" 
-                v-model="formData.owner.name" 
-                class="w-full px-3 py-2 border rounded-md"
-              />
+              <p class="w-full px-3 py-2 border rounded-md bg-gray-50">{{ formData.owner.firstName }} {{ formData.owner.lastName }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Owner Phone</label>
-              <input 
-                type="text" 
-                v-model="formData.owner.phone" 
-                class="w-full px-3 py-2 border rounded-md"
-              />
+              <p class="w-full px-3 py-2 border rounded-md bg-gray-50">{{ formData.owner.phone || 'No phone' }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Owner Email</label>
-              <input 
-                type="email" 
-                v-model="formData.owner.email" 
-                class="w-full px-3 py-2 border rounded-md"
-              />
+              <p class="w-full px-3 py-2 border rounded-md bg-gray-50">{{ formData.owner.email }}</p>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Owner Address</label>
-              <input 
-                type="text" 
-                v-model="formData.owner.address" 
-                class="w-full px-3 py-2 border rounded-md"
-              />
+              <p class="w-full px-3 py-2 border rounded-md bg-gray-50">{{ formData.owner.streetAddress || 'No address' }}</p>
             </div>
           </div>
         </div>
-  
+
         <div class="md:col-span-2">
           <h3 class="text-lg font-semibold mb-4">Pet Information</h3>
         </div>
-  
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Pet Name</label>
           <input 
@@ -504,21 +491,16 @@
             class="w-full px-3 py-2 border rounded-md"
           />
         </div>
-  
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Species</label>
-          <select 
+          <input 
+            type="text" 
             v-model="formData.species" 
             class="w-full px-3 py-2 border rounded-md"
-          >
-            <option value="">Select Species</option>
-            <option value="dog">Dog</option>
-            <option value="cat">Cat</option>
-            <option value="bird">Bird</option>
-            <option value="other">Other</option>
-          </select>
+          />
         </div>
-  
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Breed</label>
           <input 
@@ -527,7 +509,7 @@
             class="w-full px-3 py-2 border rounded-md"
           />
         </div>
-  
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Age (years)</label>
           <input 
@@ -536,19 +518,35 @@
             class="w-full px-3 py-2 border rounded-md"
           />
         </div>
-  
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-          <select 
-            v-model="formData.gender" 
-            class="w-full px-3 py-2 border rounded-md"
-          >
-            <option value="">Select Gender</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
+          <div class="relative">
+            <div 
+              @click="toggleGenderDropdown" 
+              class="w-full px-3 py-2 border rounded-md cursor-pointer flex justify-between items-center gender-dropdown"
+            >
+              <span v-if="formData.gender">{{ formData.gender }}</span>
+              <span v-else class="text-gray-500">Select gender</span>
+              <ChevronDown class="w-4 h-4 text-gray-500" :class="{ 'transform rotate-180': genderDropdownOpen }" />
+            </div>
+            
+            <div 
+              v-show="genderDropdownOpen" 
+              class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg gender-dropdown"
+            >
+              <div 
+                v-for="option in genderOptions" 
+                :key="option.value"
+                @click="selectGender(option.value)"
+                class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm gender-dropdown"
+              >
+                {{ option.label }}
+              </div>
+            </div>
+          </div>
         </div>
-  
+
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
           <input 
@@ -558,23 +556,9 @@
             class="w-full px-3 py-2 border rounded-md"
           />
         </div>
-  
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Photo</label>
-          <div class="flex items-center">
-            <img 
-              :src="formData.photoUrl || '/placeholder-pet.jpg'" 
-              alt="Pet Photo" 
-              class="w-16 h-16 object-cover rounded-full mr-4"
-            />
-            <button class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">
-              Upload Photo
-            </button>
-          </div>
-        </div>
       </div>
     </div>
-  
+
     <!-- Medical History Tab -->
     <div v-if="activeTab === 'medical'">
       <div class="flex justify-between mb-4">
@@ -587,7 +571,7 @@
           Add Record
         </button>
       </div>
-  
+
       <!-- Table for medical history -->
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -643,7 +627,7 @@
                 </button>
               </td>
             </tr>
-            <tr v-if="formData.medicalHistory.length === 0">
+            <tr v-if="!formData.medicalHistory || formData.medicalHistory.length === 0">
               <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -658,7 +642,7 @@
         </table>
       </div>
     </div>
-  
+
     <!-- Vaccinations Tab -->
     <div v-if="activeTab === 'vaccinations'">
       <div class="flex justify-between mb-4">
@@ -671,7 +655,7 @@
           Add Vaccination
         </button>
       </div>
-  
+
       <!-- Table for vaccinations -->
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -715,7 +699,7 @@
                 </button>
               </td>
             </tr>
-            <tr v-if="formData.vaccinations.length === 0">
+            <tr v-if="!formData.vaccinations || formData.vaccinations.length === 0">
               <td colspan="4" class="px-6 py-4 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -730,7 +714,7 @@
         </table>
       </div>
     </div>
-  
+
     <!-- Documents Tab -->
     <div v-if="activeTab === 'documents'">
       <div class="flex justify-between mb-4">
@@ -743,7 +727,7 @@
           Add Document
         </button>
       </div>
-  
+
       <!-- Table for documents -->
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
@@ -794,7 +778,7 @@
                 </div>
               </td>
             </tr>
-            <tr v-if="formData.documents.length === 0">
+            <tr v-if="!formData.documents || formData.documents.length === 0">
               <td colspan="4" class="px-6 py-4 text-center text-gray-500">
                 <div class="flex flex-col items-center justify-center">
                   <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
@@ -828,10 +812,10 @@
       {{ isNewPet ? 'Add Pet' : 'Save Changes' }}
     </button>
   </div>
-  </div>
-  
-  <!-- Main Profiles/Pets Table View -->
-  <div v-else>
+</div>
+
+<!-- Main Profiles/Pets Table View -->
+<div v-else>
   <!-- Search and Actions -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
     <div class="flex gap-2 w-full sm:w-auto">
@@ -839,7 +823,7 @@
         <input 
           v-model="searchQuery" 
           class="w-full sm:w-[300px] pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-          placeholder="Search pets..."
+          placeholder="Search pets or owners..."
         />
         <SearchIcon class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
       </div>
@@ -988,18 +972,6 @@
                 </div>
               </div>
             </th>
-            <th 
-              class="text-left py-4 px-6 text-xs font-medium text-gray-500 cursor-pointer"
-              @click="sortBy('lastVisit')"
-            >
-              <div class="flex items-center">
-                Last Visit
-                <div class="flex flex-col ml-1">
-                  <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'lastVisit' && sortOrder === 'asc', 'text-gray-400': !(sortKey === 'lastVisit' && sortOrder === 'asc') }">▲</span>
-                  <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === 'lastVisit' && sortOrder === 'desc', 'text-gray-400': !(sortKey === 'lastVisit' && sortOrder === 'desc') }">▼</span>
-                </div>
-              </div>
-            </th>
             <th class="text-left py-4 px-6 text-xs font-medium text-gray-500">
               Actions
             </th>
@@ -1007,38 +979,39 @@
         </thead>
         <tbody>
           <tr 
-            v-for="(ownerData, ownerIndex) in groupedPetsByOwner" 
-            :key="ownerIndex" 
+            v-for="(ownerData, ownerIndex) in paginatedOwners" 
+            :key="ownerData.userId" 
             class="border-b border-gray-200 last:border-b-0 hover:bg-gray-50"
           >
             <td class="py-4 px-6">
               <div class="flex items-center gap-3">
                 <img 
-                  :src="ownerData.owner.photoUrl || '/placeholder-user.jpg'" 
-                  alt="Owner" 
+                  :src="ownerData.photoURL || defaultPhotoURL" 
+                  :alt="`${ownerData.firstName} ${ownerData.lastName}`"
                   class="w-10 h-10 rounded-full object-cover cursor-pointer"
                 >
                 <div>
-                  <div class="font-medium text-gray-900">{{ ownerData.owner.name }}</div>
+                  <div class="font-medium text-gray-900">{{ ownerData.firstName }} {{ ownerData.lastName }}</div>
                 </div>
               </div>
             </td>
             <td class="py-4 px-6">
               <div>
-                <div class="text-sm text-gray-500">{{ ownerData.owner.phone }}</div>
-                <div class="text-sm text-gray-500">{{ ownerData.owner.email }}</div>
+                <div class="text-sm text-gray-500">{{ ownerData.phone || 'No phone' }}</div>
+                <div class="text-sm text-gray-500">{{ ownerData.email }}</div>
               </div>
             </td>
             <td class="py-4 px-6">
               <div class="flex items-center">
                 <div class="flex -space-x-2 mr-2">
-                  <img 
-                    v-for="(pet, petIndex) in ownerData.pets.slice(0, 3)" 
-                    :key="petIndex"
-                    :src="pet.photoUrl || '/placeholder-pet.jpg'" 
-                    alt="Pet" 
-                    class="w-8 h-8 rounded-full object-cover border-2 border-white"
-                  >
+                  <div v-for="(pet, petIndex) in ownerData.pets.slice(0, 3)" :key="petIndex" 
+                       class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white">
+                    <img 
+                      :src="pet.photoURL || defaultPetPhotoURL" 
+                      :alt="pet.name" 
+                      class="w-8 h-8 rounded-full object-cover"
+                    >
+                  </div>
                 </div>
                 <span class="text-blue-500 font-medium">
                   {{ formatPetNames(ownerData.pets) }}
@@ -1046,24 +1019,21 @@
               </div>
             </td>
             <td class="py-4 px-6">
-              {{ formatDate(getEarliestCreatedDate(ownerData.pets)) }}
+              {{ formatDate(ownerData.createdAt) }}
             </td>
             <td class="py-4 px-6">
-              {{ formatDate(getLatestUpdatedDate(ownerData.pets)) }}
-            </td>
-            <td class="py-4 px-6">
-              {{ getLatestVisitDate(ownerData.pets) }}
+              {{ formatDate(ownerData.updatedAt) }}
             </td>
             <td class="py-4 px-6">
               <div class="flex gap-2">
                 <button 
-                  @click="viewPet(ownerData.pets[0])"
+                  @click="viewOwnerDetails(ownerData)"
                   class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200"
                 >
                   <EyeIcon class="w-4 h-4 text-gray-500" />
                 </button>
                 <button 
-                  @click="editPet(ownerData.pets[0])"
+                  @click="editOwner(ownerData)"
                   class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200"
                 >
                   <Edit class="w-4 h-4 text-gray-500" />
@@ -1073,13 +1043,13 @@
           </tr>
           
           <!-- Empty state with icon placeholder -->
-          <tr v-if="groupedPetsByOwner.length === 0">
-            <td colspan="7" class="py-8 text-center">
+          <tr v-if="paginatedOwners.length === 0">
+            <td colspan="6" class="py-8 text-center">
               <div class="flex flex-col items-center justify-center">
                 <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                   <PawPrintIcon class="w-8 h-8 text-gray-300" />
                 </div>
-                <p class="text-gray-500 font-medium">No pets found</p>
+                <p class="text-gray-500 font-medium">No pet owners found</p>
                 <p class="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
               </div>
             </td>
@@ -1091,20 +1061,20 @@
     <!-- Grid View -->
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
       <div 
-        v-for="(ownerData, ownerIndex) in groupedPetsByOwner" 
-        :key="ownerIndex" 
+        v-for="ownerData in paginatedOwners" 
+        :key="ownerData.userId" 
         class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col">
         <div class="p-6 flex-grow flex flex-col">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
               <img 
-                :src="ownerData.owner.photoUrl || '/placeholder-user.jpg'" 
-                alt="Owner" 
+                :src="ownerData.photoURL || defaultPhotoURL" 
+                :alt="`${ownerData.firstName} ${ownerData.lastName}`"
                 class="w-10 h-10 rounded-full object-cover cursor-pointer"
               >
               <div>
-                <div class="font-medium text-gray-900">{{ ownerData.owner.name }}</div>
-                <div class="text-sm text-gray-500">{{ ownerData.owner.phone }}</div>
+                <div class="font-medium text-gray-900">{{ ownerData.firstName }} {{ ownerData.lastName }}</div>
+                <div class="text-sm text-gray-500">{{ ownerData.phone || 'No phone' }}</div>
               </div>
             </div>
           </div>
@@ -1113,13 +1083,14 @@
             <h4 class="text-sm font-medium text-gray-700 mb-2">Pets:</h4>
             <div class="flex items-center">
               <div class="flex -space-x-2 mr-2">
-                <img 
-                  v-for="(pet, petIndex) in ownerData.pets.slice(0, 3)" 
-                  :key="petIndex"
-                  :src="pet.photoUrl || '/placeholder-pet.jpg'" 
-                  alt="Pet" 
-                  class="w-8 h-8 rounded-full object-cover border-2 border-white"
-                >
+                <div v-for="(pet, petIndex) in ownerData.pets.slice(0, 3)" :key="petIndex" 
+                     class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center border-2 border-white">
+                  <img 
+                    :src="pet.photoURL || defaultPetPhotoURL" 
+                    :alt="pet.name" 
+                    class="w-8 h-8 rounded-full object-cover"
+                  >
+                </div>
               </div>
               <span class="text-blue-500 font-medium">
                 {{ formatPetNames(ownerData.pets) }}
@@ -1129,28 +1100,28 @@
           
           <div class="space-y-2 text-sm text-gray-500 mb-4">
             <div>
-              <span class="font-medium">Created:</span> {{ formatDate(getEarliestCreatedDate(ownerData.pets)) }}
+              <span class="font-medium">Created:</span> {{ formatDate(ownerData.createdAt) }}
             </div>
             <div>
-              <span class="font-medium">Updated:</span> {{ formatDate(getLatestUpdatedDate(ownerData.pets)) }}
+              <span class="font-medium">Updated:</span> {{ formatDate(ownerData.updatedAt) }}
             </div>
           </div>
           
-          <!-- Push the time and action buttons to the bottom -->
+          <!-- Push the action buttons to the bottom -->
           <div class="mt-auto">
             <div class="flex justify-between items-center">
               <span class="text-sm text-gray-500">
-                {{ getLatestVisitDate(ownerData.pets) }}
+                {{ ownerData.email }}
               </span>
               <div class="flex gap-2">
                 <button 
-                  @click="viewPet(ownerData.pets[0])"
+                  @click="viewOwnerDetails(ownerData)"
                   class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200"
                 >
                   <EyeIcon class="w-4 h-4 text-gray-500" />
                 </button>
                 <button 
-                  @click="editPet(ownerData.pets[0])"
+                  @click="editOwner(ownerData)"
                   class="p-1.5 hover:bg-gray-100 rounded-full transition-colors duration-200"
                 >
                   <Edit class="w-4 h-4 text-gray-500" />
@@ -1164,7 +1135,7 @@
   </div>
   
   <!-- Pagination - Responsive -->
-  <div v-if="groupedPetsByOwner.length > 0" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+  <div v-if="filteredOwners.length > 0" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
     <div class="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
       Showing {{ startIndex + 1 }} to {{ endIndex }} of {{ totalItems }} entries
     </div>
@@ -1187,13 +1158,13 @@
       </button>
     </div>
   </div>
-  </div>
-  </div>
-  </template>
-  
-  <script setup>
-  import { ref, computed, watch } from 'vue'
-  import {
+</div>
+</div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+import {
   User as UserIcon,
   Search as SearchIcon,
   PlusCircle as PlusCircleIcon,
@@ -1212,694 +1183,850 @@
   FileText,
   Activity,
   ChevronDown
-  } from 'lucide-vue-next'
-  
-  // View mode
-  const viewMode = ref('list')
-  
-  // Search and filter
-  const searchQuery = ref('')
-  
-  // Sorting state for table headers
-  const sortKey = ref('name')
-  const sortOrder = ref('asc')
-  
-  // Sorting state for medical history
-  const medicalSortKey = ref('date')
-  const medicalSortOrder = ref('desc')
-  
-  // Sorting state for vaccinations
-  const vaccineSortKey = ref('date')
-  const vaccineSortOrder = ref('desc')
-  
-  // Sorting state for documents
-  const documentSortKey = ref('date')
-  const documentSortOrder = ref('desc')
-  
-  // Pagination
-  const currentPage = ref(1)
-  const itemsPerPage = 10
-  
-  // UI state
-  const selectedPet = ref(null)
-  const editMode = ref(false)
-  const activeTab = ref('basics')
-  const formData = ref({})
-  const showFilterMenu = ref(false)
-  const filters = ref({
+} from 'lucide-vue-next'
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { collection, query, where, getDocs } from 'firebase/firestore'
+import { db } from '@shared/firebase'
+import { usePetsStore } from '@/stores/modules/petsStore'
+import { useProfileStore } from '@/stores/modules/profileStore'
+
+// Initialize stores
+const petsStore = usePetsStore()
+const profileStore = useProfileStore()
+
+// Default photo URLs
+const defaultPhotoURL = ref('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 36 36\'%3E%3Crect width=\'36\' height=\'36\' fill=\'%23f0f2f5\'/%3E%3Cpath d=\'M18 20.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5\' stroke=\'%23bec3c9\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E');
+const defaultPetPhotoURL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGQ9Ik04LjM1IDNjMS4xOC0uMTcgMi44MyAxLjEyIDIuNzkgMi45Yy4zNiAxLjc3LS4yOSAzLjM1LTEuNDcgMy41M2MtMS4xNy4xOC0yLjQzLTEuMTEtMi44LTIuODljLS4zNy0xLjc3LjMtMy4zNSAxLjQ4LTMuNTRtNy4xNSAwYzEuMTkuMTkgMS44NSAxLjc3IDEuNSAzLjU0Yy0uMzggMS43OC0xLjYzIDMuMDctMi44MSAyLjg5Yy0xLjE5LS4xOC0xLjg0LTEuNzYtMS40Ny0zLjUzYy4zNi0xLjc4IDEuNjEtMy4wNyAyLjc4LTIuOU0zIDcuNmMxLjE0LS40OSAyLjY5LjQgMy41IDEuOTVjLjc2IDEuNTguNSAzLjI0LS42MyAzLjczcy0yLjY3LS4zOS0zLjQ2LTEuOTZTMS45IDguMDggMyA3LjZtMTggMGMxLjEuNDggMS4zOCAyLjE1LjU5IDMuNzJzLTIuMzMgMi44NS0zLjQ2IDEuOTZzLTEuMzktMi4xNS0uNjMtMy43M0MxOC4zMSA4IDE5Ljg2IDcuMTEgMjEgNy42bS0xLjY3IDEwLjc4Yy4wNC45NC0uNjggMS45OC0xLjU0IDIuMzdjLTEuNzkuODItMy45MS0uODgtNS45LS44OHMtNC4xMyAxLjc3LTUuODkuODhjLTEtLjQ5LTEuNjktMS43OS0xLjU2LTIuODdjLjE4LTEuNDkgMS45Ny0yLjI5IDMuMDMtMy4zOGMxLjQxLTEuNDEgMi40MS00LjA2IDQuNDItNC4wNmMyIDAgMy4wNiAyLjYxIDQuNDEgNC4wNmMxLjExIDEuMjIgMi45NiAyLjI1IDMuMDMgMy44OCIvPjwvc3ZnPg==';
+
+// State variables
+const petOwners = ref([])
+const initialLoading = ref(true)
+const viewMode = ref('list')
+const searchQuery = ref('')
+const showFilterMenu = ref(false)
+const filters = ref({
   petCount: []
-  })
-  const showForm = ref(false)
-  const showTabDropdown = ref(false)
-  
-  // Sample data - in a real app this would come from API
-  const pets = ref([
-  {
-  id: '001',
-  name: 'Max',
-  species: 'dog',
-  breed: 'Golden Retriever',
-  age: 5,
-  gender: 'Male',
-  weight: 30,
-  photoUrl: '/placeholder-pet.jpg',
-  lastVisit: '2023-11-15',
-  createdAt: '2022-05-10T08:30:00Z',
-  updatedAt: '2023-11-15T14:45:00Z',
-  owner: {
-    id: 'C001',
-    name: 'John Smith',
-    phone: '(555) 123-4567',
-    email: 'john.smith@example.com',
-    address: '123 Main St, Anytown, CA 12345',
-    photoUrl: '/placeholder-user.jpg'
-  },
-  medicalHistory: [
-    { 
-      date: '2023-11-15', 
-      type: 'Checkup', 
-      description: 'Annual wellness check. All vitals normal.',
-      vet: 'Dr. Emily Johnson'
-    },
-    { 
-      date: '2023-08-02', 
-      type: 'Illness', 
-      description: 'Presented with mild digestive issues. Prescribed special diet.',
-      vet: 'Dr. Mark Wilson'
+})
+const sortKey = ref('owner.name')
+const sortOrder = ref('asc')
+const currentPage = ref(1)
+const itemsPerPage = 10
+
+// UI state
+const selectedPet = ref(null)
+const showForm = ref(false)
+const activeTab = ref('basics')
+const formData = ref({})
+const showTabDropdown = ref(false)
+
+// Medical history, vaccinations, and documents sorting
+const medicalSortKey = ref('date')
+const medicalSortOrder = ref('desc')
+const vaccineSortKey = ref('date')
+const vaccineSortOrder = ref('desc')
+const documentSortKey = ref('date')
+const documentSortOrder = ref('desc')
+
+// Gender dropdown state
+const genderDropdownOpen = ref(false)
+const genderOptions = [
+  { value: 'Male', label: 'Male' },
+  { value: 'Female', label: 'Female' }
+]
+
+// Fetch pet owners and their pets
+const fetchPetOwnersWithPets = async () => {
+  try {
+    initialLoading.value = true
+
+    // Fetch pet owners (users with role 'user') directly from Firestore
+    const usersRef = collection(db, 'users')
+    const q = query(usersRef, where('role', '==', 'user'))
+    const querySnapshot = await getDocs(q)
+
+    // Process each owner to add their pets
+    const ownersWithPets = []
+
+    querySnapshot.forEach(doc => {
+      ownersWithPets.push({
+        userId: doc.id,
+        ...doc.data(),
+        pets: [] // Initialize empty pets array
+      })
+    })
+
+    // Fetch pets for each owner
+    for (const owner of ownersWithPets) {
+      // Fetch pets for this owner
+      const ownerPets = await petsStore.fetchUserPets(owner.userId)
+      
+      // Add pets to owner object
+      owner.pets = ownerPets || []
+      
+      // Fetch complete profile data using profileStore to ensure we have the correct photoURL
+      const profileData = await profileStore.fetchUserProfile(owner.userId)
+      if (profileData && profileData.photoURL) {
+        // Update the photoURL from the profile store
+        owner.photoURL = profileData.photoURL
+      }
     }
-  ],
-  vaccinations: [
-    { name: 'Rabies', date: '2023-05-18', expiryDate: '2024-05-18' },
-    { name: 'DHPP', date: '2023-05-18', expiryDate: '2024-05-18' },
-    { name: 'Bordetella', date: '2023-01-10', expiryDate: '2024-01-10' }
-  ],
-  documents: [
-    { name: 'Vaccination Certificate', date: '2023-05-18', type: 'pdf', url: '#' },
-    { name: 'Insurance Policy', date: '2023-04-20', type: 'pdf', url: '#' }
-  ]
-  },
-  {
-  id: '002',
-  name: 'Luna',
-  species: 'cat',
-  breed: 'Siamese',
-  age: 3,
-  gender: 'Female',
-  weight: 4.5,
-  photoUrl: '/placeholder-pet.jpg',
-  lastVisit: '2023-10-28',
-  createdAt: '2022-08-15T10:20:00Z',
-  updatedAt: '2023-10-28T11:30:00Z',
-  owner: {
-    id: 'C002',
-    name: 'Sarah Johnson',
-    phone: '(555) 987-6543',
-    email: 'sarah.johnson@example.com',
-    address: '456 Oak Ave, Anytown, CA 12345',
-    photoUrl: '/placeholder-user.jpg'
-  },
-  medicalHistory: [
-    { 
-      date: '2023-10-28', 
-      type: 'Dental', 
-      description: 'Dental cleaning and examination.',
-      vet: 'Dr. Emily Johnson'
-    }
-  ],
-  vaccinations: [
-    { name: 'Rabies', date: '2023-04-12', expiryDate: '2024-04-12' },
-    { name: 'FVRCP', date: '2023-04-12', expiryDate: '2024-04-12' }
-  ],
-  documents: [
-    { name: 'Adoption Certificate', date: '2020-06-15', type: 'pdf', url: '#' }
-  ]
-  },
-  {
-  id: '003',
-  name: 'Charlie',
-  species: 'bird',
-  breed: 'Budgerigar',
-  age: 2,
-  gender: 'Male',
-  weight: 0.1,
-  photoUrl: '/placeholder-pet.jpg',
-  lastVisit: null,
-  createdAt: '2023-01-20T09:15:00Z',
-  updatedAt: '2023-01-20T09:15:00Z',
-  owner: {
-    id: 'C001',
-    name: 'John Smith',
-    phone: '(555) 123-4567',
-    email: 'john.smith@example.com',
-    address: '123 Main St, Anytown, CA 12345',
-    photoUrl: '/placeholder-user.jpg'
-  },
-  medicalHistory: [],
-  vaccinations: [],
-  documents: []
-  },
-  {
-  id: '004',
-  name: 'Whiskers',
-  species: 'cat',
-  breed: 'Maine Coon',
-  age: 4,
-  gender: 'Male',
-  weight: 6.2,
-  photoUrl: '/placeholder-pet.jpg',
-  lastVisit: '2023-09-15',
-  createdAt: '2022-03-05T14:30:00Z',
-  updatedAt: '2023-09-15T16:45:00Z',
-  owner: {
-    id: 'C001',
-    name: 'John Smith',
-    phone: '(555) 123-4567',
-    email: 'john.smith@example.com',
-    address: '123 Main St, Anytown, CA 12345',
-    photoUrl: '/placeholder-user.jpg'
-  },
-  medicalHistory: [],
-  vaccinations: [],
-  documents: []
-  },
-  {
-  id: '005',
-  name: 'Buddy',
-  species: 'dog',
-  breed: 'Beagle',
-  age: 3,
-  gender: 'Male',
-  weight: 12.5,
-  photoUrl: '/placeholder-pet.jpg',
-  lastVisit: '2023-10-05',
-  createdAt: '2022-07-12T11:20:00Z',
-  updatedAt: '2023-10-05T13:10:00Z',
-  owner: {
-    id: 'C001',
-    name: 'John Smith',
-    phone: '(555) 123-4567',
-    email: 'john.smith@example.com',
-    address: '123 Main St, Anytown, CA 12345',
-    photoUrl: '/placeholder-user.jpg'
-  },
-  medicalHistory: [],
-  vaccinations: [],
-  documents: []
+
+    petOwners.value = ownersWithPets
+    console.log('Fetched pet owners with pets:', petOwners.value)
+  } catch (error) {
+    console.error('Error fetching pet owners with pets:', error)
+  } finally {
+    initialLoading.value = false
   }
-  ])
-  
-  // Group pets by owner
-  const groupedPetsByOwner = computed(() => {
-  const filtered = [...filteredPets.value];
-  const groupedByOwner = {};
-  
-  filtered.forEach(pet => {
-  const ownerId = pet.owner.id;
-  if (!groupedByOwner[ownerId]) {
-    groupedByOwner[ownerId] = {
-      owner: pet.owner,
-      pets: []
-    };
-  }
-  groupedByOwner[ownerId].pets.push(pet);
-  });
-  
-  // Filter by pet count
-  let result = Object.values(groupedByOwner);
-  
-  if (filters.value.petCount.length > 0) {
-  result = result.filter(ownerData => {
-    const petCount = ownerData.pets.length;
-    
-    return filters.value.petCount.some(filter => {
-      if (filter === 'one') return petCount === 1;
-      if (filter === 'two') return petCount === 2;
-      if (filter === 'moreThanTwo') return petCount > 2;
-      return false;
-    });
-  });
-  }
-  
-  return result;
-  });
-  
-  // Format pet names for display
-  function formatPetNames(pets) {
+}
+
+// Format pet names for display
+const formatPetNames = (pets) => {
+  if (!pets || pets.length === 0) return 'No pets'
+
   if (pets.length === 1) {
-  return pets[0].name;
+    return pets[0].name
   } else if (pets.length === 2) {
-  return `${pets[0].name}, ${pets[1].name}`;
+    return `${pets[0].name}, ${pets[1].name}`
   } else {
-  return `${pets[0].name}, ${pets[1].name}, +${pets.length - 2}`;
+    return `${pets[0].name}, ${pets[1].name}, +${pets.length - 2}`
   }
+}
+
+// Format date for display
+const formatDate = (date) => {
+  if (!date) return 'N/A'
+
+  try {
+    // Handle Firestore timestamp
+    const dateObj = date.toDate ? date.toDate() : new Date(date)
+    return dateObj.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  } catch (error) {
+    return 'Invalid date'
   }
-  
-  // Format date for display
-  function formatDate(date) {
-  if (!date) return 'N/A';
-  return new Date(date).toLocaleDateString();
-  }
-  
-  // Get the latest visit date from a list of pets
-  function getLatestVisitDate(pets) {
-  const validDates = pets
-  .filter(pet => pet.lastVisit)
-  .map(pet => new Date(pet.lastVisit));
-  
-  if (validDates.length === 0) {
-  return 'No visits';
-  }
-  
-  const latestDate = new Date(Math.max(...validDates));
-  return latestDate.toLocaleDateString();
-  }
-  
-  // Get the earliest created date from a list of pets
-  function getEarliestCreatedDate(pets) {
-  const validDates = pets
-  .filter(pet => pet.createdAt)
-  .map(pet => new Date(pet.createdAt));
-  
-  if (validDates.length === 0) {
-  return null;
-  }
-  
-  return new Date(Math.min(...validDates));
-  }
-  
-  // Get the latest updated date from a list of pets
-  function getLatestUpdatedDate(pets) {
-  const validDates = pets
-  .filter(pet => pet.updatedAt)
-  .map(pet => new Date(pet.updatedAt));
-  
-  if (validDates.length === 0) {
-  return null;
-  }
-  
-  return new Date(Math.max(...validDates));
-  }
-  
-  // Export to CSV function
-  function exportToCSV() {
-  // Get all the data we want to export
-  const data = groupedPetsByOwner.value.map(ownerData => {
-  const petCount = ownerData.pets.length;
-  const petNames = ownerData.pets.map(pet => pet.name).join(', ');
-  const petSpecies = ownerData.pets.map(pet => pet.species).join(', ');
-  
-  return {
-    'Owner Name': ownerData.owner.name,
-    'Owner Email': ownerData.owner.email,
-    'Owner Phone': ownerData.owner.phone,
-    'Owner Address': ownerData.owner.address,
-    'Number of Pets': petCount,
-    'Pet Names': petNames,
-    'Pet Species': petSpecies,
-    'Last Visit': getLatestVisitDate(ownerData.pets),
-    'Created Date': formatDate(getEarliestCreatedDate(ownerData.pets)),
-    'Updated Date': formatDate(getLatestUpdatedDate(ownerData.pets))
-  };
-  });
-  
-  // Convert to CSV
-  const headers = Object.keys(data[0]);
-  const csvContent = [
-  headers.join(','),
-  ...data.map(row => headers.map(header => `"${row[header]}"`).join(','))
-  ].join('\n');
-  
-  // Create a blob and download
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', 'pet_owners_data.csv');
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  }
-  
-  // Computed properties
-  const filteredPets = computed(() => {
-  let result = [...pets.value]
-  
+}
+
+// Helper function to check if a URL is a Google photo URL
+const isGooglePhotoURL = (url) => {
+  return url && url.startsWith('https://lh3.googleusercontent.com')
+}
+
+// Filter owners based on search and filters
+const filteredOwners = computed(() => {
+  let result = [...petOwners.value]
+
   // Apply search query
   if (searchQuery.value) {
-  const query = searchQuery.value.toLowerCase()
-  result = result.filter(pet => 
-    pet.name.toLowerCase().includes(query) ||
-    pet.breed.toLowerCase().includes(query) ||
-    pet.owner.name.toLowerCase().includes(query) ||
-    pet.species.toLowerCase().includes(query)
-  )
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(owner => 
+      (owner.firstName && owner.firstName.toLowerCase().includes(query)) ||
+      (owner.lastName && owner.lastName.toLowerCase().includes(query)) ||
+      (owner.email && owner.email.toLowerCase().includes(query)) ||
+      (owner.phone && owner.phone.toLowerCase().includes(query)) ||
+      // Search in pet names
+      (owner.pets && owner.pets.some(pet => 
+        pet.name && pet.name.toLowerCase().includes(query) ||
+        pet.species && pet.species.toLowerCase().includes(query) ||
+        pet.breed && pet.breed.toLowerCase().includes(query)
+      ))
+    )
   }
-  
-  // Sort pets based on table header sorting
+
+  // Apply pet count filters
+  if (filters.value.petCount.length > 0) {
+    result = result.filter(owner => {
+      const petCount = owner.pets ? owner.pets.length : 0
+      
+      return filters.value.petCount.some(filter => {
+        if (filter === 'one') return petCount === 1
+        if (filter === 'two') return petCount === 2
+        if (filter === 'moreThanTwo') return petCount > 2
+        return false
+      })
+    })
+  }
+
+  // Sort owners
   result.sort((a, b) => {
-  let aValue, bValue;
-  
-  if (sortKey.value === 'owner.name') {
-    aValue = a.owner.name;
-    bValue = b.owner.name;
-  } else if (sortKey.value === 'owner.phone') {
-    aValue = a.owner.phone;
-    bValue = b.owner.phone;
-  } else if (sortKey.value === 'createdAt' || sortKey.value === 'updatedAt' || sortKey.value === 'lastVisit') {
-    aValue = a[sortKey.value] ? new Date(a[sortKey.value]) : new Date(0);
-    bValue = b[sortKey.value] ? new Date(b[sortKey.value]) : new Date(0);
-  } else {
-    aValue = a[sortKey.value];
-    bValue = b[sortKey.value];
-  }
-  
-  if (aValue < bValue) return sortOrder.value === 'asc' ? -1 : 1
-  if (aValue > bValue) return sortOrder.value === 'asc' ? 1 : -1
-  return 0
+    let aValue, bValue
+
+    if (sortKey.value === 'owner.name') {
+      aValue = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase()
+      bValue = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase()
+    } else if (sortKey.value === 'owner.phone') {
+      aValue = a.phone || ''
+      bValue = b.phone || ''
+    } else if (sortKey.value === 'createdAt' || sortKey.value === 'updatedAt') {
+      // Handle Firestore timestamps
+      aValue = a[sortKey.value] ? (a[sortKey.value].toDate ? a[sortKey.value].toDate().getTime() : new Date(a[sortKey.value]).getTime()) : 0
+      bValue = b[sortKey.value] ? (b[sortKey.value].toDate ? b[sortKey.value].toDate().getTime() : new Date(b[sortKey.value]).getTime()) : 0
+    } else {
+      aValue = a[sortKey.value] || ''
+      bValue = b[sortKey.value] || ''
+    }
+
+    if (aValue < bValue) return sortOrder.value === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortOrder.value === 'asc' ? 1 : -1
+    return 0
   })
-  
+
   return result
-  })
-  
-  // Sorted medical history records
-  const sortedMedicalHistory = computed(() => {
-  if (!selectedPet.value) return [];
-  
+})
+
+// Pagination computed properties
+const totalItems = computed(() => filteredOwners.value.length)
+const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, totalItems.value))
+const paginatedOwners = computed(() => {
+  return filteredOwners.value.slice(startIndex.value, endIndex.value)
+})
+
+// Check if this is a new pet entry
+const isNewPet = computed(() => {
+  return selectedPet.value && selectedPet.value.id && selectedPet.value.id.startsWith('new-')
+})
+
+// Sorted medical history records
+const sortedMedicalHistory = computed(() => {
+  if (!selectedPet.value || !selectedPet.value.medicalHistory) return [];
+
   return [...selectedPet.value.medicalHistory].sort((a, b) => {
-  let aValue, bValue;
-  
-  if (medicalSortKey.value === 'date') {
-    aValue = new Date(a.date);
-    bValue = new Date(b.date);
-  } else {
-    aValue = a[medicalSortKey.value];
-    bValue = b[medicalSortKey.value];
-  }
-  
-  if (aValue < bValue) return medicalSortOrder.value === 'asc' ? -1 : 1;
-  if (aValue > bValue) return medicalSortOrder.value === 'asc' ? 1 : -1;
-  return 0;
+    let aValue, bValue;
+
+    if (medicalSortKey.value === 'date') {
+      aValue = new Date(a.date);
+      bValue = new Date(b.date);
+    } else {
+      aValue = a[medicalSortKey.value];
+      bValue = b[medicalSortKey.value];
+    }
+
+    if (aValue < bValue) return medicalSortOrder.value === 'asc' ? -1 : 1;
+    if (aValue > bValue) return medicalSortOrder.value === 'asc' ? 1 : -1;
+    return 0;
   });
-  });
-  
-  // Sorted vaccinations
-  const sortedVaccinations = computed(() => {
-  if (!selectedPet.value) return [];
-  
+});
+
+// Sorted vaccinations
+const sortedVaccinations = computed(() => {
+  if (!selectedPet.value || !selectedPet.value.vaccinations) return [];
+
   return [...selectedPet.value.vaccinations].sort((a, b) => {
-  let aValue, bValue;
-  
-  if (vaccineSortKey.value === 'date' || vaccineSortKey.value === 'expiryDate') {
-    aValue = new Date(a[vaccineSortKey.value]);
-    bValue = new Date(b[vaccineSortKey.value]);
-  } else {
-    aValue = a[vaccineSortKey.value];
-    bValue = b[vaccineSortKey.value];
-  }
-  
-  if (aValue < bValue) return vaccineSortOrder.value === 'asc' ? -1 : 1;
-  if (aValue > bValue) return vaccineSortOrder.value === 'asc' ? 1 : -1;
-  return 0;
+    let aValue, bValue;
+
+    if (vaccineSortKey.value === 'date' || vaccineSortKey.value === 'expiryDate') {
+      aValue = new Date(a[vaccineSortKey.value]);
+      bValue = new Date(b[vaccineSortKey.value]);
+    } else {
+      aValue = a[vaccineSortKey.value];
+      bValue = b[vaccineSortKey.value];
+    }
+
+    if (aValue < bValue) return vaccineSortOrder.value === 'asc' ? -1 : 1;
+    if (aValue > bValue) return vaccineSortOrder.value === 'asc' ? 1 : -1;
+    return 0;
   });
-  });
-  
-  // Sorted documents
-  const sortedDocuments = computed(() => {
-  if (!selectedPet.value) return [];
-  
+});
+
+// Sorted documents
+const sortedDocuments = computed(() => {
+  if (!selectedPet.value || !selectedPet.value.documents) return [];
+
   return [...selectedPet.value.documents].sort((a, b) => {
-  let aValue, bValue;
-  
-  if (documentSortKey.value === 'date') {
-    aValue = new Date(a.date);
-    bValue = new Date(b.date);
-  } else {
-    aValue = a[documentSortKey.value];
-    bValue = b[documentSortKey.value];
-  }
-  
-  if (aValue < bValue) return documentSortOrder.value === 'asc' ? -1 : 1;
-  if (aValue > bValue) return documentSortOrder.value === 'asc' ? 1 : -1;
-  return 0;
+    let aValue, bValue;
+
+    if (documentSortKey.value === 'date') {
+      aValue = new Date(a.date);
+      bValue = new Date(b.date);
+    } else {
+      aValue = a[documentSortKey.value];
+      bValue = b[documentSortKey.value];
+    }
+
+    if (aValue < bValue) return documentSortOrder.value === 'asc' ? -1 : 1;
+    if (aValue > bValue) return documentSortOrder.value === 'asc' ? 1 : -1;
+    return 0;
   });
-  });
-  
-  // Pagination computed properties
-  const totalItems = computed(() => groupedPetsByOwner.value.length)
-  const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
-  const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage)
-  const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, totalItems.value))
-  
-  // Check if this is a new pet entry
-  const isNewPet = computed(() => {
-  return selectedPet.value && selectedPet.value.id.startsWith('new-')
-  })
-  
-  // Check if vaccine is expired
-  function isVaccineExpired(expiryDate) {
+});
+
+// Check if vaccine is expired
+function isVaccineExpired(expiryDate) {
   return new Date(expiryDate) < new Date()
+}
+
+// Methods
+function viewOwnerDetails(owner) {
+  // Create a new pet object if the owner doesn't have any pets
+  if (!owner.pets || owner.pets.length === 0) {
+    const newPet = {
+      id: `new-${Date.now()}`,
+      name: '',
+      species: '',
+      breed: '',
+      gender: '',
+      birthDate: '',
+      ownerId: owner.userId,
+      owner: {
+        firstName: owner.firstName || '',
+        lastName: owner.lastName || '',
+        email: owner.email || '',
+        phone: owner.phone || '',
+        streetAddress: owner.streetAddress || '',
+        photoURL: owner.photoURL || defaultPhotoURL.value
+      }
+    }
+    viewPet(newPet)
+  } else {
+    // If owner has pets, view the first pet
+    const pet = { ...owner.pets[0] }
+    
+    // Ensure the pet has owner information
+    pet.owner = {
+      firstName: owner.firstName || '',
+      lastName: owner.lastName || '',
+      email: owner.email || '',
+      phone: owner.phone || '',
+      streetAddress: owner.streetAddress || '',
+      photoURL: owner.photoURL || defaultPhotoURL.value
+    }
+    
+    viewPet(pet)
+  }
+}
+
+function editOwner(owner) {
+  // Create a new pet object if the owner doesn't have any pets
+  if (!owner.pets || owner.pets.length === 0) {
+    const newPet = {
+      id: `new-${Date.now()}`,
+      name: '',
+      species: '',
+      breed: '',
+      gender: '',
+      birthDate: '',
+      ownerId: owner.userId,
+      owner: {
+        firstName: owner.firstName || '',
+        lastName: owner.lastName || '',
+        email: owner.email || '',
+        phone: owner.phone || '',
+        streetAddress: owner.streetAddress || '',
+        photoURL: owner.photoURL || defaultPhotoURL.value
+      }
+    }
+    editPet(newPet)
+  } else {
+    // If owner has pets, edit the first pet
+    const pet = { ...owner.pets[0] }
+    
+    // Ensure the pet has owner information
+    pet.owner = {
+      firstName: owner.firstName || '',
+      lastName: owner.lastName || '',
+      email: owner.email || '',
+      phone: owner.phone || '',
+      streetAddress: owner.streetAddress || '',
+      photoURL: owner.photoURL || defaultPhotoURL.value
+    }
+    
+    editPet(pet)
+  }
+}
+
+async function viewPet(pet) {
+  // Create a deep copy to avoid reference issues
+  const petWithOwner = JSON.parse(JSON.stringify(pet))
+  
+  // Ensure owner property exists
+  if (!petWithOwner.owner) {
+    petWithOwner.owner = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      streetAddress: '',
+      photoURL: defaultPhotoURL.value
+    }
+    
+    // If the pet has an ownerId, try to find the owner in petOwners
+    if (petWithOwner.ownerId) {
+      const owner = petOwners.value.find(o => o.userId === petWithOwner.ownerId)
+      if (owner) {
+        petWithOwner.owner = {
+          firstName: owner.firstName || '',
+          lastName: owner.lastName || '',
+          email: owner.email || '',
+          phone: owner.phone || '',
+          streetAddress: owner.streetAddress || '',
+          photoURL: owner.photoURL || defaultPhotoURL.value
+        }
+      } else {
+        // If owner not found in local state, try to fetch from profileStore
+        try {
+          const profileData = await profileStore.fetchUserProfile(petWithOwner.ownerId)
+          if (profileData) {
+            petWithOwner.owner = {
+              firstName: profileData.firstName || '',
+              lastName: profileData.lastName || '',
+              email: profileData.email || '',
+              phone: profileData.phone || '',
+              streetAddress: profileData.streetAddress || '',
+              photoURL: profileData.photoURL || defaultPhotoURL.value
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching owner profile:', error)
+        }
+      }
+    }
   }
   
-  // Methods
-  function viewPet(pet) {
-  selectedPet.value = pet
-  editMode.value = false
+  selectedPet.value = petWithOwner
   showForm.value = false
+}
+
+async function editPet(pet) {
+  selectedPet.value = pet
+  // Create a deep copy of the pet object
+  formData.value = JSON.parse(JSON.stringify(pet))
+  
+  // Ensure owner property exists in formData
+  if (!formData.value.owner) {
+    formData.value.owner = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      streetAddress: '',
+      photoURL: defaultPhotoURL.value
+    }
+    
+    // If the pet has an ownerId, try to find the owner in petOwners
+    if (formData.value.ownerId) {
+      const owner = petOwners.value.find(o => o.userId === formData.value.ownerId)
+      if (owner) {
+        formData.value.owner = {
+          firstName: owner.firstName || '',
+          lastName: owner.lastName || '',
+          email: owner.email || '',
+          phone: owner.phone || '',
+          streetAddress: owner.streetAddress || '',
+          photoURL: owner.photoURL || defaultPhotoURL.value
+        }
+      } else {
+        // If owner not found in local state, try to fetch from profileStore
+        try {
+          const profileData = await profileStore.fetchUserProfile(formData.value.ownerId)
+          if (profileData) {
+            formData.value.owner = {
+              firstName: profileData.firstName || '',
+              lastName: profileData.lastName || '',
+              email: profileData.email || '',
+              phone: profileData.phone || '',
+              streetAddress: profileData.streetAddress || '',
+              photoURL: profileData.photoURL || defaultPhotoURL.value
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching owner profile:', error)
+        }
+      }
+    }
   }
   
-  function editPet(pet) {
-  selectedPet.value = pet
-  formData.value = JSON.parse(JSON.stringify(pet))
   showForm.value = true
   activeTab.value = 'basics'
-  }
-  
-  function cancelForm() {
+}
+
+function cancelForm() {
   // Always go back to the table view when canceling the form
   selectedPet.value = null
   showForm.value = false
-  }
-  
-  function goBackToList() {
+}
+
+function goBackToList() {
   selectedPet.value = null
-  editMode.value = false
   showForm.value = false
-  }
-  
-  function handleAddNewPet() {
-  // In a real app, you'd create a new pet object with API-generated values
-  const newPet = {
-  id: `new-${Date.now()}`,
-  name: '',
-  species: '',
-  breed: '',
-  age: null,
-  gender: '',
-  weight: null,
-  photoUrl: '',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  owner: {
-    id: '',
-    name: '',
-    phone: '',
-    email: '',
-    address: ''
-  },
-  medicalHistory: [],
-  vaccinations: [],
-  documents: []
-  }
-  
-  selectedPet.value = newPet
-  formData.value = JSON.parse(JSON.stringify(newPet))
-  showForm.value = true
-  activeTab.value = 'basics'
-  }
-  
-  function savePet() {
+}
+
+function savePet() {
   // In a real app, you'd call an API to save the pet
-  const index = pets.value.findIndex(p => p.id === formData.value.id)
-  
-  // Update the updatedAt timestamp
-  formData.value.updatedAt = new Date().toISOString()
-  
-  if (index !== -1) {
-  // Update existing pet
-  pets.value[index] = formData.value
-  selectedPet.value = formData.value
+  // For now, we'll just update the local state
+  try {
+    // Update the pet in the petsStore
+    petsStore.updatePet(formData.value)
+    
+    // Update the pet in our local state
+    const ownerIndex = petOwners.value.findIndex(owner => owner.userId === formData.value.ownerId)
+    if (ownerIndex !== -1) {
+      const petIndex = petOwners.value[ownerIndex].pets.findIndex(pet => pet.id === formData.value.id)
+      if (petIndex !== -1) {
+        petOwners.value[ownerIndex].pets[petIndex] = { ...formData.value }
+      }
+    }
+    
+    // After saving, go back to list view
+    showForm.value = false
+    selectedPet.value = null
+  } catch (error) {
+    console.error('Error saving pet:', error)
+  }
+}
+
+// Gender dropdown methods
+function toggleGenderDropdown() {
+  genderDropdownOpen.value = !genderDropdownOpen.value
+}
+
+function selectGender(value) {
+  formData.value.gender = value
+  genderDropdownOpen.value = false
+}
+
+// Functions for managing medical history records
+function addMedicalRecord() {
+  if (showForm.value) {
+    if (!formData.value.medicalHistory) {
+      formData.value.medicalHistory = []
+    }
+    formData.value.medicalHistory.push({
+      date: new Date().toISOString().split('T')[0],
+      type: 'Checkup',
+      description: '',
+      vet: ''
+    })
   } else {
-  // Add new pet with a proper ID (would normally come from the backend)
-  const newPet = {
-    ...formData.value,
-    id: formData.value.id.startsWith('new-') ? `00${pets.value.length + 1}` : formData.value.id
+    // In view mode, switch to edit mode first
+    editPet(selectedPet.value)
+    if (!formData.value.medicalHistory) {
+      formData.value.medicalHistory = []
+    }
+    formData.value.medicalHistory.push({
+      date: new Date().toISOString().split('T')[0],
+      type: 'Checkup',
+      description: '',
+      vet: ''
+    })
+    activeTab.value = 'medical'
   }
-  pets.value.push(newPet)
-  selectedPet.value = newPet
-  }
-  
-  // After saving, go back to list view
-  showForm.value = false
-  selectedPet.value = null
-  }
-  
-  // Functions for managing medical history records
-  function addMedicalRecord() {
-  formData.value.medicalHistory.push({
-  date: new Date().toISOString().split('T')[0],
-  type: 'Checkup',
-  description: '',
-  vet: ''
-  })
-  }
-  
-  function removeMedicalRecord(index) {
+}
+
+function removeMedicalRecord(index) {
   formData.value.medicalHistory.splice(index, 1)
+}
+
+function editMedicalRecord(index) {
+  editPet(selectedPet.value)
+  activeTab.value = 'medical'
+}
+
+function deleteMedicalRecord(index) {
+  if (selectedPet.value && selectedPet.value.medicalHistory) {
+    // Create a copy of the pet to edit
+    const updatedPet = { ...selectedPet.value }
+    updatedPet.medicalHistory = [...updatedPet.medicalHistory]
+    updatedPet.medicalHistory.splice(index, 1)
+    
+    // Update in petsStore
+    petsStore.updatePet(updatedPet)
+    
+    // Update local state
+    selectedPet.value = updatedPet
   }
-  
-  // Functions for managing vaccinations
-  function addVaccination() {
-  formData.value.vaccinations.push({
-  name: '',
-  date: new Date().toISOString().split('T')[0],
-  expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
-  })
+}
+
+// Functions for managing vaccinations
+function addVaccination() {
+  if (showForm.value) {
+    if (!formData.value.vaccinations) {
+      formData.value.vaccinations = []
+    }
+    formData.value.vaccinations.push({
+      name: '',
+      date: new Date().toISOString().split('T')[0],
+      expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+    })
+  } else {
+    // In view mode, switch to edit mode first
+    editPet(selectedPet.value)
+    if (!formData.value.vaccinations) {
+      formData.value.vaccinations = []
+    }
+    formData.value.vaccinations.push({
+      name: '',
+      date: new Date().toISOString().split('T')[0],
+      expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
+    })
+    activeTab.value = 'vaccinations'
   }
-  
-  function removeVaccination(index) {
+}
+
+function removeVaccination(index) {
   formData.value.vaccinations.splice(index, 1)
+}
+
+function editVaccination(index) {
+  editPet(selectedPet.value)
+  activeTab.value = 'vaccinations'
+}
+
+function deleteVaccination(index) {
+  if (selectedPet.value && selectedPet.value.vaccinations) {
+    // Create a copy of the pet to edit
+    const updatedPet = { ...selectedPet.value }
+    updatedPet.vaccinations = [...updatedPet.vaccinations]
+    updatedPet.vaccinations.splice(index, 1)
+    
+    // Update in petsStore
+    petsStore.updatePet(updatedPet)
+    
+    // Update local state
+    selectedPet.value = updatedPet
   }
-  
-  // Functions for managing documents
-  function addDocument() {
-  formData.value.documents.push({
-  name: '',
-  date: new Date().toISOString().split('T')[0],
-  type: 'pdf',
-  url: '#'
-  })
+}
+
+// Functions for managing documents
+function addDocument() {
+  if (showForm.value) {
+    if (!formData.value.documents) {
+      formData.value.documents = []
+    }
+    formData.value.documents.push({
+      name: '',
+      date: new Date().toISOString().split('T')[0],
+      type: 'pdf',
+      url: '#'
+    })
+  } else {
+    // In view mode, switch to edit mode first
+    editPet(selectedPet.value)
+    if (!formData.value.documents) {
+      formData.value.documents = []
+    }
+    formData.value.documents.push({
+      name: '',
+      date: new Date().toISOString().split('T')[0],
+      type: 'pdf',
+      url: '#'
+    })
+    activeTab.value = 'documents'
   }
-  
-  function removeDocument(index) {
+}
+
+function removeDocument(index) {
   formData.value.documents.splice(index, 1)
+}
+
+function editDocument(index) {
+  editPet(selectedPet.value)
+  activeTab.value = 'documents'
+}
+
+function deleteDocument(index) {
+  if (selectedPet.value && selectedPet.value.documents) {
+    // Create a copy of the pet to edit
+    const updatedPet = { ...selectedPet.value }
+    updatedPet.documents = [...updatedPet.documents]
+    updatedPet.documents.splice(index, 1)
+    
+    // Update in petsStore
+    petsStore.updatePet(updatedPet)
+    
+    // Update local state
+    selectedPet.value = updatedPet
   }
-  
-  // Table header sorting
-  function sortBy(key) {
+}
+
+// Export to CSV function
+function exportToCSV() {
+  // Get all the data we want to export
+  const data = filteredOwners.value.map(owner => {
+    const petCount = owner.pets ? owner.pets.length : 0
+    const petNames = owner.pets ? owner.pets.map(pet => pet.name).join(', ') : ''
+    const petSpecies = owner.pets ? owner.pets.map(pet => pet.species).join(', ') : ''
+
+    return {
+      'Owner Name': `${owner.firstName || ''} ${owner.lastName || ''}`.trim(),
+      'Owner Email': owner.email || '',
+      'Owner Phone': owner.phone || '',
+      'Owner Address': owner.streetAddress || '',
+      'Number of Pets': petCount,
+      'Pet Names': petNames,
+      'Pet Species': petSpecies,
+      'Created Date': formatDate(owner.createdAt),
+      'Updated Date': formatDate(owner.updatedAt)
+    }
+  })
+
+  // Convert to CSV
+  const headers = Object.keys(data[0])
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => headers.map(header => `"${(row[header] || '').toString().replace(/"/g, '""')}"`).join(','))
+  ].join('\n')
+
+  // Create a blob and download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', 'pet_owners_data.csv')
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+// Table header sorting
+function sortBy(key) {
   if (sortKey.value === key) {
-  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
   } else {
-  sortKey.value = key
-  sortOrder.value = 'asc'
+    sortKey.value = key
+    sortOrder.value = 'asc'
   }
-  }
-  
-  // Medical history sorting
-  function sortMedicalHistory(key) {
+}
+
+// Medical history sorting
+function sortMedicalHistory(key) {
   if (medicalSortKey.value === key) {
-  medicalSortOrder.value = medicalSortOrder.value === 'asc' ? 'desc' : 'asc'
+    medicalSortOrder.value = medicalSortOrder.value === 'asc' ? 'desc' : 'asc'
   } else {
-  medicalSortKey.value = key
-  medicalSortOrder.value = 'asc'
+    medicalSortKey.value = key
+    medicalSortOrder.value = 'asc'
   }
-  }
-  
-  // Vaccinations sorting
-  function sortVaccinations(key) {
+}
+
+// Vaccinations sorting
+function sortVaccinations(key) {
   if (vaccineSortKey.value === key) {
-  vaccineSortOrder.value = vaccineSortOrder.value === 'asc' ? 'desc' : 'asc'
+    vaccineSortOrder.value = vaccineSortOrder.value === 'asc' ? 'desc' : 'asc'
   } else {
-  vaccineSortKey.value = key
-  vaccineSortOrder.value = 'asc'
+    vaccineSortKey.value = key
+    vaccineSortOrder.value = 'asc'
   }
-  }
-  
-  // Documents sorting
-  function sortDocuments(key) {
+}
+
+// Documents sorting
+function sortDocuments(key) {
   if (documentSortKey.value === key) {
-  documentSortOrder.value = documentSortOrder.value === 'asc' ? 'desc' : 'asc'
+    documentSortOrder.value = documentSortOrder.value === 'asc' ? 'desc' : 'asc'
   } else {
-  documentSortKey.value = key
-  documentSortOrder.value = 'asc'
+    documentSortKey.value = key
+    documentSortOrder.value = 'asc'
   }
-  }
-  
-  // Filter functions
-  function toggleFilter() {
+}
+
+// Filter functions
+function toggleFilter() {
   showFilterMenu.value = !showFilterMenu.value
-  }
-  
-  function applyFilters() {
+  currentPage.value = 1 // Reset to first page when toggling filter
+}
+
+function applyFilters() {
   showFilterMenu.value = false
-  }
-  
-  // Pagination functions
-  function prevPage() {
+  currentPage.value = 1 // Reset to first page when applying filters
+}
+
+// Pagination functions
+function prevPage() {
   if (currentPage.value > 1) {
-  currentPage.value--
+    currentPage.value--
   }
-  }
-  
-  function nextPage() {
+}
+
+function nextPage() {
   if (currentPage.value < totalPages.value) {
-  currentPage.value++
+    currentPage.value++
   }
+}
+
+// Tab dropdown functions
+function toggleTabDropdown() {
+  showTabDropdown.value = !showTabDropdown.value
+}
+
+function selectTab(tab) {
+  activeTab.value = tab
+  showTabDropdown.value = false
+}
+
+function getTabIcon(tab) {
+  switch(tab) {
+    case 'basics': return FileText
+    case 'medical': return Activity
+    case 'vaccinations': return SyringeIcon
+    case 'documents': return FileIcon
+    default: return FileText
   }
-  
-  // Tab dropdown functions
-  function toggleTabDropdown() {
-    showTabDropdown.value = !showTabDropdown.value
+}
+
+function getTabLabel(tab) {
+  switch(tab) {
+    case 'basics': return 'Basic Details'
+    case 'medical': return 'Medical History'
+    case 'vaccinations': return 'Vaccinations'
+    case 'documents': return 'Documents'
+    default: return 'Basic Details'
   }
-  
-  function selectTab(tab) {
-    activeTab.value = tab
-    showTabDropdown.value = false
-  }
-  
-  function getTabIcon(tab) {
-    switch(tab) {
-      case 'basics': return FileText
-      case 'medical': return Activity
-      case 'vaccinations': return SyringeIcon
-      case 'documents': return FileIcon
-      default: return FileText
+}
+
+// Close dropdown when clicking outside
+watch(() => showTabDropdown.value, (isOpen) => {
+  if (isOpen) {
+    const closeDropdown = (e) => {
+      showTabDropdown.value = false
+      document.removeEventListener('click', closeDropdown)
     }
+    // Use nextTick to avoid immediate closing
+    setTimeout(() => {
+      document.addEventListener('click', closeDropdown)
+    }, 0)
   }
-  
-  function getTabLabel(tab) {
-    switch(tab) {
-      case 'basics': return 'Basic Details'
-      case 'medical': return 'Medical History'
-      case 'vaccinations': return 'Vaccinations'
-      case 'documents': return 'Documents'
-      default: return 'Basic Details'
-    }
-  }
-  
-  // Close dropdown when clicking outside
-  watch(() => showTabDropdown.value, (isOpen) => {
-    if (isOpen) {
-      const closeDropdown = (e) => {
-        showTabDropdown.value = false
+})
+
+// Close gender dropdown when clicking outside
+watch(() => genderDropdownOpen.value, (isOpen) => {
+  if (isOpen) {
+    const closeDropdown = (e) => {
+      if (!e.target.closest('.gender-dropdown')) {
+        genderDropdownOpen.value = false
         document.removeEventListener('click', closeDropdown)
       }
-      // Use nextTick to avoid immediate closing
-      setTimeout(() => {
-        document.addEventListener('click', closeDropdown)
-      }, 0)
     }
-  })
-  </script>
-  
-  <style scoped>
-  .fade-enter-active,
-  .fade-leave-active {
+    // Use nextTick to avoid immediate closing
+    setTimeout(() => {
+      document.addEventListener('click', closeDropdown)
+    }, 0)
+  }
+})
+
+// Initialize component
+onMounted(async () => {
+  await fetchPetOwnersWithPets()
+})
+</script>
+
+<style scoped>
+/* Ensure consistency with mobile displays */
+@media (max-width: 640px) {
+  input, select {
+    font-size: 16px; /* Prevents zoom on focus in iOS */
+  }
+}
+
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.3s ease;
-  }
-  
-  .fade-enter-from,
-  .fade-leave-to {
+}
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
-  }
-  </style>
+}
+</style>

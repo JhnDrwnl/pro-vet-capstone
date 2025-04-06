@@ -311,11 +311,47 @@ export const useArchivesStore = defineStore('archives', {
         const archiveData = archiveDoc.data();
         
         // If it's a user, we need to use the server endpoint
-        if (archiveData.itemType === 'user' && archiveData.originalId) {
+        if (archiveData.itemType === 'user') {
           try {
-            // Call the server endpoint to permanently delete the user
-            const response = await axios.delete('/api/archives/permanently-delete-user', {
-              data: { uid: archiveData.originalId }
+            console.log('Attempting to permanently delete user:', archiveData);
+            
+            // Extract the uid - try different properties based on what's available
+            let uid = null;
+            
+            if (archiveData.uid) {
+              // If uid is directly available, use it
+              uid = archiveData.uid;
+              console.log('Using uid from archiveData.uid:', uid);
+            } else if (archiveData.originalId && archiveData.originalId.startsWith('user_')) {
+              // If originalId is in the format user_XXXX, extract the XXXX part
+              uid = archiveData.originalId.replace('user_', '');
+              console.log('Extracted uid from originalId:', uid);
+            } else if (archiveData.originalId) {
+              // If originalId is available but not in user_ format, use it directly
+              uid = archiveData.originalId;
+              console.log('Using originalId as uid:', uid);
+            } else {
+              // Last resort - use the document ID without the user_ prefix if it has one
+              uid = archiveId.startsWith('user_') ? archiveId.replace('user_', '') : archiveId;
+              console.log('Using document ID as uid:', uid);
+            }
+            
+            if (!uid) {
+              throw new Error('Could not determine user ID for deletion');
+            }
+            
+            // For debugging, log the exact request we're about to make
+            console.log('Making DELETE request to permanently delete user with uid:', uid);
+            console.log('Request URL:', `${process.env.VUE_APP_API_URL || ''}/api/archives/permanently-delete-user`);
+            
+            // Use the full API URL with the environment variable
+            const apiUrl = `${process.env.VUE_APP_API_URL || ''}/api/archives/permanently-delete-user`;
+            
+            // Make the request with the uid in the request body
+            const response = await axios({
+              method: 'DELETE',
+              url: apiUrl,
+              data: { uid }
             });
             
             if (!response.data.success) {
@@ -323,15 +359,25 @@ export const useArchivesStore = defineStore('archives', {
               throw new Error('Failed to permanently delete user: ' + response.data.message);
             }
             
-            console.log('User permanently deleted:', archiveData.originalId);
+            console.log('User permanently deleted:', uid);
             
-            // Update local state - the server-side delete already removes from archives
+            // Update local state
             this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
             
             return true;
           } catch (error) {
             console.error('Error permanently deleting user:', error);
-            throw new Error('Error permanently deleting user: ' + error.message);
+            
+            // If the server returns a 404, it means the user is already deleted from Firebase Auth
+            // In this case, we should still delete the archive document
+            if (error.response && error.response.status === 404) {
+              console.log('User not found in Firebase Auth, deleting archive document anyway');
+              await deleteDoc(archiveRef);
+              this.archivedItems = this.archivedItems.filter(item => item.id !== archiveId);
+              return true;
+            }
+            
+            throw new Error('Error permanently deleting user: ' + (error.message || 'Unknown error'));
           }
         } else {
           // For non-user items, just delete from archives collection

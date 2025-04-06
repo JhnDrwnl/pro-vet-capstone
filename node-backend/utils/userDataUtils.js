@@ -419,6 +419,102 @@ const restoreUserRelatedData = async (uid, userId) => {
 };
 
 /**
+ * Delete user related data from archives
+ * @param {string} uid - User ID
+ * @param {string} userId - Formatted user ID
+ * @returns {Object} - Result of deletion operations
+ */
+const deleteUserRelatedDataFromArchives = async (uid, userId) => {
+  try {
+    logger.info(`Deleting related data for user: ${uid} (formatted: ${userId})`);
+    
+    const summary = {};
+    const db = admin.firestore();
+    
+    // First, handle pets separately since they use ownerId
+    try {
+      // Find archived pets for this user using the formatted userId
+      const petsQuery = await db.collection('archives')
+        .where('itemType', '==', 'pet')
+        .where('ownerId', '==', userId)
+        .get();
+      
+      if (!petsQuery.empty) {
+        const batch = db.batch();
+        petsQuery.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        logger.info(`Deleted ${petsQuery.size} archived pets for user ${userId}`);
+        summary['pets'] = petsQuery.size;
+      } else {
+        logger.info(`No archived pets found for user ${userId}`);
+        summary['pets'] = 0;
+      }
+    } catch (error) {
+      logger.error(`Error deleting archived pets: ${error.message}`);
+      summary['pets'] = `Error: ${error.message}`;
+    }
+    
+    // Now handle other collections
+    for (const collectionName of userRelatedCollections) {
+      // Skip pets as we already handled it
+      if (collectionName === 'pets') continue;
+      
+      try {
+        // Try both the raw UID and formatted userId for maximum compatibility
+        const query1 = await db.collection('archives')
+          .where('itemType', '==', collectionName)
+          .where('userId', '==', uid)
+          .get();
+          
+        const query2 = await db.collection('archives')
+          .where('itemType', '==', collectionName)
+          .where('userId', '==', userId)
+          .get();
+        
+        // Combine results (avoiding duplicates)
+        const docsToDelete = [...query1.docs];
+        query2.docs.forEach(doc => {
+          if (!docsToDelete.some(existingDoc => existingDoc.id === doc.id)) {
+            docsToDelete.push(doc);
+          }
+        });
+        
+        if (docsToDelete.length > 0) {
+          // Use batched writes for efficiency
+          const batch = db.batch();
+          docsToDelete.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          await batch.commit();
+          
+          logger.info(`Deleted ${docsToDelete.length} archived ${collectionName} for user ${uid}/${userId}`);
+          summary[collectionName] = docsToDelete.length;
+        } else {
+          logger.info(`No archived ${collectionName} found for user ${uid}/${userId}`);
+          summary[collectionName] = 0;
+        }
+      } catch (error) {
+        logger.error(`Error deleting archived ${collectionName}: ${error.message}`);
+        summary[collectionName] = `Error: ${error.message}`;
+      }
+    }
+    
+    return {
+      success: true,
+      deletedItems: summary
+    };
+  } catch (error) {
+    logger.error(`Error deleting related data: ${error.message}`);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
  * Permanently delete a user and their data
  * @param {string} uid - User ID to delete
  * @returns {Object} - Result of the delete operation
@@ -427,40 +523,113 @@ exports.permanentlyDeleteUser = async (uid) => {
   try {
     logger.info(`Starting permanent deletion process for user: ${uid}`);
     
-    // Generate the correct user ID format for Firestore
-    const userId = generateUserId(uid);
+    // Check if uid already has the "user_" prefix to avoid double prefixing
+    const userId = uid.startsWith('user_') ? uid : generateUserId(uid);
     
-    // Find the user in archives using the same ID format
+    // Find the user in archives using the correct ID format
     const archiveRef = admin.firestore().collection('archives').doc(userId);
     const archiveDoc = await archiveRef.get();
     
+    // First, try to delete the user from Firebase Auth
+    try {
+      // Make sure we're using the raw UID (without any prefix) for Firebase Auth operations
+      const rawUid = uid.startsWith('user_') ? uid.replace('user_', '') : uid;
+      
+      // Log the exact UID we're trying to delete
+      logger.info(`Attempting to delete user from Firebase Auth with UID: ${rawUid}`);
+      
+      // Force delete the user from Firebase Auth - not just disable
+      await admin.auth().deleteUser(rawUid);
+      logger.info(`User ${rawUid} successfully deleted from Firebase Auth`);
+    } catch (authError) {
+      logger.error(`Error deleting user from Firebase Auth: ${authError.message}`);
+      
+      // If the user doesn't exist in Auth, we can continue with deleting from Firestore
+      if (authError.code === 'auth/user-not-found') {
+        logger.warn(`User ${uid} not found in Firebase Auth - continuing with Firestore deletion`);
+      } else {
+        // For other errors, we should throw and stop the process
+        throw new Error(`Failed to delete user from Firebase Auth: ${authError.message}`);
+      }
+    }
+    
+    // Now handle the Firestore document deletion
     if (!archiveDoc.exists) {
       logger.error(`User ${uid} not found in archives with ID ${userId}`);
+      
+      // Try to find the user by querying for the uid field
+      const archivesRef = admin.firestore().collection('archives');
+      const query = await archivesRef
+        .where('itemType', '==', 'user')
+        .where('uid', '==', uid)
+        .limit(1)
+        .get();
+      
+      if (query.empty) {
+        // Try one more approach - look for any document with matching originalId
+        const originalIdQuery = await archivesRef
+          .where('itemType', '==', 'user')
+          .where('originalId', '==', userId)
+          .limit(1)
+          .get();
+          
+        if (originalIdQuery.empty) {
+          return {
+            success: false,
+            message: 'User not found in archives'
+          };
+        }
+        
+        // Use the document found by originalId query
+        const docByOriginalId = originalIdQuery.docs[0];
+        logger.info(`Found user in archives by originalId query: ${docByOriginalId.id}`);
+        
+        // Delete from archives
+        await docByOriginalId.ref.delete();
+        logger.info(`User deleted from archives: ${docByOriginalId.id}`);
+        
+        // Delete related data
+        const deletedRelatedData = await deleteUserRelatedDataFromArchives(uid, userId);
+        
+        return {
+          success: true,
+          message: 'User permanently deleted',
+          deletedFromAuth: true,
+          deletedFromArchives: deletedRelatedData
+        };
+      }
+      
+      // Use the document found by uid query
+      const docByUid = query.docs[0];
+      logger.info(`Found user in archives by uid query: ${docByUid.id}`);
+      
+      // Delete from archives
+      await docByUid.ref.delete();
+      logger.info(`User deleted from archives: ${docByUid.id}`);
+      
+      // Delete related data
+      const deletedRelatedData = await deleteUserRelatedDataFromArchives(uid, userId);
+      
       return {
-        success: false,
-        message: 'User not found in archives'
+        success: true,
+        message: 'User permanently deleted',
+        deletedFromAuth: true,
+        deletedFromArchives: deletedRelatedData
       };
     }
     
-    // Delete user from Firebase Auth
-    try {
-      await admin.auth().deleteUser(uid);
-      logger.info(`User ${uid} deleted from Firebase Auth`);
-    } catch (authError) {
-      // If user doesn't exist in Auth, just log it and continue
-      logger.warn(`User ${uid} not found in Firebase Auth for deletion: ${authError.message}`);
-    }
-    
+    // Original code path continues if document exists
     // Delete user from archives
     await archiveRef.delete();
     logger.info(`User ${uid} deleted from archives`);
     
-    // Delete related data from archives - pass both the raw UID and formatted userId
+    // Delete related data from archives
     const deletedRelatedData = await deleteUserRelatedDataFromArchives(uid, userId);
     
     return {
       success: true,
       message: 'User permanently deleted',
+      deletedFromAuth: true,
       deletedFromArchives: deletedRelatedData
     };
   } catch (error) {
@@ -472,83 +641,6 @@ exports.permanentlyDeleteUser = async (uid) => {
   }
 };
 
-/**
- * Delete user-related data from archives
- * @param {string} uid - Firebase UID
- * @param {string} userId - Formatted user ID (user_XXXXXXXX)
- * @returns {Object} - Summary of deleted data
- */
-const deleteUserRelatedDataFromArchives = async (uid, userId) => {
-  const summary = {};
-  
-  // First, handle pets collection separately since it uses ownerId
-  try {
-    const archivesRef = admin.firestore().collection('archives');
-    const petsSnapshot = await archivesRef.where('itemType', '==', 'pet')
-                                        .where('ownerId', '==', userId)
-                                        .get();
-    
-    if (petsSnapshot.empty) {
-      logger.info(`No archived pets found for user ${userId}`);
-      summary['pets'] = 0;
-    } else {
-      let count = 0;
-      for (const doc of petsSnapshot.docs) {
-        await doc.ref.delete();
-        count++;
-      }
-      
-      logger.info(`Deleted ${count} pets from archives for user ${userId}`);
-      summary['pets'] = count;
-    }
-  } catch (error) {
-    logger.error(`Error deleting pets from archives for user ${userId}: ${error.message}`);
-    summary['pets'] = `Error: ${error.message}`;
-  }
-  
-  // Now handle other collections that use userId field
-  for (const collectionName of userRelatedCollections) {
-    // Skip pets as we already handled it
-    if (collectionName === 'pets') continue;
-    
-    try {
-      const archivesRef = admin.firestore().collection('archives');
-      
-      // Try both the raw UID and formatted userId for maximum compatibility
-      const snapshot1 = await archivesRef.where('itemType', '==', collectionName)
-                                      .where('userId', '==', uid)
-                                      .get();
-      const snapshot2 = await archivesRef.where('itemType', '==', collectionName)
-                                       .where('userId', '==', userId)
-                                       .get();
-      
-      // Combine results
-      const docs = [...snapshot1.docs];
-      snapshot2.docs.forEach(doc => {
-        if (!docs.some(existingDoc => existingDoc.id === doc.id)) {
-          docs.push(doc);
-        }
-      });
-      
-      if (docs.length === 0) {
-        logger.info(`No archived ${collectionName} found for user ${uid}/${userId}`);
-        summary[collectionName] = 0;
-        continue;
-      }
-      
-      let count = 0;
-      for (const doc of docs) {
-        await doc.ref.delete();
-        count++;
-      }
-      
-      logger.info(`Deleted ${count} ${collectionName} from archives for user ${uid}/${userId}`);
-      summary[collectionName] = count;
-    } catch (error) {
-      logger.error(`Error deleting ${collectionName} from archives for user ${uid}/${userId}: ${error.message}`);
-      summary[collectionName] = `Error: ${error.message}`;
-    }
-  }
-  
-  return summary;
-};
+// Export the functions so they can be used elsewhere
+exports.generateUserId = generateUserId;
+exports.deleteUserRelatedDataFromArchives = deleteUserRelatedDataFromArchives;
