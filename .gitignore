@@ -41,3 +41,10 @@ yarn-error.log*
 ml-backend/venv/Lib/site-packages/clang/native/libclang.dll
 ml-backend/venv/Lib/site-packages/tensorflow/python/_pywrap_tensorflow_internal.pyd
 
+# Ignore large model files
+ml-backend/species_models/
+ml-backend/species_models/**/*.pkl
+ml-backend/species_models/*/*.pkl
+
+# Ignore virtual environment
+ml-backend/venv/

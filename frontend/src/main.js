@@ -8,8 +8,9 @@ import '@/assets/styles/tailwind.css'
 import notificationService from './services/notificationService';
 import notificationSyncService from './services/notificationSyncService';
 
-// Import the notifications store outside of the setTimeout to avoid conditional hook call
+// Import stores
 import { useNotificationsStore } from './stores/modules/notifications';
+import { useTelehealthStore } from './stores/modules/teleHealthStore';
 
 // Create Vue app
 const app = createApp(App);
@@ -29,8 +30,12 @@ notificationService.setRouter(router);
 // Make notification service available globally
 app.config.globalProperties.$notifications = notificationService;
 
-// Initialize the notifications store here, before mounting the app
+// Initialize the stores here, before mounting the app
 const notificationsStore = useNotificationsStore();
+const telehealthStore = useTelehealthStore();
+
+// Make telehealth store available globally
+app.config.globalProperties.$telehealth = telehealthStore;
 
 // Mount the app
 app.mount('#app');
@@ -39,9 +44,6 @@ app.mount('#app');
 // This ensures Pinia is fully initialized
 setTimeout(async () => {
   try {
-    // Use the already imported store
-    // const notificationsStore = useNotificationsStore();  // No longer needed here
-
     // Set the store in the services
     notificationService.setNotificationsStore(notificationsStore);
     notificationSyncService.setNotificationsStore(notificationsStore);
@@ -50,9 +52,14 @@ setTimeout(async () => {
     await notificationService.initialize();
     await notificationSyncService.initialize();
     
-    console.log('Notification services initialized successfully');
+    // Initialize telehealth services if needed
+    if (telehealthStore.initialize && typeof telehealthStore.initialize === 'function') {
+      await telehealthStore.initialize();
+    }
+    
+    console.log('Services initialized successfully');
   } catch (error) {
-    console.error('Error initializing notification services:', error);
+    console.error('Error initializing services:', error);
   }
 }, 100);
 

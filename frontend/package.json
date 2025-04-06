@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup-test-data": "node tests/setup/setup-test-data.js"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -17,6 +18,7 @@
     "axios": "^1.8.1",
     "chart.js": "^4.4.7",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
     "file-saver": "^2.0.5",
     "firebase": "^9.23.0",
     "html2canvas": "^1.4.1",
@@ -24,7 +26,7 @@
     "lord-icon-element": "^4.1.2",
     "lottie-web": "^5.12.2",
     "lucide-vue-next": "^0.469.0",
-    "pinia": "^2.3.0",
+    "pinia": "^2.3.1",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.2",
     "vue-router": "^4.5.0",

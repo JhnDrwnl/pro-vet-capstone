@@ -8,6 +8,9 @@ import userRoutes from './user.routes.js';
 import adminRoutes from './admin.routes.js';
 import veterinaryRoutes from './veterinary.routes.js';
 import authRoutes from './auth.routes.js';
+import { telehealthRoutes } from './telehealth.routes.js'
+
+
 
 const routes = [
   ...landingRoutes,
@@ -15,6 +18,7 @@ const routes = [
   ...adminRoutes,
   ...veterinaryRoutes,
   ...authRoutes,
+  ...telehealthRoutes,
 
   {
     path: '/:pathMatch(.*)*',
