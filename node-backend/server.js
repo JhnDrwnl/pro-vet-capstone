@@ -41,6 +41,10 @@ app.get('/api/health', (req, res) => {
 const archiveRoutes = require('./routes/archiveRoutes');
 app.use('/api/archives', archiveRoutes);
 
+// Add profile routes
+const profileRoutes = require('./routes/profileRoutes');
+app.use('/api/profile', profileRoutes);
+
 // Initialize the scheduler
 initScheduler();
 console.log('User archive cleanup scheduler initialized');

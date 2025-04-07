@@ -103,8 +103,9 @@ export const useOfficeStore = defineStore('office', {
           lunchStart: officeHoursData.isOpen && officeHoursData.hasLunchBreak ? officeHoursData.lunchStart : null,
           lunchEnd: officeHoursData.isOpen && officeHoursData.hasLunchBreak ? officeHoursData.lunchEnd : null,
           notes: officeHoursData.notes || '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          // Use preserved timestamps if available, otherwise use serverTimestamp
+          createdAt: officeHoursData.createdAt || serverTimestamp(),
+          updatedAt: officeHoursData.updatedAt || serverTimestamp()
         };
         
         // Add to Firestore with custom document ID
@@ -328,8 +329,9 @@ export const useOfficeStore = defineStore('office', {
           openTime: holidayData.type === 'special-hours' ? holidayData.openTime : null,
           closeTime: holidayData.type === 'special-hours' ? holidayData.closeTime : null,
           description: holidayData.description || '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          // Use preserved timestamps if available, otherwise use serverTimestamp
+          createdAt: holidayData.createdAt || serverTimestamp(),
+          updatedAt: holidayData.updatedAt || serverTimestamp()
         };
         
         // Add to Firestore with custom document ID
@@ -562,8 +564,9 @@ export const useOfficeStore = defineStore('office', {
           label: contactData.label,
           isActive: contactData.isActive,
           notes: contactData.notes || '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          // Use preserved timestamps if available, otherwise use serverTimestamp
+          createdAt: contactData.createdAt || serverTimestamp(),
+          updatedAt: contactData.updatedAt || serverTimestamp()
         };
         
         // Add to Firestore with custom document ID
@@ -843,6 +846,29 @@ export const useOfficeStore = defineStore('office', {
     getOfficeHours: (state) => state.officeHours,
     getOpenDays: (state) => state.officeHours.filter(h => h.isOpen),
     getClosedDays: (state) => state.officeHours.filter(h => !h.isOpen),
+    
+    // Holidays getters
+    getHolidays: (state) => state.holidays,
+    getUpcomingHolidays: (state) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      return state.holidays.filter(holiday => {
+        const holidayDate = new Date(holiday.date);
+        return holidayDate >= today;
+      }).sort((a, b) => new Date(a.date) - new Date(b.date));
+    },
+
+    // Contacts getters
+    getContacts: (state) => state.contacts,
+    getActiveContacts: (state) => state.contacts.filter(c => c.isActive),
+    getContactsByType: (state) => (type) => {
+      return state.contacts.filter(c => c.type === type);
+    },
+    
+    // Status getters
+    isLoading: (state) => state.loading,
+    getError: (state) => state.errorer(h => !h.isOpen),
     
     // Holidays getters
     getHolidays: (state) => state.holidays,

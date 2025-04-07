@@ -33,20 +33,157 @@ export const useAuthStore = defineStore("auth", {
   }),
 
   actions: {
-    // Improved method to handle Google photo URLs
+    // Helper method to create a proxy URL for Google photos
+    getProxyPhotoURL(originalURL) {
+      if (!originalURL || !originalURL.startsWith('https://lh3.googleusercontent.com')) {
+        return originalURL;
+      }
+      
+      // Use the API endpoint to proxy the Google photo instead of accessing it directly
+      console.log('Creating proxy URL for Google photo');
+      return `/api/profile/photo-proxy?url=${encodeURIComponent(originalURL)}`;
+    },
+    
+    // Helper method to check if a URL is a Google photo URL
+    isGooglePhotoURL(url) {
+      return url && url.startsWith('https://lh3.googleusercontent.com');
+    },
+    
+    // Helper method to check if a URL is a Firebase Storage URL
+    isFirebaseStorageURL(url) {
+      return url && url.startsWith('https://firebasestorage.googleapis.com');
+    },
+    
+    // Simplified method to handle Google photo URLs
     async processGooglePhotoURL(photoURL) {
       if (!photoURL) return "";
       
-      // Only process Google URLs
-      if (!photoURL.startsWith('https://lh3.googleusercontent.com')) {
-        return photoURL;
+      // For Google photos, return a proxied URL
+      if (this.isGooglePhotoURL(photoURL)) {
+        console.log("Using original Google photo URL:", photoURL);
+        return this.getProxyPhotoURL(photoURL);
       }
       
-      console.log("Processing Google photo URL:", photoURL);
-      
-      // For Google photos, simply return the original URL
-      // This ensures the sidebar can display the actual Google profile photo
+      // For all other photos, return as is
       return photoURL;
+    },
+
+    // Method to sync Google profile photos with the server
+    async syncGoogleProfilePhoto() {
+      try {
+        if (!this.user || !this.user.uid) {
+          console.log('No user to sync Google photo');
+          return false;
+        }
+        
+        // Check if the user already has a custom photo
+        // If they do, don't sync the Google photo
+        const userId = this.generateUserId(this.user.uid);
+        const userDoc = await getDoc(doc(db, "users", userId));
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.photoURL && this.isFirebaseStorageURL(userData.photoURL)) {
+            console.log('User has a custom photo, skipping Google photo sync:', userData.photoURL);
+            return false;
+          }
+        }
+        
+        console.log('Syncing Google profile photo for user:', this.user.uid);
+        
+        const response = await fetch('/api/profile/sync-google-photo', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            uid: this.user.uid
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log('Google profile photo synced successfully:', data.photoURL);
+          
+          // For Google photos, use a proxy URL for display
+          const displayPhotoURL = this.getProxyPhotoURL(data.photoURL);
+          
+          // Only update the user object if they don't already have a custom photo
+          if (!this.user.photoURL || this.isGooglePhotoURL(this.user.originalPhotoURL || '')) {
+            this.user = {
+              ...this.user,
+              photoURL: displayPhotoURL,
+              originalPhotoURL: data.photoURL
+            };
+          }
+          
+          return true;
+        } else {
+          console.log('Failed to sync Google profile photo:', data.message);
+          return false;
+        }
+      } catch (error) {
+        console.error('Error syncing Google profile photo:', error);
+        return false;
+      }
+    },
+
+    // Method to get the most up-to-date profile photo
+    async getProfilePhoto() {
+      try {
+        if (!this.user || !this.user.uid) {
+          console.log('No user to get profile photo');
+          return null;
+        }
+        
+        // Check if the user already has a custom photo
+        // If they do, don't fetch a new photo
+        if (this.user.photoURL && this.isFirebaseStorageURL(this.user.photoURL)) {
+          console.log('User already has a custom photo, skipping profile photo fetch:', this.user.photoURL);
+          return this.user.photoURL;
+        }
+        
+        console.log('Getting profile photo for user:', this.user.uid);
+        
+        const response = await fetch(`/api/profile/photo/${this.user.uid}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log('Got profile photo:', data.photoURL);
+          
+          // If the photo is from Firebase Storage, use it directly
+          if (this.isFirebaseStorageURL(data.photoURL)) {
+            console.log('Using Firebase Storage photo directly:', data.photoURL);
+            this.user = {
+              ...this.user,
+              photoURL: data.photoURL,
+              originalPhotoURL: data.photoURL
+            };
+            return data.photoURL;
+          }
+          
+          // For Google photos, use a proxy URL for display
+          const displayPhotoURL = this.getProxyPhotoURL(data.photoURL);
+          
+          // Update the local user object with the fetched photo URL
+          if (data.photoURL) {
+            this.user = {
+              ...this.user,
+              photoURL: displayPhotoURL,
+              originalPhotoURL: data.photoURL
+            };
+          }
+          
+          return displayPhotoURL;
+        } else {
+          console.log('Failed to get profile photo:', data.message);
+          return null;
+        }
+      } catch (error) {
+        console.error('Error getting profile photo:', error);
+        return null;
+      }
     },
 
     generateUserId(uid) {
@@ -60,6 +197,12 @@ export const useAuthStore = defineStore("auth", {
           async (user) => {
             if (user) {
               await this.fetchUserData(user)
+              
+              // Only get the profile photo if the user doesn't have a custom photo
+              if ((!this.user.photoURL || this.isGooglePhotoURL(this.user.originalPhotoURL || '')) && 
+                  user.photoURL && this.isGooglePhotoURL(user.photoURL)) {
+                await this.getProfilePhoto();
+              }
             } else {
               this.user = null
             }
@@ -83,24 +226,58 @@ export const useAuthStore = defineStore("auth", {
       if (userDoc.exists()) {
         const userData = userDoc.data();
         
-        // IMPORTANT: Prioritize the stored Firestore photoURL over the Google one
-        // This ensures custom profile photos aren't overwritten on login
-        let photoURL = userData.photoURL || user.photoURL || "";
+        // Get the current Google photoURL if it exists
+        const googlePhotoURL = user.photoURL && this.isGooglePhotoURL(user.photoURL) 
+          ? user.photoURL 
+          : null;
         
-        // Only process Google URLs for new users who haven't set a custom photo
-        if (!userData.photoURL && photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-          const processedPhotoURL = await this.processGooglePhotoURL(photoURL);
+        // Determine which photoURL to use with a clear priority order:
+        // 1. If user has a custom photo in Firestore (Firebase Storage), use that
+        // 2. If user has a Google photo from auth, use that (it's the most current)
+        // 3. If user has a Google photo stored in Firestore, use that
+        // 4. Otherwise, use empty string
+        let photoURL = '';
+        let originalPhotoURL = '';
+        let shouldUpdateFirestore = false;
+        
+        // Case 1: User has a custom photo (Firebase Storage)
+        if (userData.photoURL && this.isFirebaseStorageURL(userData.photoURL)) {
+          photoURL = userData.photoURL;
+          originalPhotoURL = userData.photoURL;
+          console.log("Using custom profile photo:", photoURL);
+        }
+        // Case 2: User has a current Google photo from auth
+        else if (googlePhotoURL) {
+          originalPhotoURL = googlePhotoURL;
+          photoURL = this.getProxyPhotoURL(googlePhotoURL);
+          console.log("Using current Google photo URL from auth:", googlePhotoURL);
+          console.log("Proxied URL for display:", photoURL);
           
-          // If the stored URL is different from the processed one, update it
-          if (processedPhotoURL && userData.photoURL !== processedPhotoURL) {
-            console.log("Updating photoURL in fetchUserData:", processedPhotoURL);
+          // Update Firestore if the stored URL is different or missing
+          if (userData.photoURL !== googlePhotoURL) {
+            shouldUpdateFirestore = true;
+          }
+        }
+        // Case 3: User has a stored Google photo in Firestore
+        else if (userData.photoURL && this.isGooglePhotoURL(userData.photoURL)) {
+          originalPhotoURL = userData.photoURL;
+          photoURL = this.getProxyPhotoURL(userData.photoURL);
+          console.log("Using stored Google photo URL from Firestore:", userData.photoURL);
+          console.log("Proxied URL for display:", photoURL);
+        }
+        
+        // Update Firestore if needed
+        if (shouldUpdateFirestore && googlePhotoURL && !this.isFirebaseStorageURL(userData.photoURL)) {
+          console.log("Updating Google photoURL in Firestore:", googlePhotoURL);
+          try {
             await updateDoc(doc(db, "users", userId), { 
-              photoURL: processedPhotoURL,
+              photoURL: googlePhotoURL,
               updatedAt: new Date()
             });
+            console.log("Successfully updated photoURL in Firestore");
+          } catch (error) {
+            console.error("Error updating photoURL in Firestore:", error);
           }
-          
-          photoURL = processedPhotoURL || photoURL;
         }
         
         this.user = {
@@ -111,10 +288,11 @@ export const useAuthStore = defineStore("auth", {
           firstName: userData.firstName,
           lastName: userData.lastName,
           email: user.email || userData.email,
-          photoURL: photoURL, // Use the prioritized URL
+          photoURL: photoURL, // Use the proxied/processed URL for display
+          originalPhotoURL: originalPhotoURL // Keep original URL for reference
         };
         
-        console.log("User data fetched with photo URL:", photoURL);
+        console.log("User data fetched with final photo URL:", photoURL);
       } else {
         console.error("User document not found");
         this.user = null;
@@ -127,13 +305,11 @@ export const useAuthStore = defineStore("auth", {
       const userId = this.generateUserId(user.uid)
       const userRef = doc(db, "users", userId)
       
-      // Process photoURL to ensure it's clean and accessible
+      // Process photoURL for storage (store the original URL)
       let photoURL = user.photoURL || additionalData.photoURL || ""
       
-      // If it's a Google photo URL, process it properly
-      if (photoURL && photoURL.startsWith('https://lh3.googleusercontent.com')) {
-        photoURL = await this.processGooglePhotoURL(photoURL)
-      }
+      // No processing needed for Google photos when storing in Firestore
+      console.log("Creating user document with photo URL:", photoURL);
       
       const userData = {
         email: user.email,
@@ -144,7 +320,7 @@ export const useAuthStore = defineStore("auth", {
         status: additionalData.status || "pending",
         firstName: additionalData.firstName || "",
         lastName: additionalData.lastName || "",
-        photoURL: photoURL,
+        photoURL: photoURL, // Store the original URL
         emailVerified: false,
         ...additionalData,
       }
@@ -160,6 +336,101 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    async signInWithGoogle({ isRegistration = false, onNewUser = () => {} } = {}) {
+      this.loading = true
+      this.error = null
+      try {
+        const provider = new GoogleAuthProvider()
+        provider.addScope("email")
+        provider.addScope("profile")
+        const result = await signInWithPopup(auth, provider)
+        const user = result.user
+
+        console.log("Google sign-in user:", user)
+        console.log("User email:", user.email)
+        console.log("User display name:", user.displayName)
+        console.log("User photo URL:", user.photoURL)
+        console.log("User UID:", user.uid)
+
+        // Parse the user's name
+        const nameParts = user.displayName ? user.displayName.split(" ") : ["", ""]
+        let firstName, lastName
+
+        if (nameParts.length >= 2) {
+          lastName = nameParts.pop()
+          firstName = nameParts.join(" ")
+        } else {
+          firstName = nameParts[0] || ""
+          lastName = ""
+        }
+
+        console.log("Parsed firstName:", firstName)
+        console.log("Parsed lastName:", lastName)
+
+        // Use the original photo URL directly - don't split it
+        const photoURL = user.photoURL || ""
+        console.log("Using original Google photo URL:", photoURL)
+
+        const additionalUserInfo = getAdditionalUserInfo(result)
+        const isNewUser = additionalUserInfo?.isNewUser
+        console.log("Is new user:", isNewUser)
+
+        const userId = this.generateUserId(user.uid)
+        const userDoc = await getDoc(doc(db, "users", userId))
+
+        if (!userDoc.exists() || isNewUser) {
+          // Call the onNewUser callback
+          onNewUser()
+
+          // Create user document with status based on where the sign-in was initiated
+          await this.createUserDocument(user, {
+            firstName,
+            lastName,
+            photoURL: photoURL, // Use the complete URL
+            email: user.email || additionalUserInfo?.profile?.email || "",
+            role: "user",
+            status: "active", // Always set as active for Google sign-in
+            emailVerified: true,
+          })
+        } else {
+          // For existing users with Google accounts, only update the photoURL
+          // if they don't have a custom photo
+          const userData = userDoc.data();
+          
+          // Only update if the user doesn't have a custom photo
+          if (photoURL && (!userData.photoURL || this.isGooglePhotoURL(userData.photoURL))) {
+            console.log("Updating Google photoURL for existing user:", photoURL);
+            
+            await updateDoc(doc(db, "users", userId), {
+              photoURL: photoURL, // Use the complete URL
+              updatedAt: new Date()
+            });
+          } else {
+            console.log("User has a custom photo, not updating with Google photo:", userData.photoURL);
+          }
+        }
+
+        await this.fetchUserData(user)
+        
+        // Only sync the Google photo if the user doesn't have a custom photo
+        if (user.photoURL && this.isGooglePhotoURL(user.photoURL) && 
+            (!this.user.photoURL || !this.isFirebaseStorageURL(this.user.photoURL))) {
+          await this.syncGoogleProfilePhoto();
+        }
+        
+        this.registrationMethod = "google"
+        console.log("Google sign-in successful")
+        return true
+      } catch (error) {
+        this.error = error.message
+        console.error("Google sign-in error:", error)
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // The rest of the methods remain unchanged
     setVerificationData(data) {
       this.verificationData = data
       // Store in localStorage as a backup
@@ -398,93 +669,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    async signInWithGoogle({ isRegistration = false, onNewUser = () => {} } = {}) {
-      this.loading = true
-      this.error = null
-      try {
-        const provider = new GoogleAuthProvider()
-        provider.addScope("email")
-        provider.addScope("profile")
-        const result = await signInWithPopup(auth, provider)
-        const user = result.user
-
-        console.log("Google sign-in user:", user)
-        console.log("User email:", user.email)
-        console.log("User display name:", user.displayName)
-        console.log("User photo URL:", user.photoURL)
-        console.log("User UID:", user.uid)
-
-        // Parse the user's name
-        const nameParts = user.displayName ? user.displayName.split(" ") : ["", ""]
-        let firstName, lastName
-
-        if (nameParts.length >= 2) {
-          lastName = nameParts.pop()
-          firstName = nameParts.join(" ")
-        } else {
-          firstName = nameParts[0] || ""
-          lastName = ""
-        }
-
-        console.log("Parsed firstName:", firstName)
-        console.log("Parsed lastName:", lastName)
-
-        // Use the original photo URL directly
-        const photoURL = user.photoURL || ""
-        console.log("Using original Google photo URL:", photoURL)
-
-        const additionalUserInfo = getAdditionalUserInfo(result)
-        const isNewUser = additionalUserInfo?.isNewUser
-        console.log("Is new user:", isNewUser)
-
-        const userId = this.generateUserId(user.uid)
-        const userDoc = await getDoc(doc(db, "users", userId))
-
-        if (!userDoc.exists() || isNewUser) {
-          // Call the onNewUser callback
-          onNewUser()
-
-          // Create user document with status based on where the sign-in was initiated
-          await this.createUserDocument(user, {
-            firstName,
-            lastName,
-            photoURL: photoURL,
-            email: user.email || additionalUserInfo?.profile?.email || "",
-            role: "user",
-            status: "active", // Always set as active for Google sign-in
-            emailVerified: true,
-          })
-        } else {
-          // For existing users, DO NOT update the photoURL if one already exists
-          // This ensures custom profile photos aren't overwritten on login
-          const userData = userDoc.data();
-          
-          // Only update the photoURL if the user doesn't have one yet
-          if (photoURL && !userData.photoURL) {
-            console.log("Setting initial photoURL for user:", photoURL);
-            
-            await updateDoc(doc(db, "users", userId), {
-              photoURL: photoURL,
-              updatedAt: new Date()
-            });
-          } else {
-            console.log("Keeping existing photoURL:", userData.photoURL);
-          }
-        }
-
-        await this.fetchUserData(user)
-        this.registrationMethod = "google"
-        console.log("Google sign-in successful")
-        return true
-      } catch (error) {
-        this.error = error.message
-        console.error("Google sign-in error:", error)
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
-
     async resendVerificationEmail(email) {
       try {
         this.loading = true
@@ -517,11 +701,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // New method for OTP-based password reset
-    /**
-     * Send password reset OTP
-     * @param {string} email - User's email
-     */
     async sendPasswordResetOTP(email) {
       this.loading = true
       this.error = null
@@ -546,13 +725,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Verify password reset OTP
-    /**
-     * Verify password reset OTP
-     * @param {string} email - User's email
-     * @param {string} otp - One-time password
-     * @returns {Promise<boolean>} - True if OTP is valid
-     */
     async verifyPasswordResetOTP(email, otp) {
       this.loading = true
       this.error = null
@@ -576,13 +748,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Complete password reset with new password
-    /**
-     * Reset password with email and OTP
-     * @param {string} email - User's email
-     * @param {string} otp - One-time password
-     * @param {string} newPassword - New password
-     */
     async resetPasswordWithEmail(email, otp, newPassword) {
       this.loading = true
       this.error = null
@@ -608,7 +773,6 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Store data for password reset process
     setPasswordResetData(data) {
       this.verificationData = {
         ...this.verificationData,
@@ -635,7 +799,6 @@ export const useAuthStore = defineStore("auth", {
     isPending: (state) => state.user?.status === "pending",
     isActive: (state) => state.user?.status === "active",
 
-    // New getter to calculate remaining OTP time
     otpRemainingTime: (state) => {
       if (!state.otpSentTimestamp) {
         // Try to get from localStorage

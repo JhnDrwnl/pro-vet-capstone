@@ -41,16 +41,28 @@
           <table class="min-w-full">
             <thead class="bg-gray-100">
               <tr class="border-b border-gray-200">
-                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Type</th>
-                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Value</th>
-                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden md:table-cell">Display Label</th>
-                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden sm:table-cell">Status</th>
-                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500 hidden lg:table-cell">Notes</th>
-                <th class="py-4 px-6 text-left text-sm font-medium text-gray-500">Actions</th>
+                <th 
+                  v-for="header in contactHeaders" 
+                  :key="header.key" 
+                  @click="sortBy(header.key)"
+                  class="text-left py-4 px-6 text-sm font-medium text-gray-500 cursor-pointer"
+                >
+                  <div class="flex items-center">
+                    {{ header.label }}
+                    <div v-if="header.sortable" class="flex flex-col ml-1">
+                      <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === header.key && sortOrder === 'asc', 'text-gray-400': !(sortKey === header.key && sortOrder === 'asc') }">▲</span>
+                      <span class="text-[10px] leading-none" :class="{ 'text-gray-800': sortKey === header.key && sortOrder === 'desc', 'text-gray-400': !(sortKey === header.key && sortOrder === 'desc') }">▼</span>
+                    </div>
+                  </div>
+                </th>
+                <!-- Actions column without sorting -->
+                <th class="text-left py-4 px-6 text-sm font-medium text-gray-500">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-for="contact in filteredContacts" :key="contact.id">
+              <tr v-for="contact in sortedContacts" :key="contact.id">
                 <td class="py-4 px-6">
                   <div class="flex items-center gap-2">
                     <component :is="getContactIcon(contact.type)" class="w-5 h-5 text-gray-500" />
@@ -78,6 +90,12 @@
                   </span>
                 </td>
                 <td class="py-4 px-6 text-sm text-gray-900 hidden lg:table-cell">{{ contact.notes || 'N/A' }}</td>
+                <td class="py-4 px-6 text-sm text-gray-600 hidden md:table-cell">
+                  {{ formatTimestamp(contact.createdAt) }}
+                </td>
+                <td class="py-4 px-6 text-sm text-gray-600 hidden md:table-cell">
+                  {{ formatTimestamp(contact.updatedAt) }}
+                </td>
                 <td class="py-4 px-6 text-sm">
                   <div class="flex items-center gap-2">
                     <button 
@@ -96,7 +114,7 @@
                 </td>
               </tr>
               <tr v-if="officeStore.contacts.length === 0">
-                <td colspan="6" class="py-8 text-center text-gray-500">
+                <td colspan="8" class="py-8 text-center text-gray-500">
                   <Phone class="w-12 h-12 mx-auto text-gray-300 mb-2" />
                   <p>No contact information configured yet.</p>
                 </td>
@@ -302,6 +320,21 @@
   const searchQuery = ref('')
   const initialLoading = ref(true) // Add initialLoading state
   
+  // Sorting state
+  const sortKey = ref('type')
+  const sortOrder = ref('asc')
+  
+  // Contact headers for sorting
+  const contactHeaders = [
+    { key: 'type', label: 'Type', sortable: true },
+    { key: 'value', label: 'Value', sortable: true },
+    { key: 'label', label: 'Display Label', sortable: true },
+    { key: 'isActive', label: 'Status', sortable: true },
+    { key: 'notes', label: 'Notes', sortable: false },
+    { key: 'createdAt', label: 'Created', sortable: true },
+    { key: 'updatedAt', label: 'Updated', sortable: true }
+  ]
+  
   // Contact types
   const contactTypes = [
     'Phone',
@@ -341,12 +374,105 @@
     )
   })
   
+  // Sorted contacts based on sort key and order
+  const sortedContacts = computed(() => {
+    return [...filteredContacts.value].sort((a, b) => {
+      let aValue = a[sortKey.value];
+      let bValue = b[sortKey.value];
+      
+      // Handle null or undefined values
+      if (aValue === null || aValue === undefined) aValue = '';
+      if (bValue === null || bValue === undefined) bValue = '';
+      
+      // Handle boolean values
+      if (typeof aValue === 'boolean') aValue = aValue ? 1 : 0;
+      if (typeof bValue === 'boolean') bValue = bValue ? 1 : 0;
+      
+      // Compare values
+      if (aValue < bValue) return sortOrder.value === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder.value === 'asc' ? 1 : -1;
+      return 0;
+    });
+  })
+  
   // Watch for store errors and display them
   watch(() => officeStore.error, (error) => {
     if (error) {
       showStatus(error, 'error')
     }
   })
+  
+  // Update the formatTimestamp function
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+  
+    try {
+      // If timestamp is a Firestore Timestamp object
+      if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+  
+      // If timestamp is a number (Unix timestamp in milliseconds)
+      if (typeof timestamp === 'number') {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+  
+      // If timestamp is already a Date object
+      if (timestamp instanceof Date) {
+        return timestamp.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+  
+      // If timestamp is a string, try to parse it
+      if (typeof timestamp === 'string') {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+  
+      return 'N/A';
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'N/A';
+    }
+  }
+  
+  // Sort by column
+  const sortBy = (key) => {
+    // Check if the column is sortable
+    const header = contactHeaders.find(h => h.key === key);
+    if (!header || !header.sortable) return;
+    
+    if (sortKey.value === key) {
+      sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey.value = key;
+      sortOrder.value = 'asc';
+    }
+  }
   
   // Get icon for contact type
   const getContactIcon = (type) => {
