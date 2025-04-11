@@ -1,4 +1,3 @@
-<!-- views/user/Profile.vue -->
 <template>
   <div class="min-h-screen bg-gray-50 rounded-2xl overflow-hidden">
     <!-- Banner with gradient background -->
@@ -11,8 +10,11 @@
     <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
       <div class="relative -mt-16 sm:-mt-20 md:-mt-24">
         <div class="bg-white rounded-2xl shadow px-2 sm:px-6 py-2 sm:py-6">
-          <!-- Profile Section -->
-          <div class="py-4 sm:py-6">
+          <!-- Show loading spinner during initial data load -->
+          <LoadingSpinner v-if="initialLoading" isOverlay text="Loading profile..." />
+          
+          <!-- Profile Section - Only show when data is loaded -->
+          <div v-if="!initialLoading" class="py-4 sm:py-6">
             <!-- Profile Header -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-center mb-4 sm:mb-6 space-y-4 sm:space-y-0">
               <div class="flex flex-col items-center space-y-2">
@@ -92,7 +94,7 @@
                 <button
                   v-for="tab in tabs"
                   :key="tab.id"
-                  @click="currentTab = tab.id"
+                  @click="switchTab(tab.id)"
                   :class="[
                     'px-2 py-1 text-xs sm:px-3 sm:py-2 sm:text-sm font-medium rounded-full transition-colors min-w-[70px] sm:min-w-[80px] whitespace-nowrap',
                     currentTab === tab.id
@@ -105,11 +107,14 @@
               </nav>
             </div>
   
-            <!-- Form Content -->
-            <form @submit.prevent="handleSave" class="mt-4 sm:mt-6 w-full">
-              <div class="space-y-6 sm:space-y-8" style="min-height: 300px;">
-                <!-- Edit Profile Info Tab -->
-                <div v-show="currentTab === 'edit-profile'" class="space-y-6 sm:space-y-8">
+            <!-- Tab Content with Loading States -->
+            <div class="mt-4 sm:mt-6 w-full">
+              <!-- Edit Profile Tab Content -->
+              <div v-if="currentTab === 'edit-profile'" class="relative">
+                <!-- Tab-specific loading spinner -->
+                <LoadingSpinner v-if="tabLoading" isOverlay text="Loading profile data..." />
+
+                <form @submit.prevent="handleSave" class="space-y-6 sm:space-y-8" style="min-height: 300px;">
                   <!-- Personal Information Section -->
                   <div>
                     <div class="flex items-center mb-4">
@@ -174,19 +179,6 @@
                                 </span>
                               </template>
                             </span>
-                            <CalendarIcon 
-                              class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 cursor-pointer"
-                              @click.stop="toggleCalendar"
-                            />
-                            <div v-if="showCalendar" :class="{'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]': isMobile}">
-                              <div class="bg-white rounded-lg shadow-lg overflow-hidden" :style="getCalendarPosition()">
-                                <Calendar 
-                                  v-model="tempForm.dateOfBirth"
-                                  @update:modelValue="handleCalendarChange"
-                                  @cancel="handleCalendarCancel"
-                                />
-                              </div>
-                            </div>
                           </div>
                         </div>
                         <div>
@@ -357,55 +349,128 @@
                       </div>
                     </div>
                   </div>
-                </div>
-  
-                <!-- Pet Info Tab -->
-                <div v-show="currentTab === 'pet-info'">
-                  <Pets 
-                    ref="petsComponent" 
-                    :key="petsRefreshKey"
-                    @pet-added="handlePetAdded"
-                    @pet-updated="handlePetUpdated"
-                    @pet-deleted="handlePetDeleted"
-                    @pets-changed="handlePetsChanged"
-                  />
-                </div>
+                  
+                  <!-- Submit and Cancel Buttons -->
+                  <div class="mt-6 flex flex-col sm:flex-row justify-start sm:justify-end space-y-2 sm:space-y-0 sm:space-x-4">
+                    <button
+                      type="button"
+                      @click="closeAttachment"
+                      class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-red-200 text-red-800 hover:bg-red-300 transition-colors text-xs sm:text-sm"
+                    >
+                      Close
+                    </button>
+                    <button
+                      type="submit"
+                      class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-blue-500 text-white hover:bg-blue-700 transition-colors text-xs sm:text-sm"
+                      :disabled="isSaving"
+                    >
+                      {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                    </button>
+                  </div>
+                </form>
               </div>
   
-              <!-- Submit and Cancel Buttons -->
-              <div class="mt-6 flex flex-col sm:flex-row justify-start sm:justify-end space-y-2 sm:space-y-0 sm:space-x-4">
-                <button
-                  type="button"
-                  @click="closeAttachment"
-                  class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-red-200 text-red-800 hover:bg-red-300 transition-colors text-xs sm:text-sm"
-                >
-                  Close
-                </button>
-                <button
-                  type="submit"
-                  class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-blue-500 text-white hover:bg-blue-700 transition-colors text-xs sm:text-sm"
-                  :disabled="isSaving"
-                >
-                  {{ isSaving ? 'Saving...' : 'Save Changes' }}
-                </button>
+              <!-- Pet Info Tab Content -->
+              <div v-else-if="currentTab === 'pet-info'" class="relative">
+                <!-- Tab-specific loading spinner for pets tab -->
+                <LoadingSpinner v-if="petsLoading" isOverlay text="Loading pets data..." />
+                
+                <Pets 
+                  ref="petsComponent" 
+                  :key="petsRefreshKey"
+                  @pet-added="handlePetAdded"
+                  @pet-updated="handlePetUpdated"
+                  @pet-deleted="handlePetDeleted"
+                  @pets-changed="handlePetsChanged"
+                />
+                
+                <!-- Submit and Cancel Buttons for Pets Tab -->
+                <div class="mt-6 flex flex-col sm:flex-row justify-start sm:justify-end space-y-2 sm:space-y-0 sm:space-x-4">
+                  <button
+                    type="button"
+                    @click="closeAttachment"
+                    class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-red-200 text-red-800 hover:bg-red-300 transition-colors text-xs sm:text-sm"
+                  >
+                    Close
+                  </button>
+                  <button
+                    @click="handleSave"
+                    class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-blue-500 text-white hover:bg-blue-700 transition-colors text-xs sm:text-sm"
+                    :disabled="isSaving"
+                  >
+                    {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                  </button>
+                </div>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
     </div>
+    
+    <!-- Success Modal -->
+    <div v-if="showSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-auto p-6">
+        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mx-auto mb-4">
+          <CheckCircleIcon class="h-6 w-6 text-green-600" />
+        </div>
+        <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Success</h3>
+        <p class="text-sm text-gray-500 text-center mb-6">
+          {{ statusMessage }}
+        </p>
+        <div class="flex justify-center">
+          <button 
+            @click="showSuccessModal = false" 
+            class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Error Modal -->
+    <div v-if="showErrorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-auto p-6">
+        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+          <XCircleIcon class="h-6 w-6 text-red-600" />
+        </div>
+        <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Error</h3>
+        <p class="text-sm text-gray-500 text-center mb-6">
+          {{ errorMessage }}
+        </p>
+        <div class="flex justify-center">
+          <button 
+            @click="showErrorModal = false" 
+            class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Loading Spinner for operations (not initial loading) -->
+    <LoadingSpinner v-if="loading && !initialLoading" isOverlay text="Processing..." />
   </div>
 </template>
-
+  
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
-import { CameraIcon, CalendarIcon, UserIcon, PhoneIcon, MapPinIcon } from 'lucide-vue-next';
+import { useRouter, useRoute } from 'vue-router';
+import { 
+  Camera as CameraIcon, 
+  User as UserIcon, 
+  Phone as PhoneIcon, 
+  MapPin as MapPinIcon,
+  CheckCircle as CheckCircleIcon,
+  XCircle as XCircleIcon
+} from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
-import Calendar from '@/components/common/Calendar.vue';
-import Pets from '@/views/user/Pets.vue'; // Import the new Pets component
+import Pets from '@/views/user/Pets.vue';
 import { usePetsStore } from '@/stores/modules/petsStore';
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
 // Import Firebase Storage functions
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@shared/firebase';
@@ -413,13 +478,14 @@ import { storage } from '@shared/firebase';
 const props = defineProps({
   isSidebarOpen: {
     type: Boolean,
-    default: true, // Make it optional with a default value of true
+    default: true,
   },
 });
 
 const emit = defineEmits(['close', 'save', 'update:modelValue']);
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAuthStore();
 const profileStore = useProfileStore();
 const petsStore = usePetsStore();
@@ -450,7 +516,6 @@ const form = ref({
   pets: [],
 });
 const displayedProfile = ref({});
-const showCalendar = ref(false);
 const dateInput = ref('');
 const datePlaceholder = ref('YYYY-MM-DD');
 const dateInputRef = ref(null);
@@ -460,7 +525,7 @@ const showCameraHover = ref(false);
 const isCameraClicked = ref(false);
 const isSaving = ref(false);
 const petsComponent = ref(null);
-const petsRefreshKey = ref(0); // Add this for forced re-rendering
+const petsRefreshKey = ref(0);
 let autocomplete = null;
 let googleMapsLoaded = false;
 
@@ -471,6 +536,16 @@ const photoChanged = ref(false);
 
 // Add this new ref for gender dropdown
 const isGenderOpen = ref(false);
+
+// Add new state variables for loading and modals
+const initialLoading = ref(true);
+const loading = ref(false);
+const tabLoading = ref(false); // New loading state for tab switching
+const petsLoading = ref(false); // New loading state for pets tab
+const showSuccessModal = ref(false);
+const showErrorModal = ref(false);
+const statusMessage = ref('');
+const errorMessage = ref('');
 
 const orientalMindoroPostalCodes = {
   'Baco': '5201',
@@ -497,20 +572,64 @@ const tempForm = ref({});
 
 const isMobile = ref(window.innerWidth < 640);
 
+// New method to handle tab switching with loading states
+const switchTab = async (tabId) => {
+  if (currentTab.value === tabId) return;
+  
+  if (tabId === 'edit-profile') {
+    tabLoading.value = true;
+    try {
+      // Refresh profile data when switching to profile tab
+      if (authStore.user && authStore.user.userId) {
+        await fetchUserProfile();
+      }
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+      errorMessage.value = 'Failed to load profile data. Please try again.';
+      showErrorModal.value = true;
+    } finally {
+      tabLoading.value = false;
+    }
+  } else if (tabId === 'pet-info') {
+    petsLoading.value = true;
+    try {
+      // Set the current tab first so the pets component is mounted
+      currentTab.value = tabId;
+      
+      // Wait for the next tick to ensure the component is mounted
+      await nextTick();
+      
+      // Refresh pets data when switching to pets tab
+      if (petsComponent.value && petsComponent.value.fetchPets) {
+        await petsComponent.value.fetchPets();
+      }
+    } catch (error) {
+      console.error('Error loading pets data:', error);
+      errorMessage.value = 'Failed to load pets data. Please try again.';
+      showErrorModal.value = true;
+    } finally {
+      petsLoading.value = false;
+    }
+    return; // Return early since we already set currentTab
+  }
+  
+  // Set the current tab for other tabs
+  currentTab.value = tabId;
+};
+
 watch(form, (newForm) => {
   profileStore.calculateCompletionPercentage(newForm);
 }, { deep: true });
 
-// Watch for tab changes to refresh pets data when switching to pet tab
-watch(currentTab, (newTab) => {
-  if (newTab === 'pet-info' && petsComponent.value && petsComponent.value.fetchPets) {
-    // Refresh pets data when switching to the pet tab
-    petsComponent.value.fetchPets();
+// Modified watch for route query changes to use switchTab
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && tabs.some(tab => tab.id === newTab)) {
+    switchTab(newTab);
   }
-});
+}, { immediate: true });
 
 const loadGoogleMapsAPI = () => {
-  if (typeof google === 'undefined') {
+  if (typeof window.google === 'undefined') {
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
     script.async = true;
@@ -526,9 +645,37 @@ const loadGoogleMapsAPI = () => {
 };
 
 onMounted(async () => {
-  if (authStore.user && authStore.user.userId) {
-    await fetchUserProfile();
+  // Initialize all refs here to ensure they are defined before being used
+  selectedProfilePicture.value = null;
+  previewPhotoURL.value = null;
+  photoChanged.value = false;
+  isGenderOpen.value = false;
+  initialLoading.value = true;
+  loading.value = false;
+  tabLoading.value = false;
+  petsLoading.value = false;
+  showSuccessModal.value = false;
+  showErrorModal.value = false;
+  statusMessage.value = '';
+  errorMessage.value = '';
+  
+  try {
+    if (authStore.user && authStore.user.userId) {
+      await fetchUserProfile();
+    }
+
+    // Check if there's a tab parameter in the URL
+    if (route.query.tab && tabs.some(tab => tab.id === route.query.tab)) {
+      switchTab(route.query.tab);
+    }
+  } catch (error) {
+    console.error('Error loading profile:', error);
+    errorMessage.value = 'Failed to load profile data. Please try again.';
+    showErrorModal.value = true;
+  } finally {
+    initialLoading.value = false;
   }
+
   document.addEventListener('click', handleClickOutside);
   window.addEventListener('resize', handleResize);
   document.addEventListener('keydown', handleKeyDown);
@@ -540,7 +687,9 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   document.removeEventListener('keydown', handleKeyDown);
   if (autocomplete) {
-    google.maps.event.clearInstanceListeners(autocomplete);
+    if (window.google && window.google.maps) {
+      window.google.maps.event.clearInstanceListeners(autocomplete);
+    }
   }
 });
 
@@ -550,23 +699,35 @@ const handleResize = () => {
 
 watch(() => props.isSidebarOpen, async (newValue) => {
   if (newValue && authStore.user && authStore.user.userId) {
-    await fetchUserProfile();
-    dateInput.value = form.value.dateOfBirth || '';
+    tabLoading.value = true;
+    try {
+      await fetchUserProfile();
+      dateInput.value = form.value.dateOfBirth || '';
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    } finally {
+      tabLoading.value = false;
+    }
   }
 });
 
 const fetchUserProfile = async () => {
-  const profile = await profileStore.fetchUserProfile(authStore.user.userId);
-  if (profile) {
-    form.value = { ...profile };
-    tempForm.value = { ...profile };
-    displayedProfile.value = { ...profile };
-    dateInput.value = profile.dateOfBirth || '';
-    
-    // Reset photo change tracking
-    selectedProfilePicture.value = null;
-    previewPhotoURL.value = null;
-    photoChanged.value = false;
+  try {
+    const profile = await profileStore.fetchUserProfile(authStore.user.userId);
+    if (profile) {
+      form.value = { ...profile };
+      tempForm.value = { ...profile };
+      displayedProfile.value = { ...profile };
+      dateInput.value = profile.dateOfBirth || '';
+      
+      // Reset photo change tracking
+      selectedProfilePicture.value = null;
+      previewPhotoURL.value = null;
+      photoChanged.value = false;
+    }
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error; // Re-throw to be handled by the caller
   }
 };
 
@@ -576,10 +737,11 @@ const selectGender = (gender) => {
   isGenderOpen.value = false;
 };
 
-// Modified handleSave to refresh pet data after saving
+// Modified handleSave to refresh pet data after saving and show modals
 const handleSave = async () => {
   if (isSaving.value) return;
   isSaving.value = true;
+  loading.value = true;
 
   try {
     if (authStore.user && authStore.user.userId) {
@@ -598,7 +760,9 @@ const handleSave = async () => {
           ...form.value,
           // Add fields from tempForm (like dateOfBirth and age)
           dateOfBirth: tempForm.value.dateOfBirth,
-          age: tempForm.value.age
+          age: tempForm.value.age,
+          // Add updated timestamp
+          updatedAt: new Date()
         };
         
         // Handle profile picture upload if changed
@@ -639,9 +803,13 @@ const handleSave = async () => {
             photoChanged.value = false;
           }
           
+          // Show success message
+          statusMessage.value = 'Profile updated successfully!';
+          showSuccessModal.value = true;
+          
           console.log('Profile updated successfully!');
         } else {
-          console.error('Failed to update profile. Please try again.');
+          throw new Error('Failed to update profile. Please try again.');
         }
       } 
       else if (currentTab.value === 'pet-info' && petsComponent.value) {
@@ -653,7 +821,7 @@ const handleSave = async () => {
           const petSaveSuccess = await petsComponent.value.saveAllChanges();
           
           if (!petSaveSuccess) {
-            console.error('Failed to save pet changes. Please try again.');
+            throw new Error('Failed to save pet changes. Please try again.');
           } else {
             console.log('Pet changes saved successfully!');
             
@@ -667,16 +835,25 @@ const handleSave = async () => {
             
             // Refresh the pets store data as well
             await petsStore.fetchUserPets(userId);
+            
+            // Show success message
+            statusMessage.value = 'Pet information updated successfully!';
+            showSuccessModal.value = true;
           }
         } else {
           console.log('No pet changes to save.');
+          statusMessage.value = 'No changes to save.';
+          showSuccessModal.value = true;
         }
       }
     }
   } catch (error) {
     console.error('Error updating data:', error);
+    errorMessage.value = error.message || 'An error occurred while saving changes.';
+    showErrorModal.value = true;
   } finally {
     isSaving.value = false;
+    loading.value = false;
   }
 };
 
@@ -710,12 +887,12 @@ const closeAttachment = () => {
   // Reset form to displayed profile
   form.value = { ...displayedProfile.value };
   tempForm.value = { ...displayedProfile.value };
-  
+
   // Clear any selected file that wasn't saved
   selectedProfilePicture.value = null;
   previewPhotoURL.value = null;
   photoChanged.value = false;
-  
+
   router.push('/admin/dashboard');
 };
 
@@ -745,7 +922,7 @@ const calculateProgress = computed(() => {
       : form.value[field];
     return value && value !== null && value !== undefined && String(value).trim() !== '';
   }).length;
-  
+
   return Math.round((filledFields / fields.length) * 100);
 });
 
@@ -761,19 +938,6 @@ const progressColor = computed(() => {
   if (calculateProgress.value < 70) return '#F59E0B';
   return '#10B981';
 });
-
-const toggleCalendar = () => {
-  showCalendar.value = !showCalendar.value;
-  if (showCalendar.value && !isMobile.value) {
-    nextTick(() => {
-      const calendarElement = document.querySelector('.calendar-dropdown');
-      if (calendarElement) {
-        const { top, left, bottom, right } = getCalendarPosition();
-        Object.assign(calendarElement.style, { top, left, bottom, right });
-      }
-    });
-  }
-};
 
 const calculateAge = (birthDate) => {
   if (!birthDate) return null;
@@ -792,26 +956,7 @@ const calculatedAge = computed(() => {
   return calculateAge(form.value.dateOfBirth);
 });
 
-const handleCalendarChange = (newValue) => {
-  tempForm.value.dateOfBirth = newValue;
-  tempForm.value.age = calculateAge(newValue);
-  showCalendar.value = false;
-};
-
-const handleCalendarCancel = () => {
-  showCalendar.value = false;
-  tempForm.value.dateOfBirth = displayedProfile.value.dateOfBirth || '';
-  tempForm.value.age = calculateAge(tempForm.value.dateOfBirth);
-};
-
 const handleClickOutside = (event) => {
-  if (showCalendar.value && 
-      !event.target.closest('.calendar-dropdown') && 
-      !event.target.closest('.date-of-birth-input') &&
-      (isMobile.value || !dateInputRef.value.contains(event.target))) {
-    handleCalendarCancel();
-  }
-  
   // Improved gender dropdown logic
   if (isGenderOpen.value && !event.target.closest('.gender-dropdown')) {
     isGenderOpen.value = false;
@@ -857,7 +1002,7 @@ const validateDate = () => {
 const handleFileSelect = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
-  
+
   try {
     // Store the file for later upload
     selectedProfilePicture.value = file;
@@ -873,11 +1018,17 @@ const handleFileSelect = async (event) => {
     console.log('Profile picture selected and preview shown. Will upload on save.');
   } catch (error) {
     console.error('Error handling profile picture selection:', error);
-    alert('Failed to preview profile picture. Please try again.');
+    errorMessage.value = 'Failed to preview profile picture. Please try again.';
+    showErrorModal.value = true;
   }
 };
 
 const handlePlaceSelect = () => {
+  if (!window.google || !window.google.maps) {
+    console.error('Google Maps API not loaded.');
+    return;
+  }
+
   const place = autocomplete.getPlace();
   if (!place.geometry) return;
 
@@ -901,7 +1052,7 @@ const handlePlaceSelect = () => {
 
   form.value.streetAddress = `${addressComponents.street_number} ${addressComponents.route}`.trim();
   form.value.city = addressComponents.locality || addressComponents.sublocality_level_1 || addressComponents.administrative_area_level_2;
-  
+
   if (addressComponents.administrative_area_level_1 === 'MIMAROPA') {
     const orientalMindoroCities = Object.keys(orientalMindoroPostalCodes);
     if (orientalMindoroCities.includes(form.value.city)) {
@@ -942,7 +1093,7 @@ const initializeAutocomplete = () => {
 
   const addressInput = document.getElementById('addressInput');
   if (addressInput) {
-    autocomplete = new google.maps.places.Autocomplete(addressInput, {
+    autocomplete = new window.google.maps.places.Autocomplete(addressInput, {
       types: ['geocode'],
       componentRestrictions: { country: 'ph' }
     });
@@ -962,83 +1113,17 @@ const handleCameraClick = () => {
   }, 300);
 };
 
-const getCharClass = (index) => {
-  if (!tempForm.value.dateOfBirth) return 'text-gray-300';
-  const parts = tempForm.value.dateOfBirth.split('-');
-  
-  let currentIndex = 0;
-  for (let i = 0; i < parts.length; i++) {
-    if (index < currentIndex + parts[i].length) {
-      return 'text-transparent';
-    } else if (index === currentIndex + parts[i].length && i < 2) {
-      return 'text-gray-400';
-    }
-    currentIndex += parts[i].length + 1;
-  }
-  
-  return 'text-gray-300';
-};
-
-const isPlaceholderVisible = (index) => {
-  if (!tempForm.value.dateOfBirth) return true;
-  const parts = tempForm.value.dateOfBirth.split('-');
-  let currentIndex = 0;
-  for (let i = 0; i < parts.length; i++) {
-    if (index < currentIndex + parts[i].length) {
-      return false;
-    }
-    currentIndex += parts[i].length + 1;
-  }
-  return true;
-};
-
-const dateOfBirthPlaceholder = computed(() => {
-  const placeholder = 'YYYY-MM-DD';
-  return placeholder.split('').map((char, index) => ({
-    value: char,
-    visible: isPlaceholderVisible(index)
-  }));
-});
-
-const getCalendarPosition = () => {
-  if (isMobile.value) {
-    return {
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      maxWidth: '90%',
-      maxHeight: '90%',
-      overflow: 'auto',
-      zIndex: 1000,
-    };
-  } else {
-    const inputRect = dateInputRef.value.getBoundingClientRect();
-    const windowHeight = window.innerHeight;
-    const spaceBelow = windowHeight - inputRect.bottom;
-    const spaceAbove = inputRect.top;
-
-    if (spaceBelow >= 300 || spaceBelow > spaceAbove) {
-      return {
-        position: 'absolute',
-        top: `${inputRect.height + 5}px`,
-        left: '0',
-        zIndex: 1000,
-      };
-    } else {
-      return {
-        position: 'absolute',
-        bottom: `${inputRect.height + 5}px`,
-        left: '0',
-        zIndex: 1000,
-      };
-    }
-  }
-};
-
 const handleKeyDown = (event) => {
-  if (event.key === 'Escape' && showCalendar.value) {
-    handleCalendarCancel();
+  if (event.key === 'Escape') {
+    if (isGenderOpen.value) {
+      isGenderOpen.value = false;
+    }
+    if (showSuccessModal.value) {
+      showSuccessModal.value = false;
+    }
+    if (showErrorModal.value) {
+      showErrorModal.value = false;
+    }
   }
 };
 
@@ -1046,8 +1131,30 @@ const handleAgeInput = (event) => {
   // Allow manual editing of age without recalculating from date of birth
   tempForm.value.age = event.target.value;
 };
-</script>
 
+const dateOfBirthPlaceholder = ref([
+  { value: 'Y', visible: false },
+  { value: 'Y', visible: false },
+  { value: 'Y', visible: false },
+  { value: 'Y', visible: false },
+  { value: '-', visible: false },
+  { value: 'M', visible: false },
+  { value: 'M', visible: false },
+  { value: '-', visible: false },
+  { value: 'D', visible: false },
+  { value: 'D', visible: false }
+]);
+
+const getCharClass = (index) => {
+  const visible = tempForm.value.dateOfBirth && index < tempForm.value.dateOfBirth.length;
+  dateOfBirthPlaceholder.value[index].visible = !visible;
+  return {
+    'text-gray-400': !visible,
+    'font-bold': visible
+  };
+};
+</script>
+  
 <style scoped>
 .date-of-birth-input {
   font-family: monospace;

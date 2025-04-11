@@ -318,21 +318,21 @@
                       @input="handleDateInput"
                       @blur="validateDate"
                       ref="dateInputRef"
-                      placeholder="YYYY-MM-DD"
                     />
-                    <CalendarIcon 
-                      class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 cursor-pointer"
-                      @click.stop="toggleCalendar"
-                    />
-                    <div v-if="showCalendar" :class="{'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]': isMobile}">
-                      <div class="bg-white rounded-lg shadow-lg overflow-hidden" :style="getCalendarPosition()">
-                        <Calendar 
-                          v-model="tempForm.dateOfBirth"
-                          @update:modelValue="handleCalendarChange"
-                          @cancel="handleCalendarCancel"
-                        />
-                      </div>
-                    </div>
+                    <!-- Add the placeholder overlay -->
+                    <span 
+                      class="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none"
+                      aria-hidden="true"
+                    >
+                      <template v-for="(char, index) in dateOfBirthPlaceholder" :key="index">
+                        <span 
+                          :class="getCharClass(index)"
+                          :style="{ visibility: char.visible ? 'visible' : 'hidden' }"
+                        >
+                          {{ char.value }}
+                        </span>
+                      </template>
+                    </span>
                   </div>
                 </div>
                 <div>
@@ -632,7 +632,6 @@ import {
   User as UserIcon,
   Phone as PhoneIcon,
   MapPin as MapPinIcon,
-  Calendar as CalendarIcon,
   PawPrint as PawPrintIcon
 } from 'lucide-vue-next'
 import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore'
@@ -640,7 +639,6 @@ import { db } from '@shared/firebase'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { useProfileStore } from '@/stores/modules/profileStore'
 import { usePetsStore } from '@/stores/modules/petsStore'
-import Calendar from '@/components/common/Calendar.vue'
 import axios from 'axios'
 
 // Default values and state
@@ -666,12 +664,25 @@ const errorMessage = ref('')
 const profileStore = useProfileStore()
 const petsStore = usePetsStore()
 const ownerPets = ref([])
-const showCalendar = ref(false)
 const dateInputRef = ref(null)
 const isGenderOpen = ref(false)
 const isMobile = ref(window.innerWidth < 640)
 let autocomplete = null
 let googleMapsLoaded = false
+
+// Date of birth placeholder
+const dateOfBirthPlaceholder = ref([
+  { value: 'Y', visible: true },
+  { value: 'Y', visible: true },
+  { value: 'Y', visible: true },
+  { value: 'Y', visible: true },
+  { value: '-', visible: true },
+  { value: 'M', visible: true },
+  { value: 'M', visible: true },
+  { value: '-', visible: true },
+  { value: 'D', visible: true },
+  { value: 'D', visible: true }
+])
 
 const defaultPhotoURL = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 36 36\'%3E%3Crect width=\'36\' height=\'36\' fill=\'%23f0f2f5\'/%3E%3Cpath d=\'M18 20.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5\' stroke=\'%23bec3c9\' strokeWidth=\'2\' fill=\'none\'/%3E%3C/svg%3E'
 
@@ -877,7 +888,7 @@ const formatPetsArray = (pets) => {
     } catch (e) {
       // If not JSON, split by comma
       return pets.split(',').map(pet => {
-        const match = pet.trim().match(/^(.*?)(?:\s*$$(.*?)$$)?$/)
+        const match = pet.trim().match(/^(.*?)(?:\s*$(.*?)$)?$/)
         if (match) {
           return { name: match[1], species: match[2] || 'Pet' }
         }
@@ -1081,7 +1092,6 @@ const cancelEdit = () => {
   editForm.value = {}
   tempForm.value = {}
   ownerPets.value = []
-  showCalendar.value = false
   isGenderOpen.value = false
 }
 
@@ -1201,19 +1211,6 @@ const exportToCSV = () => {
 }
 
 // Calendar and Date functions
-const toggleCalendar = () => {
-  showCalendar.value = !showCalendar.value
-  if (showCalendar.value && !isMobile.value) {
-    nextTick(() => {
-      const calendarElement = document.querySelector('.calendar-dropdown')
-      if (calendarElement) {
-        const { top, left, bottom, right } = getCalendarPosition()
-        Object.assign(calendarElement.style, { top, left, bottom, right })
-      }
-    })
-  }
-}
-
 const calculateAge = (birthDate) => {
   if (!birthDate) return null
   const today = new Date()
@@ -1224,16 +1221,6 @@ const calculateAge = (birthDate) => {
     age--
   }
   return age
-}
-
-const handleCalendarChange = (newValue) => {
-  tempForm.value.dateOfBirth = newValue
-  tempForm.value.age = calculateAge(newValue)
-  showCalendar.value = false
-}
-
-const handleCalendarCancel = () => {
-  showCalendar.value = false
 }
 
 const handleDateInput = (event) => {
@@ -1276,40 +1263,10 @@ const handleAgeInput = (event) => {
   tempForm.value.age = event.target.value
 }
 
-const getCalendarPosition = () => {
-  if (isMobile.value) {
-    return {
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      maxWidth: '90%',
-      maxHeight: '90%',
-      overflow: 'auto',
-      zIndex: 1000,
-    }
-  } else {
-    const inputRect = dateInputRef.value.getBoundingClientRect()
-    const windowHeight = window.innerHeight
-    const spaceBelow = windowHeight - inputRect.bottom
-    const spaceAbove = inputRect.top
-    
-    if (spaceBelow >= 300 || spaceBelow > spaceAbove) {
-      return {
-        position: 'absolute',
-        top: `${inputRect.height + 5}px`,
-        left: '0',
-        zIndex: 1000,
-      }
-    } else {
-      return {
-        position: 'absolute',
-        bottom: `${inputRect.height + 5}px`,
-        left: '0',
-        zIndex: 1000,
-      }
-    }
-  }
+// Gender dropdown
+const selectGender = (gender) => {
+  editForm.value.gender = gender
+  isGenderOpen.value = false
 }
 
 // Google Maps Address Autocomplete
@@ -1428,12 +1385,6 @@ const handlePlaceSelect = () => {
   }
 }
 
-// Gender dropdown
-const selectGender = (gender) => {
-  editForm.value.gender = gender
-  isGenderOpen.value = false
-}
-
 // Handle window resize
 const handleResize = () => {
   isMobile.value = window.innerWidth < 640
@@ -1441,13 +1392,6 @@ const handleResize = () => {
 
 // Handle click outside
 const handleClickOutside = (event) => {
-  if (showCalendar.value && 
-      !event.target.closest('.calendar-dropdown') && 
-      !event.target.closest('.date-of-birth-input') &&
-      (isMobile.value || !dateInputRef.value.contains(event.target))) {
-    handleCalendarCancel()
-  }
-  
   // Gender dropdown logic
   if (isGenderOpen.value && !event.target.closest('.gender-dropdown')) {
     isGenderOpen.value = false
@@ -1457,13 +1401,20 @@ const handleClickOutside = (event) => {
 // Handle escape key
 const handleKeyDown = (event) => {
   if (event.key === 'Escape') {
-    if (showCalendar.value) {
-      handleCalendarCancel()
-    }
     if (isGenderOpen.value) {
       isGenderOpen.value = false
     }
   }
+}
+
+// Get character class for date of birth placeholder
+const getCharClass = (index) => {
+  const visible = tempForm.value.dateOfBirth && index < tempForm.value.dateOfBirth.length;
+  dateOfBirthPlaceholder.value[index].visible = !visible;
+  return {
+    'text-gray-400': true,
+    'font-medium': visible
+  };
 }
 
 // Initialize component

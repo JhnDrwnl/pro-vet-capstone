@@ -1,12 +1,10 @@
-<!-- views/user/Pets.vue -->
 <template>
   <div class="space-y-6">
-    <!-- Loading state -->
-    <div v-if="isLoading" class="flex justify-center py-8">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-    </div>
-    
-    <div v-else>
+    <!-- Show loading spinner during initial data load -->
+    <LoadingSpinner v-if="isLoading" isOverlay text="Loading pets data..." />
+
+    <!-- Only show content when data is loaded -->
+    <div v-if="!isLoading">
       <!-- Pet List View -->
       <div v-if="!selectedPetId">
         <div class="flex flex-wrap gap-2 pb-4">
@@ -82,10 +80,10 @@
                 v-if="!pet.isNew"
                 @click="confirmDeletePet(pet)"
                 type="button"
-                class="p-2 text-red-500 hover:text-red-700"
+                class="p-2 text-red-500 hover:text-red-600"
                 title="Delete pet"
               >
-                <TrashIcon class="w-5 h-5" />
+                <Trash2 class="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -135,8 +133,12 @@
               v-if="viewMode === 'view'"
               @click="editPet(selectedLocalPet)"
               type="button"
-              class="p-2 text-gray-500 hover:text-gray-700"
+              :class="[
+                'p-2 text-gray-500',
+                viewMode === 'view' ? 'hover:text-gray-700' : 'cursor-not-allowed opacity-50'
+              ]"
               title="Edit pet"
+              :disabled="viewMode !== 'view'"
             >
               <EditIcon class="w-5 h-5" />
             </button>
@@ -374,25 +376,30 @@
       </div>
     </div>
     
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 max-w-md w-full">
-        <h3 class="text-lg font-bold mb-4">Delete Pet</h3>
-        <p class="mb-6">Are you sure you want to delete {{ petToDelete?.name }}? This action cannot be undone.</p>
-        <div class="flex justify-end space-x-3">
+    <!-- Delete Confirmation Modal - Updated to match PetProfiles.vue style -->
+    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-auto p-6">
+        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-[#FFEEEE] mx-auto mb-4">
+          <AlertTriangleIcon class="h-6 w-6 text-red-600" />
+        </div>
+        <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Confirm Action</h3>
+        <p class="text-sm text-gray-500 text-center mb-6">
+          Are you sure you want to delete this pet? It will be moved to archives.
+        </p>
+        <div class="flex justify-center gap-3">
           <button 
-            @click.prevent="showDeleteModal = false"
-            type="button"
-            class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+            @click.prevent="showDeleteModal = false" 
+            class="px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-full shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            :disabled="isDeleting"
           >
             Cancel
           </button>
           <button 
             @click.prevent="deletePet"
-            type="button"
-            class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+            class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+            :disabled="isDeleting"
           >
-            Delete
+            Confirm
           </button>
         </div>
       </div>
@@ -406,11 +413,14 @@
       accept="image/*"
       class="hidden"
     />
+
+    <!-- Loading Spinner Overlay - Show when saving or deleting -->
+    <LoadingSpinner v-if="isSavingChanges || isDeleting" isOverlay :text="loadingText" />
   </div>
 </template>
   
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch, defineExpose, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, defineExpose } from 'vue';
 import { 
   CameraIcon, 
   PlusIcon, 
@@ -418,18 +428,24 @@ import {
   ActivityIcon, 
   SyringeIcon, 
   FolderIcon, 
-  TrashIcon,
+  Trash2,
   EyeIcon,
   EditIcon,
   ArrowLeftIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  AlertTriangle as AlertTriangleIcon,
+  CheckCircle as CheckCircleIcon,
+  XCircle as XCircleIcon
 } from 'lucide-vue-next';
 import { usePetsStore } from '@/stores/modules/petsStore';
 import { useAuthStore } from '@/stores/modules/authStore';
+import { useArchivesStore } from '@/stores/modules/archivesStore';
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
 
 // Stores
 const petsStore = usePetsStore();
 const authStore = useAuthStore();
+const archivesStore = useArchivesStore();
 
 // Emit events
 const emit = defineEmits(['pet-added', 'pet-updated', 'pet-deleted', 'pets-changed']);
@@ -441,6 +457,9 @@ const photoInput = ref(null);
 const editablePet = ref({});
 const showDeleteModal = ref(false);
 const isLoading = ref(false);
+const initialLoading = ref(true); // Add initialLoading state
+const isSavingChanges = ref(false);
+const isDeleting = ref(false); // New state for delete operation
 const localPets = ref([]);
 const pendingChanges = ref(false);
 const deletedPetIds = ref([]);
@@ -450,6 +469,17 @@ const originalPets = ref([]); // Store original pet data to revert changes
 const tabsDropdownOpen = ref(false); // For mobile tabs dropdown
 const dropdownRef = ref(null); // Reference to the dropdown element
 const genderDropdownOpen = ref(false); // For gender dropdown
+
+// Success/Error modals
+const showErrorModal = ref(false);
+const statusMessage = ref('');
+
+// Computed property for loading text
+const loadingText = computed(() => {
+  if (isDeleting.value) return "Deleting pet...";
+  if (isSavingChanges.value) return "Saving changes...";
+  return "Loading pets data...";
+});
 
 // Gender options
 const genderOptions = [
@@ -516,10 +546,11 @@ const hasUnsavedNewPet = computed(() => {
 });
 
 // Methods
-// FIXED: Modified fetchPets to only emit when there's an actual change
+// Modified fetchPets to only emit when there's an actual change
 const fetchPets = async () => {
   if (authStore.user && authStore.user.userId) {
     isLoading.value = true;
+    initialLoading.value = true;
     await petsStore.fetchUserPets(authStore.user.userId);
     
     // Get the current pets from the store
@@ -535,6 +566,7 @@ const fetchPets = async () => {
     originalPets.value = JSON.parse(JSON.stringify(localPets.value));
     
     isLoading.value = false;
+    initialLoading.value = false;
     pendingChanges.value = false;
     deletedPetIds.value = [];
     
@@ -686,28 +718,43 @@ const confirmDeletePet = (pet) => {
   showDeleteModal.value = true;
 };
 
-const deletePet = () => {
+const deletePet = async () => {
   if (!petToDelete.value) return;
 
-  // If the pet has an ID (exists in Firestore), add to deletedPetIds
-  if (petToDelete.value.id) {
-    deletedPetIds.value.push(petToDelete.value.id);
+  try {
+    isDeleting.value = true; // Set loading state for deletion
+    
+    // If the pet has an ID (exists in Firestore), delete it using petsStore
+    if (petToDelete.value.id) {
+      // Let petsStore handle both archiving and deletion
+      await petsStore.deletePet(authStore.user.userId, petToDelete.value.id);
+    }
+
+    // Remove from local array
+    localPets.value = localPets.value.filter(pet => 
+      (pet.id || pet.tempId) !== (petToDelete.value.id || petToDelete.value.tempId)
+    );
+
+    pendingChanges.value = true;
+    showDeleteModal.value = false;
+
+    // If we're deleting the currently selected pet, go back to list
+    if (selectedPetId.value === (petToDelete.value.id || petToDelete.value.tempId)) {
+      selectedPetId.value = null;
+    }
+
+    petToDelete.value = null;
+    
+    // Refresh pets from Firestore to ensure UI is in sync with database
+    await fetchPets();
+    
+  } catch (error) {
+    console.error('Error deleting pet:', error);
+    statusMessage.value = 'Failed to delete pet. Please try again.';
+    showErrorModal.value = true;
+  } finally {
+    isDeleting.value = false; // Reset loading state after deletion
   }
-
-  // Remove from local array
-  localPets.value = localPets.value.filter(pet => 
-    (pet.id || pet.tempId) !== (petToDelete.value.id || petToDelete.value.tempId)
-  );
-
-  pendingChanges.value = true;
-  showDeleteModal.value = false;
-
-  // If we're deleting the currently selected pet, go back to list
-  if (selectedPetId.value === (petToDelete.value.id || petToDelete.value.tempId)) {
-    selectedPetId.value = null;
-  }
-
-  petToDelete.value = null;
 };
 
 const triggerPetPhotoUpload = () => {
@@ -784,6 +831,7 @@ const saveAllChanges = async () => {
   // Validation removed - we'll save regardless of field values
   
   isLoading.value = true;
+  isSavingChanges.value = true;
   const userId = authStore.user.userId;
   let success = true;
 
@@ -857,6 +905,7 @@ const saveAllChanges = async () => {
     return false;
   } finally {
     isLoading.value = false;
+    isSavingChanges.value = false;
   }
 };
 

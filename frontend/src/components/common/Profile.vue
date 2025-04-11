@@ -11,8 +11,11 @@
     <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
       <div class="relative -mt-16 sm:-mt-20 md:-mt-24">
         <div class="bg-white rounded-2xl shadow px-2 sm:px-6 py-2 sm:py-6">
-          <!-- Profile Section -->
-          <div class="py-4 sm:py-6">
+          <!-- Show loading spinner during initial data load -->
+          <LoadingSpinner v-if="initialLoading" isOverlay text="Loading profile..." />
+          
+          <!-- Profile Section - Only show when data is loaded -->
+          <div v-if="!initialLoading" class="py-4 sm:py-6">
             <!-- Profile Header -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 space-y-4 sm:space-y-0">
               <div class="flex flex-row items-center space-x-4 sm:space-x-5">
@@ -173,19 +176,6 @@
                           </span>
                         </template>
                       </span>
-                      <CalendarIcon 
-                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-gray-400 cursor-pointer"
-                        @click.stop="toggleCalendar"
-                      />
-                      <div v-if="showCalendar" :class="{'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]': isMobile}">
-                        <div class="bg-white rounded-lg shadow-lg overflow-hidden" :style="getCalendarPosition()">
-                          <Calendar 
-                            v-model="tempForm.dateOfBirth"
-                            @update:modelValue="handleCalendarChange"
-                            @cancel="handleCalendarCancel"
-                          />
-                        </div>
-                      </div>
                     </div>
                   </div>
                   <div>
@@ -346,15 +336,68 @@
       </div>
     </div>
   </div>
+  
+  <!-- Success Modal -->
+  <div v-if="showSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-auto p-6">
+      <div class="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mx-auto mb-4">
+        <CheckCircleIcon class="h-6 w-6 text-green-600" />
+      </div>
+      <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Success</h3>
+      <p class="text-sm text-gray-500 text-center mb-6">
+        {{ statusMessage }}
+      </p>
+      <div class="flex justify-center">
+        <button 
+          @click="showSuccessModal = false" 
+          class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Error Modal -->
+  <div v-if="showErrorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-auto p-6">
+      <div class="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+        <XCircleIcon class="h-6 w-6 text-red-600" />
+      </div>
+      <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Error</h3>
+      <p class="text-sm text-gray-500 text-center mb-6">
+        {{ errorMessage }}
+      </p>
+      <div class="flex justify-center">
+        <button 
+          @click="showErrorModal = false" 
+          class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Loading Spinner for operations (not initial loading) -->
+  <LoadingSpinner v-if="loading && !initialLoading" isOverlay text="Processing..." />
 </template>
   
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { PhoneIcon, MailIcon, MapPinIcon, CameraIcon, CalendarIcon, ChevronDownIcon } from 'lucide-vue-next';
+import { 
+  PhoneIcon, 
+  MailIcon, 
+  MapPinIcon, 
+  CameraIcon, 
+  ChevronDownIcon,
+  CheckCircleIcon,
+  XCircleIcon
+} from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
-import Calendar from './Calendar.vue';
+import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
 // Import Firebase Storage functions
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@shared/firebase';
@@ -381,7 +424,6 @@ const tabs = [
 const currentTab = ref('personal');
 const form = ref({});
 const displayedProfile = ref({});
-const showCalendar = ref(false);
 const dateInput = ref('');
 const datePlaceholder = ref('YYYY-MM-DD');
 const dateInputRef = ref(null);
@@ -393,6 +435,17 @@ const isSaving = ref(false);
 const genderDropdownOpen = ref(false);
 let autocomplete = null;
 let googleMapsLoaded = false;
+
+// Add state variables for loading and modals
+const initialLoading = ref(true);
+const loading = ref(false);
+const showSuccessModal = ref(false);
+const showErrorModal = ref(false);
+const statusMessage = ref('');
+const errorMessage = ref('');
+
+// Declare google variable
+let google;
 
 // Add refs for profile picture handling
 const selectedProfilePicture = ref(null);
@@ -441,6 +494,7 @@ const loadGoogleMapsAPI = () => {
     script.async = true;
     script.defer = true;
     script.onload = () => {
+      google = window.google;
       googleMapsLoaded = true;
       console.log('Google Maps API loaded');
     };
@@ -450,14 +504,59 @@ const loadGoogleMapsAPI = () => {
   }
 };
 
-onMounted(async () => {
-  if (authStore.user && authStore.user.userId) {
-    await fetchUserProfile();
+const fetchUserProfile = async () => {
+  try {
+    const profile = await profileStore.fetchUserProfile(authStore.user.userId);
+    if (profile) {
+      form.value = { ...profile };
+      tempForm.value = { ...profile };
+      displayedProfile.value = { ...profile };
+      dateInput.value = profile.dateOfBirth || '';
+      
+      // Reset photo change tracking
+      selectedProfilePicture.value = null;
+      previewPhotoURL.value = null;
+      photoChanged.value = false;
+    }
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    throw error;
   }
-  document.addEventListener('click', handleClickOutside);
-  window.addEventListener('resize', handleResize);
-  document.addEventListener('keydown', handleKeyDown);
-  loadGoogleMapsAPI();
+};
+
+onMounted(async () => {
+  initialLoading.value = true;
+  try {
+    if (authStore.user && authStore.user.userId) {
+      await fetchUserProfile();
+    }
+    document.addEventListener('click', handleClickOutside);
+    window.addEventListener('resize', handleResize);
+    document.addEventListener('keydown', handleKeyDown);
+    loadGoogleMapsAPI();
+  } catch (error) {
+    console.error('Error loading profile:', error);
+    errorMessage.value = 'Failed to load profile data. Please try again.';
+    showErrorModal.value = true;
+  } finally {
+    initialLoading.value = false;
+  }
+});
+
+watch(() => props.isSidebarOpen, async (newValue) => {
+  if (newValue && authStore.user && authStore.user.userId) {
+    loading.value = true;
+    try {
+      await fetchUserProfile();
+      dateInput.value = form.value.dateOfBirth || '';
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+      errorMessage.value = 'Failed to refresh profile data. Please try again.';
+      showErrorModal.value = true;
+    } finally {
+      loading.value = false;
+    }
+  }
 });
 
 onUnmounted(() => {
@@ -465,34 +564,14 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
   document.removeEventListener('keydown', handleKeyDown);
   if (autocomplete) {
-    google.maps.event.clearInstanceListeners(autocomplete);
+    if (google && google.maps) {
+      google.maps.event.clearInstanceListeners(autocomplete);
+    }
   }
 });
 
 const handleResize = () => {
   isMobile.value = window.innerWidth < 640;
-};
-
-watch(() => props.isSidebarOpen, async (newValue) => {
-  if (newValue && authStore.user && authStore.user.userId) {
-    await fetchUserProfile();
-    dateInput.value = form.value.dateOfBirth || '';
-  }
-});
-
-const fetchUserProfile = async () => {
-  const profile = await profileStore.fetchUserProfile(authStore.user.userId);
-  if (profile) {
-    form.value = { ...profile };
-    tempForm.value = { ...profile };
-    displayedProfile.value = { ...profile };
-    dateInput.value = profile.dateOfBirth || '';
-    
-    // Reset photo change tracking
-    selectedProfilePicture.value = null;
-    previewPhotoURL.value = null;
-    photoChanged.value = false;
-  }
 };
 
 // Gender dropdown methods
@@ -512,10 +591,11 @@ const formatGender = (gender) => {
   return gender;
 };
 
-// Modified handleSave to ensure all form fields are properly saved and the profile picture is immediately displayed after saving
+// Modified handleSave to use loading spinner and show modals
 const handleSave = async () => {
   if (isSaving.value) return;
   isSaving.value = true;
+  loading.value = true;
 
   try {
     if (authStore.user && authStore.user.userId) {
@@ -529,7 +609,9 @@ const handleSave = async () => {
         ...form.value,
         // Add fields from tempForm (like dateOfBirth and age)
         dateOfBirth: tempForm.value.dateOfBirth,
-        age: tempForm.value.age
+        age: tempForm.value.age,
+        // Add updated timestamp
+        updatedAt: new Date()
       };
       
       // Handle profile picture upload if changed
@@ -570,15 +652,22 @@ const handleSave = async () => {
           photoChanged.value = false;
         }
         
+        // Show success message
+        statusMessage.value = 'Profile updated successfully!';
+        showSuccessModal.value = true;
+        
         console.log('Profile updated successfully!');
       } else {
-        console.error('Failed to update profile. Please try again.');
+        throw new Error('Failed to update profile. Please try again.');
       }
     }
   } catch (error) {
     console.error('Error updating profile:', error);
+    errorMessage.value = error.message || 'An error occurred while saving changes.';
+    showErrorModal.value = true;
   } finally {
     isSaving.value = false;
+    loading.value = false;
   }
 };
 
@@ -651,19 +740,6 @@ const progressColor = computed(() => {
   return '#10B981';
 });
 
-const toggleCalendar = () => {
-  showCalendar.value = !showCalendar.value;
-  if (showCalendar.value && !isMobile.value) {
-    nextTick(() => {
-      const calendarElement = document.querySelector('.calendar-dropdown');
-      if (calendarElement) {
-        const { top, left, bottom, right } = getCalendarPosition();
-        Object.assign(calendarElement.style, { top, left, bottom, right });
-      }
-    });
-  }
-};
-
 const calculateAge = (birthDate) => {
   if (!birthDate) return null;
   const today = new Date();
@@ -681,29 +757,19 @@ const calculatedAge = computed(() => {
   return calculateAge(form.value.dateOfBirth);
 });
 
-const handleCalendarChange = (newValue) => {
-  tempForm.value.dateOfBirth = newValue;
-  tempForm.value.age = calculateAge(newValue);
-  showCalendar.value = false;
-};
-
-const handleCalendarCancel = () => {
-  showCalendar.value = false;
-  tempForm.value.dateOfBirth = displayedProfile.value.dateOfBirth || '';
-  tempForm.value.age = calculateAge(tempForm.value.dateOfBirth);
-};
-
 const handleClickOutside = (event) => {
-  if (showCalendar.value && 
-      !event.target.closest('.calendar-dropdown') && 
-      !event.target.closest('.date-of-birth-input') &&
-      (isMobile.value || !dateInputRef.value.contains(event.target))) {
-    handleCalendarCancel();
-  }
-  
   // Close gender dropdown if open and click is outside
   if (genderDropdownOpen.value && !event.target.closest('.gender-dropdown')) {
     genderDropdownOpen.value = false;
+  }
+  
+  // Close modals if open and click is outside
+  if (showSuccessModal.value && !event.target.closest('.success-modal')) {
+    showSuccessModal.value = false;
+  }
+  
+  if (showErrorModal.value && !event.target.closest('.error-modal')) {
+    showErrorModal.value = false;
   }
 };
 
@@ -762,7 +828,8 @@ const handleFileSelect = async (event) => {
     console.log('Profile picture selected and preview shown. Will upload on save.');
   } catch (error) {
     console.error('Error handling profile picture selection:', error);
-    alert('Failed to preview profile picture. Please try again.');
+    errorMessage.value = 'Failed to preview profile picture. Please try again.';
+    showErrorModal.value = true;
   }
 };
 
@@ -895,49 +962,17 @@ const dateOfBirthPlaceholder = computed(() => {
   }));
 });
 
-const handleMonthYearChange = ({ month, year }) => {
-  //This function is not used in the current implementation
-};
-
-const getCalendarPosition = () => {
-  if (isMobile.value) {
-    return {
-      position: 'fixed',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      maxWidth: '90%',
-      maxHeight: '90%',
-      overflow: 'auto',
-      zIndex: 1000,
-    };
-  } else {
-    const inputRect = dateInputRef.value.getBoundingClientRect();
-    const windowHeight = window.innerHeight;
-    const spaceBelow = windowHeight - inputRect.bottom;
-    const spaceAbove = inputRect.top;
-
-    if (spaceBelow >= 300 || spaceBelow > spaceAbove) {
-      return {
-        position: 'absolute',
-        top: `${inputRect.height + 5}px`,
-        left: '0',
-        zIndex: 1000,
-      };
-    } else {
-      return {
-        position: 'absolute',
-        bottom: `${inputRect.height + 5}px`,
-        left: '0',
-        zIndex: 1000,
-      };
-    }
-  }
-};
-
 const handleKeyDown = (event) => {
-  if (event.key === 'Escape' && showCalendar.value) {
-    handleCalendarCancel();
+  if (event.key === 'Escape') {
+    if (genderDropdownOpen.value) {
+      genderDropdownOpen.value = false;
+    }
+    if (showSuccessModal.value) {
+      showSuccessModal.value = false;
+    }
+    if (showErrorModal.value) {
+      showErrorModal.value = false;
+    }
   }
 };
 
