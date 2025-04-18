@@ -1109,10 +1109,10 @@ const restorePet = async (item) => {
   }
 };
 
-// Restore office hours - UPDATED to preserve timestamps
+// Restore office hours - UPDATED to preserve lunch break data
 const restoreOfficeHours = async (item) => {
   try {
-    // Create new office hours with the original data INCLUDING timestamps
+    // Create new office hours with the original data INCLUDING timestamps and lunch break
     const result = await officeStore.createOfficeHours({
       day: item.day,
       isOpen: item.isOpen,
@@ -1120,6 +1120,7 @@ const restoreOfficeHours = async (item) => {
       closeTime: item.closeTime,
       lunchStart: item.lunchStart,
       lunchEnd: item.lunchEnd,
+      hasLunchBreak: !!item.lunchStart && !!item.lunchEnd, // Add this line to explicitly set hasLunchBreak
       notes: item.notes || '',
       // Preserve the original timestamps
       createdAt: item.createdAt || null,

@@ -1,11 +1,59 @@
+<!-- views/user/Profile.vue -->
 <template>
   <div class="min-h-screen bg-gray-50 rounded-2xl overflow-hidden">
     <!-- Banner with gradient background -->
     <div 
-      class="h-32 sm:h-40 md:h-60 w-full bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl"
+      class="h-32 sm:h-40 md:h-60 w-full bg-gradient-to-r from-green-400 to-blue-500 rounded-2xl relative"
       style="background-image: linear-gradient(to right, rgb(110, 231, 183), rgb(59, 130, 246));"
-    ></div>
-  
+    >
+      <!-- Mobile 3-dot menu icon - Only visible on mobile -->
+      <button 
+        v-if="isMobile" 
+        @click="toggleMobileMenu"
+        class="absolute top-4 right-4 p-2 rounded-full bg-white bg-opacity-20 hover:bg-opacity-30 z-50"
+        data-mobile-menu-trigger
+      >
+        <MoreVerticalIcon class="w-5 h-5 text-white" />
+      </button>
+      
+      <!-- Mobile menu modal - Positioned absolutely relative to the button -->
+      <div 
+        v-if="showMobileMenu && isMobile" 
+        class="absolute top-14 right-4 z-[9999] mobile-menu"
+      >
+        <div class="bg-white rounded-xl shadow-xl w-48 overflow-hidden border border-gray-200">
+          <div class="p-1">
+            <button 
+              @click="handleSettingsClick"
+              class="w-full flex items-center px-4 py-3 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <SettingsIcon class="w-5 h-5 mr-3" />
+              Settings
+            </button>
+          </div>
+          
+          <div class="h-[1px] bg-gray-200"></div>
+          
+          <div class="p-1">
+            <button 
+              @click="handleSwitchAccounts"
+              class="w-full flex items-center px-4 py-3 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <UserPlusIcon class="w-5 h-5 mr-3" />
+              Switch accounts
+            </button>
+            <button 
+              @click="handleLogout"
+              class="w-full flex items-center px-4 py-3 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              <LogOutIcon class="w-5 h-5 mr-3" />
+              Log out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Profile Section -->
     <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
       <div class="relative -mt-16 sm:-mt-20 md:-mt-24">
@@ -77,17 +125,17 @@
                     {{ progressPercentage }}%
                   </div>
                 </div>
-  
-                <!-- Profile Info -->
+
+                <!-- Profile Info - Changed to use displayedProfile for firstName -->
                 <div class="text-center">
                   <h1 class="text-xl sm:text-2xl font-bold text-gray-900">
-                    {{ form.firstName }} {{ displayedProfile.lastName }}
+                    {{ displayedProfile.firstName }} {{ displayedProfile.lastName }}
                   </h1>
                   <p class="text-sm sm:text-base text-gray-500">{{ form.role || 'Role not set' }}</p>
                 </div>
               </div>
             </div>
-  
+
             <!-- Tabs -->
             <div class="border-b pb-1 sm:pb-2 border-gray-200 mb-2 sm:mb-6 overflow-x-auto">
               <nav class="flex space-x-2 justify-center sm:space-x-4 whitespace-nowrap">
@@ -106,7 +154,7 @@
                 </button>
               </nav>
             </div>
-  
+
             <!-- Tab Content with Loading States -->
             <div class="mt-4 sm:mt-6 w-full">
               <!-- Edit Profile Tab Content -->
@@ -369,7 +417,7 @@
                   </div>
                 </form>
               </div>
-  
+
               <!-- Pet Info Tab Content -->
               <div v-else-if="currentTab === 'pet-info'" class="relative">
                 <!-- Tab-specific loading spinner for pets tab -->
@@ -407,6 +455,13 @@
         </div>
       </div>
     </div>
+    
+    <!-- Overlay to close mobile menu when clicking outside - MOVED TO TOP LEVEL -->
+    <div 
+      v-if="showMobileMenu && isMobile" 
+      class="fixed inset-0 z-[9998]"
+      @click="showMobileMenu = false"
+    ></div>
     
     <!-- Success Modal -->
     <div v-if="showSuccessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -464,7 +519,11 @@ import {
   Phone as PhoneIcon, 
   MapPin as MapPinIcon,
   CheckCircle as CheckCircleIcon,
-  XCircle as XCircleIcon
+  XCircle as XCircleIcon,
+  MoreVertical as MoreVerticalIcon,
+  Settings as SettingsIcon,
+  LogOut as LogOutIcon,
+  UserPlus as UserPlusIcon
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
@@ -547,6 +606,11 @@ const showErrorModal = ref(false);
 const statusMessage = ref('');
 const errorMessage = ref('');
 
+// Add new state variables for mobile menu
+const isMobile = ref(window.innerWidth < 640);
+const showMobileMenu = ref(false);
+
+// Fixed the object syntax error
 const orientalMindoroPostalCodes = {
   'Baco': '5201',
   'Bansud': '5210',
@@ -570,12 +634,48 @@ const defaultPhotoURL = ref('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org
 
 const tempForm = ref({});
 
-const isMobile = ref(window.innerWidth < 640);
+// Watch for window resize to update mobile state
+const handleResize = () => {
+  isMobile.value = window.innerWidth < 640;
+
+  // Close mobile menu when transitioning from mobile to desktop
+  if (!isMobile.value) {
+    showMobileMenu.value = false;
+  }
+};
+
+// New methods for mobile menu
+const toggleMobileMenu = () => {
+  showMobileMenu.value = !showMobileMenu.value;
+};
+
+const handleSettingsClick = () => {
+  showMobileMenu.value = false;
+  router.push('/user/usersettings');
+};
+
+const handleSwitchAccounts = () => {
+  showMobileMenu.value = false;
+  // Implement account switching logic here
+  console.log('Switch accounts clicked');
+};
+
+const handleLogout = async () => {
+  showMobileMenu.value = false;
+  try {
+    await authStore.logoutUser();
+    router.push('/auth/login');
+  } catch (error) {
+    console.error('Logout failed:', error);
+    errorMessage.value = 'Failed to log out. Please try again.';
+    showErrorModal.value = true;
+  }
+};
 
 // New method to handle tab switching with loading states
 const switchTab = async (tabId) => {
   if (currentTab.value === tabId) return;
-  
+
   if (tabId === 'edit-profile') {
     tabLoading.value = true;
     try {
@@ -612,7 +712,7 @@ const switchTab = async (tabId) => {
     }
     return; // Return early since we already set currentTab
   }
-  
+
   // Set the current tab for other tabs
   currentTab.value = tabId;
 };
@@ -658,7 +758,8 @@ onMounted(async () => {
   showErrorModal.value = false;
   statusMessage.value = '';
   errorMessage.value = '';
-  
+  showMobileMenu.value = false;
+
   try {
     if (authStore.user && authStore.user.userId) {
       await fetchUserProfile();
@@ -692,10 +793,6 @@ onUnmounted(() => {
     }
   }
 });
-
-const handleResize = () => {
-  isMobile.value = window.innerWidth < 640;
-};
 
 watch(() => props.isSidebarOpen, async (newValue) => {
   if (newValue && authStore.user && authStore.user.userId) {
@@ -961,6 +1058,11 @@ const handleClickOutside = (event) => {
   if (isGenderOpen.value && !event.target.closest('.gender-dropdown')) {
     isGenderOpen.value = false;
   }
+
+  // Close mobile menu when clicking outside
+  if (showMobileMenu.value && !event.target.closest('.mobile-menu') && !event.target.closest('button[data-mobile-menu-trigger]')) {
+    showMobileMenu.value = false;
+  }
 };
 
 const handleDateInput = (event) => {
@@ -1124,6 +1226,9 @@ const handleKeyDown = (event) => {
     if (showErrorModal.value) {
       showErrorModal.value = false;
     }
+    if (showMobileMenu.value) {
+      showMobileMenu.value = false;
+    }
   }
 };
 
@@ -1171,5 +1276,11 @@ const getCharClass = (index) => {
 .gender-dropdown {
   position: relative;
   z-index: 30;
+}
+/* Add this to ensure the mobile menu appears above other elements */
+.mobile-menu {
+  position: absolute;
+  z-index: 9999;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
 }
 </style>

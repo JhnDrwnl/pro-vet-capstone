@@ -57,7 +57,8 @@ export const useOfficeStore = defineStore('office', {
           });
           
           console.log('Fetched office hours data:', officeHoursData);
-          this.officeHours = officeHoursData;
+          // Create a new array to ensure reactivity
+          this.officeHours = [...officeHoursData];
           return officeHoursData;
         } else {
           console.log('No office hours found');
@@ -118,8 +119,8 @@ export const useOfficeStore = defineStore('office', {
           ...data
         };
         
-        // Update local state
-        this.officeHours.push(newOfficeHours);
+        // Update local state with a new array to ensure reactivity
+        this.officeHours = [...this.officeHours, newOfficeHours];
         
         // Sort by day of week
         const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -166,13 +167,14 @@ export const useOfficeStore = defineStore('office', {
         const docRef = doc(db, 'officeHours', id);
         await updateDoc(docRef, data);
         
-        // Update local state
+        // Update local state with a new array to ensure reactivity
         const index = this.officeHours.findIndex(h => h.id === id);
         if (index !== -1) {
-          this.officeHours[index] = {
-            ...this.officeHours[index],
-            ...data
-          };
+          this.officeHours = [
+            ...this.officeHours.slice(0, index),
+            { ...this.officeHours[index], ...data },
+            ...this.officeHours.slice(index + 1)
+          ];
         }
         
         console.log('Office hours updated successfully:', id);
@@ -217,7 +219,7 @@ export const useOfficeStore = defineStore('office', {
         // Delete from officeHours collection
         await deleteDoc(docRef);
         
-        // Update local state
+        // Update local state with a new array to ensure reactivity
         this.officeHours = this.officeHours.filter(h => h.id !== id);
         
         console.log('Office hours archived successfully:', id);
@@ -250,7 +252,7 @@ export const useOfficeStore = defineStore('office', {
             ...docSnap.data()
           };
           
-          this.selectedOfficeHours = officeHoursData;
+          this.selectedOfficeHours = { ...officeHoursData };
           return officeHoursData;
         } else {
           console.log('No office hours found with ID:', id);
@@ -287,7 +289,8 @@ export const useOfficeStore = defineStore('office', {
           }));
           
           console.log('Fetched holidays data:', holidaysData);
-          this.holidays = holidaysData;
+          // Create a new array to ensure reactivity
+          this.holidays = [...holidaysData];
           return holidaysData;
         } else {
           console.log('No holidays found');
@@ -344,8 +347,8 @@ export const useOfficeStore = defineStore('office', {
           ...data
         };
         
-        // Update local state
-        this.holidays.push(newHoliday);
+        // Update local state with a new array to ensure reactivity
+        this.holidays = [...this.holidays, newHoliday];
         
         // Sort by date
         this.holidays.sort((a, b) => {
@@ -391,13 +394,14 @@ export const useOfficeStore = defineStore('office', {
         const docRef = doc(db, 'holidays', id);
         await updateDoc(docRef, data);
         
-        // Update local state
+        // Update local state with a new array to ensure reactivity
         const index = this.holidays.findIndex(h => h.id === id);
         if (index !== -1) {
-          this.holidays[index] = {
-            ...this.holidays[index],
-            ...data
-          };
+          this.holidays = [
+            ...this.holidays.slice(0, index),
+            { ...this.holidays[index], ...data },
+            ...this.holidays.slice(index + 1)
+          ];
         }
         
         // Sort by date
@@ -447,7 +451,7 @@ export const useOfficeStore = defineStore('office', {
         // Delete from holidays collection
         await deleteDoc(docRef);
         
-        // Update local state
+        // Update local state with a new array to ensure reactivity
         this.holidays = this.holidays.filter(h => h.id !== id);
         
         console.log('Holiday archived successfully:', id);
@@ -480,7 +484,7 @@ export const useOfficeStore = defineStore('office', {
             ...docSnap.data()
           };
           
-          this.selectedHoliday = holidayData;
+          this.selectedHoliday = { ...holidayData };
           return holidayData;
         } else {
           console.log('No holiday found with ID:', id);
@@ -521,7 +525,8 @@ export const useOfficeStore = defineStore('office', {
           });
           
           console.log('Fetched contacts data:', contactsData);
-          this.contacts = contactsData;
+          // Create a new array to ensure reactivity
+          this.contacts = [...contactsData];
           return contactsData;
         } else {
           console.log('No contacts found');
@@ -579,8 +584,8 @@ export const useOfficeStore = defineStore('office', {
           ...data
         };
         
-        // Update local state
-        this.contacts.push(newContact);
+        // Update local state with a new array to ensure reactivity
+        this.contacts = [...this.contacts, newContact];
         
         // Sort by type and label
         this.contacts.sort((a, b) => {
@@ -624,13 +629,14 @@ export const useOfficeStore = defineStore('office', {
         const docRef = doc(db, 'officeContacts', id);
         await updateDoc(docRef, data);
         
-        // Update local state
+        // Update local state with a new array to ensure reactivity
         const index = this.contacts.findIndex(c => c.id === id);
         if (index !== -1) {
-          this.contacts[index] = {
-            ...this.contacts[index],
-            ...data
-          };
+          this.contacts = [
+            ...this.contacts.slice(0, index),
+            { ...this.contacts[index], ...data },
+            ...this.contacts.slice(index + 1)
+          ];
         }
         
         // Sort by type and label
@@ -680,7 +686,7 @@ export const useOfficeStore = defineStore('office', {
         // Delete from officeContacts collection
         await deleteDoc(docRef);
         
-        // Update local state
+        // Update local state with a new array to ensure reactivity
         this.contacts = this.contacts.filter(c => c.id !== id);
         
         console.log('Contact archived successfully:', id);
@@ -713,7 +719,7 @@ export const useOfficeStore = defineStore('office', {
             ...docSnap.data()
           };
           
-          this.selectedContact = contactData;
+          this.selectedContact = { ...contactData };
           return contactData;
         } else {
           console.log('No contact found with ID:', id);
@@ -846,29 +852,6 @@ export const useOfficeStore = defineStore('office', {
     getOfficeHours: (state) => state.officeHours,
     getOpenDays: (state) => state.officeHours.filter(h => h.isOpen),
     getClosedDays: (state) => state.officeHours.filter(h => !h.isOpen),
-    
-    // Holidays getters
-    getHolidays: (state) => state.holidays,
-    getUpcomingHolidays: (state) => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      return state.holidays.filter(holiday => {
-        const holidayDate = new Date(holiday.date);
-        return holidayDate >= today;
-      }).sort((a, b) => new Date(a.date) - new Date(b.date));
-    },
-
-    // Contacts getters
-    getContacts: (state) => state.contacts,
-    getActiveContacts: (state) => state.contacts.filter(c => c.isActive),
-    getContactsByType: (state) => (type) => {
-      return state.contacts.filter(c => c.type === type);
-    },
-    
-    // Status getters
-    isLoading: (state) => state.loading,
-    getError: (state) => state.errorer(h => !h.isOpen),
     
     // Holidays getters
     getHolidays: (state) => state.holidays,

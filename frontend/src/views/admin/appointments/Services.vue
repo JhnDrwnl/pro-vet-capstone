@@ -59,6 +59,35 @@
               />
               <Search class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             </div>
+            <!-- Category Filter Dropdown (only for services tab) -->
+            <div v-if="activeTab === 'services'" class="relative">
+              <button 
+                class="p-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                @click="toggleCategoryFilter"
+              >
+                <FilterIcon class="w-5 h-5 text-gray-500" />
+              </button>
+              <!-- Filter Dropdown -->
+              <div v-if="showCategoryFilter" class="absolute top-full mt-2 right-0 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                <div class="px-4 py-2 text-sm font-medium text-gray-700">Filter by Category:</div>
+                <button 
+                  @click="toggleCategoryFilterOption('All Categories')"
+                  class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                  :class="{ 'text-blue-600': activeCategoryFilters.length === 0 }"
+                >
+                  All Categories
+                </button>
+                <button 
+                  v-for="category in categories" 
+                  :key="category.id"
+                  @click="toggleCategoryFilterOption(category.id)"
+                  class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                  :class="{ 'text-blue-600': activeCategoryFilters.includes(category.id) }"
+                >
+                  {{ category.name }}
+                </button>
+              </div>
+            </div>
           </div>
           <div>
             <div class="flex gap-2">
@@ -78,6 +107,27 @@
               </button>
             </div>
           </div>
+        </div>
+  
+        <!-- Active Filters Display (for services tab) -->
+        <div v-if="activeTab === 'services' && activeCategoryFilters.length > 0" class="mb-4 flex flex-wrap gap-2">
+          <div class="text-sm text-gray-500 py-1">Active filters:</div>
+          <div 
+            v-for="categoryId in activeCategoryFilters" 
+            :key="categoryId"
+            class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs"
+          >
+            <span>{{ getCategoryName(categoryId) }}</span>
+            <button @click="toggleCategoryFilterOption(categoryId)" class="text-blue-500 hover:text-blue-700">
+              <XIcon class="w-3 h-3" />
+            </button>
+          </div>
+          <button 
+            @click="clearCategoryFilters" 
+            class="text-xs text-gray-500 hover:text-gray-700 py-1 px-2"
+          >
+            Clear all
+          </button>
         </div>
   
         <!-- Table or Form -->
@@ -176,6 +226,9 @@
                       </div>
                     </td>
                     <td class="py-4 px-6">
+                      <div class="text-sm text-gray-900">{{ getCategoryName(service.categoryId) }}</div>
+                    </td>
+                    <td class="py-4 px-6">
                       <div class="text-sm text-gray-900">{{ service.classification }}</div>
                     </td>
                     <td class="py-4 px-6">
@@ -212,7 +265,7 @@
                   </tr>
                   <!-- Empty state for services -->
                   <tr v-if="paginatedItems.length === 0">
-                    <td colspan="8" class="py-8 text-center text-gray-500">
+                    <td colspan="9" class="py-8 text-center text-gray-500">
                       <div class="flex flex-col items-center justify-center">
                         <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                           <PackageIcon class="w-8 h-8 text-gray-300" />
@@ -545,7 +598,8 @@ import {
   XCircle as XCircleIcon,
   AlertTriangle as AlertTriangleIcon,
   List as ListIcon,
-  Package as PackageIcon
+  Package as PackageIcon,
+  Filter as FilterIcon
 } from 'lucide-vue-next';
 import { useServiceCategoryStore } from '@/stores/modules/ServiceCategoryStore';
 import { useArchivesStore } from '@/stores/modules/archivesStore';
@@ -567,6 +621,10 @@ const fileInput = ref(null);
 const serviceFileInput = ref(null);
 const isLoading = ref(false);
 const initialLoading = ref(true); // New ref for initial loading state
+
+// Category filter state
+const showCategoryFilter = ref(false);
+const activeCategoryFilters = ref([]);
 
 // Duration selectors for service time with more precision
 const durationHours = ref(0);
@@ -616,8 +674,10 @@ const categoryHeaders = [
   { key: 'updatedAt', label: 'Updated' }
 ];
 
+// Updated service headers to include the Category column
 const serviceHeaders = [
   { key: 'name', label: 'Service Name' },
+  { key: 'categoryId', label: 'Category' },
   { key: 'classification', label: 'Classification' },
   { key: 'transactionType', label: 'Transaction Type' },
   { key: 'processingTime', label: 'Service Duration' },
@@ -648,13 +708,34 @@ const getServiceCountForCategory = (categoryId) => {
   return services.value.filter(service => service.categoryId === categoryId).length;
 };
 
+// Function to get category name by ID
+const getCategoryName = (categoryId) => {
+  const category = categories.value.find(cat => cat.id === categoryId);
+  return category ? category.name : 'Unknown';
+};
+
 const items = computed(() => activeTab.value === 'categories' ? categories.value : services.value);
 
 const filteredItems = computed(() => {
-  return items.value.filter(item =>
-    item.name.toLowerCase().includes(search.value.toLowerCase()) ||
-    (item.description && item.description.toLowerCase().includes(search.value.toLowerCase()))
-  );
+  let filtered = items.value;
+  
+  // Apply search filter
+  if (search.value) {
+    const searchLower = search.value.toLowerCase();
+    filtered = filtered.filter(item => 
+      item.name.toLowerCase().includes(searchLower) ||
+      (item.description && item.description.toLowerCase().includes(searchLower))
+    );
+  }
+  
+  // Apply category filters for services
+  if (activeTab.value === 'services' && activeCategoryFilters.value.length > 0) {
+    filtered = filtered.filter(service => 
+      activeCategoryFilters.value.includes(service.categoryId)
+    );
+  }
+  
+  return filtered;
 });
 
 const sortedItems = computed(() => {
@@ -664,6 +745,15 @@ const sortedItems = computed(() => {
       const countA = getServiceCountForCategory(a.id);
       const countB = getServiceCountForCategory(b.id);
       return sortOrder.value === 'asc' ? countA - countB : countB - countA;
+    }
+    
+    // Special handling for categoryId when sorting services
+    if (activeTab.value === 'services' && sortKey.value === 'categoryId') {
+      const catNameA = getCategoryName(a.categoryId);
+      const catNameB = getCategoryName(b.categoryId);
+      return sortOrder.value === 'asc' 
+        ? catNameA.localeCompare(catNameB) 
+        : catNameB.localeCompare(catNameA);
     }
     
     let aValue = a[sortKey.value];
@@ -715,6 +805,39 @@ const formatTimestamp = (timestamp) => {
   return 'N/A';
 };
 
+// Toggle category filter dropdown
+const toggleCategoryFilter = () => {
+  showCategoryFilter.value = !showCategoryFilter.value;
+};
+
+// Toggle category filter option
+const toggleCategoryFilterOption = (categoryId) => {
+  if (categoryId === 'All Categories') {
+    activeCategoryFilters.value = [];
+    showCategoryFilter.value = false;
+    return;
+  }
+  
+  const index = activeCategoryFilters.value.indexOf(categoryId);
+  if (index === -1) {
+    activeCategoryFilters.value.push(categoryId);
+  } else {
+    activeCategoryFilters.value.splice(index, 1);
+  }
+  
+  // Reset to page 1 when filters change
+  currentPage.value = 1;
+  
+  // Hide the filter dropdown after selection
+  showCategoryFilter.value = false;
+};
+
+// Clear all category filters
+const clearCategoryFilters = () => {
+  activeCategoryFilters.value = [];
+  currentPage.value = 1;
+};
+
 // Switch tab with loading state
 const switchTab = async (tab) => {
   if (activeTab.value === tab) return;
@@ -725,6 +848,10 @@ const switchTab = async (tab) => {
   // Close any open forms when switching tabs
   showCategoryForm.value = false;
   showServiceForm.value = false;
+  
+  // Clear filters when switching tabs
+  activeCategoryFilters.value = [];
+  showCategoryFilter.value = false;
   
   try {
     if (tab === 'categories') {
@@ -1080,7 +1207,7 @@ const exportToCSV = () => {
   const items = activeTab.value === 'categories' ? categories.value : services.value;
   const headers = activeTab.value === 'categories' 
     ? ['Category Name', 'Description', 'Services Count', 'Time Added', 'Time Updated']
-    : ['Service Name', 'Classification', 'Transaction Type', 'Service Duration', 'Fees', 'Description', 'Requirements', 'Time Added', 'Time Updated'];
+    : ['Service Name', 'Category', 'Classification', 'Transaction Type', 'Service Duration', 'Fees', 'Description', 'Requirements', 'Time Added', 'Time Updated'];
   
   const csvContent = [
     headers.join(','),
@@ -1096,6 +1223,7 @@ const exportToCSV = () => {
       } else {
         return [
           item.name,
+          getCategoryName(item.categoryId),
           item.classification,
           item.transactionType,
           item.processingTime,

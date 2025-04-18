@@ -3,7 +3,7 @@
   <div class="flex flex-col">
     <!-- Mobile Header - Only visible on home/dashboard page AND when panels are closed -->
     <header 
-      v-if="isMobileView && isHomePage && !isSearchOpen && !isNotificationsOpen" 
+      v-if="isMobileView && isHomePage && !isHistoryOpen && !isNotificationsOpen" 
       class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-2 flex justify-between items-center z-40"
     >
       <h1 class="text-lg font-semibold">Provincial Veterinary</h1>
@@ -26,7 +26,7 @@
         isMobileView 
           ? 'bottom-1 left-0 right-0 mobile-nav'
           : 'left-4 top-4 h-[calc(100vh-2rem)] w-16 bg-white border border-gray-100 rounded-2xl shadow-sm flex-col justify-between',
-        { 'md:w-64': !isSearchOpen && !isNotificationsOpen && isOpen && !isMobileView }
+        { 'md:w-64': !isHistoryOpen && !isNotificationsOpen && isOpen && !isMobileView }
       ]"
     >
       <!-- Desktop Navigation -->
@@ -38,7 +38,7 @@
             @click.prevent="handleNavClick(item)"
             class="flex items-center px-4 py-3 transition-colors relative group cursor-pointer"
             :class="[
-              { 'justify-center': !isOpen || isSearchOpen || isNotificationsOpen },
+              { 'justify-center': !isOpen || isHistoryOpen || isNotificationsOpen },
               item.active ? 'text-blue-600 bg-blue-50 rounded-lg' : 'text-gray-600 hover:bg-gray-50 rounded-lg'
             ]"
           >
@@ -50,7 +50,7 @@
               />
             </div>
             <span 
-              v-if="isOpen && !isSearchOpen && !isNotificationsOpen" 
+              v-if="isOpen && !isHistoryOpen && !isNotificationsOpen" 
               class="text-sm transition-opacity duration-300 ml-4"
               :class="item.active ? 'text-blue-600' : 'text-gray-700'"
             >
@@ -60,7 +60,7 @@
             <span 
               v-if="item.badge && item.badge > 0" 
               class="absolute bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center transition-all duration-300"
-              :class="!isOpen || isSearchOpen || isNotificationsOpen ? 'right-1 -top-1' : 'right-4'"
+              :class="!isOpen || isHistoryOpen || isNotificationsOpen ? 'right-1 -top-1' : 'right-4'"
             >
               {{ item.badge }}
             </span>
@@ -73,7 +73,7 @@
             @click="toggleMoreMenu"
             class="w-full flex items-center px-4 py-3 transition-colors"
             :class="[
-              { 'justify-center': !isOpen || isSearchOpen || isNotificationsOpen },
+              { 'justify-center': !isOpen || isHistoryOpen || isNotificationsOpen },
               isMoreMenuOpen ? 'text-blue-600 bg-blue-50 rounded-lg' : 'text-gray-600 hover:bg-gray-50 rounded-lg'
             ]"
           >
@@ -84,7 +84,7 @@
               />
             </div>
             <span 
-              v-if="isOpen && !isSearchOpen && !isNotificationsOpen" 
+              v-if="isOpen && !isHistoryOpen && !isNotificationsOpen" 
               class="text-sm transition-opacity duration-300 ml-4"
               :class="isMoreMenuOpen ? 'text-blue-600' : 'text-gray-700'"
             >
@@ -165,11 +165,11 @@
       </div>
     </nav>
     
-    <!-- Search Panel -->
-    <SearchPanel 
+    <!-- History Panel -->
+    <HistoryPanel 
       :isMobileView="isMobileView"
-      :isVisible="isSearchOpen"
-      @close="closeSearch"
+      :isVisible="isHistoryOpen"
+      @close="closeHistory"
     />
 
     <!-- Notification Panel -->
@@ -189,7 +189,7 @@ import { useProfileStore } from '@/stores/modules/profileStore';
 import { useNotificationsStore } from '@/stores/modules/notifications';
 import { 
   HomeIcon,
-  SearchIcon,
+  History as HistoryIcon,
   Video as VideoCallIcon,
   PlusCircle,
   BellIcon,
@@ -200,7 +200,7 @@ import {
   UserPlus as UserPlusIcon,
   MessageCircle as MessageCircleIcon
 } from 'lucide-vue-next';
-import SearchPanel from '../common/SearchPanel.vue';
+import HistoryPanel from '../common/HistoryPanel.vue';
 import NotificationPanel from '../common/NotificationPanel.vue';
 
 const props = defineProps({
@@ -210,7 +210,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['toggle', 'toggleSearch', 'toggleNotifications']);
+const emit = defineEmits(['toggle', 'toggleHistory', 'toggleNotifications']);
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -218,16 +218,11 @@ const profileStore = useProfileStore();
 const notificationsStore = useNotificationsStore();
 
 const isMoreMenuOpen = ref(false);
-const isSearchOpen = ref(false);
+const isHistoryOpen = ref(false);
 const isNotificationsOpen = ref(false);
-const searchQuery = ref('');
 const isSettingsActive = ref(false); 
-const searchResults = ref([]);
-const isSearching = ref(false);
-const searchStatus = ref('');
 const isMobileView = ref(window.innerWidth < 768);
 const unreadNotifications = computed(() => notificationsStore.getUnreadCount || 0);
-let searchTimeout = null;
 let resizeTimeout = null;
 
 // Add computed property to check if current route is home/dashboard
@@ -322,9 +317,9 @@ const handleResize = () => {
   else if (!wasMobile && isMobileView.value) {
     console.log('Transitioning from desktop to mobile view');
     // Close panels in mobile view
-    isSearchOpen.value = false;
+    isHistoryOpen.value = false;
     isNotificationsOpen.value = false;
-    emit('toggleSearch', false);
+    emit('toggleHistory', false);
     emit('toggleNotifications', false);
   }
 };
@@ -342,9 +337,9 @@ watch(() => authStore.user, async (newUser) => {
 
 watch(() => props.isOpen, (newIsOpen) => {
   if (!newIsOpen) {
-    isSearchOpen.value = false;
+    isHistoryOpen.value = false;
     isNotificationsOpen.value = false;
-    emit('toggleSearch', false);
+    emit('toggleHistory', false);
     emit('toggleNotifications', false);
   }
 });
@@ -354,8 +349,8 @@ watch(() => router.currentRoute.value.path, (newPath) => {
   if (newPath === '/user/notifications') {
     isNotificationsOpen.value = true;
     emit('toggleNotifications', true);
-    isSearchOpen.value = false;
-    emit('toggleSearch', false);
+    isHistoryOpen.value = false;
+    emit('toggleHistory', false);
   } else if (isNotificationsOpen.value && !newPath.includes('/user/notifications')) {
     isNotificationsOpen.value = false;
     emit('toggleNotifications', false);
@@ -375,12 +370,12 @@ const resetActiveStates = () => {
 const toggleNotifications = () => {
   console.log('Toggling notifications');
   
-  // If opening notifications, close search first
-  if (!isNotificationsOpen.value && isSearchOpen.value) {
-    isSearchOpen.value = false;
-    emit('toggleSearch', false);
+  // If opening notifications, close history first
+  if (!isNotificationsOpen.value && isHistoryOpen.value) {
+    isHistoryOpen.value = false;
+    emit('toggleHistory', false);
     
-    // Small delay before opening notifications to allow search to close
+    // Small delay before opening notifications to allow history to close
     setTimeout(() => {
       isNotificationsOpen.value = true;
       emit('toggleNotifications', true);
@@ -390,8 +385,8 @@ const toggleNotifications = () => {
     emit('toggleNotifications', isNotificationsOpen.value);
     
     if (isNotificationsOpen.value) {
-      isSearchOpen.value = false;
-      emit('toggleSearch', false);
+      isHistoryOpen.value = false;
+      emit('toggleHistory', false);
     }
   }
 };
@@ -401,33 +396,33 @@ const handleNavClick = (item) => {
   console.log('Nav item clicked:', item.name);
   resetActiveStates();
   
-  if (item.name === 'Search') {
-    // If opening search, close notifications first
-    if (!isSearchOpen.value && isNotificationsOpen.value) {
+  if (item.name === 'History') {
+    // If opening history, close notifications first
+    if (!isHistoryOpen.value && isNotificationsOpen.value) {
       isNotificationsOpen.value = false;
       emit('toggleNotifications', false);
       
-      // Small delay before opening search to allow notifications to close
+      // Small delay before opening history to allow notifications to close
       setTimeout(() => {
-        isSearchOpen.value = true;
-        emit('toggleSearch', true);
+        isHistoryOpen.value = true;
+        emit('toggleHistory', true);
       }, 50);
     } else {
-      isSearchOpen.value = !isSearchOpen.value;
-      emit('toggleSearch', isSearchOpen.value);
+      isHistoryOpen.value = !isHistoryOpen.value;
+      emit('toggleHistory', isHistoryOpen.value);
       
-      if (isSearchOpen.value) {
+      if (isHistoryOpen.value) {
         isNotificationsOpen.value = false;
         emit('toggleNotifications', false);
       }
     }
   } else if (item.name === 'Notifications') {
-    // If opening notifications, close search first
-    if (!isNotificationsOpen.value && isSearchOpen.value) {
-      isSearchOpen.value = false;
-      emit('toggleSearch', false);
+    // If opening notifications, close history first
+    if (!isNotificationsOpen.value && isHistoryOpen.value) {
+      isHistoryOpen.value = false;
+      emit('toggleHistory', false);
       
-      // Small delay before opening notifications to allow search to close
+      // Small delay before opening notifications to allow history to close
       setTimeout(() => {
         isNotificationsOpen.value = true;
         emit('toggleNotifications', true);
@@ -437,14 +432,14 @@ const handleNavClick = (item) => {
       emit('toggleNotifications', isNotificationsOpen.value);
       
       if (isNotificationsOpen.value) {
-        isSearchOpen.value = false;
-        emit('toggleSearch', false);
+        isHistoryOpen.value = false;
+        emit('toggleHistory', false);
       }
     }
   } else {
     // For all other navigation items, always close both panels
-    isSearchOpen.value = false;
-    emit('toggleSearch', false);
+    isHistoryOpen.value = false;
+    emit('toggleHistory', false);
     isNotificationsOpen.value = false;
     emit('toggleNotifications', false);
     
@@ -472,9 +467,9 @@ const closeMoreMenu = () => {
   resetActiveStates();
 };
 
-const closeSearch = () => {
-  isSearchOpen.value = false;
-  emit('toggleSearch', false);
+const closeHistory = () => {
+  isHistoryOpen.value = false;
+  emit('toggleHistory', false);
 };
 
 const closeNotifications = () => {
@@ -508,16 +503,10 @@ const handleSettingsClick = () => {
   closeMoreMenu();
 };
 
-// Keep the function but it won't be used in the UI anymore
-const toggleChatbot = () => {
-  // Implement chatbot toggle logic here
-  console.log('Toggling chatbot');
-};
-
 // Use markRaw to prevent Vue from making components reactive
 const createNavItems = () => [
   { name: 'Home', icon: markRaw(HomeIcon), path: '/user/dashboard', active: false },
-  { name: 'Search', icon: markRaw(SearchIcon), path: '/user/search', active: false },
+  { name: 'History', icon: markRaw(HistoryIcon), path: '/user/history', active: false },
   { name: 'Telehealth', icon: markRaw(VideoCallIcon), path: '/user/usertelehealth', active: false }, 
   { name: 'Create', icon: markRaw(PlusCircle), path: '/user/userappointments', active: false },
   { name: 'Notifications', icon: markRaw(BellIcon), path: '/user/notifications', badge: 0, active: false },
@@ -541,7 +530,7 @@ const mainNavItems = ref(createNavItems());
 
 const mobileNavItems = computed(() => [
   mainNavItems.value[0], // Home
-  mainNavItems.value[1], // Search
+  mainNavItems.value[1], // History
   mainNavItems.value[3], // Create (center button)
   mainNavItems.value[2], // Telehealth
   mainNavItems.value[5], // Profile
