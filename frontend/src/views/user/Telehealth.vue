@@ -2,70 +2,83 @@
   <div class="telehealth-container">
     <!-- Session List View -->
     <div v-if="!activeSession" class="sessions-list">
-      <h1 class="text-2xl font-bold mb-4">My Telehealth Sessions</h1>
+      <div class="flex items-center mb-4">
+        <h1 class="text-2xl font-bold">
+          {{ showingApprovedOnly ? 'Approved Telehealth Appointments' : 'My Telehealth Appointments' }}
+        </h1>
+      </div>
       
       <div class="filter-controls mb-4">
         <select v-model="statusFilter" class="form-select mr-2">
-          <option value="all">All Sessions</option>
+          <option value="all">All Appointments</option>
+          <option value="approved">Approved</option>
           <option value="scheduled">Scheduled</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <button @click="refreshSessions" class="btn btn-primary">
+        <button @click="refreshSessions" class="btn btn-primary mr-2">
           <RefreshCwIcon class="w-4 h-4 mr-2" />
           Refresh
+        </button>
+        <button @click="loadApprovedSessions" class="btn btn-success">
+          <CheckIcon class="w-4 h-4 mr-2" />
+          Show Approved Only
         </button>
       </div>
       
       <div v-if="loading" class="text-center py-4">
         <div class="spinner"></div>
-        <p>Loading sessions...</p>
+        <p>Loading appointments...</p>
       </div>
       
       <div v-else-if="filteredSessions.length === 0" class="empty-state">
-        <p>No telehealth sessions found.</p>
+        <p>No telehealth appointments found.</p>
+        <button @click="refreshSessions" class="btn btn-primary mt-4">
+          <RefreshCwIcon class="w-4 h-4 mr-2" />
+          Refresh Appointments
+        </button>
       </div>
       
       <div v-else class="sessions-grid">
         <div 
-          v-for="session in filteredSessions" 
-          :key="session.id" 
+          v-for="appointment in filteredSessions" 
+          :key="appointment.id" 
           class="session-card"
-          @click="selectSession(session)"
+          @click="selectSession(appointment)"
         >
           <div class="card-header">
-            <span :class="['status-badge', `status-${session.status}`]">
-              {{ session.status }}
+            <span :class="['status-badge', `status-${appointment.status}`]">
+              {{ appointment.status }}
             </span>
-            <h3 class="session-title">{{ session.title }}</h3>
+            <h3 class="session-title">{{ appointment.title || 'Telehealth Appointment' }}</h3>
           </div>
           
           <div class="card-body">
-            <p><strong>Veterinarian:</strong> {{ session.doctorName }}</p>
-            <p><strong>Pet:</strong> {{ session.petName }} ({{ session.petType }})</p>
-            <p><strong>Scheduled:</strong> {{ formatDate(session.scheduledTime) }}</p>
+            <p><strong>Doctor:</strong> {{ appointment.doctorName || 'Veterinarian' }}</p>
+            <p><strong>Pet:</strong> {{ appointment.petName || 'Your Pet' }} ({{ appointment.petType || 'Pet' }})</p>
+            <p><strong>Scheduled:</strong> {{ formatDate(appointment.scheduledTime || appointment.date) }}</p>
           </div>
           
           <div class="card-footer">
             <button 
-              v-if="session.status === 'scheduled' && isSessionJoinable(session)" 
+              v-if="(appointment.status === 'scheduled' || appointment.status === 'approved') && isSessionJoinable(appointment)" 
               class="btn btn-success"
-              @click.stop="joinSession(session)"
+              @click.stop="joinSession(appointment)"
             >
               <PhoneIcon class="w-4 h-4 mr-2" />
               Join Call
             </button>
             <button 
-              v-else-if="session.status === 'scheduled'" 
+              v-else-if="appointment.status === 'scheduled' || appointment.status === 'approved'" 
               class="btn btn-secondary" 
               disabled
             >
               Not Yet Available
             </button>
             <button 
-              v-if="session.status === 'scheduled'" 
+              v-if="appointment.status === 'scheduled' || appointment.status === 'approved'" 
               class="btn btn-danger ml-2"
-              @click.stop="cancelSession(session)"
+              @click.stop="cancelSession(appointment)"
             >
               Cancel
             </button>
@@ -77,10 +90,10 @@
     <!-- Active Session View -->
     <div v-else class="active-session">
       <div class="session-header">
-        <h2>{{ activeSession.title }}</h2>
-        <div class="vet-info">
-          <span><strong>Veterinarian:</strong> {{ activeSession.doctorName }}</span>
-          <span><strong>Pet:</strong> {{ activeSession.petName }} ({{ activeSession.petType }})</span>
+        <h2>{{ activeSession.title || 'Telehealth Appointment' }}</h2>
+        <div class="patient-info">
+          <span><strong>Doctor:</strong> {{ activeSession.doctorName || 'Veterinarian' }}</span>
+          <span><strong>Pet:</strong> {{ activeSession.petName || 'Your Pet' }} ({{ activeSession.petType || 'Pet' }})</span>
         </div>
         <div class="call-status" v-if="callStatus">
           <span :class="['status-indicator', callStatus === 'connected' ? 'connected' : 'connecting']"></span>
@@ -126,12 +139,10 @@
       </div>
       
       <div class="session-tools">
-        <div class="pet-info-section">
-          <h3>Pet Information</h3>
-          <div class="pet-details">
-            <p><strong>Name:</strong> {{ activeSession.petName }}</p>
-            <p><strong>Type:</strong> {{ activeSession.petType }}</p>
-            <p><strong>Reason for Visit:</strong> {{ activeSession.title }}</p>
+        <div class="notes-section">
+          <h3>Appointment Notes</h3>
+          <div class="notes-content">
+            {{ activeSession.notes || 'No notes available for this appointment.' }}
           </div>
         </div>
         
@@ -167,39 +178,59 @@
       </div>
     </div>
     
-    <!-- Incoming Call Notification -->
-    <div v-if="incomingCall" class="incoming-call-notification">
-      <div class="notification-content">
-        <h3>Incoming Call</h3>
-        <p>{{ incomingCall.callerName }} is calling you</p>
-        <p class="session-title">{{ incomingCall.sessionTitle }}</p>
-        <div class="notification-buttons">
-          <button @click="acceptIncomingCall" class="btn btn-success">
-            <PhoneIcon class="w-4 h-4 mr-2" />
-            Accept
-          </button>
-          <button @click="declineIncomingCall" class="btn btn-danger">
-            <PhoneOffIcon class="w-4 h-4 mr-2" />
-            Decline
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Network Status Alert -->
-    <div v-if="!isOnline" class="network-status-alert">
+    <!-- Network Status Banner -->
+    <div v-if="!isOnline" class="network-status-banner">
       <AlertTriangleIcon class="w-5 h-5 mr-2" />
       You are currently offline. Some features may not work properly.
+    </div>
+    
+    <!-- Incoming Call Modal -->
+    <div v-if="incomingCall" class="incoming-call-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Incoming Call</h3>
+        </div>
+        <div class="modal-body">
+          <div class="incoming-call-info">
+            <PhoneIcon class="w-16 h-16 text-green-500 mb-4 animate-pulse" />
+            <h4 class="text-lg font-semibold mb-2">{{ incomingCall.callerName }} is calling</h4>
+            <p>{{ incomingCall.sessionTitle }}</p>
+            
+            <div class="modal-buttons mt-6">
+              <button @click="acceptIncomingCall" class="btn btn-success">
+                <PhoneIcon class="w-4 h-4 mr-2" />
+                Accept
+              </button>
+              <button @click="declineIncomingCall" class="btn btn-danger">
+                <PhoneOffIcon class="w-4 h-4 mr-2" />
+                Decline
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
-import { getFirestore, collection, query, where, getDocs, doc, getDoc, updateDoc, onSnapshot, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { 
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue"
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+  updateDoc,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+  orderBy,
+} from "firebase/firestore"
+import { getAuth } from "firebase/auth"
+import {
   RefreshCwIcon,
   PhoneIcon,
   PhoneOffIcon,
@@ -210,890 +241,701 @@ import {
   SendIcon,
   UserIcon,
   MonitorIcon,
-  AlertTriangleIcon
-} from 'lucide-vue-next';
-
-// Create a WebRTC service class
-class WebRTCService {
-  constructor(options) {
-    // Initialize all required properties to avoid TypeError
-    this.localVideoRef = options.localVideoRef || null;
-    this.remoteVideoRef = options.remoteVideoRef || null;
-    this.sessionId = options.sessionId || null;
-    this.userId = options.userId || null;
-    this.userType = options.userType || 'patient';
-    this.onRemoteStreamActive = options.onRemoteStreamActive || (() => {});
-    this.onRemoteStreamInactive = options.onRemoteStreamInactive || (() => {});
-    this.onIncomingCall = options.onIncomingCall || (() => {});
-    this.existingStream = options.existingStream || null;
-    this.localStream = null;
-    this.remoteStream = null;
-    this.peerConnection = null;
-    this.screenSharingStream = null;
-    this.isInitialized = false;
-    this.connectionTimeout = null;
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
-  }
-
-  async initialize() {
-    console.log('Initializing WebRTC service for patient');
-    
-    try {
-      // Set up local stream
-      if (this.existingStream) {
-        this.localStream = this.existingStream;
-      } else {
-        try {
-          this.localStream = await navigator.mediaDevices.getUserMedia({ 
-            video: true, 
-            audio: true 
-          });
-        } catch (error) {
-          console.error('Error getting user media:', error);
-          throw error;
-        }
-      }
-
-      // Attach local stream to video element
-      if (this.localVideoRef && this.localStream) {
-        this.localVideoRef.srcObject = this.localStream;
-        try {
-          await this.localVideoRef.play();
-        } catch (e) {
-          console.warn('Auto-play prevented for local video:', e);
-          // Add a play button or other UI to handle this case
-        }
-      }
-
-      // In a real implementation, we would set up WebRTC peer connections here
-      // For now, we'll simulate a remote stream after a delay
-      setTimeout(() => {
-        this.simulateRemoteStream();
-      }, 2000);
-      
-      this.isInitialized = true;
-      return true;
-    } catch (error) {
-      console.error('Error in WebRTC initialization:', error);
-      this.isInitialized = false;
-      return false;
-    }
-  }
-
-  async simulateRemoteStream() {
-    try {
-      // Create a simulated remote stream (in a real app, this would come from the peer)
-      const simulatedStream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
-      
-      this.remoteStream = simulatedStream;
-      
-      // Store the remote stream but don't automatically display it
-      // The stream will only be attached to the video element when the other party joins
-      console.log('Remote stream is ready but waiting for vet to join');
-      
-      // Set a timeout to check connection status
-      this.connectionTimeout = setTimeout(() => {
-        this.checkConnectionStatus();
-      }, 10000);
-      
-    } catch (error) {
-      console.error('Error simulating remote stream:', error);
-      this.onRemoteStreamInactive();
-      this.handleReconnect();
-    }
-  }
-
-  checkConnectionStatus() {
-    // In a real implementation, this would check the WebRTC connection state
-    // For now, we'll just check if we have a remote stream
-    if (!this.remoteStream) {
-      console.warn('No remote stream after timeout, attempting to reconnect');
-      this.handleReconnect();
-    }
-  }
-
-  handleReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-      
-      // Try to reconnect after a delay
-      setTimeout(() => {
-        this.simulateRemoteStream();
-      }, 2000 * this.reconnectAttempts); // Increasing backoff
-    } else {
-      console.error('Max reconnect attempts reached');
-      // Notify the application that we couldn't establish a connection
-      this.onRemoteStreamInactive();
-    }
-  }
-
-  async displayRemoteStream() {
-    if (this.remoteVideoRef && this.remoteStream) {
-      try {
-        this.remoteVideoRef.srcObject = this.remoteStream;
-        await this.remoteVideoRef.play();
-        // Notify that remote stream is active
-        this.onRemoteStreamActive();
-        
-        // Clear any pending connection timeout
-        if (this.connectionTimeout) {
-          clearTimeout(this.connectionTimeout);
-          this.connectionTimeout = null;
-        }
-        
-        return true;
-      } catch (e) {
-        console.warn('Auto-play prevented for remote video:', e);
-        return false;
-      }
-    }
-    return false;
-  }
-
-  toggleAudio(mute) {
-    if (this.localStream) {
-      const audioTracks = this.localStream.getAudioTracks();
-      audioTracks.forEach(track => {
-        track.enabled = !mute;
-      });
-      return true;
-    }
-    return false;
-  }
-
-  toggleVideo(turnOff) {
-    if (this.localStream) {
-      const videoTracks = this.localStream.getVideoTracks();
-      videoTracks.forEach(track => {
-        track.enabled = !turnOff;
-      });
-      return true;
-    }
-    return false;
-  }
-
-  async startScreenSharing() {
-    try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-        video: true 
-      });
-      
-      // Replace video track with screen sharing track
-      if (this.localStream && this.localVideoRef) {
-        const videoTrack = screenStream.getVideoTracks()[0];
-        const sender = this.peerConnection?.getSenders().find(s => 
-          s.track?.kind === 'video'
-        );
-        
-        if (sender) {
-          sender.replaceTrack(videoTrack);
-        }
-        
-        // Update local video display
-        const newStream = new MediaStream([
-          videoTrack,
-          ...this.localStream.getAudioTracks()
-        ]);
-        
-        this.localVideoRef.srcObject = newStream;
-        this.screenSharingStream = screenStream;
-        
-        // Add event listener for when screen sharing stops
-        videoTrack.addEventListener('ended', () => {
-          this.stopScreenSharing();
-        });
-        
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error starting screen sharing:', error);
-      return false;
-    }
-  }
-
-  async stopScreenSharing() {
-    if (this.screenSharingStream) {
-      this.screenSharingStream.getTracks().forEach(track => track.stop());
-      
-      // Restore camera video
-      if (this.localStream && this.localVideoRef) {
-        const videoTrack = this.localStream.getVideoTracks()[0];
-        const sender = this.peerConnection?.getSenders().find(s => 
-          s.track?.kind === 'video'
-        );
-        
-        if (sender && videoTrack) {
-          sender.replaceTrack(videoTrack);
-        }
-        
-        this.localVideoRef.srcObject = this.localStream;
-      }
-      
-      this.screenSharingStream = null;
-      return true;
-    }
-    return false;
-  }
-
-  async disconnect() {
-    // Clear any pending timeouts
-    if (this.connectionTimeout) {
-      clearTimeout(this.connectionTimeout);
-      this.connectionTimeout = null;
-    }
-    
-    // Stop all tracks
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
-    }
-    
-    if (this.remoteStream) {
-      this.remoteStream.getTracks().forEach(track => track.stop());
-    }
-    
-    if (this.screenSharingStream) {
-      this.screenSharingStream.getTracks().forEach(track => track.stop());
-    }
-    
-    // Close peer connection
-    if (this.peerConnection) {
-      this.peerConnection.close();
-    }
-    
-    // Clear video elements
-    if (this.localVideoRef) {
-      this.localVideoRef.srcObject = null;
-    }
-    
-    if (this.remoteVideoRef) {
-      this.remoteVideoRef.srcObject = null;
-    }
-    
-    this.onRemoteStreamInactive();
-    this.isInitialized = false;
-    this.reconnectAttempts = 0;
-  }
-
-  declineCall(sessionId) {
-    // In a real implementation, this would notify the caller that the call was declined
-    console.log(`Declining call for session ${sessionId}`);
-    return Promise.resolve();
-  }
-}
+  AlertTriangleIcon,
+  CheckIcon,
+} from "lucide-vue-next"
+import TelehealthService from "@/services/TelehealthService"
+import WebRTCService from "@/services/WebRTCService"
+import { db } from "@/firebase-config" // Import db directly
 
 // Firebase setup
-const db = getFirestore();
-const auth = getAuth();
-const router = useRouter();
+const auth = getAuth()
 
 // State variables
-const loading = ref(true);
-const sessions = ref([]);
-const statusFilter = ref('all');
-const activeSession = ref(null);
-const chatMessages = ref([]);
-const newMessage = ref('');
-const chatMessagesRef = ref(null);
-const incomingCall = ref(null);
+const loading = ref(true)
+const sessions = ref([])
+const statusFilter = ref("all")
+const activeSession = ref(null)
+const chatMessages = ref([])
+const newMessage = ref("")
+const chatMessagesRef = ref(null)
+const incomingCall = ref(null)
+const showingApprovedOnly = ref(false)
 
 // WebRTC state
-const localVideoRef = ref(null);
-const remoteVideoRef = ref(null);
-const isMuted = ref(false);
-const isVideoOff = ref(false);
-const isScreenSharing = ref(false);
-const remoteStreamActive = ref(false);
-const callStatus = ref('');
+const localVideoRef = ref(null)
+const remoteVideoRef = ref(null)
+const isMuted = ref(false)
+const isVideoOff = ref(false)
+const isScreenSharing = ref(false)
+const remoteStreamActive = ref(false)
+const callStatus = ref("")
 
 // Network status monitoring
-const isOnline = ref(navigator.onLine);
-let networkStatusInterval = null;
+const isOnline = ref(navigator.onLine)
+let networkStatusInterval = null
 
 // WebRTC service instance
-let webRTCService = null;
-let unsubscribeMessages = null;
-let unsubscribeSession = null;
-let localStream = null;
+let webRTCService = null
+let unsubscribeMessages = null
+let unsubscribeSession = null
+let localStream = null
 
 // Remote stream check interval
-let remoteStreamCheckInterval = null;
+let remoteStreamCheckInterval = null
 
 // Computed properties
 const filteredSessions = computed(() => {
-  if (statusFilter.value === 'all') {
-    return sessions.value;
+  if (statusFilter.value === "all") {
+    return sessions.value
   }
-  return sessions.value.filter(session => session.status === statusFilter.value);
-});
+  return sessions.value.filter((session) => session.status === statusFilter.value)
+})
 
 // Network status monitoring
 const setupNetworkMonitoring = () => {
   // Listen for online/offline events
-  window.addEventListener('online', handleOnline);
-  window.addEventListener('offline', handleOffline);
-  
+  window.addEventListener("online", handleOnline)
+  window.addEventListener("offline", handleOffline)
+
   // Also check periodically
   networkStatusInterval = setInterval(() => {
-    const currentStatus = navigator.onLine;
+    const currentStatus = navigator.onLine
     if (isOnline.value !== currentStatus) {
-      isOnline.value = currentStatus;
+      isOnline.value = currentStatus
       if (currentStatus) {
-        handleOnline();
+        handleOnline()
       } else {
-        handleOffline();
+        handleOffline()
       }
     }
-  }, 5000);
-};
+  }, 5000)
+}
 
 const handleOnline = () => {
-  console.log('Network connection restored');
-  isOnline.value = true;
-  
+  console.log("Network connection restored")
+  isOnline.value = true
+
   // Refresh data if we're in a session
   if (activeSession.value) {
-    refreshSessionData(activeSession.value.id);
+    refreshSessionData(activeSession.value.id)
   }
-};
+}
 
 const handleOffline = () => {
-  console.log('Network connection lost');
-  isOnline.value = false;
-  // No need to show notification as we have a persistent banner
-};
+  console.log("Network connection lost")
+  isOnline.value = false
+}
 
 const refreshSessionData = async (sessionId) => {
   try {
     // Re-subscribe to session updates
     if (unsubscribeSession) {
-      unsubscribeSession();
+      unsubscribeSession()
     }
-    
+
+    // Verify db is available
+    if (!db) {
+      console.error("Firestore db is not initialized")
+      return
+    }
+
     unsubscribeSession = onSnapshot(
-      doc(db, 'telehealth_sessions', sessionId),
+      doc(db, "appointments", sessionId),
       (docSnapshot) => {
         if (docSnapshot.exists()) {
+          const data = docSnapshot.data()
           activeSession.value = {
             id: docSnapshot.id,
-            ...docSnapshot.data()
-          };
-          
+            ...data,
+            title: data.serviceNames ? data.serviceNames[0] : "Telehealth Appointment",
+            doctorName: data.doctorName || "Veterinarian",
+            petName: data.petName || "Your Pet",
+            petType: data.petType || "Pet",
+            scheduledTime: data.date ? new Date(data.date) : new Date(),
+            status: data.status || "pending",
+            notes: data.notes || "",
+          }
+
           // Check if vet has joined
-          const data = docSnapshot.data();
           if (data.vetJoinedAt && !remoteStreamActive.value) {
             // Vet has joined, display their stream
             if (webRTCService && webRTCService.remoteStream) {
-              webRTCService.displayRemoteStream();
+              webRTCService.displayRemoteStream()
             } else {
               // Still connecting
-              callStatus.value = 'connecting';
+              callStatus.value = "connecting"
             }
           }
         }
       },
       (error) => {
-        console.error('Error in session snapshot:', error);
+        console.error("Error in session snapshot:", error)
         // Handle error gracefully
         if (!isOnline.value) {
-          console.log('Network appears to be offline, will retry when connection is restored');
+          console.log("Network appears to be offline, will retry when connection is restored")
         }
-      }
-    );
-    
+      },
+    )
+
     // Re-subscribe to chat messages
     if (unsubscribeMessages) {
-      unsubscribeMessages();
+      unsubscribeMessages()
     }
-    
+
+    // Verify db is available
+    if (!db) {
+      console.error("Firestore db is not initialized")
+      return
+    }
+
     unsubscribeMessages = onSnapshot(
-      query(
-        collection(db, 'telehealth_sessions', sessionId, 'messages'),
-        orderBy('timestamp', 'asc')
-      ),
+      query(collection(db, "appointments", sessionId, "messages"), orderBy("timestamp", "asc")),
       (querySnapshot) => {
-        chatMessages.value = querySnapshot.docs.map(doc => ({
+        chatMessages.value = querySnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
-        }));
-        
+          ...doc.data(),
+        }))
+
         // Scroll to bottom of chat
         setTimeout(() => {
           if (chatMessagesRef.value) {
-            chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+            chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
           }
-        }, 100);
+        }, 100)
       },
       (error) => {
-        console.error('Error in messages snapshot:', error);
+        console.error("Error in messages snapshot:", error)
         // Handle error gracefully
         if (!isOnline.value) {
-          console.log('Network appears to be offline, will retry when connection is restored');
+          console.log("Network appears to be offline, will retry when connection is restored")
         }
-      }
-    );
+      },
+    )
   } catch (error) {
-    console.error('Error refreshing session data:', error);
+    console.error("Error refreshing session data:", error)
   }
-};
+}
 
-// Methods
+// Update the refreshSessions method
 const refreshSessions = async () => {
-  loading.value = true;
+  loading.value = true
+  showingApprovedOnly.value = false
   try {
     if (!isOnline.value) {
       // Don't attempt to fetch if offline
-      loading.value = false;
-      return;
+      loading.value = false
+      return
     }
-    
-    const patientId = auth.currentUser?.uid || 'test-patient-id'; // Fallback for testing
-    
-    const q = query(
-      collection(db, 'telehealth_sessions'),
-      where('patientId', '==', patientId)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    sessions.value = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+
+    const patientId = auth.currentUser?.uid || "test-patient-id" // Fallback for testing
+
+    console.log("Fetching all appointments for patient:", patientId)
+    // Use TelehealthService to get appointments
+    sessions.value = await TelehealthService.getUserAppointments(patientId, "patient")
+    console.log("Fetched appointments:", sessions.value)
   } catch (error) {
-    console.error('Error fetching sessions:', error);
+    console.error("Error fetching appointments:", error)
+    alert("Failed to load appointments. Please try again later.")
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
+
+// Load only approved sessions
+const loadApprovedSessions = async () => {
+  loading.value = true
+  showingApprovedOnly.value = true
+  try {
+    if (!isOnline.value) {
+      // Don't attempt to fetch if offline
+      loading.value = false
+      return
+    }
+
+    const patientId = auth.currentUser?.uid || "test-patient-id" // Fallback for testing
+
+    console.log("Fetching approved appointments for patient:", patientId)
+    // Use TelehealthService to get approved appointments
+    sessions.value = await TelehealthService.getApprovedAppointments(patientId, "patient")
+    console.log("Fetched approved appointments:", sessions.value)
+
+    // Set filter to show approved sessions
+    statusFilter.value = "approved"
+  } catch (error) {
+    console.error("Error fetching approved appointments:", error)
+    alert("Failed to load approved appointments. Please try again later.")
+  } finally {
+    loading.value = false
+  }
+}
 
 const formatDate = (timestamp) => {
-  if (!timestamp) return 'N/A';
-  
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date);
-};
+  if (!timestamp) return "N/A"
+
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
+}
 
 const formatTime = (timestamp) => {
-  if (!timestamp) return '';
-  
-  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-  return new Intl.DateTimeFormat('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  }).format(date);
-};
+  if (!timestamp) return ""
+
+  const date = timestamp instanceof Date ? timestamp : timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
+}
 
 const isSessionJoinable = (session) => {
-  if (!session.scheduledTime) return false;
-  
-  const scheduledTime = session.scheduledTime.toDate ? 
-    session.scheduledTime.toDate() : new Date(session.scheduledTime);
-  
-  const now = new Date();
-  const timeDiff = Math.abs(now - scheduledTime);
-  const minutesDiff = Math.floor(timeDiff / (1000 * 60));
-  
+  if (!session.scheduledTime && !session.date) return false
+
+  const scheduledTime = session.scheduledTime ? 
+    (session.scheduledTime instanceof Date ? session.scheduledTime : new Date(session.scheduledTime)) : 
+    new Date(session.date)
+
+  const now = new Date()
+  const timeDiff = Math.abs(now - scheduledTime)
+  const minutesDiff = Math.floor(timeDiff / (1000 * 60))
+
   // Allow joining 15 minutes before and up to 30 minutes after scheduled time
-  return minutesDiff <= 30;
-};
+  return minutesDiff <= 30
+}
 
 const selectSession = (session) => {
   // Just view session details, don't join call yet
-  activeSession.value = session;
-};
+  activeSession.value = session
+}
 
 const joinSession = async (session) => {
   try {
     if (!isOnline.value) {
-      alert('You appear to be offline. Please check your internet connection and try again.');
-      return;
+      alert("You appear to be offline. Please check your internet connection and try again.")
+      return
     }
-    
+
     // Request camera and microphone access
     try {
-      localStream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
-      });
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true,
+      })
     } catch (error) {
-      console.error('Error accessing camera:', error);
-      alert(`Camera access error: ${error.message || 'Unknown error'}`);
-      return;
+      console.error("Error accessing camera:", error)
+      alert(`Camera access error: ${error.message || "Unknown error"}`)
+      return
     }
-    
+
+    // Verify db is available
+    if (!db) {
+      console.error("Firestore db is not initialized")
+      alert("Database connection error. Please refresh the page and try again.")
+      return
+    }
+
     // Update session status to 'in-progress' if it's not already
-    if (session.status === 'scheduled') {
-      await updateDoc(doc(db, 'telehealth_sessions', session.id), {
-        status: 'in-progress',
-        patientJoinedAt: serverTimestamp()
-      });
+    if (session.status === "scheduled" || session.status === "approved") {
+      await updateDoc(doc(db, "appointments", session.id), {
+        status: "in-progress",
+        patientJoinedAt: serverTimestamp(),
+      })
     }
-    
-    activeSession.value = session;
-    callStatus.value = 'connecting';
-    
+
+    activeSession.value = session
+    callStatus.value = "connecting"
+
     // Subscribe to session updates
-    refreshSessionData(session.id);
-    
+    refreshSessionData(session.id)
+
     // Initialize WebRTC
-    await initializeWebRTC(session.id, localStream);
-    
+    await initializeWebRTC(session.id, localStream)
+
     // Start checking for remote stream
-    startRemoteStreamCheck();
+    startRemoteStreamCheck()
   } catch (error) {
-    console.error('Error joining session:', error);
-    alert(`Failed to join session: ${error.message || 'Unknown error'}`);
+    console.error("Error joining session:", error)
+    alert(`Failed to join session: ${error.message || "Unknown error"}`)
   }
-};
+}
 
 const startRemoteStreamCheck = () => {
   // Clear any existing interval
   if (remoteStreamCheckInterval) {
-    clearInterval(remoteStreamCheckInterval);
-    remoteStreamCheckInterval = null;
+    clearInterval(remoteStreamCheckInterval)
+    remoteStreamCheckInterval = null
   }
-  
+
   // Check immediately
-  checkRemoteVideoStatus();
-  
+  checkRemoteVideoStatus()
+
   // Then check every second
   remoteStreamCheckInterval = setInterval(() => {
-    const isActive = checkRemoteVideoStatus();
-    
+    const isActive = checkRemoteVideoStatus()
+
     // If we've detected the stream is active, we can stop checking
     if (isActive) {
-      clearInterval(remoteStreamCheckInterval);
-      remoteStreamCheckInterval = null;
+      clearInterval(remoteStreamCheckInterval)
+      remoteStreamCheckInterval = null
     }
-  }, 1000);
-};
+  }, 1000)
+}
 
 // Check if remote video has tracks and is playing
 const checkRemoteVideoStatus = () => {
-  const remoteVideo = remoteVideoRef.value;
-  
+  const remoteVideo = remoteVideoRef.value
+
   if (remoteVideo && remoteVideo.srcObject) {
-    const videoTracks = remoteVideo.srcObject.getVideoTracks();
-    const audioTracks = remoteVideo.srcObject.getAudioTracks();
-    
+    const videoTracks = remoteVideo.srcObject.getVideoTracks()
+    const audioTracks = remoteVideo.srcObject.getAudioTracks()
+
     // Check if we have video or audio tracks and they're active
-    if ((videoTracks.length > 0 && videoTracks[0].enabled) || 
-        (audioTracks.length > 0 && audioTracks[0].enabled)) {
-      remoteStreamActive.value = true;
-      callStatus.value = 'connected';
-      return true;
+    if ((videoTracks.length > 0 && videoTracks[0].enabled) || (audioTracks.length > 0 && audioTracks[0].enabled)) {
+      remoteStreamActive.value = true
+      callStatus.value = "connected"
+      return true
     }
-    
+
     // If we have tracks but they're not active yet
     if (videoTracks.length > 0 || audioTracks.length > 0) {
-      callStatus.value = 'connecting';
+      callStatus.value = "connecting"
     }
   }
-  
-  return false;
-};
+
+  return false
+}
 
 const cancelSession = async (session) => {
-  if (!confirm('Are you sure you want to cancel this session?')) return;
-  
+  if (!confirm("Are you sure you want to cancel this appointment?")) return
+
   try {
     if (!isOnline.value) {
-      alert('You appear to be offline. Please check your internet connection and try again.');
-      return;
+      alert("You appear to be offline. Please check your internet connection and try again.")
+      return
     }
-    
-    await updateDoc(doc(db, 'telehealth_sessions', session.id), {
-      status: 'cancelled',
-      cancelledBy: 'patient',
-      cancelledAt: serverTimestamp()
-    });
-    
-    refreshSessions();
+
+    // Verify db is available
+    if (!db) {
+      console.error("Firestore db is not initialized")
+      alert("Database connection error. Please refresh the page and try again.")
+      return
+    }
+
+    await updateDoc(doc(db, "appointments", session.id), {
+      status: "cancelled",
+      cancelledBy: "patient",
+      cancelledAt: serverTimestamp(),
+    })
+
+    if (showingApprovedOnly.value) {
+      await loadApprovedSessions()
+    } else {
+      await refreshSessions()
+    }
   } catch (error) {
-    console.error('Error cancelling session:', error);
-    alert('Failed to cancel session. Please try again.');
+    console.error("Error cancelling appointment:", error)
+    alert("Failed to cancel appointment. Please try again.")
   }
-};
+}
 
 const sendMessage = async () => {
-  if (!newMessage.value.trim() || !activeSession.value) return;
-  
+  if (!newMessage.value.trim() || !activeSession.value) return
+
   try {
     if (!isOnline.value) {
-      alert('You appear to be offline. Please check your internet connection and try again.');
-      return;
+      alert("You appear to be offline. Please check your internet connection and try again.")
+      return
     }
-    
-    await addDoc(
-      collection(db, 'telehealth_sessions', activeSession.value.id, 'messages'),
-      {
-        text: newMessage.value.trim(),
-        sender: 'patient',
-        senderName: auth.currentUser?.displayName || 'Patient',
-        timestamp: serverTimestamp()
-      }
-    );
-    
-    newMessage.value = '';
+
+    // Verify db is available
+    if (!db) {
+      console.error("Firestore db is not initialized")
+      alert("Database connection error. Please refresh the page and try again.")
+      return
+    }
+
+    await addDoc(collection(db, "appointments", activeSession.value.id, "messages"), {
+      text: newMessage.value.trim(),
+      sender: "patient",
+      senderName: auth.currentUser?.displayName || "Patient",
+      timestamp: serverTimestamp(),
+    })
+
+    newMessage.value = ""
   } catch (error) {
-    console.error('Error sending message:', error);
-    alert('Failed to send message. Please try again.');
+    console.error("Error sending message:", error)
+    alert("Failed to send message. Please try again.")
   }
-};
+}
 
 const initializeWebRTC = async (sessionId, existingStream = null) => {
   try {
     // Make sure we have video elements before initializing
     if (!localVideoRef.value || !remoteVideoRef.value) {
-      console.error('Video elements not found');
-      await nextTick();
-      
+      console.error("Video elements not found")
+      await nextTick()
+
       // Check again after nextTick
       if (!localVideoRef.value || !remoteVideoRef.value) {
-        throw new Error('Video elements not available after DOM update');
+        throw new Error("Video elements not available after DOM update")
       }
     }
-    
+
     // Initialize WebRTC service
     webRTCService = new WebRTCService({
       localVideoRef: localVideoRef.value,
       remoteVideoRef: remoteVideoRef.value,
       sessionId,
-      userId: auth.currentUser?.uid || 'test-patient-id',
-      userType: 'patient',
+      userId: auth.currentUser?.uid || "test-patient-id",
+      userType: "patient",
       onRemoteStreamActive: () => {
-        remoteStreamActive.value = true;
-        callStatus.value = 'connected';
+        remoteStreamActive.value = true
+        callStatus.value = "connected"
       },
       onRemoteStreamInactive: () => {
-        remoteStreamActive.value = false;
-        callStatus.value = 'connecting';
+        remoteStreamActive.value = false
+        callStatus.value = "connecting"
       },
       onIncomingCall: (callData) => {
         incomingCall.value = {
           sessionId: callData.sessionId,
-          callerName: callData.callerName || 'Veterinarian',
-          sessionTitle: callData.sessionTitle || 'Telehealth Session'
-        };
+          callerName: callData.callerName || "Veterinarian",
+          sessionTitle: callData.sessionTitle || "Telehealth Appointment",
+        }
       },
-      existingStream // Pass the existing stream if available
-    });
-    
-    await webRTCService.initialize();
-    
+      existingStream, // Pass the existing stream if available
+    })
+
+    await webRTCService.initialize()
+
     // Manually attach local stream to video element if WebRTCService doesn't do it
     if (existingStream && localVideoRef.value) {
-      localVideoRef.value.srcObject = existingStream;
+      localVideoRef.value.srcObject = existingStream
       try {
-        await localVideoRef.value.play();
+        await localVideoRef.value.play()
       } catch (e) {
-        console.warn('Auto-play prevented for local video:', e);
+        console.warn("Auto-play prevented for local video:", e)
       }
     }
-    
+
     // Manually check remote video status after initialization
     setTimeout(() => {
-      checkRemoteVideoStatus();
-    }, 1000);
+      checkRemoteVideoStatus()
+    }, 1000)
   } catch (error) {
-    console.error('Error initializing WebRTC:', error);
-    alert('Failed to initialize video call. Please try again.');
+    console.error("Error initializing WebRTC:", error)
+    alert("Failed to initialize video call. Please try again.")
   }
-};
+}
 
 const acceptIncomingCall = async () => {
-  if (!incomingCall.value) return;
-  
+  if (!incomingCall.value) return
+
   try {
     if (!isOnline.value) {
-      alert('You appear to be offline. Please check your internet connection and try again.');
-      return;
+      alert("You appear to be offline. Please check your internet connection and try again.")
+      return
     }
-    
+
     // Find the session
-    const sessionId = incomingCall.value.sessionId;
-    const docSnap = await getDoc(doc(db, 'telehealth_sessions', sessionId));
-    
+    const sessionId = incomingCall.value.sessionId
+    const docSnap = await getDoc(doc(db, "appointments", sessionId))
+
     if (docSnap.exists()) {
+      const data = docSnap.data()
       const session = {
         id: docSnap.id,
-        ...docSnap.data()
-      };
-      
+        ...data,
+        title: data.serviceNames ? data.serviceNames[0] : "Telehealth Appointment",
+        doctorName: data.doctorName || "Veterinarian",
+        petName: data.petName || "Your Pet",
+        petType: data.petType || "Pet",
+        scheduledTime: data.date ? new Date(data.date) : new Date(),
+        status: data.status || "pending",
+        notes: data.notes || "",
+      }
+
       // Join the session
-      await joinSession(session);
-      
+      await joinSession(session)
+
       // Clear the incoming call
-      incomingCall.value = null;
+      incomingCall.value = null
     }
   } catch (error) {
-    console.error('Error accepting call:', error);
-    alert(`Error accepting call: ${error.message || 'Unknown error'}`);
+    console.error("Error accepting call:", error)
+    alert(`Error accepting call: ${error.message || "Unknown error"}`)
   }
-};
+}
 
 const declineIncomingCall = async () => {
-  if (!incomingCall.value) return;
-  
+  if (!incomingCall.value) return
+
   try {
     // Notify the caller that the call was declined
     if (webRTCService) {
-      await webRTCService.declineCall(incomingCall.value.sessionId);
+      await webRTCService.declineCall(incomingCall.value.sessionId)
     }
-    
+
     // Clear the incoming call
-    incomingCall.value = null;
+    incomingCall.value = null
   } catch (error) {
-    console.error('Error declining call:', error);
-    alert(`Error declining call: ${error.message || 'Unknown error'}`);
+    console.error("Error declining call:", error)
+    alert(`Error declining call: ${error.message || "Unknown error"}`)
   }
-};
+}
 
 const toggleMute = () => {
-  if (!webRTCService) return;
-  
-  isMuted.value = !isMuted.value;
-  webRTCService.toggleAudio(isMuted.value);
-};
+  if (!webRTCService) return
+
+  isMuted.value = !isMuted.value
+  webRTCService.toggleAudio(isMuted.value)
+}
 
 const toggleVideo = () => {
-  if (!webRTCService) return;
-  
-  isVideoOff.value = !isVideoOff.value;
-  webRTCService.toggleVideo(isVideoOff.value);
-};
+  if (!webRTCService) return
+
+  isVideoOff.value = !isVideoOff.value
+  webRTCService.toggleVideo(isVideoOff.value)
+}
 
 const toggleScreenShare = async () => {
-  if (!webRTCService) return;
-  
+  if (!webRTCService) return
+
   try {
     if (isScreenSharing.value) {
-      await webRTCService.stopScreenSharing();
+      await webRTCService.stopScreenSharing()
     } else {
-      await webRTCService.startScreenSharing();
+      await webRTCService.startScreenSharing()
     }
-    
-    isScreenSharing.value = !isScreenSharing.value;
+
+    isScreenSharing.value = !isScreenSharing.value
   } catch (error) {
-    console.error('Error toggling screen share:', error);
-    
-    if (error.name === 'NotAllowedError') {
-      alert('Screen sharing permission was denied.');
+    console.error("Error toggling screen share:", error)
+
+    if (error.name === "NotAllowedError") {
+      alert("Screen sharing permission was denied.")
     } else {
-      alert('Failed to share screen. Please try again.');
+      alert("Failed to share screen. Please try again.")
     }
   }
-};
+}
 
 const endCall = async () => {
   try {
     // Clear remote stream check interval if it exists
     if (remoteStreamCheckInterval) {
-      clearInterval(remoteStreamCheckInterval);
-      remoteStreamCheckInterval = null;
+      clearInterval(remoteStreamCheckInterval)
+      remoteStreamCheckInterval = null
     }
-    
+
     if (webRTCService) {
-      await webRTCService.disconnect();
+      await webRTCService.disconnect()
     }
-    
+
     // Clean up local stream if it exists
     if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      localStream = null;
+      localStream.getTracks().forEach((track) => track.stop())
+      localStream = null
     }
-    
+
+    // Verify db is available
+    if (!db) {
+      console.error("Firestore db is not initialized")
+      alert("Database connection error. Please refresh the page and try again.")
+      return
+    }
+
     if (activeSession.value && isOnline.value) {
-      await updateDoc(doc(db, 'telehealth_sessions', activeSession.value.id), {
-        status: 'completed',
-        endedAt: serverTimestamp()
-      });
+      await updateDoc(doc(db, "appointments", activeSession.value.id), {
+        status: "completed",
+        endedAt: serverTimestamp(),
+      })
     }
-    
+
     // Clean up subscriptions
     if (unsubscribeMessages) {
-      unsubscribeMessages();
+      unsubscribeMessages()
     }
-    
+
     if (unsubscribeSession) {
-      unsubscribeSession();
+      unsubscribeSession()
     }
-    
-    activeSession.value = null;
-    remoteStreamActive.value = false;
-    callStatus.value = '';
-    refreshSessions();
+
+    activeSession.value = null
+    remoteStreamActive.value = false
+    callStatus.value = ""
+
+    // Refresh sessions
+    if (showingApprovedOnly.value) {
+      await loadApprovedSessions()
+    } else {
+      await refreshSessions()
+    }
   } catch (error) {
-    console.error('Error ending call:', error);
-    alert('Failed to end call properly. Please refresh the page.');
+    console.error("Error ending call:", error)
+    alert("Failed to end call properly. Please refresh the page.")
   }
-};
+}
 
 // Lifecycle hooks
 onMounted(() => {
   // Set up network monitoring
-  setupNetworkMonitoring();
-  
+  setupNetworkMonitoring()
+
   // Load sessions
-  refreshSessions();
-  
+  refreshSessions()
+
   // Set up chat messages ref
   watch(chatMessages, () => {
     setTimeout(() => {
       if (chatMessagesRef.value) {
-        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
       }
-    }, 100);
-  });
-});
+    }, 100)
+  })
+})
 
 onUnmounted(() => {
   // Clean up WebRTC
   if (webRTCService) {
-    webRTCService.disconnect();
+    webRTCService.disconnect()
   }
-  
+
   // Clean up local stream if it exists
   if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
+    localStream.getTracks().forEach((track) => track.stop())
+    localStream = null
   }
-  
+
   // Clear any intervals
   if (remoteStreamCheckInterval) {
-    clearInterval(remoteStreamCheckInterval);
-    remoteStreamCheckInterval = null;
+    clearInterval(remoteStreamCheckInterval)
+    remoteStreamCheckInterval = null
   }
-  
+
   if (networkStatusInterval) {
-    clearInterval(networkStatusInterval);
-    networkStatusInterval = null;
+    clearInterval(networkStatusInterval)
+    networkStatusInterval = null
   }
-  
+
   // Remove network event listeners
-  window.removeEventListener('online', handleOnline);
-  window.removeEventListener('offline', handleOffline);
-  
+  window.removeEventListener("online", handleOnline)
+  window.removeEventListener("offline", handleOffline)
+
   // Clean up subscriptions
   if (unsubscribeMessages) {
-    unsubscribeMessages();
+    unsubscribeMessages()
   }
-  
+
   if (unsubscribeSession) {
-    unsubscribeSession();
+    unsubscribeSession()
   }
-});
+})
 </script>
 
 <style scoped>
@@ -1223,6 +1065,11 @@ onUnmounted(() => {
   color: #0d47a1;
 }
 
+.status-approved {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+}
+
 .status-in-progress {
   background-color: #e8f5e9;
   color: #1b5e20;
@@ -1281,7 +1128,7 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.vet-info {
+.patient-info {
   display: flex;
   gap: 20px;
 }
@@ -1433,7 +1280,7 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.pet-info-section, .chat-section {
+.notes-section, .chat-section {
   background-color: #f8f9fa;
   border-radius: 8px;
   padding: 15px;
@@ -1442,21 +1289,19 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
-.pet-info-section h3, .chat-section h3 {
+.notes-section h3, .chat-section h3 {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 10px;
 }
 
-.pet-details {
+.notes-content {
+  flex-grow: 1;
+  overflow-y: auto;
   padding: 10px;
   background-color: white;
-  border-radius: 8px;
-  flex-grow: 1;
-}
-
-.pet-details p {
-  margin-bottom: 10px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
 }
 
 .form-control {
@@ -1513,47 +1358,8 @@ onUnmounted(() => {
   flex-grow: 1;
 }
 
-/* Incoming Call Notification */
-.incoming-call-notification {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  width: 300px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  overflow: hidden;
-}
-
-.notification-content {
-  padding: 16px;
-}
-
-.notification-content h3 {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.notification-content p {
-  margin-bottom: 8px;
-}
-
-.notification-content .session-title {
-  font-weight: 500;
-  color: #4a6cf7;
-  margin-bottom: 16px;
-}
-
-.notification-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-/* Network Status Alert */
-.network-status-alert {
+/* Network Status Banner */
+.network-status-banner {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -1565,6 +1371,31 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+}
+
+/* Incoming Call Modal */
+.incoming-call-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.incoming-call-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.animate-pulse {
+  animation: pulse 1.5s infinite;
 }
 
 /* Responsive adjustments */
@@ -1590,12 +1421,10 @@ onUnmounted(() => {
     align-items: flex-start;
   }
   
-  .vet-info {
+  .patient-info {
     margin: 10px 0;
     flex-direction: column;
     gap: 5px;
   }
 }
 </style>
-
-
