@@ -278,7 +278,7 @@
                 >
                   <!-- For available days - use button -->
                   <button
-                    v-if="isCurrentMonth && !isWeekend && isDayAvailable(date) && !getHolidayName(date) && !isTodayWithSpecialHours(date)"
+                    v-if="isCurrentMonth && isDayAvailable(date)"
                     @click="handleDateClick(date)"
                     class="w-full h-full flex items-center justify-center rounded-full text-xs md:text-sm"
                     :class="getDateClasses(date, isCurrentMonth, isToday, isWeekend)"
@@ -339,16 +339,21 @@
             </div>
       
             <!-- Time Selection -->
-            
-            <!-- Time Selection -->
             <div class="space-y-3 md:space-y-4">
               <h3 class="text-base md:text-lg font-semibold text-gray-900">Select Time</h3>
               
-              <div v-if="selectedServices.length === 0" class="text-center py-3 md:py-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <!-- Loading state for time slots -->
+              <div v-if="isLoadingTimeSlots" class="flex justify-center items-center py-6 bg-gray-50 rounded-lg">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                <p class="ml-3 text-gray-600 text-sm">Loading available times...</p>
+              </div>
+              
+              <!-- No services selected message -->
+              <div v-else-if="selectedServices.length === 0" class="text-center py-3 md:py-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p class="text-xs md:text-sm text-yellow-700">Please select a service first to see available time slots.</p>
               </div>
               
-              <!-- New condition: Show message when current day's schedule is closed -->
+              <!-- Current day's schedule is closed message -->
               <div v-else-if="isCurrentDayScheduleClosed" class="text-center py-6 md:py-8 bg-gray-50 rounded-lg border border-gray-200">
                 <Clock class="mx-auto h-8 w-8 md:h-10 md:w-10 text-gray-400 mb-2" />
                 <p class="text-sm md:text-base font-medium text-gray-700">Appointment schedule for today is closed</p>
@@ -358,6 +363,16 @@
                 <p class="mt-2 text-xs md:text-sm text-gray-500">Please select another date for your appointment</p>
               </div>
               
+              <!-- No time slots available message -->
+              <div v-else-if="availableTimeSlots.length === 0" class="text-center py-6 md:py-8 bg-gray-50 rounded-lg border border-gray-200">
+                <Clock class="mx-auto h-8 w-8 md:h-10 md:w-10 text-gray-400 mb-2" />
+                <p class="text-sm md:text-base font-medium text-gray-700">No available time slots</p>
+                <p class="mt-1 text-xs md:text-sm text-gray-500">
+                  Please select another date for your appointment
+                </p>
+              </div>
+              
+              <!-- Time slots grid -->
               <div v-else class="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <button
                   v-for="timeSlot in availableTimeSlots"
@@ -466,7 +481,21 @@
             <!-- User's pets section -->
             <div v-if="userPets.length > 0">
               <h3 class="text-lg font-semibold text-gray-900 mb-3">Your Pets</h3>
-              <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+              
+              <!-- No pets of selected species message -->
+              <div v-if="filteredUserPets.length === 0" class="bg-white rounded-lg p-4 text-center">
+                <PawPrint class="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p class="text-gray-600">You don't have any {{ getSpeciesName(selectedSpecies) }} pets registered.</p>
+                <p class="text-sm text-gray-500 mt-1">Would you like to add one?</p>
+                <button 
+                  @click="goToAddPet" 
+                  class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-full text-sm hover:bg-blue-700 transition-colors"
+                >
+                  Add New Pet
+                </button>
+              </div>
+              
+              <div v-else class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                 <div 
                   v-for="pet in filteredUserPets" 
                   :key="pet.id" 
@@ -513,68 +542,19 @@
                   </div>
                 </div>
               </div>
-              
-              <!-- No pets of selected species message -->
-              <div v-if="filteredUserPets.length === 0" class="bg-white rounded-lg p-4 text-center">
-                <PawPrint class="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p class="text-gray-600">You don't have any {{ getSpeciesName(selectedSpecies) }} pets registered.</p>
-                <p class="text-sm text-gray-500 mt-1">Would you like to add one?</p>
-                <button 
-                  @click="goToAddPet" 
-                  class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-full text-sm hover:bg-blue-700 transition-colors"
-                >
-                  Add New Pet
-                </button>
-              </div>
             </div>
             
-            <!-- Sample pets section when user has no pets -->
-            <div v-else class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              <div 
-                v-for="pet in filteredPets" 
-                :key="pet.id" 
-                class="bg-white px shadow-lg rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-                :class="{ 'ring-2': selectedPet === pet, 'ring-blue-500': selectedPet === pet }"
-                @click="selectPet(pet)"
+            <!-- No pets section - Show Add New Pet button for users with no pets -->
+            <div v-else class="bg-white rounded-lg p-6 text-center">
+              <PawPrint class="w-16 h-16 text-gray-400 mx-auto mb-3" />
+              <p class="text-gray-700 font-medium">You don't have any pets registered</p>
+              <p class="text-sm text-gray-500 mt-2 mb-4">Add a pet to book an appointment</p>
+              <button 
+                @click="goToAddPet" 
+                class="px-6 py-2 bg-blue-600 text-white rounded-full text-sm hover:bg-blue-700 transition-colors"
               >
-                <div class="bg-gradient-to-b from-emerald-400 to-emerald-300 h-20 md:h-24 relative">
-                  <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2">
-                    <div class="bg-white rounded-full p-1 md:p-2 shadow-lg">
-                      <div class="bg-emerald-100 rounded-full p-2 md:p-3">
-                        <!-- Updated pet icon with placeholder -->
-                        <div v-if="pet.image" class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden">
-                          <img 
-                            :src="pet.image" 
-                            :alt="pet.name" 
-                            class="w-full h-full object-cover"
-                          />
-                        </div>
-                        <PawPrint v-else class="w-6 h-6 md:w-8 md:h-8 text-emerald-600" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="pt-6 md:pt-8 pb-3 md:pb-4 px-2 md:px-3">
-                  <div class="text-center mb-2 md:mb-3">
-                    <h3 class="text-base md:text-xl font-semibold text-gray-900">{{ pet.name }}</h3>
-                    <p class="text-xs text-gray-500">{{ getSpeciesName(pet.species) }}</p>
-                  </div>
-                  <div class="grid grid-cols-3 gap-1 text-[10px] md:text-xs">
-                    <div class="px-2  md:px-4 text-center">
-                      <span class="block text-gray-500">Breed</span>
-                      <span class="font-medium text-gray-900">{{ pet.breed }}</span>
-                    </div>
-                    <div class="px-2 md:px-4 text-center">
-                      <span class="block text-gray-500">Age</span>
-                      <span class="font-medium text-gray-900">{{ pet.age || '2' }} yrs</span>
-                    </div>
-                    <div class="px-2 md:px-4 text-center">
-                      <span class="block text-gray-500">Weight</span>
-                      <span class="font-medium text-gray-900">{{ pet.weight || '4.5' }} kg</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                Add New Pet
+              </button>
             </div>
           </div>
       
@@ -735,7 +715,7 @@
                   </p>
                 </div>
                 <!-- Add edit button to go back to doctor step -->
-                <button 
+                <button
                   @click="goToStep(2)" 
                   class="text-blue-600 hover:text-blue-800"
                 >
@@ -893,9 +873,9 @@
   
   <!-- Loading Spinner for initial data loading and when clicking Continue -->
   <LoadingSpinner v-if="initialLoading || isLoading" isOverlay :text="initialLoading ? 'Loading data...' : 'Processing...'" />
-  </template>
+</template>
   
-  <script setup>
+<script setup>
 import { ref, computed, watch, onMounted, onBeforeMount, onBeforeUnmount, nextTick } from "vue"
 import { useRouter } from "vue-router"
 import {
@@ -979,6 +959,7 @@ const isLoading = ref(false)
 const initialLoading = ref(true)
 const loadingVeterinarians = ref(false)
 const veterinarianError = ref(null)
+const isLoadingTimeSlots = ref(false) // Add this for time slots loading state
 
 // Veterinarians state
 const veterinarians = ref([])
@@ -1225,7 +1206,7 @@ const fetchOfficeHours = async () => {
   }
 }
 
-// Helper function to format a Date to YYYY-MM-DD in local timezone - NEW
+// Helper function to format a Date to YYYY-MM-DD in local timezone
 const formatDateToLocalISOString = (date) => {
   if (!date) return ""
 
@@ -1238,7 +1219,7 @@ const formatDateToLocalISOString = (date) => {
   return `${year}-${month}-${day}`
 }
 
-// Helper function to check holiday status - NEW
+// Helper function to check holiday status
 const checkHolidayStatus = (dateString) => {
   if (!officeStore || !officeStore.holidays) return null
 
@@ -1249,6 +1230,7 @@ const checkHolidayStatus = (dateString) => {
 
     // Check for exact date match (string comparison)
     if (holidayDateStr === dateString) {
+      console.log(`Found holiday for ${dateString}:`, h.name, h.type)
       return true
     }
 
@@ -1258,7 +1240,11 @@ const checkHolidayStatus = (dateString) => {
       const checkDate = new Date(dateString + "T12:00:00")
       const holidayDate = new Date(holidayDateStr + "T12:00:00")
 
-      return checkDate.getMonth() === holidayDate.getMonth() && checkDate.getDate() === holidayDate.getDate()
+      const isMatch = checkDate.getMonth() === holidayDate.getMonth() && checkDate.getDate() === holidayDate.getDate()
+      if (isMatch) {
+        console.log(`Found recurring yearly holiday for ${dateString}:`, h.name, h.type)
+      }
+      return isMatch
     }
 
     return false
@@ -1267,7 +1253,7 @@ const checkHolidayStatus = (dateString) => {
   return holiday || null
 }
 
-// Function to get the holiday name for a date - FIXED
+// Function to get the holiday name for a date
 const getHolidayName = (date) => {
   if (!date || !officeStore || !officeStore.holidays) return null
 
@@ -1315,7 +1301,7 @@ const getHolidayTextClass = (date) => {
   return ""
 }
 
-// Function to check if a day is available for appointments - FIXED
+// Function to check if a day is available for appointments
 const isDayAvailable = (date) => {
   if (!officeStore || !officeStore.getOfficeHours) return false
 
@@ -1338,18 +1324,20 @@ const isDayAvailable = (date) => {
   // Get the day of week
   const dayOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getDay()]
 
-  // Check if office is open on this day
+  // Check if office is open on this day according to admin configuration
   const officeHours = officeStore.getOfficeHoursForDay(dayOfWeek)
 
-  // Check if the day exists in Firestore and has available schedules
-  if (!officeHours || !officeHours.isOpen) {
-    return false
-  }
-
-  return true
+  // Return true only if the office is configured to be open on this day
+  return officeHours && officeHours.isOpen
 }
 
-// Function to get special hours for a date if it exists - FIXED
+// Function to check if a date is a weekend (Saturday or Sunday)
+const isWeekend = (date) => {
+  const day = date.getDay()
+  return day === 0 || day === 6 // 0 is Sunday, 6 is Saturday
+}
+
+// Function to get special hours for a date if it exists
 const getSpecialHoursForDate = (date) => {
   if (!date) return null
 
@@ -1412,16 +1400,17 @@ const getDateClasses = (date, isCurrentMonth, isToday, isWeekend) => {
 
   // Base styling
   if (isCurrentMonth) {
-    if (isWeekend) {
+    if (isAvailable) {
+      // If the day is available (including Saturdays configured as available), use consistent styling
+      classes.push("hover:bg-blue-100")
+    } else if (isWeekend) {
       classes.push("text-red-400 bg-red-50")
     } else if (holiday && (holiday.type === "holiday" || holiday.type === "maintenance")) {
       classes.push("text-red-400 bg-red-50")
     } else if (holiday && holiday.type === "special-hours") {
       classes.push("text-yellow-700 hover:bg-yellow-100")
-    } else if (!isAvailable) {
-      classes.push("text-gray-400 bg-gray-200")
     } else {
-      classes.push("hover:bg-blue-100")
+      classes.push("text-gray-400 bg-gray-200")
     }
   } else {
     classes.push("text-gray-300")
@@ -1447,6 +1436,7 @@ const getDayStatusIndicator = (date) => {
   const dateString = formatDateToLocalISOString(date)
   const holiday = checkHolidayStatus(dateString)
 
+  // First check for holidays
   if (holiday) {
     if (holiday.type === "holiday" || holiday.type === "maintenance") {
       return "bg-red-500"
@@ -1455,7 +1445,9 @@ const getDayStatusIndicator = (date) => {
     }
   }
 
-  if (isDayAvailable(date) && !isWeekend(date)) {
+  // Then check if the day is available according to admin configuration
+  // This will now properly handle Saturdays that are configured as available
+  if (isDayAvailable(date)) {
     return "bg-green-500"
   }
 
@@ -1481,61 +1473,89 @@ const formatTo12Hour = (timeString) => {
 
 // Function to handle date click - Update the message formatting for special hours
 const handleDateClick = (date) => {
-  const isWeekendDay = isWeekend(date)
+  // First check if the day is available according to admin configuration
   const isAvailable = isDayAvailable(date)
-
+  
   // Convert the date to YYYY-MM-DD format in local timezone
   const dateString = formatDateToLocalISOString(date)
   const holiday = checkHolidayStatus(dateString)
+  const isWeekendDay = isWeekend(date)
 
-  if (isWeekendDay) {
-    showWeekendModal(
-      date,
-      "Weekend - Office Closed",
-      "Provincial Veterinary Office is closed on weekends. Please select a weekday (Monday to Friday) for your appointment.",
-    )
-    return
-  }
+  if (!isAvailable) {
+    // If it's a weekend but not available according to admin configuration
+    if (isWeekendDay) {
+      showWeekendModal(
+        date,
+        "Weekend - Office Closed",
+        "Provincial Veterinary Office is closed on weekends. Please select a weekday (Monday to Friday) for your appointment."
+      )
+      return
+    }
+    
+    // If it's a holiday
+    if (holiday) {
+      let title = "Office Closed"
+      let message = `Provincial Veterinary Office is ${holiday.type === "special-hours" ? "operating with special hours" : "closed"} for ${holiday.name}. ${holiday.type === "special-hours" ? "" : "Please select another date."}`
+      let icon = Calendar
 
-  if (holiday) {
-    let title = "Office Closed"
-    let message = `Provincial Veterinary Office is ${holiday.type === "special-hours" ? "operating with special hours" : "closed"} for ${holiday.name}. ${holiday.type === "special-hours" ? "" : "Please select another date."}`
-    let icon = Calendar
+      if (holiday.type === "maintenance") {
+        title = "Office Maintenance"
+        icon = AlertTriangle
+      } else if (holiday.type === "holiday") {
+        title = "Holiday - Office Closed"
+      } else if (holiday.type === "special-hours") {
+        // For special hours, always show modal and don't allow selection
+        title = "Special Hours"
 
-    if (holiday.type === "maintenance") {
-      title = "Office Maintenance"
-      icon = AlertTriangle
-    } else if (holiday.type === "holiday") {
-      title = "Holiday - Office Closed"
-    } else if (holiday.type === "special-hours") {
-      // For special hours, always show modal and don't allow selection
-      title = "Special Hours"
+        // Format the open and close times to 12-hour format
+        const formattedOpenTime = formatTo12Hour(holiday.openTime || "N/A")
+        const formattedCloseTime = formatTo12Hour(holiday.closeTime || "N/A")
 
-      // Format the open and close times to 12-hour format
-      const formattedOpenTime = formatTo12Hour(holiday.openTime || "N/A")
-      const formattedCloseTime = formatTo12Hour(holiday.closeTime || "N/A")
+        message = `Provincial Veterinary Office is operating with special hours for ${holiday.name}: ${formattedOpenTime} - ${formattedCloseTime}. Please select a regular business day.`
+        showWeekendModal(date, title, message, icon)
+        return
+      }
 
-      message = `Provincial Veterinary Office is operating with special hours for ${holiday.name}: ${formattedOpenTime} - ${formattedCloseTime}. Please select a regular business day.`
+      // For holidays and maintenance, show modal
       showWeekendModal(date, title, message, icon)
       return
     }
-
-    // For holidays and maintenance, show modal
-    showWeekendModal(date, title, message, icon)
-    return
-  }
-
-  if (!isAvailable) {
+    
+    // For regular weekdays that are closed
     showWeekendModal(
       date,
       "Office Closed",
-      "Provincial Veterinary Office is closed on this day. Please select another date.",
+      "Provincial Veterinary Office is closed on this day. Please select another date."
     )
     return
   }
 
-  // If the date is available, select it
+  // If the date is available, select it (even if it's a weekend)
   selectDate(date)
+}
+
+// Show weekend modal with custom message
+const showWeekendModal = (
+  date,
+  title = "Weekend - Office Closed",
+  message = "Provincial Veterinary Office is closed on weekends. Please select a weekday (Monday to Friday) for your appointment.",
+  icon = Calendar,
+  iconClass = "bg-red-100",
+  iconColor = "text-red-600",
+) => {
+  selectedDateForModal.value = date
+  modalTitle.value = title
+  modalMessage.value = message
+  modalIcon.value = icon
+  modalIconClass.value = iconClass
+  modalIconColor.value = iconColor
+  showWeekendModalState.value = true
+}
+
+// Close weekend modal
+const closeWeekendModal = () => {
+  showWeekendModalState.value = false
+  selectedDateForModal.value = null
 }
 
 // Helper function to convert time to minutes (HH:MM format)
@@ -1561,7 +1581,6 @@ const showWeekendModalState = ref(false)
 
 // State for tracking booked appointments
 const bookedAppointments = ref([])
-const isLoadingTimeSlots = ref(false)
 
 // Categories and services
 const categories = ref([])
@@ -1603,14 +1622,6 @@ const petSpecies = [
   { id: "bird", name: "Bird", image: birdImage },
   { id: "reptile", name: "Reptiles", image: reptilesImage },
   { id: "other", name: "Other", image: null },
-]
-
-const pets = [
-  { id: 1, name: "Max", species: "dog", breed: "Labrador" },
-  { id: 2, name: "Bella", species: "dog", breed: "Poodle" },
-  { id: 3, name: "Whiskers", species: "cat", breed: "Siamese" },
-  { id: 4, name: "Polly", species: "bird", breed: "Parrot" },
-  { id: 5, name: "Spike", species: "reptile", breed: "Bearded Dragon" },
 ]
 
 const currentStepIndex = ref(0)
@@ -1760,7 +1771,7 @@ const goToAddPet = () => {
 // Filtered pets based on selected species
 const filteredPets = computed(() => {
   if (!selectedSpecies.value) return []
-  return pets.filter((pet) => pet.species === selectedSpecies.value)
+  return []
 })
 
 // Parse duration string into minutes
@@ -1836,201 +1847,201 @@ const shouldUseExactTimes = computed(() => {
   return !hasDuration
 })
 
-// Update the dynamicTimeSlots computed property to correctly handle 0 duration services
-const dynamicTimeSlots = computed(() => {
-  const slots = []
-  const now = new Date()
-  let startTime = new Date(selectedDate.value || now)
+// Function to get available time slots for a date
+const getAvailableTimeSlots = (date) => {
+  if (!date) return []
 
-  // Check if this date has special hours
-  const specialHours = selectedDate.value ? getSpecialHoursForDate(selectedDate.value) : null
+  const dateString = formatDateToLocalISOString(date)
+  const dayOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getDay()]
 
-  // Get regular office hours for this day
-  const dayOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
-    selectedDate.value?.getDay() || now.getDay()
-  ]
-  const regularOfficeHours = officeStore.getOfficeHoursForDay(dayOfWeek)
+  console.log(`Getting time slots for date: ${dateString}, day of week: ${dayOfWeek}`)
 
-  // Use special hours if available, otherwise use regular hours
-  const officeHours = specialHours || regularOfficeHours || {}
+  // First check if it's a holiday
+  const holiday = checkHolidayStatus(dateString)
 
-  // Set start time based on open hours (default to 8 AM if not specified)
-  const openHourParts = (officeHours.openTime || "08:00").split(":")
-  startTime.setHours(parseInt(openHourParts[0], 10), parseInt(openHourParts[1], 10), 0, 0)
-
-  // Set end time based on close hours (default to 5 PM if not specified)
-  const endTime = new Date(selectedDate.value || now)
-  const closeHourParts = (officeHours.closeTime || "17:00").split(":")
-  endTime.setHours(parseInt(closeHourParts[0], 10), parseInt(closeHourParts[1], 10), 0, 0)
-
-  // If it's today, start from the current hour (rounded up)
-  if (isToday(selectedDate.value) && startTime < now) {
-    const currentHour = now.getHours()
-    const currentMinute = now.getMinutes()
-
-    // Round up to the next available slot
-    startTime = new Date(now)
-
-    // If we have a service with duration, round to the nearest 20 minutes
-    // Otherwise, round to the next hour
-    if (totalDurationMinutes.value > 0) {
-      startTime.setMinutes(Math.ceil(currentMinute / 20) * 20, 0, 0)
-
-      // If we're at the end of the hour, move to the next hour
-      if (startTime.getMinutes() === 60) {
-        startTime.setHours(startTime.getHours() + 1)
-        startTime.setMinutes(0, 0, 0)
-      }
-    } else {
-      // For 0 duration services, round to the next hour
-      if (currentMinute > 0) {
-        startTime.setHours(currentHour + 1)
-        startTime.setMinutes(0, 0, 0)
-      } else {
-        startTime.setHours(currentHour)
-        startTime.setMinutes(0, 0, 0)
-      }
+  if (holiday) {
+    console.log(`Holiday detected for ${dateString}:`, holiday.name, holiday.type)
+    
+    // If it's a holiday with special hours, use those hours
+    if (holiday.type === 'special-hours' && holiday.openTime && holiday.closeTime) {
+      console.log(`Special hours for ${holiday.name}: ${holiday.openTime} - ${holiday.closeTime}`)
+      return generateTimeSlotsForRange(date, holiday.openTime, holiday.closeTime)
+    }
+    
+    // If it's a regular holiday or maintenance, no slots available
+    if (holiday.type === 'holiday' || holiday.type === 'maintenance') {
+      console.log(`Office closed for holiday: ${holiday.name}`)
+      return []
     }
   }
 
-  // Determine the interval based on total duration
-  let interval = 60 // Default to 60 minutes for 0 duration services
+  // If it's not a holiday, check regular office hours
+  const officeHours = officeStore.getOfficeHoursForDay(dayOfWeek)
 
-  if (totalDurationMinutes.value > 0) {
-    // Use the service duration for non-zero duration services
-    interval = totalDurationMinutes.value
-  } else {
-    // For 0 duration services, use hourly slots
-    interval = 60
+  if (!officeHours || !officeHours.isOpen) {
+    console.log(`Office closed on ${dayOfWeek}`)
+    return []
   }
 
-  console.log(`Using interval of ${interval} minutes for time slots`)
+  console.log(`Regular office hours for ${dayOfWeek}: ${officeHours.openTime} - ${officeHours.closeTime}`)
+  
+  // Generate time slots based on office hours
+  return generateTimeSlotsForRange(date, officeHours.openTime, officeHours.closeTime, officeHours.lunchStart, officeHours.lunchEnd)
+}
+
+// Helper function to generate time slots for a given range
+const generateTimeSlotsForRange = (date, openTime, closeTime, lunchStart = null, lunchEnd = null) => {
+  const slots = []
+  const now = new Date()
+  let startTime = new Date(date)
+
+  console.log(`Generating time slots for range: ${openTime} - ${closeTime}`)
+
+  // Set start time
+  const openHourParts = openTime.split(":")
+  startTime.setHours(parseInt(openHourParts[0], 10), parseInt(openHourParts[1], 10), 0, 0)
+
+  // Set end time
+  const endTime = new Date(date)
+  const closeHourParts = closeTime.split(":")
+  endTime.setHours(parseInt(closeHourParts[0], 10), parseInt(closeHourParts[1], 10), 0, 0)
+
+  // If it's today, start from the current hour (rounded up)
+  if (isToday(date) && startTime < now) {
+    startTime = new Date(now)
+    startTime.setMinutes(Math.ceil(startTime.getMinutes() / 20) * 20, 0, 0)
+  }
+
+  // Determine the interval based on total duration
+  const interval = totalDurationMinutes.value > 0 ? totalDurationMinutes.value : 60
 
   while (startTime < endTime) {
     const slotEndTime = new Date(startTime)
     slotEndTime.setMinutes(startTime.getMinutes() + interval)
-
+    
+    // Skip lunch break if specified
+    if (lunchStart && lunchEnd) {
+      const lunchStartTime = new Date(date)
+      const lunchStartParts = lunchStart.split(":")
+      lunchStartTime.setHours(parseInt(lunchStartParts[0], 10), parseInt(lunchStartParts[1], 10), 0, 0)
+      
+      const lunchEndTime = new Date(date)
+      const lunchEndParts = lunchEnd.split(":")
+      lunchEndTime.setHours(parseInt(lunchEndParts[0], 10), parseInt(lunchEndParts[1], 10), 0, 0)
+      
+      // Skip this slot if it overlaps with lunch
+      if (startTime < lunchEndTime && slotEndTime > lunchStartTime) {
+        startTime = new Date(lunchEndTime)
+        continue
+      }
+    }
+    
     if (slotEndTime <= endTime) {
       const formattedStartTime = format(startTime, "h:mm a")
-
+      const formattedEndTime = format(slotEndTime, "h:mm a")
+      
       // Create the time range string
       let displayTime
       if (totalDurationMinutes.value === 0) {
-        // For services with 0 duration, just show the start time
         displayTime = formattedStartTime
       } else {
-        // For services with duration, show the range
-        const formattedEndTime = format(slotEndTime, "h:mm a")
         displayTime = `${formattedStartTime} - ${formattedEndTime}`
       }
-
+      
       slots.push({
         startTime: formattedStartTime,
-        endTime: format(slotEndTime, "h:mm a"),
+        endTime: formattedEndTime,
         timeRange: displayTime,
-        isBooked: false,
+        isBooked: false
       })
     }
-
+    
     // Increment by the interval
     startTime = new Date(slotEndTime)
   }
 
+  console.log(`Generated ${slots.length} time slots`)
   return slots
+}
+
+// Update the dynamicTimeSlots computed property to use the new function
+const dynamicTimeSlots = computed(() => {
+  if (!selectedDate.value) return []
+  
+  console.log(`Getting time slots for selected date: ${formatDate(selectedDate.value)}`)
+  return getAvailableTimeSlots(selectedDate.value)
 })
 
 // Update the available time slots computed property to correctly parse appointment times
-// The issue is that the appointment.time in the database is stored as a range (e.g. "8:00 AM - 8:30 AM")
-// but we need to extract just the start time for comparison
-
 const availableTimeSlots = computed(() => {
-  if (!dynamicTimeSlots.value.length) return [];
-  
-  return dynamicTimeSlots.value.map(slot => {
-    // Parse the start and end times of this slot
-    const slotStartTime = parse(slot.startTime, "h:mm a", new Date(selectedDate.value));
-    const slotEndTime = parse(slot.endTime, "h:mm a", new Date(selectedDate.value));
-    
-    // Check if this time slot overlaps with any existing appointment
-    const isBooked = bookedAppointments.value.some(appointment => {
-      // Extract just the start time from the appointment time range
-      const appointmentTimeString = appointment.time.split(" - ")[0].trim();
-      
-      // Parse the appointment start time
-      const appointmentStartTime = parse(appointmentTimeString, "h:mm a", new Date(selectedDate.value));
-      
-      // Calculate the appointment end time based on its duration
-      const appointmentEndTime = new Date(appointmentStartTime);
-      appointmentEndTime.setMinutes(appointmentStartTime.getMinutes() + (appointment.duration || 60));
-      
-      // Check for overlap: 
-      // If slot starts before appointment ends AND slot ends after appointment starts
-      return (
-        slotStartTime < appointmentEndTime && 
-        slotEndTime > appointmentStartTime
-      );
-    });
-    
-    return {
-      ...slot,
-      isBooked
-    };
-  });
-});
-
-// Function to check if a date is a weekend (Saturday or Sunday)
-const isWeekend = (date) => {
-  const day = date.getDay()
-  return day === 0 || day === 6 // 0 is Sunday, 6 is Saturday
-}
-
-// Show weekend modal with custom message
-const showWeekendModal = (
-  date,
-  title = "Weekend - Office Closed",
-  message = "Provincial Veterinary Office is closed on weekends. Please select a weekday (Monday to Friday) for your appointment.",
-  icon = Calendar,
-  iconClass = "bg-red-100",
-  iconColor = "text-red-600",
-) => {
-  selectedDateForModal.value = date
-  modalTitle.value = title
-  modalMessage.value = message
-  modalIcon.value = icon
-  modalIconClass.value = iconClass
-  modalIconColor.value = iconColor
-  showWeekendModalState.value = true
-}
-
-// Close weekend modal
-const closeWeekendModal = () => {
-  showWeekendModalState.value = false
-  selectedDateForModal.value = null
-}
-
-// Fetch booked appointments for the selected date - FIXED
-const fetchBookedAppointments = async () => {
-  if (!selectedDate.value) return
+  if (!dynamicTimeSlots.value.length) return []
 
   isLoadingTimeSlots.value = true
 
   try {
+    const slots = dynamicTimeSlots.value.map((slot) => {
+      // Parse the start and end times of this slot
+      const slotStartTime = parse(slot.startTime, "h:mm a", new Date(selectedDate.value))
+      const slotEndTime = parse(slot.endTime, "h:mm a", new Date(selectedDate.value))
+
+      // Check if this time slot overlaps with any existing appointment for the selected doctor
+      const isBooked = bookedAppointments.value.some((appointment) => {
+        // Only consider appointments for the selected doctor
+        if (selectedDoctor.value && appointment.doctorId !== (selectedDoctor.value.userId || selectedDoctor.value.id)) {
+          return false
+        }
+        
+        // Extract just the start time from the appointment time range
+        const appointmentTimeString = appointment.time.split(" - ")[0].trim()
+
+        // Parse the appointment start time
+        const appointmentStartTime = parse(appointmentTimeString, "h:mm a", new Date(selectedDate.value))
+
+        // Calculate the appointment end time based on its duration
+        const appointmentEndTime = new Date(appointmentStartTime)
+        appointmentEndTime.setMinutes(appointmentStartTime.getMinutes() + (appointment.duration || 60))
+
+        // Check for overlap:
+        // If slot starts before appointment ends AND slot ends after appointment starts
+        return slotStartTime < appointmentEndTime && slotEndTime > appointmentStartTime
+      })
+
+      return {
+        ...slot,
+        isBooked,
+      }
+    })
+    
+    console.log(`Available time slots after booking check: ${slots.length}`)
+    return slots
+  } finally {
+    isLoadingTimeSlots.value = false
+  }
+})
+
+// Fetch booked appointments for the selected date
+const fetchBookedAppointments = async () => {
+  if (!selectedDate.value) return
+  
+  isLoadingTimeSlots.value = true
+  
+  try {
     // Create start and end of day timestamps for the selected date in local timezone
     const dateString = formatDateToLocalISOString(selectedDate.value)
-
+  
     // Create start of day (midnight)
     const start = new Date(`${dateString}T00:00:00`)
-
+  
     // Create end of day (23:59:59)
     const end = new Date(`${dateString}T23:59:59`)
-
+  
     // Query Firestore for appointments on the selected date
     const appointmentsRef = collection(db, "appointments")
     const q = query(appointmentsRef, where("date", ">=", start), where("date", "<=", end))
-
+  
     const querySnapshot = await getDocs(q)
     bookedAppointments.value = []
-
+  
     querySnapshot.forEach((doc) => {
       const data = doc.data()
       bookedAppointments.value.push({
@@ -2040,6 +2051,9 @@ const fetchBookedAppointments = async () => {
         duration: data.duration,
       })
     })
+    
+    console.log(`Fetched ${bookedAppointments.value.length} booked appointments for ${dateString}`)
+    console.log("Booked appointments:", bookedAppointments.value)
   } catch (error) {
     console.error("Error fetching booked appointments:", error)
   } finally {
@@ -2060,7 +2074,7 @@ watch(selectedServices, (newServices, oldServices) => {
     !newServices.every((service, index) => service === oldServices[index])
   ) {
     selectedTime.value = null
-
+  
     // Recalculate time slots based on new service selection
     if (selectedDate.value) {
       fetchBookedAppointments()
@@ -2076,14 +2090,14 @@ watch(selectedDate, (newDate) => {
   }
 })
 
-// Watch for changes in selectedDoctor to update the map
+// Watch for changes in selectedDoctor to update the map and refresh time slots
 watch(
   () => selectedDoctor.value,
   (newDoctor, oldDoctor) => {
     if (newDoctor) {
       // Force map reinitialization when doctor changes
       cleanupMap()
-
+  
       // Use nextTick to ensure the DOM is updated
       nextTick(() => {
         // Delay the map initialization slightly to ensure the container is ready
@@ -2091,6 +2105,11 @@ watch(
           loadGoogleMapsApi()
         }, 100)
       })
+      
+      // Refresh time slots if a date is already selected
+      if (selectedDate.value) {
+        fetchBookedAppointments()
+      }
     }
   },
 )
@@ -2104,12 +2123,12 @@ watch(
         loadGoogleMapsApi()
       })
     }
-
+  
     // If we're on the datetime step and no date is selected, default to today
     if (newStepId === "datetime" && !selectedDate.value) {
       // Set today as the default date if it's available
       const today = new Date()
-      if (!isWeekend(today) && isDayAvailable(today) && !isTodayWithSpecialHours(today)) {
+      if (isDayAvailable(today) && !isTodayWithSpecialHours(today)) {
         selectDate(today)
       }
     }
@@ -2126,7 +2145,7 @@ const startingDayOffset = computed(() => {
 const calendarDays = computed(() => {
   const start = startOfMonth(currentDate.value)
   const end = endOfMonth(currentDate.value)
-
+  
   // Get all days in the month
   return eachDayOfInterval({ start, end }).map((date) => ({
     date,
@@ -2172,7 +2191,7 @@ const goToStep = (index) => {
   // Only allow going to steps that have been completed or the current step
   if (index <= currentStepIndex.value) {
     currentStepIndex.value = index
-
+  
     // On mobile, show the first column when changing steps
     if (isMobile.value) {
       showSecondColumn.value = false
@@ -2199,7 +2218,7 @@ const resetCurrentStep = () => {
       selectedTime.value = null // Clear the time selection when resetting
       break
   }
-
+  
   // On mobile, ensure we're showing the first column after reset
   if (isMobile.value) {
     showSecondColumn.value = false
@@ -2215,7 +2234,7 @@ const selectCategory = (categoryId) => {
   } else {
     selectedCategory.value = categoryId
     selectedServices.value = []
-
+  
     // Show second column on mobile after selection
     if (isMobile.value) {
       showSecondColumn.value = true
@@ -2243,7 +2262,7 @@ const selectSpecies = (speciesId) => {
     if (currentStepIndex.value > 1) {
       currentStepIndex.value = 1
     }
-
+  
     // On mobile, go back to first column when deselecting
     if (isMobile.value) {
       showSecondColumn.value = false
@@ -2251,7 +2270,7 @@ const selectSpecies = (speciesId) => {
   } else {
     selectedSpecies.value = speciesId
     selectedPet.value = null
-
+  
     // Show second column on mobile after selection
     if (isMobile.value) {
       showSecondColumn.value = true
@@ -2268,14 +2287,14 @@ const selectPet = (pet) => {
     if (currentStepIndex.value > 1) {
       currentStepIndex.value = 1
     }
-
+  
     // On mobile, go back to first column when deselecting
     if (isMobile.value) {
       showSecondColumn.value = false
     }
   } else {
     selectedPet.value = pet
-
+  
     // Show second column on mobile after selection
     if (isMobile.value) {
       showSecondColumn.value = true
@@ -2292,17 +2311,22 @@ const selectDoctor = (doctor) => {
     if (currentStepIndex.value > 2) {
       currentStepIndex.value = 2
     }
-
+  
     // On mobile, go back to first column when deselecting
     if (isMobile.value) {
       showSecondColumn.value = false
     }
   } else {
     selectedDoctor.value = doctor
-
+  
     // Show second column on mobile after selection
     if (isMobile.value) {
       showSecondColumn.value = true
+    }
+    
+    // Refresh time slots if a date is already selected
+    if (selectedDate.value) {
+      fetchBookedAppointments()
     }
   }
 }
@@ -2310,8 +2334,8 @@ const selectDoctor = (doctor) => {
 // Modified to automatically show second column on mobile when selected
 // and to toggle date selection
 const selectDate = (date) => {
-  // Only select the date if it's not a weekend and is available
-  if (!isWeekend(date) && isDayAvailable(date)) {
+  // Only select the date if it's available (removed weekend check)
+  if (isDayAvailable(date)) {
     // Toggle selection if clicking the same date
     if (selectedDate.value && isSameDay(date, selectedDate.value)) {
       selectedDate.value = null
@@ -2341,14 +2365,14 @@ const selectTime = (timeRange) => {
   // Toggle selection if clicking the same time
   if (selectedTime.value === timeRange) {
     selectedTime.value = null
-
+  
     // On mobile, go back to first column when deselecting
     if (isMobile.value) {
       showSecondColumn.value = false
     }
   } else {
     selectedTime.value = timeRange
-
+  
     // Show second column on mobile after time selection
     if (isMobile.value) {
       showSecondColumn.value = true
@@ -2360,13 +2384,13 @@ const selectTime = (timeRange) => {
 const nextStep = async () => {
   if (currentStepIndex.value < steps.length - 1 && canProceed.value && !isLoading.value) {
     isLoading.value = true
-
+  
     try {
       // Simulate loading time (you can remove this in production)
       await new Promise((resolve) => setTimeout(resolve, 800))
-
+  
       currentStepIndex.value++
-
+  
       // On mobile, go back to first column for next step
       if (isMobile.value) {
         showSecondColumn.value = false
@@ -2380,7 +2404,7 @@ const nextStep = async () => {
 const previousStep = () => {
   if (currentStepIndex.value > 0) {
     currentStepIndex.value--
-
+  
     // On mobile, go back to first column for previous step
     if (isMobile.value) {
       showSecondColumn.value = false
@@ -2398,7 +2422,7 @@ const previousMonth = () => {
 
 const closeSuccessModal = () => {
   showSuccessModal.value = false
-
+  
   // Reset form after closing the modal
   selectedCategory.value = null
   selectedServices.value = []
@@ -2417,21 +2441,21 @@ const getTimeRangeForDisplay = (startTime) => {
   if (shouldUseExactTimes.value) {
     return startTime
   }
-
+  
   // Otherwise, calculate and return the time range
   const startDate = parse(startTime, "h:mm a", new Date())
   const endDate = new Date(startDate)
   endDate.setMinutes(startDate.getMinutes() + totalDurationMinutes.value)
-
+  
   return `${startTime} - ${format(endDate, "h:mm a")}`
 }
 
-// Book appointment function - FIXED
+// Book appointment function
 const bookAppointment = async () => {
   if (!canBook.value || isLoading.value) return
-
+  
   isLoading.value = true
-
+  
   try {
     // Get service names with durations for the booking details
     const serviceNames = selectedServices.value
@@ -2440,7 +2464,7 @@ const bookAppointment = async () => {
         return service ? `${service.name} (${service.processingTime || "0 minutes"})` : ""
       })
       .filter((name) => name)
-
+  
     // Create appointment data with proper date handling
     const appointmentData = {
       services: selectedServices.value,
@@ -2456,16 +2480,16 @@ const bookAppointment = async () => {
       userId: authStore.user?.userId || "guest-user",
       status: "pending",
     }
-
+  
     // Use the appointment store to add the appointment
     const result = await appointmentStore.addAppointment(appointmentData)
-
+  
     if (!result) {
       throw new Error("Failed to save appointment")
     }
-
+  
     console.log("Appointment saved successfully:", result)
-
+  
     // Set booking details for success modal
     selectedBookingDetails.value = {
       petName: selectedPet.value.name,
@@ -2475,7 +2499,7 @@ const bookAppointment = async () => {
       doctorName: `${getDoctorTitle(selectedDoctor.value)} ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName}`,
       duration: totalDurationMinutes.value,
     }
-
+  
     // Show success modal
     showSuccessModal.value = true
   } catch (error) {
@@ -2503,7 +2527,7 @@ const initializeAuthAndFetchData = async () => {
     } catch (error) {
       console.error("Error initializing auth:", error)
     }
-
+  
     // Fetch user's pets if user is logged in
     if (authStore.user && authStore.user.userId) {
       try {
@@ -2519,7 +2543,7 @@ const initializeAuthAndFetchData = async () => {
 // Function to generate a realistic bio if none exists
 const generateBio = (doctor) => {
   if (!doctor) return ""
-
+  
   const specialties = {
     "Small Animal Medicine": "small animal medicine and preventative care",
     "Large Animal Medicine": "large animal medicine and farm animal health",
@@ -2542,14 +2566,14 @@ const generateBio = (doctor) => {
     "Internal Medicine": "internal medicine and complex disease management",
     "Preventative Care": "preventative care and wellness programs",
   }
-
+  
   const specialty = doctor.specialty || "general veterinary medicine"
   const specialtyDescription = specialties[specialty] || specialty.toLowerCase()
   const experience = doctor.experience || "5"
   const title = doctor.title || "DVM"
   const gender = doctor.gender?.toLowerCase() === "female" ? "her" : "his"
   const education = doctor.education ? `with education from ${doctor.education}` : ""
-
+  
   return `${getDoctorTitle(doctor)} ${doctor.firstName} ${doctor.lastName} is a dedicated veterinarian with ${experience} years of experience specializing in ${specialtyDescription}. ${gender.charAt(0).toUpperCase() + gender.slice(1)} approach combines compassionate care with evidence-based medicine ${education}. ${gender.charAt(0).toUpperCase() + gender.slice(1)} commitment to animal welfare and continuous professional development ensures that your pets receive the highest quality care.`
 }
 
@@ -2562,16 +2586,16 @@ const getBiographyText = (doctor) => {
 onMounted(async () => {
   // Initialize the step refs array
   stepRefs.value = Array(steps.length).fill(null)
-
+  
   // Position the connector line
   positionConnectorLine()
-
+  
   // Add resize listener
   window.addEventListener("resize", positionConnectorLine)
-
+  
   try {
     initialLoading.value = true
-
+  
     // Use Promise.all to load data in parallel
     await Promise.all([
       fetchOfficeHours(),
@@ -2606,7 +2630,7 @@ watch(
   () => currentStepIndex.value,
   () => {
     positionConnectorLine()
-
+  
     // If we're on the datetime step, set today as default date if none is selected
     if (currentStepIndex.value === 3) {
       setDefaultDateToToday()
@@ -2620,12 +2644,12 @@ const isExpanded = ref(false)
 // Function to determine the doctor title based on gender
 const getDoctorTitle = (doctor) => {
   if (!doctor) return "Dr."
-
+  
   // Check if gender is explicitly set
   if (doctor.gender) {
     return doctor.gender.toLowerCase() === "female" ? "Dra." : "Dr."
   }
-
+  
   // If no gender is set, use Dr. as default
   return "Dr."
 }
@@ -2633,16 +2657,16 @@ const getDoctorTitle = (doctor) => {
 // Get the current day's office hours (either special hours or regular hours)
 const currentDayOfficeHours = computed(() => {
   if (!selectedDate.value) return null
-
+  
   // Check if this date has special hours
   const specialHours = getSpecialHoursForDate(selectedDate.value)
-
+  
   // Get regular office hours for this day
   const dayOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
     selectedDate.value.getDay()
   ]
   const regularOfficeHours = officeStore.getOfficeHoursForDay(dayOfWeek)
-
+  
   // Use special hours if available, otherwise use regular hours
   return specialHours || regularOfficeHours || { openTime: "08:00", closeTime: "17:00" }
 })
@@ -2650,7 +2674,7 @@ const currentDayOfficeHours = computed(() => {
 // Format the office hours for display (convert from 24h to 12h format)
 const formatOfficeHours = computed(() => {
   const hours = currentDayOfficeHours.value || { openTime: "08:00", closeTime: "17:00" }
-
+  
   return {
     openTime: formatTo12Hour(hours.openTime || "08:00"),
     closeTime: formatTo12Hour(hours.closeTime || "17:00"),
@@ -2663,19 +2687,19 @@ const isCurrentDayScheduleClosed = computed(() => {
   if (!selectedDate.value || !isToday(selectedDate.value)) {
     return false
   }
-
+  
   const now = new Date()
   const currentHour = now.getHours()
   const currentMinute = now.getMinutes()
-
+  
   // Get office hours for today
   const officeHours = currentDayOfficeHours.value
-
+  
   // Get closing time (default to 17:00 if not specified)
   const closeHourParts = (officeHours.closeTime || "17:00").split(":")
   const closeHour = parseInt(closeHourParts[0], 10)
   const closeMinute = parseInt(closeHourParts[1], 10)
-
+  
   // Check if current time is past closing time
   return currentHour > closeHour || (currentHour === closeHour && currentMinute >= closeMinute)
 })
@@ -2684,20 +2708,19 @@ const isCurrentDayScheduleClosed = computed(() => {
 const setDefaultDateToToday = () => {
   if (!selectedDate.value) {
     const today = new Date()
-
-    // Only set today as default if it's not a weekend, is available, and not a holiday/special hours
-    if (!isWeekend(today) && isDayAvailable(today) && !isTodayWithSpecialHours(today)) {
-      selectedDate.value = today
+  
+    // Only set today as default if it's available and not a holiday/special hours
+    if (isDayAvailable(today) && !isTodayWithSpecialHours(today)) {
+      selectDate(today)
       fetchBookedAppointments()
     } else {
       // Find the next available day
       let nextAvailableDay = new Date(today)
       let daysToCheck = 14 // Check up to 14 days ahead
-
+  
       while (daysToCheck > 0) {
         nextAvailableDay.setDate(nextAvailableDay.getDate() + 1)
         if (
-          !isWeekend(nextAvailableDay) &&
           isDayAvailable(nextAvailableDay) &&
           !isTodayWithSpecialHours(nextAvailableDay)
         ) {
@@ -2715,25 +2738,24 @@ const setDefaultDateToToday = () => {
 onMounted(() => {
   checkMobile()
 })
-
-  </script>
+</script>
   
-  <style>
-  /* Prevent the main container from scrolling */
-  .h-screen {
+<style>
+/* Prevent the main container from scrolling */
+.h-screen {
   height: 100vh;
   overflow: hidden;
-  }
-  
-  /* Ensure the content areas have proper scrolling */
-  .overflow-y-auto {
+}
+
+/* Ensure the content areas have proper scrolling */
+.overflow-y-auto {
   overflow-y: auto;
-  }
-  
-  /* Add media query for mobile devices */
-  @media (max-width: 767px) {
+}
+
+/* Add media query for mobile devices */
+@media (max-width: 767px) {
   .h-screen {
     height: calc(100vh - 20px);
   }
-  }
-  </style>
+}
+</style>

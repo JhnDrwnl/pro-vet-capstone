@@ -6,6 +6,9 @@ import Notifications from '@/components/common/NotificationPanel.vue';
 import UserSettings from '@/views/user/Settings.vue';
 import UserTelehealth from '@/views/user/Telehealth.vue';
 import Profile from '@/views/user/Profile.vue';
+import Calendar from '@/views/user/dashboard/Calendar.vue';
+import EducationalResources from '@/views/user/dashboard/EducationalResources.vue';
+
 
 
 export default [
@@ -44,6 +47,16 @@ export default [
           path: "usertelehealth",
           name: "UserTelehealth",
           component: UserTelehealth,
+        },
+        {
+          path: "calendar",
+          name: "Calendar",
+          component: Calendar,
+        },
+        {
+          path: "educational-resources",
+          name: "EducationalResources",
+          component: EducationalResources,
         },
       ],
     },
