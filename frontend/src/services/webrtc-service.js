@@ -1,22 +1,37 @@
 //services/webrtc-service.js
-import { db } from '@shared/firebase'
-import { collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, getDoc } from 'firebase/firestore'
+import { db } from '@shared/firebase';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc,
+  updateDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  query, 
+  where, 
+  getDocs,
+  arrayUnion,
+  serverTimestamp
+} from 'firebase/firestore';
 
 class WebRTCService {
   constructor() {
-    this.peerConnection = null
-    this.localStream = null
-    this.remoteStream = null
-    this.roomId = null
-    this.callerId = null
-    this.calleeId = null
-    this.unsubscribeCallDoc = null
-    this.unsubscribeAnswerCandidates = null
-    this.unsubscribeOfferCandidates = null
-    this.pendingIceCandidates = [] // Store pending ICE candidates
+    this.peerConnection = null;
+    this.localStream = null;
+    this.remoteStream = null;
+    this.callDoc = null;
+    this.callId = null;
+    this.callerId = null;
+    this.calleeId = null;
+    this.role = null; // 'caller' or 'callee'
+    this.iceCandidatesUnsubscribe = null;
+    this.callDocUnsubscribe = null;
+    this.screenStream = null;
+    this.originalVideoTrack = null;
     
-    // STUN servers for NAT traversal
-    this.servers = {
+    // ICE servers configuration
+    this.configuration = {
       iceServers: [
         {
           urls: [
@@ -26,642 +41,505 @@ class WebRTCService {
         },
       ],
       iceCandidatePoolSize: 10,
-    }
+    };
   }
 
+  // Setup local media stream
   async setupLocalStream() {
     try {
-      console.log("WebRTCService: Requesting camera and microphone access...")
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      });
       
-      // First try with both video and audio
-      try {
-        this.localStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user"
-          },
-          audio: true
-        })
-        console.log("WebRTCService: Successfully got camera and microphone access")
-      } catch (err) {
-        console.warn("WebRTCService: Failed to get both camera and microphone, trying camera only", err)
-        
-        // If that fails, try with just video
-        try {
-          this.localStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              facingMode: "user"
-            },
-            audio: false
-          })
-          console.log("WebRTCService: Successfully got camera access (no microphone)")
-        } catch (videoErr) {
-          console.warn("WebRTCService: Failed to get camera, trying audio only", videoErr)
-          
-          // If that fails too, try with just audio
-          this.localStream = await navigator.mediaDevices.getUserMedia({
-            video: false,
-            audio: true
-          })
-          console.log("WebRTCService: Successfully got audio access (no camera)")
-        }
-      }
+      // Create a remote stream for receiving
+      this.remoteStream = new MediaStream();
       
-      // Verify we have tracks
-      if (this.localStream) {
-        const videoTracks = this.localStream.getVideoTracks();
-        const audioTracks = this.localStream.getAudioTracks();
-        console.log(`WebRTCService: Got ${videoTracks.length} video tracks and ${audioTracks.length} audio tracks`);
-        
-        if (videoTracks.length > 0) {
-          console.log(`WebRTCService: Using video device: ${videoTracks[0].label}`);
-        }
-        if (audioTracks.length > 0) {
-          console.log(`WebRTCService: Using audio device: ${audioTracks[0].label}`);
-        }
-      }
-      
-      return this.localStream
+      return this.localStream;
     } catch (error) {
-      console.error('WebRTCService: Error accessing media devices:', error)
-      throw new Error(`Camera/microphone access failed: ${error.message}`)
+      console.error('Error setting up local stream:', error);
+      throw error;
     }
   }
 
-  // Helper method to add ICE candidates safely - FIXED
-  async addIceCandidateSafely(candidate) {
+  // Initialize peer connection
+  async initializePeerConnection() {
     try {
-      if (!this.peerConnection) {
-        console.warn("WebRTCService: Cannot add ICE candidate - no peer connection exists");
-        this.pendingIceCandidates.push(candidate);
-        return false;
-      }
+      // Create a new RTCPeerConnection
+      this.peerConnection = new RTCPeerConnection(this.configuration);
       
-      if (this.peerConnection.remoteDescription) {
-        // Check if candidate has a valid sdpMid or sdpMLineIndex before adding
-        if (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null) {
-          await this.peerConnection.addIceCandidate(candidate);
-          return true;
-        } else {
-          console.warn("WebRTCService: Skipping invalid ICE candidate (missing sdpMid/sdpMLineIndex)");
-          return false;
-        }
-      } else {
-        // Store the candidate for later if remote description isn't set yet
-        console.log("WebRTCService: Storing ICE candidate for later - remote description not set");
-        this.pendingIceCandidates.push(candidate);
-        return false;
-      }
+      // Add local tracks to the peer connection
+      this.localStream.getTracks().forEach(track => {
+        this.peerConnection.addTrack(track, this.localStream);
+      });
+      
+      // Set up event handlers for the peer connection
+      this.setupPeerConnectionEventHandlers();
+      
+      return this.peerConnection;
     } catch (error) {
-      console.error('WebRTCService: Error adding ICE candidate:', error);
-      // Don't throw from here, just log the error and return false
-      return false;
+      console.error('Error initializing peer connection:', error);
+      throw error;
     }
   }
 
-  // Helper method to process pending ICE candidates - FIXED
-  async processPendingIceCandidates() {
-    if (this.pendingIceCandidates.length > 0 && 
-        this.peerConnection && 
-        this.peerConnection.remoteDescription) {
+  // Set up event handlers for the peer connection
+  setupPeerConnectionEventHandlers() {
+    // Handle connection state changes
+    this.peerConnection.onconnectionstatechange = () => {
+      console.log('Connection state:', this.peerConnection.connectionState);
+    };
+    
+    // Handle ICE connection state changes
+    this.peerConnection.oniceconnectionstatechange = () => {
+      console.log('ICE connection state:', this.peerConnection.iceConnectionState);
       
-      console.log(`WebRTCService: Processing ${this.pendingIceCandidates.length} pending ICE candidates`);
-      
-      // Make a copy and clear the original array
-      const candidates = [...this.pendingIceCandidates];
-      this.pendingIceCandidates = [];
-      
-      // Process candidates with delay to avoid race conditions
-      for (const candidate of candidates) {
-        try {
-          // Validate candidate has required properties before adding
-          if (candidate.sdpMid !== null || candidate.sdpMLineIndex !== null) {
-            await this.peerConnection.addIceCandidate(candidate);
-            // Small delay between adding candidates
-            await new Promise(resolve => setTimeout(resolve, 50));
-          } else {
-            console.warn("WebRTCService: Skipping invalid stored ICE candidate");
-          }
-        } catch (error) {
-          console.error('WebRTCService: Error adding pending ICE candidate:', error);
-          // Continue processing other candidates even if one fails
-        }
+      if (this.peerConnection.iceConnectionState === 'connected') {
+        // Connection established successfully
+        console.log('Call connected');
+      } else if (this.peerConnection.iceConnectionState === 'failed' || 
+                this.peerConnection.iceConnectionState === 'disconnected' ||
+                this.peerConnection.iceConnectionState === 'closed') {
+        // Connection failed or was disconnected
+        console.log('Call disconnected or failed');
       }
-    }
+    };
+    
+    // Handle ICE candidate events
+    this.peerConnection.onicecandidate = (event) => {
+      if (!event.candidate) return;
+      
+      // Add the ICE candidate to Firestore
+      this.addIceCandidate(event.candidate);
+    };
+    
+    // Handle track events
+    this.peerConnection.ontrack = (event) => {
+      console.log('Received remote track');
+      
+      // Add the remote tracks to the remote stream
+      event.streams[0].getTracks().forEach(track => {
+        this.remoteStream.addTrack(track);
+      });
+    };
   }
 
+  // Start a call
   async startCall(appointmentId, callerId, calleeId) {
     try {
-      // Create a new room with the appointment ID
-      this.roomId = appointmentId
-      this.callerId = callerId
-      this.calleeId = calleeId
-      this.pendingIceCandidates = [] // Reset pending candidates
+      this.callId = appointmentId;
+      this.callerId = callerId;
+      this.calleeId = calleeId;
+      this.role = 'caller';
       
       // Initialize the peer connection
-      this.peerConnection = new RTCPeerConnection(this.servers)
+      await this.initializePeerConnection();
       
-      // Add local tracks to the peer connection
-      if (this.localStream) {
-        this.localStream.getTracks().forEach(track => {
-          console.log(`WebRTCService: Adding ${track.kind} track to peer connection`)
-          this.peerConnection.addTrack(track, this.localStream)
-        })
-      } else {
-        console.warn("WebRTCService: No local stream available when starting call")
-      }
+      // Create the call document in Firestore
+      const callsRef = collection(db, 'calls');
+      this.callDoc = doc(callsRef, this.callId);
       
-      // Create a remote stream to receive remote tracks
-      this.remoteStream = new MediaStream()
+      // Create offer
+      const offerDescription = await this.peerConnection.createOffer();
+      await this.peerConnection.setLocalDescription(offerDescription);
       
-      // Set up listeners for remote tracks
-      this.peerConnection.ontrack = (event) => {
-        console.log("WebRTCService: Received remote track", event.track.kind)
-        event.streams[0].getTracks().forEach(track => {
-          this.remoteStream.addTrack(track)
-        })
-      }
-      
-      // Add ICE connection state monitoring
-      this.peerConnection.oniceconnectionstatechange = () => {
-        console.log(`WebRTCService: ICE connection state changed to: ${this.peerConnection.iceConnectionState}`);
-        
-        // If we're in a failed state, try to restart ICE
-        if (this.peerConnection.iceConnectionState === 'failed') {
-          console.warn('WebRTCService: ICE connection failed, attempting to restart');
-          this.peerConnection.restartIce();
-        }
+      // Store the call data in Firestore
+      const callData = {
+        callerId: this.callerId,
+        calleeId: this.calleeId,
+        offer: {
+          type: offerDescription.type,
+          sdp: offerDescription.sdp
+        },
+        answer: null,
+        status: 'pending',
+        createdAt: serverTimestamp()
       };
       
-      try {
-        // Create room in Firestore
-        const callDoc = doc(db, 'calls', this.roomId)
-        const offerCandidates = collection(callDoc, 'offerCandidates')
-        const answerCandidates = collection(callDoc, 'answerCandidates')
+      await setDoc(this.callDoc, callData);
+      
+      // Create subcollections for ICE candidates
+      const callerCandidatesRef = collection(this.callDoc, 'callerCandidates');
+      const calleeCandidatesRef = collection(this.callDoc, 'calleeCandidates');
+      
+      // Listen for remote answer
+      this.callDocUnsubscribe = onSnapshot(this.callDoc, async (snapshot) => {
+        const data = snapshot.data();
         
-        // Listen for ICE candidates and add them to Firestore
-        this.peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            try {
-              console.log(`WebRTCService: Generated ICE candidate for ${event.candidate.sdpMid || 'unknown'} mline ${event.candidate.sdpMLineIndex}`);
-              setDoc(doc(offerCandidates), { ...event.candidate.toJSON() })
-            } catch (error) {
-              console.error('WebRTCService: Error saving ICE candidate:', error)
-            }
-          }
+        // If we don't have an answer yet and the remote side has answered
+        if (!this.peerConnection.currentRemoteDescription && data?.answer) {
+          console.log('Setting remote description with answer');
+          const answerDescription = new RTCSessionDescription(data.answer);
+          await this.peerConnection.setRemoteDescription(answerDescription);
         }
         
-        // Create offer
-        const offerDescription = await this.peerConnection.createOffer()
-        await this.peerConnection.setLocalDescription(offerDescription)
-        
-        // Save the offer to Firestore with error handling
-        try {
-          await setDoc(callDoc, {
-            offer: {
-              type: offerDescription.type,
-              sdp: offerDescription.sdp
-            },
-            callerId: this.callerId,
-            calleeId: this.calleeId,
-            status: 'pending',
-            createdAt: new Date().toISOString()
-          }, { merge: true }) // Use merge option to avoid overwriting existing data
-        } catch (error) {
-          console.error('WebRTCService: Error saving offer to Firestore:', error)
-          throw new Error('Failed to save call information. Please try again.')
+        // Check call status
+        if (data?.status === 'rejected') {
+          console.log('Call was rejected');
+          this.hangUp();
+        } else if (data?.status === 'ended') {
+          console.log('Call was ended by the other party');
+          this.hangUp();
         }
-        
-        // Listen for remote answer with error handling
-        this.unsubscribeCallDoc = onSnapshot(callDoc, {
-          next: async (snapshot) => {
+      });
+      
+      // Listen for remote ICE candidates
+      this.iceCandidatesUnsubscribe = onSnapshot(calleeCandidatesRef, (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            console.log('Got new remote ICE candidate');
+            
             try {
-              const data = snapshot.data()
-              
-              // If call was rejected
-              if (data?.status === 'rejected') {
-                this.hangUp()
-                return
-              }
-              
-              // If we don't have an answer yet, and the remote user provided one
-              if (!this.peerConnection.currentRemoteDescription && data?.answer) {
-                console.log('WebRTCService: Received answer from remote peer');
-                const answerDescription = new RTCSessionDescription(data.answer)
-                await this.peerConnection.setRemoteDescription(answerDescription)
-                
-                // Process any pending ICE candidates now that we have the remote description
-                // Add a small delay to ensure signaling state is stable
-                setTimeout(() => this.processPendingIceCandidates(), 200);
+              // Make sure we have a remote description before adding ICE candidates
+              if (this.peerConnection.remoteDescription) {
+                await this.peerConnection.addIceCandidate(new RTCIceCandidate(data));
+              } else {
+                console.log('Skipping ICE candidate - no remote description yet');
               }
             } catch (error) {
-              console.error('WebRTCService: Error processing call document update:', error)
+              console.error('Error adding received ICE candidate:', error);
             }
-          },
-          error: (error) => {
-            console.error('WebRTCService: Error listening to call document:', error)
           }
-        })
-        
-        // Listen for remote ICE candidates with error handling
-        this.unsubscribeAnswerCandidates = onSnapshot(answerCandidates, {
-          next: (snapshot) => {
-            snapshot.docChanges().forEach(async (change) => {
-              if (change.type === 'added') {
-                try {
-                  const data = change.doc.data();
-                  console.log(`WebRTCService: Received ICE candidate for ${data.sdpMid || 'unknown'} mline ${data.sdpMLineIndex}`);
-                  const candidate = new RTCIceCandidate(data)
-                  // Use the safe method to add ICE candidates
-                  await this.addIceCandidateSafely(candidate)
-                } catch (error) {
-                  console.error('WebRTCService: Error processing ICE candidate:', error)
-                }
-              }
-            })
-          },
-          error: (error) => {
-            console.error('WebRTCService: Error listening to answer candidates:', error)
-          }
-        })
-      } catch (firestoreError) {
-        console.error('WebRTCService: Firestore operation failed:', firestoreError)
-        // Fallback to direct WebRTC connection without Firestore
-        console.log('WebRTCService: Attempting direct WebRTC connection without Firestore signaling')
-        // The connection will rely solely on ICE candidates and STUN servers
-      }
+        });
+      });
       
       return {
         localStream: this.localStream,
         remoteStream: this.remoteStream
-      }
+      };
     } catch (error) {
-      console.error('WebRTCService: Error starting call:', error)
-      throw error
+      console.error('Error starting call:', error);
+      throw error;
     }
   }
 
-  async answerCall(appointmentId) {
+  // Answer a call
+  async answerCall(callId) {
     try {
-      this.roomId = appointmentId
-      this.pendingIceCandidates = [] // Reset pending candidates
+      this.callId = callId;
+      this.role = 'callee';
+      
+      // Get the call document
+      const callsRef = collection(db, 'calls');
+      this.callDoc = doc(callsRef, this.callId);
+      
+      const callSnapshot = await getDoc(this.callDoc);
+      if (!callSnapshot.exists()) {
+        throw new Error('Call does not exist');
+      }
+      
+      const callData = callSnapshot.data();
+      this.callerId = callData.callerId;
+      this.calleeId = callData.calleeId;
       
       // Initialize the peer connection
-      this.peerConnection = new RTCPeerConnection(this.servers)
+      await this.initializePeerConnection();
       
-      // Add local tracks to the peer connection
-      if (this.localStream) {
-        this.localStream.getTracks().forEach(track => {
-          this.peerConnection.addTrack(track, this.localStream)
-        })
-      } else {
-        console.warn("WebRTCService: No local stream available when answering call")
-      }
+      // Set the remote description (offer)
+      const offerDescription = callData.offer;
+      console.log('Setting remote description with offer');
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offerDescription));
       
-      // Create a remote stream to receive remote tracks
-      this.remoteStream = new MediaStream()
+      // Create answer
+      const answerDescription = await this.peerConnection.createAnswer();
+      await this.peerConnection.setLocalDescription(answerDescription);
       
-      // Set up listeners for remote tracks
-      this.peerConnection.ontrack = (event) => {
-        event.streams[0].getTracks().forEach(track => {
-          this.remoteStream.addTrack(track)
-        })
-      }
+      // Update the call document with the answer
+      await updateDoc(this.callDoc, {
+        answer: {
+          type: answerDescription.type,
+          sdp: answerDescription.sdp
+        },
+        status: 'active'
+      });
       
-      // Add ICE connection state monitoring
-      this.peerConnection.oniceconnectionstatechange = () => {
-        console.log(`WebRTCService: ICE connection state changed to: ${this.peerConnection.iceConnectionState}`);
-        
-        // If we're in a failed state, try to restart ICE
-        if (this.peerConnection.iceConnectionState === 'failed') {
-          console.warn('WebRTCService: ICE connection failed, attempting to restart');
-          this.peerConnection.restartIce();
-        }
-      };
-      
-      try {
-        // Get the call document from Firestore
-        const callDoc = doc(db, 'calls', this.roomId)
-        const answerCandidates = collection(callDoc, 'answerCandidates')
-        const offerCandidates = collection(callDoc, 'offerCandidates')
-        
-        // Listen for ICE candidates and add them to Firestore
-        this.peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
+      // Listen for remote ICE candidates
+      const callerCandidatesRef = collection(this.callDoc, 'callerCandidates');
+      this.iceCandidatesUnsubscribe = onSnapshot(callerCandidatesRef, (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            console.log('Got new remote ICE candidate');
+            
             try {
-              console.log(`WebRTCService: Generated ICE candidate for ${event.candidate.sdpMid || 'unknown'} mline ${event.candidate.sdpMLineIndex}`);
-              setDoc(doc(answerCandidates), { ...event.candidate.toJSON() })
+              await this.peerConnection.addIceCandidate(new RTCIceCandidate(data));
             } catch (error) {
-              console.error('WebRTCService: Error saving ICE candidate:', error)
+              console.error('Error adding received ICE candidate:', error);
             }
           }
+        });
+      });
+      
+      // Listen for call status changes
+      this.callDocUnsubscribe = onSnapshot(this.callDoc, (snapshot) => {
+        const data = snapshot.data();
+        if (data?.status === 'ended') {
+          console.log('Call was ended by the other party');
+          this.hangUp();
         }
-        
-        // Get the offer from Firestore
-        const callSnapshot = await getDoc(callDoc)
-        if (!callSnapshot.exists()) {
-          throw new Error('Call not found')
-        }
-        
-        const callData = callSnapshot.data()
-        
-        // Set the offer as remote description - FIXED
-        const offerDescription = callData.offer
-        console.log("WebRTCService: Setting remote description from offer");
-        try {
-          await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offerDescription))
-          console.log("WebRTCService: Remote description set successfully");
-          
-          // Process any pending ICE candidates with a slight delay to ensure signaling state is stable
-          setTimeout(() => this.processPendingIceCandidates(), 200);
-        } catch(error) {
-          console.error("WebRTCService: Error setting remote description:", error);
-          throw error; // This is critical, so we do want to throw
-        }
-        
-        // Create answer
-        const answerDescription = await this.peerConnection.createAnswer()
-        await this.peerConnection.setLocalDescription(answerDescription)
-        
-        // Save the answer to Firestore with error handling
-        try {
-          await updateDoc(callDoc, {
-            answer: {
-              type: answerDescription.type,
-              sdp: answerDescription.sdp
-            },
-            status: 'connected'
-          })
-        } catch (error) {
-          console.error('WebRTCService: Error saving answer to Firestore:', error)
-          // Continue with the call even if Firestore update fails
-          console.log('WebRTCService: Continuing with call despite Firestore error')
-        }
-        
-        // Listen for remote ICE candidates with error handling
-        this.unsubscribeOfferCandidates = onSnapshot(offerCandidates, {
-          next: (snapshot) => {
-            snapshot.docChanges().forEach(async (change) => {
-              if (change.type === 'added') {
-                try {
-                  const data = change.doc.data();
-                  console.log(`WebRTCService: Received ICE candidate for ${data.sdpMid || 'unknown'} mline ${data.sdpMLineIndex}`);
-                  const candidate = new RTCIceCandidate(data)
-                  // Use the safe method to add ICE candidates
-                  await this.addIceCandidateSafely(candidate)
-                } catch (error) {
-                  console.error('WebRTCService: Error processing ICE candidate:', error)
-                }
-              }
-            })
-          },
-          error: (error) => {
-            console.error('WebRTCService: Error listening to offer candidates:', error)
-          }
-        })
-      } catch (firestoreError) {
-        console.error('WebRTCService: Firestore operation failed:', firestoreError)
-        // Continue with the WebRTC connection even if Firestore fails
-        console.log('WebRTCService: Attempting to continue with WebRTC connection despite Firestore error')
-      }
+      });
       
       return {
         localStream: this.localStream,
         remoteStream: this.remoteStream
-      }
+      };
     } catch (error) {
-      console.error('WebRTCService: Error answering call:', error)
-      throw error
+      console.error('Error answering call:', error);
+      throw error;
     }
   }
 
-  async rejectCall(appointmentId) {
+  // Add ICE candidate to Firestore
+  async addIceCandidate(candidate) {
     try {
-      const callDoc = doc(db, 'calls', appointmentId)
-      try {
-        await updateDoc(callDoc, {
-          status: 'rejected'
-        })
-      } catch (error) {
-        console.error('WebRTCService: Error updating call status in Firestore:', error)
+      if (!this.callDoc) {
+        console.error('Call document not initialized');
+        return;
       }
+      
+      const candidateCollection = this.role === 'caller' ? 'callerCandidates' : 'calleeCandidates';
+      const candidatesRef = collection(this.callDoc, candidateCollection);
+      
+      await setDoc(doc(candidatesRef), candidate.toJSON());
     } catch (error) {
-      console.error('WebRTCService: Error rejecting call:', error)
-      throw error
+      console.error('Error adding ICE candidate:', error);
     }
   }
 
+  // Hang up the call
   async hangUp() {
-    // Stop all tracks
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop())
-      this.localStream = null
-    }
-    
-    if (this.peerConnection) {
-      this.peerConnection.close()
-      this.peerConnection = null
-    }
-    
-    // Clean up Firestore
-    if (this.roomId) {
-      try {
-        const callDoc = doc(db, 'calls', this.roomId)
-        await updateDoc(callDoc, { status: 'ended' })
-      } catch (error) {
-        console.error('WebRTCService: Error cleaning up call in Firestore:', error)
+    try {
+      // Stop listening for updates
+      if (this.callDocUnsubscribe) {
+        this.callDocUnsubscribe();
+        this.callDocUnsubscribe = null;
       }
       
-      // Unsubscribe from snapshots
-      if (this.unsubscribeCallDoc) this.unsubscribeCallDoc()
-      if (this.unsubscribeAnswerCandidates) this.unsubscribeAnswerCandidates()
-      if (this.unsubscribeOfferCandidates) this.unsubscribeOfferCandidates()
+      if (this.iceCandidatesUnsubscribe) {
+        this.iceCandidatesUnsubscribe();
+        this.iceCandidatesUnsubscribe = null;
+      }
+      
+      // Update call status in Firestore
+      if (this.callDoc) {
+        await updateDoc(this.callDoc, { status: 'ended' });
+      }
+      
+      // Close the peer connection
+      if (this.peerConnection) {
+        this.peerConnection.close();
+        this.peerConnection = null;
+      }
+      
+      // Stop all tracks in the local stream
+      if (this.localStream) {
+        this.localStream.getTracks().forEach(track => track.stop());
+        this.localStream = null;
+      }
+      
+      // Clear the remote stream
+      this.remoteStream = null;
+      
+      // Clear screen sharing if active
+      if (this.screenStream) {
+        this.screenStream.getTracks().forEach(track => track.stop());
+        this.screenStream = null;
+      }
+      
+      // Reset state
+      this.callId = null;
+      this.callerId = null;
+      this.calleeId = null;
+      this.role = null;
+      this.originalVideoTrack = null;
+    } catch (error) {
+      console.error('Error hanging up call:', error);
     }
-    
-    this.roomId = null
-    this.callerId = null
-    this.calleeId = null
-    this.remoteStream = null
-    this.pendingIceCandidates = []
   }
 
+  // Reject an incoming call
+  async rejectCall(callId) {
+    try {
+      const callsRef = collection(db, 'calls');
+      const callDoc = doc(callsRef, callId);
+      
+      await updateDoc(callDoc, { status: 'rejected' });
+    } catch (error) {
+      console.error('Error rejecting call:', error);
+    }
+  }
+
+  // Check for incoming calls
   async checkForIncomingCalls(userId) {
     try {
-      const callsRef = collection(db, 'calls')
-      const q = query(callsRef, where('calleeId', '==', userId), where('status', '==', 'pending'))
+      const callsRef = collection(db, 'calls');
+      const q = query(
+        callsRef,
+        where('calleeId', '==', userId),
+        where('status', '==', 'pending')
+      );
       
-      try {
-        const querySnapshot = await getDocs(q)
-        const incomingCalls = []
-        
-        querySnapshot.forEach((doc) => {
-          incomingCalls.push({
-            id: doc.id,
-            ...doc.data()
-          })
-        })
-        
-        return incomingCalls
-      } catch (error) {
-        console.error('WebRTCService: Error querying Firestore for incoming calls:', error)
-        return []
-      }
+      const querySnapshot = await getDocs(q);
+      const incomingCalls = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        incomingCalls.push({
+          id: doc.id,
+          callerId: data.callerId
+        });
+      });
+      
+      return incomingCalls;
     } catch (error) {
-      console.error('WebRTCService: Error checking for incoming calls:', error)
-      return []
+      console.error('Error checking for incoming calls:', error);
+      return [];
     }
   }
 
+  // Listen for incoming calls
   listenForIncomingCalls(userId, callback) {
-    if (!userId || !callback) {
-      console.error('WebRTCService: Invalid parameters for listenForIncomingCalls')
-      return () => {}
-    }
-
     try {
-      const callsRef = collection(db, 'calls')
-      const q = query(callsRef, where('calleeId', '==', userId), where('status', '==', 'pending'))
+      const callsRef = collection(db, 'calls');
+      const q = query(
+        callsRef,
+        where('calleeId', '==', userId),
+        where('status', '==', 'pending')
+      );
       
-      // Set up the listener
-      const unsubscribe = onSnapshot(q, {
-        next: (snapshot) => {
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              const callData = {
-                id: change.doc.id,
-                ...change.doc.data()
-              }
-              callback(callData)
-            }
-          })
-        },
-        error: (error) => {
-          console.error('WebRTCService: Error listening for incoming calls:', error)
-        }
-      })
-      
-      return unsubscribe
+      return onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            callback({
+              id: change.doc.id,
+              callerId: data.callerId
+            });
+          }
+        });
+      });
     } catch (error) {
-      console.error('WebRTCService: Error setting up incoming calls listener:', error)
-      return () => {}
+      console.error('Error listening for incoming calls:', error);
+      return () => {}; // Return empty function as unsubscribe
     }
   }
 
+  // Toggle mute
   toggleMute(muted) {
     if (this.localStream) {
       this.localStream.getAudioTracks().forEach(track => {
-        track.enabled = !muted
-      })
+        track.enabled = !muted;
+      });
     }
   }
 
+  // Toggle video
   toggleVideo(videoOff) {
     if (this.localStream) {
       this.localStream.getVideoTracks().forEach(track => {
-        track.enabled = !videoOff
-      })
+        track.enabled = !videoOff;
+      });
     }
   }
 
-  async toggleScreenShare(isScreenSharing) {
-    if (!this.peerConnection) return
-    
+  // Toggle screen sharing
+  async toggleScreenShare(isCurrentlySharing) {
     try {
-      if (isScreenSharing) {
-        // Stop screen sharing and go back to camera
-        if (this.localStream) {
-          this.localStream.getTracks().forEach(track => {
-            if (track.kind === 'video') {
-              track.stop()
-              
-              // Remove the track from the peer connection
-              const senders = this.peerConnection.getSenders()
-              const sender = senders.find(s => s.track && s.track.kind === 'video')
-              if (sender) {
-                this.peerConnection.removeTrack(sender)
-              }
-            }
-          })
+      if (isCurrentlySharing) {
+        // Switch back to camera
+        if (this.originalVideoTrack && this.localStream) {
+          const videoSender = this.peerConnection.getSenders().find(sender => 
+            sender.track && sender.track.kind === 'video'
+          );
           
-          // Get new camera stream
-          const cameraStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              facingMode: "user"
-            }
-          })
+          if (videoSender) {
+            await videoSender.replaceTrack(this.originalVideoTrack);
+          }
           
-          // Add the new video track to the peer connection
-          const videoTrack = cameraStream.getVideoTracks()[0]
-          this.peerConnection.addTrack(videoTrack, this.localStream)
+          // Add the track back to the local stream
+          const oldTrack = this.localStream.getVideoTracks()[0];
+          if (oldTrack) {
+            oldTrack.stop();
+            this.localStream.removeTrack(oldTrack);
+          }
+          this.localStream.addTrack(this.originalVideoTrack);
           
-          // Replace the video track in the local stream
-          const audioTracks = this.localStream.getAudioTracks()
-          this.localStream = new MediaStream([...audioTracks, videoTrack])
+          // Stop screen sharing tracks
+          if (this.screenStream) {
+            this.screenStream.getTracks().forEach(track => track.stop());
+            this.screenStream = null;
+          }
+          
+          this.originalVideoTrack = null;
+          return this.localStream;
         }
       } else {
-        // Start screen sharing
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        // Switch to screen sharing
+        this.screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true
-        })
+        });
         
-        // Replace video track
-        if (this.localStream) {
-          const videoTrack = screenStream.getVideoTracks()[0]
-          
-          // Remove the old video track from the peer connection
-          const senders = this.peerConnection.getSenders()
-          const sender = senders.find(s => s.track && s.track.kind === 'video')
-          if (sender) {
-            this.peerConnection.removeTrack(sender)
-          }
-          
-          // Add the new screen sharing track to the peer connection
-          this.peerConnection.addTrack(videoTrack, screenStream)
-          
-          // Replace the video track in the local stream
-          const audioTracks = this.localStream.getAudioTracks()
-          this.localStream = new MediaStream([...audioTracks, videoTrack])
-          
-          // Handle the case when user stops sharing via the browser UI
-          videoTrack.onended = async () => {
-            // Automatically switch back to camera when screen sharing stops
-            const cameraStream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                facingMode: "user"
-              }
-            })
+        // Save the original video track
+        this.originalVideoTrack = this.localStream.getVideoTracks()[0];
+        
+        // Replace the video track in the peer connection
+        const videoSender = this.peerConnection.getSenders().find(sender => 
+          sender.track && sender.track.kind === 'video'
+        );
+        
+        const screenTrack = this.screenStream.getVideoTracks()[0];
+        
+        if (videoSender && screenTrack) {
+          await videoSender.replaceTrack(screenTrack);
+        }
+        
+        // Replace the track in the local stream for local display
+        const oldTrack = this.localStream.getVideoTracks()[0];
+        if (oldTrack) {
+          oldTrack.stop();
+          this.localStream.removeTrack(oldTrack);
+        }
+        this.localStream.addTrack(screenTrack);
+        
+        // Handle the screen sharing ending
+        screenTrack.onended = async () => {
+          if (this.originalVideoTrack) {
+            const videoSender = this.peerConnection.getSenders().find(sender => 
+              sender.track && sender.track.kind === 'video'
+            );
             
-            const newVideoTrack = cameraStream.getVideoTracks()[0]
-            
-            // Replace the track in the peer connection
-            const senders = this.peerConnection.getSenders()
-            const sender = senders.find(s => s.track && s.track.kind === 'video')
-            if (sender) {
-              sender.replaceTrack(newVideoTrack)
+            if (videoSender) {
+              await videoSender.replaceTrack(this.originalVideoTrack);
             }
             
-            // Update the local stream
-            const audioTracks = this.localStream.getAudioTracks()
-            this.localStream = new MediaStream([...audioTracks, newVideoTrack])
+            // Replace in local stream
+            const oldTrack = this.localStream.getVideoTracks()[0];
+            if (oldTrack) {
+              oldTrack.stop();
+              this.localStream.removeTrack(oldTrack);
+            }
+            this.localStream.addTrack(this.originalVideoTrack);
             
-            return this.localStream
+            this.originalVideoTrack = null;
           }
-        }
+        };
+        
+        return this.localStream;
       }
-      
-      return this.localStream
     } catch (error) {
-      console.error('WebRTCService: Error toggling screen share:', error)
-      throw error
+      console.error('Error toggling screen share:', error);
+      throw error;
     }
+  }
+
+  // Check if remote stream has tracks
+  checkRemoteStream() {
+    if (this.remoteStream) {
+      return this.remoteStream.getTracks().length > 0;
+    }
+    return false;
   }
 }
 
-export default new WebRTCService()
+export default new WebRTCService();

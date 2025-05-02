@@ -723,7 +723,7 @@ onBeforeUnmount(() => {
   
   // Clear incoming calls interval
   if (incomingCallsUnsubscribe) {
-    clearInterval(incomingCallsUnsubscribe);
+    incomingCallsUnsubscribe();
   }
 });
 
@@ -839,10 +839,26 @@ const joinVideoCall = async (appointment) => {
         remoteVideoRef.value.srcObject = streams.remoteStream;
         remoteStream.value = streams.remoteStream;
         
+        // Check if there are already tracks in the remote stream
+        if (streams.remoteStream.getTracks().length > 0) {
+          console.log('Remote stream already has tracks, activating');
+          remoteStreamActive.value = true;
+        }
+        
         // Listen for remote tracks to update UI
-        streams.remoteStream.onaddtrack = () => {
+        streams.remoteStream.onaddtrack = (event) => {
+          console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
         };
+        
+        // Add a periodic check for remote stream tracks
+        const checkInterval = setInterval(() => {
+          if (streams.remoteStream.getTracks().length > 0) {
+            console.log('Remote tracks detected in interval check');
+            remoteStreamActive.value = true;
+            clearInterval(checkInterval);
+          }
+        }, 1000);
       }
     } catch (error) {
       console.error('Error starting call:', error);
@@ -1171,21 +1187,33 @@ const acceptIncomingCall = async () => {
 
     // Start the WebRTC call
     try {
-      const streams = await WebRTCService.startCall(
-        incomingCall.value.appointment.id, 
-        authStore.user.userId, 
-        incomingCall.value.appointment.userId
-      );
+      const streams = await WebRTCService.answerCall(incomingCall.value.id);
       
       // Set remote stream to video element
       if (remoteVideoRef.value && streams.remoteStream) {
         remoteVideoRef.value.srcObject = streams.remoteStream;
         remoteStream.value = streams.remoteStream;
         
+        // Check if there are already tracks in the remote stream
+        if (streams.remoteStream.getTracks().length > 0) {
+          console.log('Remote stream already has tracks, activating');
+          remoteStreamActive.value = true;
+        }
+        
         // Listen for remote tracks to update UI
-        streams.remoteStream.onaddtrack = () => {
+        streams.remoteStream.onaddtrack = (event) => {
+          console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
         };
+        
+        // Add a periodic check for remote stream tracks
+        const checkInterval = setInterval(() => {
+          if (streams.remoteStream.getTracks().length > 0) {
+            console.log('Remote tracks detected in interval check');
+            remoteStreamActive.value = true;
+            clearInterval(checkInterval);
+          }
+        }, 1000);
       }
     } catch (error) {
       console.error('Error starting call:', error);
@@ -1200,7 +1228,10 @@ const acceptIncomingCall = async () => {
 
 const declineIncomingCall = () => {
   // Decline the incoming call
-  incomingCall.value = null;
+  if (incomingCall.value) {
+    WebRTCService.rejectCall(incomingCall.value.id);
+    incomingCall.value = null;
+  }
 };
 
 // Setup incoming calls listener

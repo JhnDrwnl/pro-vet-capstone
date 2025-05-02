@@ -661,7 +661,7 @@
     </div>
   </div>
 </template>
-  
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue"
 import { useRouter } from "vue-router"
@@ -1189,10 +1189,26 @@ const joinSession = async (session) => {
         remoteVideoRef.value.srcObject = streams.remoteStream;
         remoteStream.value = streams.remoteStream;
         
+        // Check if there are already tracks in the remote stream
+        if (streams.remoteStream.getTracks().length > 0) {
+          console.log('Remote stream already has tracks, activating');
+          remoteStreamActive.value = true;
+        }
+        
         // Listen for remote tracks to update UI
-        streams.remoteStream.onaddtrack = () => {
+        streams.remoteStream.onaddtrack = (event) => {
+          console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
         };
+        
+        // Add a periodic check for remote stream tracks
+        const checkInterval = setInterval(() => {
+          if (streams.remoteStream.getTracks().length > 0) {
+            console.log('Remote tracks detected in interval check');
+            remoteStreamActive.value = true;
+            clearInterval(checkInterval);
+          }
+        }, 1000);
       }
     } catch (error) {
       console.error('Error starting call:', error);
@@ -1229,8 +1245,12 @@ const acceptIncomingCall = async () => {
       return;
     }
     
+    // IMPORTANT FIX: Set activeSession directly to show the video call interface
     activeSession.value = session;
     callStatus.value = "connected";
+    
+    // CRITICAL FIX: Explicitly set the currentView to ensure the video call interface is shown
+    currentView.value = 'sessions'; // This ensures we're in the right view for the video call to display
     
     // Initialize chat for this session
     chatMessages.value = [];
@@ -1251,7 +1271,27 @@ const acceptIncomingCall = async () => {
       if (remoteVideoRef.value && streams.remoteStream) {
         remoteVideoRef.value.srcObject = streams.remoteStream;
         remoteStream.value = streams.remoteStream;
-        remoteStreamActive.value = true;
+        
+        // Check if there are already tracks in the remote stream
+        if (streams.remoteStream.getTracks().length > 0) {
+          console.log('Remote stream already has tracks, activating');
+          remoteStreamActive.value = true;
+        }
+        
+        // Listen for remote tracks to update UI
+        streams.remoteStream.onaddtrack = (event) => {
+          console.log('New remote track added:', event.track.kind);
+          remoteStreamActive.value = true;
+        };
+        
+        // Add a periodic check for remote stream tracks
+        const checkInterval = setInterval(() => {
+          if (streams.remoteStream.getTracks().length > 0) {
+            console.log('Remote tracks detected in interval check');
+            remoteStreamActive.value = true;
+            clearInterval(checkInterval);
+          }
+        }, 1000);
       }
     } catch (error) {
       console.error('Error accepting call:', error);
@@ -1283,12 +1323,14 @@ const endCall = () => {
   remoteStreamActive.value = false;
   activeSession.value = null;
   chatMessages.value = [];
+  
   isMuted.value = false;
   isVideoOff.value = false;
   isScreenSharing.value = false;
   isSpeakerMuted.value = false;
   showChatPanel.value = false;
   currentView.value = 'sessions';
+  callStatus.value = "";
 }
 
 // Toggle mute
@@ -1513,6 +1555,53 @@ watch(currentSlide, (newSlide, oldSlide) => {
       instance.pause();
     }
   });
+});
+
+// Watch for call status changes to update UI
+watch(() => callStatus.value, (newStatus) => {
+  if (newStatus === 'connected') {
+    // Double check remote stream when connection is established
+    if (remoteStream.value && remoteStream.value.getTracks().length > 0) {
+      remoteStreamActive.value = true;
+    }
+  }
+});
+
+// Watch for Firestore call status updates
+const unsubscribeCallStatus = ref(null);
+
+watch(() => activeSession.value, async (newSession) => {
+  if (unsubscribeCallStatus.value) {
+    unsubscribeCallStatus.value(); // Unsubscribe from previous listener
+    unsubscribeCallStatus.value = null;
+  }
+
+  if (newSession) {
+    // Listen for call status updates in Firestore
+    const callDoc = doc(db, 'calls', newSession.id);
+    const unsubscribe = onSnapshot(callDoc, (snapshot) => {
+      const data = snapshot.data();
+      if (data) {
+        // Update call status based on Firestore
+        if (data.status === 'connected') {
+          callStatus.value = 'connected';
+
+          // Check if remote stream has tracks flag is set
+          if (data.hasRemoteTracks) {
+            remoteStreamActive.value = true;
+          }
+        } else if (data.status === 'ended') {
+          callStatus.value = 'ended';
+          // Auto end call if the other party ended it
+          if (activeSession.value) {
+            endCall();
+          }
+        }
+      }
+    });
+
+    unsubscribeCallStatus.value = unsubscribe;
+  }
 });
 </script>
 
