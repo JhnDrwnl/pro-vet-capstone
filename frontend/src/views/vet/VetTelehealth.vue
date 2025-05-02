@@ -236,10 +236,13 @@
               </span>
             </div>
             
-            <!-- Connected status -->
+            <!-- Connection status -->
             <div class="flex items-center">
-              <span class="w-2 h-2 rounded-full bg-green-500 mr-1"></span>
-              <span class="text-xs text-gray-600">Connected</span>
+              <span 
+                class="w-2 h-2 rounded-full mr-1"
+                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500'"
+              ></span>
+              <span class="text-xs text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
             </div>
           </div>
         </div>
@@ -260,8 +263,11 @@
           <!-- Right side: Connection status and End Call button -->
           <div class="flex items-center">
             <div class="flex items-center mr-4">
-              <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
-              <span class="text-sm text-gray-600">Connected</span>
+              <span 
+                class="w-2 h-2 rounded-full mr-2"
+                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500'"
+              ></span>
+              <span class="text-sm text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
             </div>
             <button 
               @click="endCall" 
@@ -510,6 +516,8 @@ import { useAuthStore } from '@/stores/modules/authStore';
 import { useServiceCategoryStore } from '@/stores/modules/ServiceCategoryStore';
 import { parseISO, format, isToday, isFuture, addMinutes, subMinutes } from 'date-fns';
 import WebRTCService from '@/services/webrtc-service';
+import { db } from '@shared/firebase';
+import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs, arrayUnion, serverTimestamp } from 'firebase/firestore';
 
 // Router and route
 const router = useRouter();
@@ -577,6 +585,12 @@ const incomingCall = ref(null);
 let incomingCallsUnsubscribe = null;
 // Add speaker mute state
 const isSpeakerMuted = ref(false);
+// Add call document unsubscribe
+let callDocUnsubscribe = null;
+// Add ice candidates unsubscribe
+let iceCandidatesUnsubscribe = null;
+// Add connection status
+const connectionStatus = ref('connecting');
 
 // Improved fetchAppointments function to ensure pet data is fully loaded and filter by current vet
 const fetchAppointments = async () => {
@@ -798,6 +812,9 @@ const canJoinCall = (appointment) => {
 // Function to join a video call
 const joinVideoCall = async (appointment) => {
   try {
+    // Set connection status to connecting
+    connectionStatus.value = 'connecting';
+    
     // Request camera and microphone access
     try {
       localStream.value = await WebRTCService.setupLocalStream();
@@ -843,12 +860,16 @@ const joinVideoCall = async (appointment) => {
         if (streams.remoteStream.getTracks().length > 0) {
           console.log('Remote stream already has tracks, activating');
           remoteStreamActive.value = true;
+          // Update connection status to connected when remote stream is active
+          connectionStatus.value = 'connected';
         }
         
         // Listen for remote tracks to update UI
         streams.remoteStream.onaddtrack = (event) => {
           console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
+          // Update connection status to connected when remote stream gets tracks
+          connectionStatus.value = 'connected';
         };
         
         // Add a periodic check for remote stream tracks
@@ -856,15 +877,61 @@ const joinVideoCall = async (appointment) => {
           if (streams.remoteStream.getTracks().length > 0) {
             console.log('Remote tracks detected in interval check');
             remoteStreamActive.value = true;
+            // Update connection status to connected when remote stream gets tracks
+            connectionStatus.value = 'connected';
             clearInterval(checkInterval);
           }
         }, 1000);
       }
+      
+      // Add a listener for call status changes in Firestore
+      const callDoc = doc(db, 'calls', appointment.id);
+      callDocUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+        const data = snapshot.data();
+        if (data) {
+          // If the call was rejected by the user, return to table view
+          if (data.status === 'rejected') {
+            console.log('Call was rejected by the user');
+            // Clean up and return to table view
+            endCall();
+          }
+          
+          // If the call was ended by the user, return to table view
+          if (data.status === 'ended') {
+            console.log('Call was ended by the user');
+            // Clean up and return to table view
+            endCall();
+          }
+          
+          // If the call is active and we have an answer, update connection status
+          if (data.status === 'active' && data.answer) {
+            // We'll wait for the remote stream to have tracks before setting to connected
+            // This is handled by the onaddtrack event and periodic check above
+          }
+        }
+      });
+      
+      // Listen for ICE connection state changes
+      if (WebRTCService.peerConnection) {
+        WebRTCService.peerConnection.oniceconnectionstatechange = () => {
+          const state = WebRTCService.peerConnection.iceConnectionState;
+          console.log('ICE connection state changed:', state);
+          
+          if (state === 'connected' || state === 'completed') {
+            connectionStatus.value = 'connected';
+          } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+            connectionStatus.value = 'disconnected';
+          }
+        };
+      }
+      
     } catch (error) {
       console.error('Error starting call:', error);
+      connectionStatus.value = 'disconnected';
     }
   } catch (error) {
     console.error('Error joining video call:', error);
+    connectionStatus.value = 'disconnected';
   }
 };
 
@@ -1137,10 +1204,26 @@ const sendMessage = () => {
 };
 
 const endCall = () => {
+  // Stop listening for updates
+  if (callDocUnsubscribe) {
+    callDocUnsubscribe();
+    callDocUnsubscribe = null;
+  }
+  
+  if (iceCandidatesUnsubscribe) {
+    iceCandidatesUnsubscribe();
+    iceCandidatesUnsubscribe = null;
+  }
+  
   // Use WebRTCService to hang up
   WebRTCService.hangUp();
   
   // Clean up local state
+  if (localStream.value) {
+    localStream.value.getTracks().forEach(track => track.stop());
+    localStream.value = null;
+  }
+  
   remoteStream.value = null;
   remoteStreamActive.value = false;
   activeCall.value = false;
@@ -1149,14 +1232,18 @@ const endCall = () => {
   isMuted.value = false;
   isVideoOff.value = false;
   isScreenSharing.value = false;
-  isSpeakerMuted.value = false; // Reset speaker mute state
+  isSpeakerMuted.value = false;
   showChatPanel.value = false;
+  connectionStatus.value = 'connecting'; // Reset connection status
 };
 
 const acceptIncomingCall = async () => {
   if (!incomingCall.value) return;
   
   try {
+    // Set connection status to connecting
+    connectionStatus.value = 'connecting';
+    
     // Request camera and microphone access
     try {
       localStream.value = await WebRTCService.setupLocalStream();
@@ -1198,12 +1285,16 @@ const acceptIncomingCall = async () => {
         if (streams.remoteStream.getTracks().length > 0) {
           console.log('Remote stream already has tracks, activating');
           remoteStreamActive.value = true;
+          // Update connection status to connected when remote stream is active
+          connectionStatus.value = 'connected';
         }
         
         // Listen for remote tracks to update UI
         streams.remoteStream.onaddtrack = (event) => {
           console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
+          // Update connection status to connected when remote stream gets tracks
+          connectionStatus.value = 'connected';
         };
         
         // Add a periodic check for remote stream tracks
@@ -1211,15 +1302,48 @@ const acceptIncomingCall = async () => {
           if (streams.remoteStream.getTracks().length > 0) {
             console.log('Remote tracks detected in interval check');
             remoteStreamActive.value = true;
+            // Update connection status to connected when remote stream gets tracks
+            connectionStatus.value = 'connected';
             clearInterval(checkInterval);
           }
         }, 1000);
       }
+      
+      // Add a listener for call status changes in Firestore
+      const callDoc = doc(db, 'calls', incomingCall.value.id);
+      callDocUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+        const data = snapshot.data();
+        if (data) {
+          // If the call was ended by the user, return to table view
+          if (data.status === 'ended') {
+            console.log('Call was ended by the user');
+            // Clean up and return to table view
+            endCall();
+          }
+        }
+      });
+      
+      // Listen for ICE connection state changes
+      if (WebRTCService.peerConnection) {
+        WebRTCService.peerConnection.oniceconnectionstatechange = () => {
+          const state = WebRTCService.peerConnection.iceConnectionState;
+          console.log('ICE connection state changed:', state);
+          
+          if (state === 'connected' || state === 'completed') {
+            connectionStatus.value = 'connected';
+          } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+            connectionStatus.value = 'disconnected';
+          }
+        };
+      }
+      
     } catch (error) {
       console.error('Error starting call:', error);
+      connectionStatus.value = 'disconnected';
     }
   } catch (error) {
     console.error('Error joining video call:', error);
+    connectionStatus.value = 'disconnected';
   } finally {
     // Clear the incoming call
     incomingCall.value = null;
@@ -1279,6 +1403,24 @@ const setupIncomingCallsListener = () => {
             }
           };
         }
+        
+        // Add a listener to check if the call gets canceled or ended by the user
+        const callDoc = doc(db, 'calls', callData.id);
+        const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+          const data = snapshot.data();
+          if (data) {
+            // If the call was rejected or ended by the user, hide the incoming call modal
+            if (data.status === 'rejected' || data.status === 'ended') {
+              console.log('Call was rejected or ended by the user');
+              // Hide the incoming call modal
+              if (incomingCall.value && incomingCall.value.id === callData.id) {
+                incomingCall.value = null;
+              }
+              // Unsubscribe from this listener
+              callStatusUnsubscribe();
+            }
+          }
+        });
       }
     );
     

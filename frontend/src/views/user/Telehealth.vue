@@ -420,10 +420,10 @@
             <span 
               :class="[
                 'w-2 h-2 rounded-full mr-1 sm:mr-2',
-                callStatus === 'connected' ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
+                remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
               ]"
             ></span>
-            <span class="text-xs sm:text-sm text-gray-600">{{ callStatusText }}</span>
+            <span class="text-xs sm:text-sm text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
           </div>
         </div>
       </div>
@@ -459,7 +459,7 @@
             </div>
             
             <!-- Call Controls - Made more compact on mobile -->
-            <div class="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 sm:gap-3 bg-gray-900/80 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full">
+            <div class="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 sm:gap-3 bg-gray-900/80 px-3 py-1.5 sm:py-2 rounded-full">
               <button 
                 @click="toggleMute" 
                 :class="[
@@ -739,7 +739,7 @@ const isMobileView = ref(false)
 
 // Carousel state
 const currentSlide = ref(0)
-const slides = [
+const slides = ref([
   {
     id: 1,
     title: "Video calls and meetings for everyone",
@@ -764,7 +764,7 @@ const slides = [
     subtitle: "Access counseling whenever you need it",
     lottieUrl: "https://lottie.host/61024576-6d81-4689-a26b-377afb392172/gNHIvH2Tin.json",
   },
-]
+])
 
 // WebRTC state
 const localVideoRef = ref(null)
@@ -951,11 +951,11 @@ const formatTime = (timestamp) => {
 
 // Carousel methods
 const previousSlide = () => {
-  currentSlide.value = (currentSlide.value - 1 + slides.length) % slides.length
+  currentSlide.value = (currentSlide.value - 1 + slides.value.length) % slides.value.length
 }
 
 const nextSlide = () => {
-  currentSlide.value = (currentSlide.value + 1) % slides.length
+  currentSlide.value = (currentSlide.value + 1) % slides.value.length
 }
 
 const goToSlide = (index) => {
@@ -974,7 +974,7 @@ const initializeLottieAnimations = () => {
   lottieInstances = []
 
   // Initialize new instances
-  slides.forEach((slide, index) => {
+  slides.value.forEach((slide, index) => {
     const container = document.getElementById(`lottie-container-${index}`)
     if (container) {
       const animation = lottie.loadAnimation({
@@ -1164,6 +1164,7 @@ const joinSession = async (session) => {
     // Set current appointment and activate call view
     activeSession.value = session;
     callStatus.value = "connecting";
+    remoteStreamActive.value = false; // Reset remote stream active state
     
     // Initialize chat for this session
     chatMessages.value = [];
@@ -1193,12 +1194,14 @@ const joinSession = async (session) => {
         if (streams.remoteStream.getTracks().length > 0) {
           console.log('Remote stream already has tracks, activating');
           remoteStreamActive.value = true;
+          callStatus.value = "connected";
         }
         
         // Listen for remote tracks to update UI
         streams.remoteStream.onaddtrack = (event) => {
           console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
+          callStatus.value = "connected";
         };
         
         // Add a periodic check for remote stream tracks
@@ -1206,6 +1209,7 @@ const joinSession = async (session) => {
           if (streams.remoteStream.getTracks().length > 0) {
             console.log('Remote tracks detected in interval check');
             remoteStreamActive.value = true;
+            callStatus.value = "connected";
             clearInterval(checkInterval);
           }
         }, 1000);
@@ -1247,7 +1251,8 @@ const acceptIncomingCall = async () => {
     
     // IMPORTANT FIX: Set activeSession directly to show the video call interface
     activeSession.value = session;
-    callStatus.value = "connected";
+    callStatus.value = "connecting"; // Start with connecting status
+    remoteStreamActive.value = false; // Reset remote stream active state
     
     // CRITICAL FIX: Explicitly set the currentView to ensure the video call interface is shown
     currentView.value = 'sessions'; // This ensures we're in the right view for the video call to display
@@ -1276,12 +1281,14 @@ const acceptIncomingCall = async () => {
         if (streams.remoteStream.getTracks().length > 0) {
           console.log('Remote stream already has tracks, activating');
           remoteStreamActive.value = true;
+          callStatus.value = "connected";
         }
         
         // Listen for remote tracks to update UI
         streams.remoteStream.onaddtrack = (event) => {
           console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
+          callStatus.value = "connected";
         };
         
         // Add a periodic check for remote stream tracks
@@ -1289,10 +1296,28 @@ const acceptIncomingCall = async () => {
           if (streams.remoteStream.getTracks().length > 0) {
             console.log('Remote tracks detected in interval check');
             remoteStreamActive.value = true;
+            callStatus.value = "connected";
             clearInterval(checkInterval);
           }
         }, 1000);
       }
+      
+      // Add a listener for call status changes in Firestore
+      const callDoc = doc(db, 'calls', incomingCall.value.id);
+      const callDocUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+        const data = snapshot.data();
+        if (data) {
+          // If the call was ended by the caller (vet), return to sessions view
+          if (data.status === 'ended') {
+            console.log('Call was ended by the veterinarian');
+            endCall();
+          } else if (data.status === 'connected') {
+            // Update connection status when Firestore indicates connected
+            callStatus.value = "connected";
+            remoteStreamActive.value = true;
+          }
+        }
+      });
     } catch (error) {
       console.error('Error accepting call:', error);
     }
@@ -1319,6 +1344,11 @@ const endCall = () => {
   WebRTCService.hangUp();
 
   // Clean up local state
+  if (localStream.value) {
+    localStream.value.getTracks().forEach(track => track.stop());
+    localStream.value = null;
+  }
+  
   remoteStream.value = null;
   remoteStreamActive.value = false;
   activeSession.value = null;
@@ -1421,6 +1451,75 @@ const sendMessage = () => {
   }, 2000);
 }
 
+// Setup incoming calls listener
+const setupIncomingCallsListener = () => {
+  if (!authStore.user || !authStore.user.userId) return;
+
+  try {
+    incomingCallsUnsubscribe = WebRTCService.listenForIncomingCalls(
+      authStore.user.userId,
+      (callData) => {
+        // Find the appointment details
+        const appointment = sessions.value.find(s => s.id === callData.id);
+        
+        if (appointment) {
+          incomingCall.value = {
+            id: callData.id,
+            callerId: callData.callerId,
+            callerName: appointment.doctorName || 'Doctor',
+            sessionTitle: appointment.title || 'Telehealth Session'
+          };
+          
+          // Add a listener to check if the call gets canceled or ended by the vet
+          const callDoc = doc(db, 'calls', callData.id);
+          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+              // If the call was rejected or ended by the vet, hide the incoming call modal
+              if (data.status === 'rejected' || data.status === 'ended') {
+                console.log('Call was rejected or ended by the veterinarian');
+                // Hide the incoming call modal
+                if (incomingCall.value && incomingCall.value.id === callData.id) {
+                  incomingCall.value = null;
+                }
+                // Unsubscribe from this listener
+                callStatusUnsubscribe();
+              }
+            }
+          });
+        } else {
+          incomingCall.value = {
+            id: callData.id,
+            callerId: callData.callerId,
+            callerName: 'Doctor',
+            sessionTitle: 'Telehealth Session'
+          };
+          
+          // Add the same listener for unknown appointments
+          const callDoc = doc(db, 'calls', callData.id);
+          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+              // If the call was rejected or ended by the vet, hide the incoming call modal
+              if (data.status === 'rejected' || data.status === 'ended') {
+                console.log('Call was rejected or ended by the veterinarian');
+                // Hide the incoming call modal
+                if (incomingCall.value && incomingCall.value.id === callData.id) {
+                  incomingCall.value = null;
+                }
+                // Unsubscribe from this listener
+                callStatusUnsubscribe();
+              }
+            }
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up incoming calls listener:', error);
+  }
+}
+
 // Check for incoming calls
 const checkForIncomingCalls = async () => {
   if (!authStore.user || !authStore.user.userId) return;
@@ -1440,6 +1539,24 @@ const checkForIncomingCalls = async () => {
           callerName: appointment.doctorName || 'Doctor',
           sessionTitle: appointment.title || 'Telehealth Session'
         };
+        
+        // Add a listener to check if the call gets canceled or ended by the vet
+        const callDoc = doc(db, 'calls', call.id);
+        const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+          const data = snapshot.data();
+          if (data) {
+            // If the call was rejected or ended by the vet, hide the incoming call modal
+            if (data.status === 'rejected' || data.status === 'ended') {
+              console.log('Call was rejected or ended by the veterinarian');
+              // Hide the incoming call modal
+              if (incomingCall.value && incomingCall.value.id === call.id) {
+                incomingCall.value = null;
+              }
+              // Unsubscribe from this listener
+              callStatusUnsubscribe();
+            }
+          }
+        });
       } else {
         incomingCall.value = {
           id: call.id,
@@ -1447,43 +1564,28 @@ const checkForIncomingCalls = async () => {
           callerName: 'Doctor',
           sessionTitle: 'Telehealth Session'
         };
+        
+        // Add the same listener for unknown appointments
+        const callDoc = doc(db, 'calls', call.id);
+        const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+          const data = snapshot.data();
+          if (data) {
+            // If the call was rejected or ended by the vet, hide the incoming call modal
+            if (data.status === 'rejected' || data.status === 'ended') {
+              console.log('Call was rejected or ended by the veterinarian');
+              // Hide the incoming call modal
+              if (incomingCall.value && incomingCall.value.id === call.id) {
+                incomingCall.value = null;
+              }
+              // Unsubscribe from this listener
+              callStatusUnsubscribe();
+            }
+          }
+        });
       }
     }
   } catch (error) {
     console.error('Error checking for incoming calls:', error);
-  }
-}
-
-// Setup incoming calls listener
-const setupIncomingCallsListener = () => {
-  if (!authStore.user || !authStore.user.userId) return;
-
-  try {
-    incomingCallsUnsubscribe = WebRTCService.listenForIncomingCalls(
-      authStore.user.userId,
-      (callData) => {
-        // Find the appointment details
-        const appointment = sessions.value.find(s => s.id === callData.id);
-        
-        if (appointment) {
-          incomingCall.value = {
-            id: callData.id,
-            callerId: callData.callerId,
-            callerName: appointment.doctorName || 'Doctor',
-            sessionTitle: appointment.title || 'Telehealth Session'
-          };
-        } else {
-          incomingCall.value = {
-            id: callData.id,
-            callerId: callData.callerId,
-            callerName: 'Doctor',
-            sessionTitle: 'Telehealth Session'
-          };
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Error setting up incoming calls listener:', error);
   }
 }
 
@@ -1585,6 +1687,7 @@ watch(() => activeSession.value, async (newSession) => {
         // Update call status based on Firestore
         if (data.status === 'connected') {
           callStatus.value = 'connected';
+          remoteStreamActive.value = true; // Update remote stream active state when connected
 
           // Check if remote stream has tracks flag is set
           if (data.hasRemoteTracks) {
