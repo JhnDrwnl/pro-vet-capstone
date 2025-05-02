@@ -18,7 +18,7 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
-import { format, isToday, isThisWeek, isThisMonth, parseISO } from 'date-fns';
+import { format, isToday, isThisWeek, isThisMonth, parseISO, isBefore } from 'date-fns';
 
 export const useAppointmentStore = defineStore('appointment', {
   state: () => ({
@@ -105,6 +105,90 @@ export const useAppointmentStore = defineStore('appointment', {
 
   actions: {
     /**
+     * Parse appointment time and get the end time as a Date object
+     * @param {Object} appointment - The appointment object
+     * @returns {Date|null} - The appointment end time as a Date object or null if parsing fails
+     */
+    parseAppointmentEndTime(appointment) {
+      const appointmentDate = appointment.date instanceof Date 
+        ? appointment.date 
+        : new Date(appointment.date);
+      
+      // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+      if (appointment.time) {
+        const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+        if (timeMatch && timeMatch[2]) {
+          // Get the end time part
+          const endTimeStr = timeMatch[2].trim();
+          
+          // Create a date object for the appointment end time
+          const endTimeParts = endTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+          if (endTimeParts) {
+            let hours = parseInt(endTimeParts[1]);
+            const minutes = parseInt(endTimeParts[2]);
+            const period = endTimeParts[3].toUpperCase();
+            
+            // Convert to 24-hour format
+            if (period === 'PM' && hours < 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+            
+            const endTime = new Date(appointmentDate);
+            endTime.setHours(hours, minutes, 0, 0);
+            return endTime;
+          }
+        }
+      }
+      
+      // If we couldn't parse the end time, return null
+      return null;
+    },
+
+    /**
+     * Check for expired appointments and update their status to "ended"
+     * @returns {Array} - Array of updated appointment IDs
+     */
+    async checkExpiredAppointments() {
+      try {
+        const now = new Date();
+        const updatedAppointmentIds = [];
+        
+        // Find appointments that are in the past and still pending
+        // Only mark as "ended" if they are pending (not approved or cancelled)
+        const expiredAppointments = this.appointments.filter(appointment => {
+          // Get appointment date
+          const appointmentDate = appointment.date instanceof Date 
+            ? appointment.date 
+            : new Date(appointment.date);
+          
+          // Get appointment end time
+          const appointmentEndTime = this.parseAppointmentEndTime(appointment) || appointmentDate;
+          
+          // Check if the appointment end time has passed and it's still pending
+          // Only mark as "ended" if status is pending (not approved or cancelled)
+          return isBefore(appointmentEndTime, now) && appointment.status === 'pending';
+        });
+        
+        // Update each expired appointment
+        for (const appointment of expiredAppointments) {
+          await this.updateAppointment(appointment.id, {
+            status: 'ended',
+            endedAt: new Date(),
+            endedReason: 'Appointment time has passed',
+            endedBy: 'system'
+          });
+          
+          updatedAppointmentIds.push(appointment.id);
+        }
+        
+        return updatedAppointmentIds;
+      } catch (error) {
+        console.error('Error checking expired appointments:', error);
+        this.error = error.message;
+        return [];
+      }
+    },
+    
+    /**
      * Fetch all appointments
      * @param {number} limitCount - Number of appointments to fetch
      * @returns {Array} - Array of appointments
@@ -171,6 +255,9 @@ export const useAppointmentStore = defineStore('appointment', {
           this.appointments = [...this.appointments, ...appointments];
         }
         
+        // Check for expired appointments after fetching
+        await this.checkExpiredAppointments();
+        
         return appointments;
       } catch (error) {
         console.error('Error fetching appointments:', error);
@@ -218,6 +305,10 @@ export const useAppointmentStore = defineStore('appointment', {
         });
         
         this.appointments = appointments;
+        
+        // Check for expired appointments after fetching
+        await this.checkExpiredAppointments();
+        
         return appointments;
       } catch (error) {
         console.error('Error fetching appointments by user ID:', error);
@@ -263,6 +354,9 @@ export const useAppointmentStore = defineStore('appointment', {
           
           appointments.push(formattedData);
         });
+        
+        // Check for expired appointments after fetching
+        await this.checkExpiredAppointments();
         
         return appointments;
       } catch (error) {
@@ -323,6 +417,9 @@ export const useAppointmentStore = defineStore('appointment', {
           }
         });
         
+        // Check for expired appointments after fetching
+        await this.checkExpiredAppointments();
+        
         return appointments;
       } catch (error) {
         console.error('Error fetching appointments by date:', error);
@@ -360,6 +457,40 @@ export const useAppointmentStore = defineStore('appointment', {
           };
           
           this.currentAppointment = formattedData;
+          
+          // Check if this appointment is expired
+          const now = new Date();
+          
+          // Get appointment end time
+          const appointmentEndTime = this.parseAppointmentEndTime(formattedData);
+          
+          // Only mark as "ended" if status is pending (not approved or cancelled)
+          if (appointmentEndTime && 
+              isBefore(appointmentEndTime, now) && 
+              formattedData.status === 'pending') {
+            await this.updateAppointment(id, {
+              status: 'ended',
+              endedAt: new Date(),
+              endedReason: 'Appointment time has passed',
+              endedBy: 'system'
+            });
+            
+            // Refresh the appointment data after update
+            const updatedDoc = await getDoc(appointmentRef);
+            const updatedData = updatedDoc.data();
+            
+            const updatedFormattedData = {
+              id: updatedDoc.id,
+              ...updatedData,
+              date: updatedData.date instanceof Timestamp ? updatedData.date.toDate() : updatedData.date,
+              createdAt: updatedData.createdAt instanceof Timestamp ? updatedData.createdAt.toDate() : updatedData.createdAt,
+              updatedAt: updatedData.updatedAt instanceof Timestamp ? updatedData.updatedAt.toDate() : updatedData.updatedAt
+            };
+            
+            this.currentAppointment = updatedFormattedData;
+            return updatedFormattedData;
+          }
+          
           return formattedData;
         } else {
           this.currentAppointment = null;

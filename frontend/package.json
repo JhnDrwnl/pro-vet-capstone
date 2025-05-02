@@ -27,10 +27,12 @@
     "lottie-web": "^5.12.2",
     "lucide-vue-next": "^0.469.0",
     "pinia": "^2.3.1",
+    "socket.io-client": "^4.8.1",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.2",
     "vue-router": "^4.5.0",
-    "vue3-apexcharts": "^1.8.0"
+    "vue3-apexcharts": "^1.8.0",
+    "webrtc-adapter": "^8.2.4"
   },
   "devDependencies": {
     "@iconify-json/mingcute": "^1.2.3",

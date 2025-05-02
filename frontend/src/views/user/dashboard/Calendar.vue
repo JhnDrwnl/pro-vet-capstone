@@ -1,3 +1,4 @@
+<!-- views/user/dashboard/Calendar.vue -->
 <template>
   <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-blue/50">
     <!-- Calendar Header with gradient background -->

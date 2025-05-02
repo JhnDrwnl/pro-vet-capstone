@@ -36,7 +36,7 @@
             All Statuses
           </button>
           <button 
-            v-for="status in ['pending', 'approved', 'cancelled']" 
+            v-for="status in ['pending', 'approved', 'cancelled', 'ended']" 
             :key="status"
             @click="toggleStatusFilter(status)"
             class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 capitalize"
@@ -792,7 +792,7 @@
   const defaultPhotoURL = ref('data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width%3D%2236%22 height%3D%2236%22 viewBox%3D%220 0 36 36%22%3E%3Ccircle cx%3D%2218%22 cy%3D%2218%22 r%3D%2218%22 fill%3D%22%23f0f0f0%22%2F%3E%3Cpath d%3D%22M18 20.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5%22 stroke%3D%22%23bec3c9%22 stroke-width%3D%222%22 fill%3D%22none%22%2F%3E%3C%2Fsvg%3E');
   
   // Default pet photo URL
-  const defaultPetPhotoURL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGQ9Ik04LjM1IDNjMS4xOC0uMTcgMi40MyAxLjEyIDIuNzkgMi45Yy4zNiAxLjc3LS4yOSAzLjM1LTEuNDcgMy41M2MtMS4xNy4xOC0yLjQzLTEuMTEtMi44LTIuODljLS4zNy0xLjc3LjMtMy4zNSAxLjQ4LTMuNTRtNy4xNSAwYzEuMTkuMTkgMS44NSAxLjc3IDEuNSAzLjU0Yy0uMzggMS43OC0xLjYzIDMuMDctMi44MSAyLjg5Yy0xLjE5LS4xOC0xLjg0LTEuNzYtMS40Ny0zLjUzYy4zNi0xLjc4IDEuNjEtMy4wNyAyLjc4LTIuOU0zIDcuNmMxLjE0LS40OSAyLjY5LjQgMy41IDEuOTVjLjc2IDEuNTguNSAzLjI0LS42MyAzLjczcy0yLjY3LS4zOS0zLjQ2LTEuOTZTMS45IDguMDggMyA3LjZtMTggMGMxLjEuNDggMS4zOCAyLjE1LjU5IDMuNzJzLTIuMzMgMi44NS0zLjQ2IDEuOTZzLTEuMzktMi4xNS0uNjMtMy43M0MxOC4zMSA4IDE5Ljg2IDcuMTEgMjEgNy42bS0xLjY3IDEwLjc4Yy4wNC45NC0uNjggMS45OC0xLjU0IDIuMzdjLTEuNzkuODItMy45MS0uODgtNS45LS44OHMtNC4xMyAxLjc3LTUuODkgLjg4Yy0xLS40OS0xLjY5LTEuNzktMS41Ni0yLjg3Yy4xOC0xLjQ5IDEuOTctMi4yOSAzLjAzLTMuMzhjMS40MS0xLjQxIDIuNDEtNC4wNiA0LjQyLTQuMDZjMiAwIDMuMDYgMi42MSA0LjQxIDQuMDZjMS4xMSAxLjIyIDIuOTYgMi4yNSAzLjAzIDMuODgiLz48L3N2Zz4=';
+  const defaultPetPhotoURL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"%3E%3Ccircle cx="11" cy="4" r="2"/%3E%3Ccircle cx="18" cy="8" r="2"/%3E%3Ccircle cx="20" cy="16" r="2"/%3E%3Cpath d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z"/%3E%3C/g%3E%3C/svg%3E';
   
   const appointmentStore = useAppointmentStore();
   const profileStore = useProfileStore();
@@ -1321,6 +1321,8 @@ const getStatusClass = (status) => {
     case 'cancelled':
     case 'rejected':
       return `${baseClasses} bg-red-100 text-red-800`;
+    case 'ended':
+      return `${baseClasses} bg-slate-200 text-slate-700`;
     default:
       return `${baseClasses} bg-gray-100 text-gray-800`;
   }
@@ -1731,13 +1733,13 @@ const finalizeApproval = async () => {
   isLoading.value = true;
   
   try {
-    // Update the appointment status to approved
+    // Update the appointment status to approved with approvedAt timestamp
     await appointmentStore.updateAppointment(
       selectedAppointment.value.id, 
       {
         status: 'approved',
         approvedBy: 'vet',
-        approvedAt: new Date()
+        approvedAt: new Date() // Always set approvedAt when approving
       }
     );
     
@@ -1822,6 +1824,10 @@ const exportToCSV = () => {
     isLoading.value = false;
   }, 1000);
 };
+
+// Ensure useRoute and useRouter are called unconditionally
+const currentRoute = useRoute();
+const vueRouter = useRouter();
   </script>
   
   <style scoped>
