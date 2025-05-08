@@ -4,7 +4,7 @@
     <!-- Header Section -->
     <div class="mb-6">
       <h2 class="text-2xl font-medium text-gray-900">Telehealth Appointments</h2>
-      <p class="text-gray-500 mt-1">View approved telehealth appointments.</p>
+      <p class="text-gray-500 mt-1">View and manage telehealth appointments.</p>
     </div>
     
     <!-- Search and Actions -->
@@ -25,24 +25,50 @@
           >
             <FilterIcon class="w-5 h-5 text-gray-500" />
           </button>
-          <!-- Filter Dropdown - Status Only -->
-          <div v-if="showFilters" class="absolute top-full mt-2 right-0 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
-            <div class="px-4 py-2 text-sm font-medium text-gray-700">Filter by Status:</div>
+          <!-- Filter Dropdown - Updated to match user's screenshot -->
+          <div v-if="showFilters" class="absolute top-full mt-2 left-0 w-48 sm:w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+            <div class="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 border-b border-gray-100">Filter by:</div>
             <button 
-              @click="toggleStatusFilter('All')"
-              class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
-              :class="{ 'text-[#0066FF]': filters.status === '' }"
+              @click="toggleStatusFilter('all')"
+              class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+              :class="{ 'text-blue-600': filters.status === 'all' }"
             >
-              All Statuses
+              All Appointments
             </button>
             <button 
-              v-for="status in ['approved', 'completed']" 
-              :key="status"
-              @click="toggleStatusFilter(status)"
-              class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 capitalize"
-              :class="{ 'text-[#0066FF]': filters.status === status }"
+              @click="toggleStatusFilter('approved')"
+              class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+              :class="{ 'text-blue-600': filters.status === 'approved' }"
             >
-              {{ status }}
+              Approved
+            </button>
+            <button 
+              @click="toggleStatusFilter('pending')"
+              class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+              :class="{ 'text-blue-600': filters.status === 'pending' }"
+            >
+              Pending
+            </button>
+            <button 
+              @click="toggleStatusFilter('ended')"
+              class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+              :class="{ 'text-blue-600': filters.status === 'ended' }"
+            >
+              Ended
+            </button>
+            <button 
+              @click="toggleStatusFilter('completed')"
+              class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+              :class="{ 'text-blue-600': filters.status === 'completed' }"
+            >
+              Completed
+            </button>
+            <button 
+              @click="toggleStatusFilter('cancelled')"
+              class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+              :class="{ 'text-blue-600': filters.status === 'cancelled' }"
+            >
+              Cancelled
             </button>
           </div>
         </div>
@@ -58,8 +84,8 @@
       </div>
     </div>
     
-    <!-- Active Filters Display - Status Only -->
-    <div v-if="filters.status" class="mb-4 flex flex-wrap gap-2">
+    <!-- Active Filters Display -->
+    <div v-if="filters.status && filters.status !== 'all'" class="mb-4 flex flex-wrap gap-2">
       <div class="text-sm text-gray-500 py-1">Active filters:</div>
       
       <div class="inline-flex items-center gap-1 px-3 py-1 bg-[#EBF5FF] text-[#0066FF] rounded-full text-xs capitalize">
@@ -168,12 +194,14 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-center">
                   <a 
+                    v-if="appointment.status === 'approved'"
                     @click="joinVideoCall(appointment)"
                     class="inline-flex items-center text-blue-500 cursor-pointer text-sm"
                   >
                     <PhoneIcon class="w-4 h-4 mr-1" />
                     <span>Join Call</span>
                   </a>
+                  <span v-else class="text-gray-400 text-sm">Not Available</span>
                 </div>
               </td>
               <!-- Created Date Column -->
@@ -193,8 +221,8 @@
                   <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                     <CalendarIcon class="w-8 h-8 text-gray-300" />
                   </div>
-                  <p class="text-gray-500 font-medium">No approved telehealth appointments found</p>
-                  <p class="text-gray-400 text-sm mt-1">Try adjusting your search</p>
+                  <p class="text-gray-500 font-medium">No telehealth appointments found</p>
+                  <p class="text-gray-400 text-sm mt-1">Try adjusting your search or filters</p>
                 </div>
               </td>
             </tr>
@@ -240,7 +268,7 @@
             <div class="flex items-center">
               <span 
                 class="w-2 h-2 rounded-full mr-1"
-                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500'"
+                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'"
               ></span>
               <span class="text-xs text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
             </div>
@@ -265,7 +293,7 @@
             <div class="flex items-center mr-4">
               <span 
                 class="w-2 h-2 rounded-full mr-2"
-                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500'"
+                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'"
               ></span>
               <span class="text-sm text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
             </div>
@@ -282,11 +310,11 @@
       
       <!-- Call Content -->
       <div class="flex-1 overflow-y-auto">
-        <div class="flex flex-col md:flex-row gap-4 p-4">
-          <!-- Video Container with improved mobile waiting screen -->
-          <div class="flex-1 flex flex-col gap-4">
+        <div class="flex flex-col md:flex-row gap-3 p-3 sm:gap-4 sm:p-4">
+          <!-- Video Container - Takes full width on mobile, 2/3 on desktop -->
+          <div class="flex-1 flex flex-col gap-3 sm:gap-4">
             <!-- Main Video Container - Increased height for mobile -->
-            <div class="relative bg-gray-900 rounded-xl overflow-hidden md:aspect-video h-[450px] md:h-auto">
+            <div class="relative bg-gray-900 rounded-xl overflow-hidden md:aspect-video h-[450px] sm:h-[500px] md:h-auto">
               <!-- Remote Video -->
               <video id="remote-video" ref="remoteVideoRef" autoplay playsinline class="w-full h-full object-cover"></video>
               
@@ -366,15 +394,67 @@
                 </button>
               </div>
             </div>
+            
+            <!-- Mobile Chat Panel - Same height as video on mobile -->
+            <div v-if="showChatPanel && isMobileView" class="bg-white rounded-xl shadow-sm flex flex-col h-[450px] sm:h-[500px]">
+              <div class="p-2 border-b border-gray-100">
+                <h3 class="text-base font-medium text-gray-900">Chat</h3>
+              </div>
+              
+              <div class="flex-1 overflow-y-auto p-2 space-y-2" ref="mobileChatMessagesRef">
+                <div 
+                  v-for="(message, index) in chatMessages" 
+                  :key="index"
+                  :class="[
+                    'max-w-[80%]',
+                    message.sender === 'owner' ? 'mr-auto' : 'ml-auto'
+                  ]"
+                >
+                  <div 
+                    :class="[
+                      'px-2 py-1 rounded-xl text-xs sm:text-sm',
+                      message.sender === 'owner' ? 'bg-gray-100 text-gray-800' : 'bg-blue-600 text-white'
+                    ]"
+                  >
+                    {{ message.text }}
+                  </div>
+                  <div 
+                    :class="[
+                      'text-[9px] mt-0.5',
+                      message.sender === 'owner' ? 'text-left text-gray-500' : 'text-right text-gray-500'
+                    ]"
+                  >
+                    {{ formatTime(message.timestamp) }}
+                  </div>
+                </div>
+              </div>
+              
+              <div class="p-2 border-t border-gray-100">
+                <div class="flex gap-2">
+                  <input 
+                    v-model="newMessage" 
+                    @keyup.enter="sendMessage"
+                    placeholder="Type a message..."
+                    class="flex-1 px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button 
+                    @click="sendMessage" 
+                    class="min-w-[32px] h-[32px] bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center justify-center"
+                  >
+                    <SendIcon class="w-3 h-3 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           
-          <!-- Chat Panel - Increased height for small screens -->
-          <div v-if="showChatPanel" class="bg-white rounded-xl shadow-sm flex flex-col w-full sm:w-[320px] md:w-1/3 max-w-sm h-[400px] xs:h-[450px] sm:h-[500px] md:h-auto">
-            <div class="p-3 sm:p-4 border-b border-gray-100">
-              <h3 class="text-base sm:text-lg font-medium text-gray-900">Chat</h3>
+          <!-- Desktop Chat Section - Fixed responsive issues -->
+          <div v-if="showChatPanel && !isMobileView" class="bg-white rounded-xl shadow-sm flex flex-col md:w-1/3 max-w-sm">
+            <div class="p-4 border-b border-gray-100">
+              <h3 class="text-lg font-medium text-gray-900">Chat</h3>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4" ref="chatMessagesRef" style="min-height: 250px;">
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="chatMessagesRef">
               <div 
                 v-for="(message, index) in chatMessages" 
                 :key="index"
@@ -385,7 +465,7 @@
               >
                 <div 
                   :class="[
-                    'px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-sm',
+                    'px-4 py-2 rounded-full',
                     message.sender === 'owner' ? 'bg-gray-100 text-gray-800' : 'bg-blue-600 text-white'
                   ]"
                 >
@@ -403,25 +483,28 @@
             </div>
             
             <!-- Improved responsive chat input container -->
-            <div class="p-2 sm:p-3 md:p-4 border-t border-gray-100">
-              <div class="flex items-center gap-1 sm:gap-2 w-full">
+            <div class="p-3 border-t border-gray-100">
+              <div class="flex items-center gap-2 w-full">
                 <input 
                   v-model="newMessage" 
                   @keyup.enter="sendMessage"
                   placeholder="Type a message..."
-                  class="flex-1 px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  class="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button 
                   @click="sendMessage" 
-                  class="flex-shrink-0 p-1.5 sm:p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center justify-center"
+                  class="flex-shrink-0 w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center justify-center"
                   aria-label="Send message"
                 >
-                  <SendIcon class="w-4 h-4 sm:w-5 sm:h-5" />
+                  <SendIcon class="w-5 h-5" />
                 </button>
               </div>
             </div>
           </div>
         </div>
+        
+        <!-- Add bottom padding to ensure content isn't hidden behind navigation -->
+        <div class="h-16 sm:h-20"></div>
       </div>
     </div>
     
@@ -455,7 +538,7 @@
   <LoadingSpinner v-if="initialLoading" isOverlay text="Loading appointments..." />
   
   <!-- Incoming Call Modal -->
-  <div v-if="incomingCall" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+  <div v-if="incomingCall && !isAcceptingCall" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
     <div class="bg-white rounded-xl max-w-md w-full overflow-hidden">
       <div class="p-6 text-center">
         <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
@@ -557,7 +640,7 @@ const currentPage = ref(1);
 const itemsPerPage = 10;
 const showFilters = ref(false);
 const filters = ref({
-  status: '', // Empty string to show all approved and completed statuses by default
+  status: 'all', // Changed to 'all' to show all statuses by default
 });
 
 // Loading states
@@ -581,6 +664,7 @@ const showChatPanel = ref(false);
 const chatMessages = ref([]);
 const newMessage = ref('');
 const chatMessagesRef = ref(null);
+const mobileChatMessagesRef = ref(null);
 const incomingCall = ref(null);
 let incomingCallsUnsubscribe = null;
 // Add speaker mute state
@@ -591,6 +675,15 @@ let callDocUnsubscribe = null;
 let iceCandidatesUnsubscribe = null;
 // Add connection status
 const connectionStatus = ref('connecting');
+// Mobile view detection
+const isMobileView = ref(false);
+// Add flag to track when a call is being accepted
+const isAcceptingCall = ref(false);
+
+// Check for mobile view
+const checkMobileView = () => {
+  isMobileView.value = window.innerWidth < 768;
+};
 
 // Improved fetchAppointments function to ensure pet data is fully loaded and filter by current vet
 const fetchAppointments = async () => {
@@ -724,8 +817,13 @@ const fetchAppointments = async () => {
 
 // Initialize component
 onMounted(() => {
+  checkMobileView();
+  window.addEventListener("resize", checkMobileView);
   fetchAppointments();
   setupIncomingCallsListener();
+  
+  // Add event listener for screen share ended event
+  window.addEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
 });
 
 // Clean up when component is unmounted
@@ -739,17 +837,26 @@ onBeforeUnmount(() => {
   if (incomingCallsUnsubscribe) {
     incomingCallsUnsubscribe();
   }
+  
+  window.removeEventListener("resize", checkMobileView);
+  
+  // Remove screen share ended event listener
+  window.removeEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
 });
 
 // Handle Vue keep-alive activation/deactivation
 onActivated(() => {
   // When the component is activated (comes back into view)
   fetchAppointments(); // Always fetch fresh data when coming back to this view
+  
+  // Re-add event listener for screen share ended event
+  window.addEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
 });
 
 onDeactivated(() => {
   // When the component is deactivated (hidden but kept alive)
-  // No cleanup needed
+  // Remove screen share ended event listener to prevent memory leaks
+  window.removeEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
 });
 
 // Toggle filters visibility
@@ -757,19 +864,15 @@ const toggleFilters = () => {
   showFilters.value = !showFilters.value;
 };
 
-// Status filter functions
+// Status filter functions - Updated to match user's screenshot
 const toggleStatusFilter = (status) => {
-  if (status === 'All') {
-    filters.value.status = '';
-  } else {
-    filters.value.status = status;
-  }
+  filters.value.status = status;
   showFilters.value = false;
   currentPage.value = 1;
 };
 
 const clearStatusFilter = () => {
-  filters.value.status = '';
+  filters.value.status = 'all';
   currentPage.value = 1;
 };
 
@@ -801,12 +904,6 @@ const isTelehealthAppointment = (appointment) => {
   }
 
   return false;
-};
-
-// Function to check if a video call can be joined - ALWAYS RETURNS TRUE FOR TESTING
-const canJoinCall = (appointment) => {
-  // Always return true for testing purposes
-  return true;
 };
 
 // Function to join a video call
@@ -1013,7 +1110,7 @@ const onPetImageError = (event) => {
   event.target.src = defaultPetPhotoURL;
 };
 
-// Filter appointments to only show telehealth appointments with approved or completed status
+// Filter appointments based on selected status and search query
 const filteredAndSortedAppointments = computed(() => {
   // Create a Map to store unique appointments by ID
   const uniqueAppointments = new Map();
@@ -1025,13 +1122,8 @@ const filteredAndSortedAppointments = computed(() => {
       return;
     }
     
-    // Only include appointments with status 'approved' or 'completed'
-    if (appointment.status !== 'approved' && appointment.status !== 'completed') {
-      return;
-    }
-    
     // Apply status filter if set
-    if (filters.value.status && appointment.status !== filters.value.status) {
+    if (filters.value.status !== 'all' && appointment.status !== filters.value.status) {
       return;
     }
     
@@ -1138,29 +1230,129 @@ const toggleSpeaker = () => {
   }
 };
 
+// Add this function to properly handle screen share ended events
+const handleScreenShareEnded = () => {
+  console.log('Screen sharing ended event received');
+  // Update UI state to reflect that screen sharing has ended
+  isScreenSharing.value = false;
+  
+  // Make sure we update the UI immediately
+  nextTick(() => {
+    // Force a UI update if needed
+    if (isScreenSharing.value) {
+      isScreenSharing.value = false;
+    }
+  });
+};
+
+// Modify the toggleScreenShare function to better handle state
 const toggleScreenShare = async () => {
   try {
-    localStream.value = await WebRTCService.toggleScreenShare(isScreenSharing.value);
-    
-    // Update video element
-    if (localVideoRef.value) {
-      localVideoRef.value.srcObject = localStream.value;
+    if (isScreenSharing.value) {
+      // If we're turning off screen sharing
+      localStream.value = await WebRTCService.toggleScreenShare(true);
+      
+      // Update video element
+      if (localVideoRef.value) {
+        localVideoRef.value.srcObject = localStream.value;
+      }
+      
+      // Update state after successful toggle
+      isScreenSharing.value = false;
+    } else {
+      // If we're turning on screen sharing
+      try {
+        localStream.value = await WebRTCService.toggleScreenShare(false);
+        
+        // Update video element
+        if (localVideoRef.value) {
+          localVideoRef.value.srcObject = localStream.value;
+        }
+        
+        // Only update state if screen sharing was successfully started
+        isScreenSharing.value = true;
+      } catch (error) {
+        // If screen sharing failed to start (e.g., user denied permission)
+        console.error('Failed to start screen sharing:', error);
+        isScreenSharing.value = false;
+      }
     }
-    
-    isScreenSharing.value = !isScreenSharing.value;
   } catch (error) {
     console.error('Error toggling screen share:', error);
+    // Ensure UI state is consistent even if there's an error
+    isScreenSharing.value = false;
   }
 };
 
+// Handle screen share ended event from WebRTCService
+// const handleScreenShareEnded = () => {
+//   console.log('Screen sharing ended event received');
+//   // Update UI state to reflect that screen sharing has ended
+//   isScreenSharing.value = false;
+// };
+
+// const toggleScreenShare = async () => {
+//   try {
+//     // Pass the current screen sharing state to the service
+//     localStream.value = await WebRTCService.toggleScreenShare(isScreenSharing.value);
+    
+//     // Update video element
+//     if (localVideoRef.value) {
+//       localVideoRef.value.srcObject = localStream.value;
+//     }
+    
+//     // Toggle screen sharing state
+//     isScreenSharing.value = !isScreenSharing.value;
+//   } catch (error) {
+//     console.error('Error toggling screen share:', error);
+//     // Ensure UI state is consistent even if there's an error
+//     isScreenSharing.value = false;
+//   }
+// };
+
+// Make sure we're properly setting up and cleaning up event listeners
+onMounted(() => {
+  checkMobileView();
+  window.addEventListener("resize", checkMobileView);
+  fetchAppointments();
+  setupIncomingCallsListener();
+  
+  // Add event listener for screen share ended event
+  window.addEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
+});
+
+onBeforeUnmount(() => {
+  // Clean up WebRTC
+  if (activeCall.value) {
+    endCall();
+  }
+  
+  // Clear incoming calls interval
+  if (incomingCallsUnsubscribe) {
+    incomingCallsUnsubscribe();
+  }
+  
+  window.removeEventListener("resize", checkMobileView);
+  
+  // Remove screen share ended event listener
+  window.removeEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
+});
+
+// Toggle chat panel
 const toggleChatPanel = () => {
   showChatPanel.value = !showChatPanel.value;
   
   // Scroll to bottom of chat when opening
   if (showChatPanel.value) {
     nextTick(() => {
-      if (chatMessagesRef.value) {
-        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+      if (isMobileView.value) {
+        if (mobileChatMessagesRef.value) {
+          mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+        }
+      } else {
+        if (chatMessagesRef.value) {
+          chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+        }
       }
     });
   }
@@ -1180,8 +1372,14 @@ const sendMessage = () => {
   
   // Scroll to bottom of chat
   nextTick(() => {
-    if (chatMessagesRef.value) {
-      chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+    if (isMobileView.value) {
+      if (mobileChatMessagesRef.value) {
+        mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+      }
+    } else {
+      if (chatMessagesRef.value) {
+        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+      }
     }
   });
   
@@ -1196,14 +1394,23 @@ const sendMessage = () => {
     
     // Scroll to bottom of chat
     nextTick(() => {
-      if (chatMessagesRef.value) {
-        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+      if (isMobileView.value) {
+        if (mobileChatMessagesRef.value) {
+          mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+        }
+      } else {
+        if (chatMessagesRef.value) {
+          chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+        }
       }
     });
   }, 2000);
 };
 
 const endCall = () => {
+  // Reset screen sharing state
+  isScreenSharing.value = false;
+  
   // Stop listening for updates
   if (callDocUnsubscribe) {
     callDocUnsubscribe();
@@ -1241,6 +1448,9 @@ const acceptIncomingCall = async () => {
   if (!incomingCall.value) return;
   
   try {
+    // Set accepting call flag to true to hide the modal immediately
+    isAcceptingCall.value = true;
+    
     // Set connection status to connecting
     connectionStatus.value = 'connecting';
     
@@ -1254,6 +1464,7 @@ const acceptIncomingCall = async () => {
       }
     } catch (error) {
       console.error('Error accessing camera/microphone:', error);
+      isAcceptingCall.value = false;
       return;
     }
 
@@ -1338,15 +1549,17 @@ const acceptIncomingCall = async () => {
       }
       
     } catch (error) {
-      console.error('Error starting call:', error);
+      console.error('Error answering call:', error);
       connectionStatus.value = 'disconnected';
+      isAcceptingCall.value = false;
     }
   } catch (error) {
-    console.error('Error joining video call:', error);
+    console.error('Error accepting incoming call:', error);
     connectionStatus.value = 'disconnected';
+    isAcceptingCall.value = false;
   } finally {
-    // Clear the incoming call
-    incomingCall.value = null;
+    // We don't clear the incoming call here because we've already hidden the modal with isAcceptingCall
+    // The call view is now active
   }
 };
 
