@@ -250,12 +250,28 @@
                   
                   <div class="mt-auto">
                     <button 
-                      v-if="appointment.status === 'approved'" 
+                      v-if="appointment.status === 'approved' && isAppointmentTime(appointment)" 
                       class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 text-white text-xs sm:text-sm rounded-full hover:bg-blue-700"
                       @click="joinSession(appointment)"
                     >
                       <PhoneIcon class="w-4 h-4 mr-2 flex-shrink-0" />
                       Join Call
+                    </button>
+                    <button 
+                      v-else-if="appointment.status === 'approved' && isAppointmentPast(appointment)"
+                      class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 bg-gray-300 text-gray-700 text-xs sm:text-sm rounded-full cursor-not-allowed" 
+                      disabled
+                    >
+                      <ClockIcon class="w-4 h-4 mr-2 flex-shrink-0" />
+                      Appointment Ended
+                    </button>
+                    <button 
+                      v-else-if="appointment.status === 'approved' && !isAppointmentTime(appointment)"
+                      class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 bg-gray-300 text-gray-700 text-xs sm:text-sm rounded-full cursor-not-allowed" 
+                      disabled
+                    >
+                      <ClockIcon class="w-4 h-4 mr-2 flex-shrink-0" />
+                      {{ getTimeUntilAppointment(appointment) }}
                     </button>
                     <button 
                       v-else
@@ -366,7 +382,7 @@
               
               <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button 
-                  v-if="selectedSession.status === 'approved'" 
+                  v-if="selectedSession.status === 'approved' && isAppointmentTime(selectedSession)" 
                   class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white text-sm sm:text-base rounded-full hover:bg-blue-700"
                   @click="joinSession(selectedSession)"
                 >
@@ -374,6 +390,22 @@
                   Join Call
                 </button>
                 <button
+                  v-else-if="selectedSession.status === 'approved' && isAppointmentPast(selectedSession)"
+                  class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 text-sm sm:text-base rounded-full cursor-not-allowed" 
+                  disabled
+                >
+                  <ClockIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                  Appointment Ended
+                </button>
+                <button
+                  v-else-if="selectedSession.status === 'approved' && !isAppointmentTime(selectedSession)"
+                  class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 text-sm sm:text-base rounded-full cursor-not-allowed" 
+                  disabled
+                >
+                  <ClockIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                  {{ getTimeUntilAppointment(selectedSession) }}
+                </button>
+                <button 
                   v-else
                   class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 text-sm sm:text-base rounded-full cursor-not-allowed" 
                   disabled
@@ -409,6 +441,7 @@
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600">
               <span class="flex items-center"><UserIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> {{ activeSession.doctorName || 'Veterinarian' }}</span>
               <span class="flex items-center"><PawPrintIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> {{ activeSession.petName || 'Your Pet' }}</span>
+              <span class="flex items-center"><ClockIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Time remaining: {{ remainingTime }}</span>
             </div>
           </div>
           
@@ -516,6 +549,14 @@
                   <Volume2Icon v-else class="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
+              
+              <!-- Time Remaining Indicator (Mobile) -->
+              <div class="sm:hidden absolute top-4 left-4 bg-gray-900/80 px-2 py-1 rounded-full text-white text-xs">
+                <span class="flex items-center">
+                  <ClockIcon class="w-3 h-3 mr-1" />
+                  {{ remainingTime }}
+                </span>
+              </div>
             </div>
             
             <!-- Mobile Chat Panel - Same height as video on mobile -->
@@ -526,8 +567,8 @@
               
               <div class="flex-1 overflow-y-auto p-2 space-y-2" ref="mobileChatMessagesRef">
                 <div 
-                  v-for="(message, index) in chatMessages" 
-                  :key="index"
+                  v-for="message in chatMessages" 
+                  :key="message.id"
                   :class="[
                     'max-w-[80%]',
                     message.sender === 'vet' ? 'mr-auto' : 'ml-auto'
@@ -543,11 +584,14 @@
                   </div>
                   <div 
                     :class="[
-                      'text-[9px] mt-0.5',
+                      'text-[9px] mt-0.5 flex items-center',
                       message.sender === 'vet' ? 'text-left text-gray-500' : 'text-right text-gray-500'
                     ]"
                   >
-                    {{ formatTime(message.timestamp) }}
+                    <span>{{ message.sender === 'vet' ? message.senderName || 'Doctor' : 'You' }}</span>
+                    <span class="mx-1">•</span>
+                    <span>{{ formatTime(message.timestamp) }}</span>
+                    <CheckIcon v-if="message.sender === 'vet' && message.read" class="w-2 h-2 ml-1 text-blue-500" />
                   </div>
                 </div>
               </div>
@@ -579,8 +623,8 @@
             
             <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="chatMessagesRef">
               <div 
-                v-for="(message, index) in chatMessages" 
-                :key="index"
+                v-for="message in chatMessages" 
+                :key="message.id"
                 :class="[
                   'max-w-[85%]',
                   message.sender === 'vet' ? 'mr-auto' : 'ml-auto'
@@ -596,11 +640,14 @@
                 </div>
                 <div 
                   :class="[
-                    'text-xs mt-1',
+                    'text-xs mt-1 flex items-center',
                     message.sender === 'vet' ? 'text-left text-gray-500' : 'text-right text-gray-500'
                   ]"
                 >
-                  {{ formatTime(message.timestamp) }}
+                  <span>{{ message.sender === 'vet' ? message.senderName || 'Doctor' : 'You' }}</span>
+                  <span class="mx-1">•</span>
+                  <span>{{ formatTime(message.timestamp) }}</span>
+                  <CheckIcon v-if="message.sender === 'vet' && message.read" class="w-3 h-3 ml-1 text-blue-500" />
                 </div>
               </div>
             </div>
@@ -666,6 +713,27 @@
         </div>
       </div>
     </div>
+
+    <!-- Call Time Expired Modal -->
+    <div v-if="showCallExpiredModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg max-w-md w-full overflow-hidden">
+        <div class="p-6 text-center">
+          <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ClockIcon class="w-10 h-10 text-red-600" />
+          </div>
+          <h3 class="text-xl font-semibold text-gray-900 mb-2">Appointment Time Ended</h3>
+          <p class="text-gray-600 mb-8">The scheduled time for this appointment has ended.</p>
+          
+          <button 
+            @click="acknowledgeCallExpired" 
+            class="inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700"
+          >
+            <CheckIcon class="w-5 h-5 mr-2" />
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -706,8 +774,9 @@ import { useAppointmentStore } from "@/stores/modules/appointmentStore";
 import { useAuthStore } from "@/stores/modules/authStore";
 import { useServiceCategoryStore } from "@/stores/modules/ServiceCategoryStore";
 import { db } from '@shared/firebase';
-import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs, arrayUnion, serverTimestamp, addDoc, orderBy } from 'firebase/firestore';
 import WebRTCService from "@/services/webrtc-service";
+import { parseISO, format, isToday, isFuture, addMinutes, subMinutes, isAfter, isBefore, differenceInMinutes, differenceInSeconds } from 'date-fns';
 
 // Router and stores
 const router = useRouter();
@@ -782,6 +851,11 @@ let incomingCallsUnsubscribe = null;
 let networkStatusInterval = null;
 let autoplayInterval;
 let lottieInstances = [];
+let chatMessagesUnsubscribe = null;
+const appointmentEndTime = ref(null);
+const remainingTime = ref('');
+let appointmentTimer = null;
+const showCallExpiredModal = ref(false);
 
 // Function to clean title by removing empty parentheses
 const cleanTitle = (text) => {
@@ -1112,7 +1186,7 @@ const checkForActiveCallSession = async () => {
     const q = query(
       callsRef,
       where('status', 'in', ['initiating', 'accepted', 'connected']),
-      where('receiverId', '==', authStore.user.userId)
+      where('callerId', '==', authStore.user.userId)
     );
     
     const querySnapshot = await getDocs(q);
@@ -1239,9 +1313,198 @@ const viewSessionDetails = (session) => {
   currentView.value = 'details';
 };
 
+// Function to check if it's time for the appointment
+const isAppointmentTime = (appointment) => {
+  if (!appointment.date || !appointment.time) return false;
+
+  try {
+    // Handle date properly whether it's a string or Date object
+    const appointmentDate = appointment.date instanceof Date 
+      ? appointment.date 
+      : parseISO(appointment.date);
+    
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the start time part
+        const startTimeStr = timeMatch[1].trim();
+        // Get the end time part
+        const endTimeStr = timeMatch[2].trim();
+        
+        // Create date objects for the appointment start and end times
+        const startTimeParts = startTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        const endTimeParts = endTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (startTimeParts && endTimeParts) {
+          // Parse start time
+          let startHours = parseInt(startTimeParts[1]);
+          const startMinutes = parseInt(startTimeParts[2]);
+          const startPeriod = startTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (startPeriod === 'PM' && startHours < 12) startHours += 12;
+          if (startPeriod === 'AM' && startHours === 12) startHours = 0;
+          
+          // Parse end time
+          let endHours = parseInt(endTimeParts[1]);
+          const endMinutes = parseInt(endTimeParts[2]);
+          const endPeriod = endTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (endPeriod === 'PM' && endHours < 12) endHours += 12;
+          if (endPeriod === 'AM' && endHours === 12) endHours = 0;
+          
+          // Create appointment start and end datetime objects
+          const startTime = new Date(appointmentDate);
+          startTime.setHours(startHours, startMinutes, 0, 0);
+          
+          const endTime = new Date(appointmentDate);
+          endTime.setHours(endHours, endMinutes, 0, 0);
+          
+          // If end time is earlier than start time, it means the appointment ends the next day
+          if (endTime < startTime) {
+            endTime.setDate(endTime.getDate() + 1);
+          }
+          
+          // Get current time
+          const now = new Date();
+          
+          // Check if current time is within the appointment time range
+          return now >= startTime && now <= endTime;
+        }
+      }
+    }
+    
+    // If we couldn't parse the time string, return false
+    return false;
+  } catch (error) {
+    console.error('Error checking appointment time:', error);
+    return false;
+  }
+};
+
+// Function to check if an appointment is in the past
+const isAppointmentPast = (appointment) => {
+  if (!appointment.date || !appointment.time) return false;
+
+  try {
+    // Handle date properly whether it's a string or Date object
+    const appointmentDate = appointment.date instanceof Date 
+      ? appointment.date 
+      : parseISO(appointment.date);
+    
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the end time part
+        const endTimeStr = timeMatch[2].trim();
+        
+        // Create date objects for the appointment end time
+        const endTimeParts = endTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (endTimeParts) {
+          // Parse end time
+          let endHours = parseInt(endTimeParts[1]);
+          const endMinutes = parseInt(endTimeParts[2]);
+          const endPeriod = endTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (endPeriod === 'PM' && endHours < 12) endHours += 12;
+          if (endPeriod === 'AM' && endHours === 12) endHours = 0;
+          
+          // Create appointment end datetime object
+          const endTime = new Date(appointmentDate);
+          endTime.setHours(endHours, endMinutes, 0, 0);
+          
+          // Get current time
+          const now = new Date();
+          
+          // Check if current time is after the appointment end time
+          return now > endTime;
+        }
+      }
+    }
+    
+    // If we couldn't parse the time string, return false
+    return false;
+  } catch (error) {
+    console.error('Error checking if appointment is past:', error);
+    return false;
+  }
+};
+
+// Function to get time until appointment
+const getTimeUntilAppointment = (appointment) => {
+  if (!appointment.date || !appointment.time) return 'N/A';
+
+  try {
+    // Handle date properly whether it's a string or Date object
+    const appointmentDate = appointment.date instanceof Date 
+      ? appointment.date 
+      : parseISO(appointment.date);
+    
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the start time part
+        const startTimeStr = timeMatch[1].trim();
+        
+        // Create date objects for the appointment start time
+        const startTimeParts = startTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (startTimeParts) {
+          // Parse start time
+          let startHours = parseInt(startTimeParts[1]);
+          const startMinutes = parseInt(startTimeParts[2]);
+          const startPeriod = startTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (startPeriod === 'PM' && startHours < 12) startHours += 12;
+          if (startPeriod === 'AM' && startHours === 12) startHours = 0;
+          
+          // Create appointment start datetime object
+          const startTime = new Date(appointmentDate);
+          startTime.setHours(startHours, startMinutes, 0, 0);
+          
+          // Get current time
+          const now = new Date();
+          
+          // Calculate the difference in minutes
+          const diffInMinutes = differenceInMinutes(startTime, now);
+          
+          if (diffInMinutes <= 0) {
+            return 'Starting now';
+          } else if (diffInMinutes < 60) {
+            return `Starts in ${diffInMinutes} minutes`;
+          } else {
+            const hours = Math.floor(diffInMinutes / 60);
+            const minutes = diffInMinutes % 60;
+            return `Starts in ${hours}h ${minutes}m`;
+          }
+        }
+      }
+    }
+    
+    // If we couldn't parse the time string, return a generic message
+    return 'Check appointment time';
+  } catch (error) {
+    console.error('Error getting time until appointment:', error);
+    return 'N/A';
+  }
+};
+
 // Add this function to properly handle the remote stream when joining a session
 const joinSession = async (session) => {
   try {
+    // Check if it's time for the appointment
+    if (!isAppointmentTime(session)) {
+      alert('This appointment is not currently available for video call. You can join during the scheduled appointment time.');
+      return;
+    }
+    
     if (!isOnline.value) {
       errorMessage.value = "You appear to be offline. Please check your internet connection and try again.";
       return;
@@ -1344,6 +1607,12 @@ const joinSession = async (session) => {
       isCallInitializing.value = false;
       isInitiatingCall.value = false;
       
+      // Start appointment timer
+      startAppointmentTimer(session);
+      
+      // Subscribe to chat messages for this call
+      subscribeToChatMessages(session.id);
+      
     } catch (error) {
       console.error('Error accessing media devices:', error);
       errorMessage.value = "Could not access camera or microphone. Please check your device permissions.";
@@ -1358,11 +1627,102 @@ const joinSession = async (session) => {
   }
 };
 
+// Subscribe to chat messages
+const subscribeToChatMessages = (callId) => {
+  // Clean up any existing subscription
+  if (chatMessagesUnsubscribe) {
+    chatMessagesUnsubscribe();
+    chatMessagesUnsubscribe = null;
+  }
+
+  try {
+    // Create a reference to the messages collection for this call
+    const messagesRef = collection(db, 'calls', callId, 'messages');
+    
+    // Create a query to get messages ordered by timestamp
+    const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
+    
+    // Subscribe to the query
+    chatMessagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      // Process the snapshot to update the chat messages
+      const newMessages = [];
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Convert server timestamp to Date object
+        const timestamp = data.timestamp ? data.timestamp.toDate() : new Date();
+        
+        // Add the message to the array
+        newMessages.push({
+          id: doc.id,
+          text: data.text,
+          sender: data.sender,
+          senderId: data.senderId,
+          senderName: data.senderName,
+          timestamp: timestamp,
+          read: data.read
+        });
+      });
+      
+      // Update the chat messages
+      chatMessages.value = newMessages;
+      
+      // Scroll to bottom of chat
+      nextTick(() => {
+        if (isMobileView.value) {
+          if (mobileChatMessagesRef.value) {
+            mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+          }
+        } else {
+          if (chatMessagesRef.value) {
+            chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+          }
+        }
+      });
+      
+      // Mark messages as read
+      markMessagesAsRead(newMessages);
+    });
+  } catch (error) {
+    console.error('Error subscribing to chat messages:', error);
+  }
+};
+
+// Mark messages as read
+const markMessagesAsRead = async (messages) => {
+  if (!activeSession.value || !authStore.user) return;
+
+  try {
+    // Find messages that are from vet (not user) and are unread
+    const unreadMessages = messages.filter(msg => 
+      msg.sender === 'vet' && 
+      msg.senderId !== authStore.user.userId && 
+      !msg.read
+    );
+    
+    // Mark each unread message as read
+    for (const message of unreadMessages) {
+      const messageRef = doc(db, 'calls', activeSession.value.id, 'messages', message.id);
+      await updateDoc(messageRef, { read: true });
+    }
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+  }
+};
+
 // Similarly update the acceptIncomingCall function
 const acceptIncomingCall = async () => {
   if (!incomingCall.value) return;
 
   try {
+    // Check if it's time for the appointment
+    if (incomingCall.value.appointment && !isAppointmentTime(incomingCall.value.appointment)) {
+      alert('This appointment is not currently available for video call. You can join during the scheduled appointment time.');
+      declineIncomingCall();
+      return;
+    }
+    
     // Set accepting call flag to true to hide the modal immediately
     isAcceptingCall.value = true;
     isCallInitializing.value = true;
@@ -1438,6 +1798,14 @@ const acceptIncomingCall = async () => {
       // Set document title to indicate active call
       document.title = "In Call - Telehealth";
       
+      // Start appointment timer if we have a session
+      if (activeSession.value) {
+        startAppointmentTimer(activeSession.value);
+      }
+      
+      // Subscribe to chat messages for this call
+      subscribeToChatMessages(incomingCall.value.id);
+      
       // Clear incoming call state
       incomingCall.value = null;
       isAcceptingCall.value = false;
@@ -1496,33 +1864,107 @@ const declineIncomingCall = async () => {
   }
 };
 
-// Add a function to check and update remote stream status
-const checkRemoteStreamStatus = () => {
-  if (remoteStream.value && remoteVideoRef.value) {
-    // Check if the remote stream has tracks
-    const hasTracks = remoteStream.value.getTracks().length > 0;
-    
-    // Check if the video element has a valid srcObject
-    const hasVideoSource = remoteVideoRef.value.srcObject !== null;
-    
-    // Update the remote stream active state
-    remoteStreamActive.value = hasTracks && hasVideoSource;
-    
-    console.log(`Remote stream check: hasTracks=${hasTracks}, hasVideoSource=${hasVideoSource}`);
-    
-    // If we don't have tracks but should, try to get them again
-    if (!hasTracks && activeSession.value) {
-      console.log('Remote stream has no tracks, attempting to reconnect...');
-      
-      // Update the call document to request tracks
-      const callDoc = doc(db, 'calls', activeSession.value.id);
-      updateDoc(callDoc, {
-        requestTracks: true,
-        requestedAt: new Date()
-      }).catch(error => {
-        console.error('Error updating call document:', error);
-      });
+// Function to start the appointment timer
+const startAppointmentTimer = (appointment) => {
+  if (!appointment.date || !appointment.time) return;
+
+  try {
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the end time part
+        const endTimeStr = timeMatch[2].trim();
+        
+        // Create date objects for the appointment end time
+        const endTimeParts = endTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (endTimeParts) {
+          // Parse end time
+          let endHours = parseInt(endTimeParts[1]);
+          const endMinutes = parseInt(endTimeParts[2]);
+          const endPeriod = endTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (endPeriod === 'PM' && endHours < 12) endHours += 12;
+          if (endPeriod === 'AM' && endHours === 12) endHours = 0;
+          
+          // Create appointment end datetime object
+          const appointmentDate = appointment.date instanceof Date 
+            ? appointment.date 
+            : parseISO(appointment.date);
+          const endTime = new Date(appointmentDate);
+          endTime.setHours(endHours, endMinutes, 0, 0);
+          
+          // Set appointment end time
+          appointmentEndTime.value = endTime;
+          
+          // Update remaining time every second
+          appointmentTimer = setInterval(() => {
+            const now = new Date();
+            const diffInSeconds = differenceInSeconds(appointmentEndTime.value, now);
+            
+            if (diffInSeconds <= 0) {
+              // Time is up, show modal and end call
+              clearInterval(appointmentTimer);
+              remainingTime.value = '00:00';
+              showCallExpiredModal.value = true;
+            } else {
+              // Calculate remaining time
+              const minutes = Math.floor(diffInSeconds / 60);
+              const seconds = diffInSeconds % 60;
+              remainingTime.value = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+          }, 1000);
+        }
+      }
     }
+  } catch (error) {
+    console.error('Error starting appointment timer:', error);
+  }
+};
+
+// Function to acknowledge call expired
+const acknowledgeCallExpired = () => {
+  showCallExpiredModal.value = false;
+  endCall();
+};
+
+// Updated sendMessage function to use Firebase for real-time communication
+const sendMessage = async () => {
+  if (newMessage.value.trim() === '' || !activeSession.value) return;
+
+  try {
+    // Create a reference to the messages collection for this call
+    const messagesRef = collection(db, 'calls', activeSession.value.id, 'messages');
+    
+    // Add the new message to Firestore
+    await addDoc(messagesRef, {
+      text: newMessage.value,
+      sender: 'user', // 'user' for patient/pet-owner, 'vet' for veterinarian
+      senderId: authStore.user.userId,
+      senderName: authStore.user.displayName || 'Patient',
+      timestamp: serverTimestamp(),
+      read: false
+    });
+    
+    // Clear the input field
+    newMessage.value = '';
+    
+    // Scroll to bottom of chat
+    nextTick(() => {
+      if (isMobileView.value) {
+        if (mobileChatMessagesRef.value) {
+          mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+        }
+      } else {
+        if (chatMessagesRef.value) {
+          chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error sending message:', error);
   }
 };
 
@@ -1543,6 +1985,18 @@ const endCall = async () => {
       });
       
       console.log('Call status updated to ended in Firestore');
+    }
+    
+    // Clean up chat messages subscription
+    if (chatMessagesUnsubscribe) {
+      chatMessagesUnsubscribe();
+      chatMessagesUnsubscribe = null;
+    }
+    
+    // Clear appointment timer
+    if (appointmentTimer) {
+      clearInterval(appointmentTimer);
+      appointmentTimer = null;
     }
     
     // Use WebRTCService to hang up
@@ -1592,6 +2046,7 @@ const endCall = async () => {
     showChatPanel.value = false;
     currentView.value = 'sessions';
     callStatus.value = "";
+    remainingTime.value = '';
 
     // Reset flags
     isAcceptingCall.value = false;
@@ -1650,194 +2105,6 @@ const handleScreenShareEnded = () => {
     recoverFromScreenShareError().catch(error => {
       console.error('Error recovering from screen share end:', error);
     });
-  }
-};
-
-// Send chat message
-const sendMessage = () => {
-  if (newMessage.value.trim() === '') return;
-
-  const message = {
-    text: newMessage.value,
-    sender: 'patient',
-    timestamp: new Date()
-  };
-
-  chatMessages.value.push(message);
-  newMessage.value = '';
-
-  // Scroll to bottom of chat
-  nextTick(() => {
-    if (isMobileView.value) {
-      if (mobileChatMessagesRef.value) {
-        mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
-      }
-    } else {
-      if (chatMessagesRef.value) {
-        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
-      }
-    }
-  });
-
-  // Simulate vet response
-  setTimeout(() => {
-    const vetResponse = {
-      text: 'Thank you for your message!',
-      sender: 'vet',
-      timestamp: new Date()
-    };
-    chatMessages.value.push(vetResponse);
-    
-    // Scroll to bottom of chat
-    nextTick(() => {
-      if (isMobileView.value) {
-        if (mobileChatMessagesRef.value) {
-          mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
-        }
-      } else {
-        if (chatMessagesRef.value) {
-          chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
-        }
-      }
-    });
-  }, 2000);
-};
-
-// Setup incoming calls listener
-const setupIncomingCallsListener = () => {
-  if (!authStore.user || !authStore.user.userId) return;
-
-  try {
-    incomingCallsUnsubscribe = WebRTCService.listenForIncomingCalls(
-      authStore.user.userId,
-      (callData) => {
-        // Find the appointment details
-        const appointment = sessions.value.find(s => s.id === callData.id);
-        
-        if (appointment) {
-          incomingCall.value = {
-            id: callData.id,
-            callerId: callData.callerId,
-            callerName: appointment.doctorName || 'Doctor',
-            sessionTitle: appointment.title || 'Telehealth Session'
-          };
-          
-          // Add a listener to check if the call gets canceled or ended by the vet
-          const callDoc = doc(db, 'calls', callData.id);
-          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
-            const data = snapshot.data();
-            if (data) {
-              // If the call was rejected or ended by the vet, hide the incoming call modal
-              if (data.status === 'rejected' || data.status === 'ended') {
-                console.log('Call was rejected or ended by the veterinarian');
-                // Hide the incoming call modal
-                if (incomingCall.value && incomingCall.value.id === callData.id) {
-                  incomingCall.value = null;
-                }
-                // Unsubscribe from this listener
-                callStatusUnsubscribe();
-              }
-            }
-          });
-        } else {
-          incomingCall.value = {
-            id: callData.id,
-            callerId: callData.callerId,
-            callerName: 'Doctor',
-            sessionTitle: 'Telehealth Session'
-          };
-          
-          // Add the same listener for unknown appointments
-          const callDoc = doc(db, 'calls', callData.id);
-          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
-            const data = snapshot.data();
-            if (data) {
-              // If the call was rejected or ended by the vet, hide the incoming call modal
-              if (data.status === 'rejected' || data.status === 'ended') {
-                console.log('Call was rejected or ended by the veterinarian');
-                // Hide the incoming call modal
-                if (incomingCall.value && incomingCall.value.id === callData.id) {
-                  incomingCall.value = null;
-                }
-                // Unsubscribe from this listener
-                callStatusUnsubscribe();
-              }
-            }
-          });
-        }
-      }
-    );
-  } catch (error) {
-    console.error('Error setting up incoming calls listener:', error);
-  }
-};
-
-// Check for incoming calls
-const checkForIncomingCalls = async () => {
-  if (!authStore.user || !authStore.user.userId) return;
-
-  try {
-    const incomingCalls = await WebRTCService.checkForIncomingCalls(authStore.user.userId);
-    
-    if (incomingCalls.length > 0) {
-      // Find the appointment details for the first incoming call
-      const call = incomingCalls[0];
-      const appointment = sessions.value.find(s => s.id === call.id);
-      
-      if (appointment) {
-        incomingCall.value = {
-          id: call.id,
-          callerId: call.callerId,
-          callerName: appointment.doctorName || 'Doctor',
-          sessionTitle: appointment.title || 'Telehealth Session'
-        };
-        
-        // Add a listener to check if the call gets canceled or ended by the vet
-        const callDoc = doc(db, 'calls', call.id);
-        const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
-          const data = snapshot.data();
-          if (data) {
-            // If the call was rejected or ended by the vet, hide the incoming call modal
-            if (data.status === 'rejected' || data.status === 'ended') {
-              console.log('Call was rejected or ended by the veterinarian');
-              // Hide the incoming call modal
-              if (incomingCall.value && incomingCall.value.id === call.id) {
-                incomingCall.value = null;
-              }
-              // Unsubscribe from this listener
-              callStatusUnsubscribe();
-            }
-          }
-        });
-      } else {
-        incomingCall.value = {
-          id: call.id,
-          callerId: call.callerId,
-          callerName: 'Doctor',
-          sessionTitle: 'Telehealth Session'
-        };
-        
-        // Add the same listener for unknown appointments
-        const callDoc = doc(db, 'calls', call.id);
-        const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
-          const data = snapshot.data();
-          if (data) {
-            // If the call was rejected or ended by the vet, hide the incoming call modal
-            if (data.status === 'rejected' || data.status === 'ended') {
-              console.log('Call was rejected or ended by the veterinarian');
-              // Hide the incoming call modal
-              if (incomingCall.value && incomingCall.value.id === call.id) {
-                incomingCall.value = null;
-              }
-              // Unsubscribe from this listener
-              callStatusUnsubscribe();
-            }
-          }
-        });
-      }
-    }
-  } catch (error) {
-    console.error('Error checking for incoming calls:', error);
   }
 };
 
@@ -2045,6 +2312,82 @@ const toggleScreenShare = async () => {
   }
 };
 
+// Setup incoming calls listener
+const setupIncomingCallsListener = () => {
+  if (!authStore.user || !authStore.user.userId) return;
+
+  try {
+    incomingCallsUnsubscribe = WebRTCService.listenForIncomingCalls(
+      authStore.user.userId,
+      (callData) => {
+        // Find the appointment details
+        const appointment = sessions.value.find(s => s.id === callData.id);
+        
+        if (appointment) {
+          // Check if it's time for the appointment
+          if (!isAppointmentTime(appointment)) {
+            console.log("Ignoring incoming call outside of appointment time");
+            return;
+          }
+          
+          incomingCall.value = {
+            id: callData.id,
+            callerId: callData.callerId,
+            callerName: appointment.doctorName || 'Doctor',
+            sessionTitle: appointment.title || 'Telehealth Session',
+            appointment: appointment
+          };
+          
+          // Add a listener to check if the call gets canceled or ended by the vet
+          const callDoc = doc(db, 'calls', callData.id);
+          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+              // If the call was rejected or ended by the vet, hide the incoming call modal
+              if (data.status === 'rejected' || data.status === 'ended') {
+                console.log('Call was rejected or ended by the veterinarian');
+                // Hide the incoming call modal
+                if (incomingCall.value && incomingCall.value.id === callData.id) {
+                  incomingCall.value = null;
+                }
+                // Unsubscribe from this listener
+                callStatusUnsubscribe();
+              }
+            }
+          });
+        } else {
+          incomingCall.value = {
+            id: callData.id,
+            callerId: callData.callerId,
+            callerName: 'Doctor',
+            sessionTitle: 'Telehealth Session'
+          };
+          
+          // Add the same listener for unknown appointments
+          const callDoc = doc(db, 'calls', callData.id);
+          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+              // If the call was rejected or ended by the vet, hide the incoming call modal
+              if (data.status === 'rejected' || data.status === 'ended') {
+                console.log('Call was rejected or ended by the veterinarian');
+                // Hide the incoming call modal
+                if (incomingCall.value && incomingCall.value.id === callData.id) {
+                  incomingCall.value = null;
+                }
+                // Unsubscribe from this listener
+                callStatusUnsubscribe();
+              }
+            }
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up incoming calls listener:', error);
+  }
+};
+
 // Lifecycle hooks
 onMounted(() => {
   checkMobileView();
@@ -2074,35 +2417,40 @@ onMounted(() => {
   // Setup incoming calls listener
   setupIncomingCallsListener();
 
-  // Check for incoming calls immediately
-  checkForIncomingCalls();
-
   // Listen for screen sharing state changes from WebRTCService
   window.addEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
+});
 
-  // Then check periodically
-  const checkInterval = setInterval(checkForIncomingCalls, 30000); // Check every 30 seconds
+// Clean up when component is unmounted
+onUnmounted(() => {
+  stopAutoplay();
+  clearInterval(networkStatusInterval);
+  window.removeEventListener("resize", checkMobileView);
+  window.removeEventListener("online", handleOnline);
+  window.removeEventListener("offline", handleOffline);
+  window.removeEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
 
-  // Clean up interval on unmount
-  onUnmounted(() => {
-    clearInterval(checkInterval);
-    window.removeEventListener("resize", checkMobileView);
-    stopAutoplay();
-    clearInterval(networkStatusInterval);
-    window.removeEventListener("online", handleOnline);
-    window.removeEventListener("offline", handleOffline);
-    window.removeEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
+  // Clean up WebRTC
+  if (activeSession.value) {
+    endCall();
+  }
 
-    // Clean up WebRTC
-    if (activeSession.value) {
-      endCall();
-    }
-
-    // Unsubscribe from incoming calls listener
-    if (incomingCallsUnsubscribe) {
-      incomingCallsUnsubscribe();
-    }
-  });
+  // Unsubscribe from incoming calls listener
+  if (incomingCallsUnsubscribe) {
+    incomingCallsUnsubscribe();
+  }
+  
+  // Clean up chat messages subscription
+  if (chatMessagesUnsubscribe) {
+    chatMessagesUnsubscribe();
+    chatMessagesUnsubscribe = null;
+  }
+  
+  // Clear appointment timer
+  if (appointmentTimer) {
+    clearInterval(appointmentTimer);
+    appointmentTimer = null;
+  }
 });
 
 // Watchers
@@ -2172,40 +2520,6 @@ watch(() => activeSession.value, async (newSession) => {
     });
 
     unsubscribeCallStatus.value = unsubscribe;
-  }
-});
-
-// Add this to the watchers section
-watch(() => activeSession.value, (newSession) => {
-  if (newSession) {
-    // Start a periodic check for remote stream status
-    const checkInterval = setInterval(() => {
-      checkRemoteStreamStatus();
-      
-      // Stop checking if the session is no longer active
-      if (!activeSession.value) {
-        clearInterval(checkInterval);
-      }
-    }, 2000); // Check every 2 seconds
-    
-    // Clean up the interval when the session ends
-    return () => {
-      clearInterval(checkInterval);
-    };
-  }
-});
-
-// Watch for screen sharing state changes
-watch(() => isScreenSharing.value, (isSharing) => {
-  // This helps sync UI with the actual screen sharing state
-  if (activeSession.value) {
-    const callDoc = doc(db, 'calls', activeSession.value.id);
-    updateDoc(callDoc, {
-      isScreenSharing: isSharing,
-      updatedAt: new Date()
-    }).catch(error => {
-      console.error('Error updating screen sharing state:', error);
-    });
   }
 });
 </script>
