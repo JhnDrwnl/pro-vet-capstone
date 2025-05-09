@@ -47,7 +47,6 @@ Create a `.env` file in the `chatbot-backend` directory with the following conte
 \`\`\`
 PORT=5005
 RASA_URL=http://localhost:5005
-GEMINI_API_KEY=AIzaSyBqAW39u5D6RwW0LJ2qqJQTtIOEwgDQBmA
 \`\`\`
 
 ### 5. Train the Rasa model
