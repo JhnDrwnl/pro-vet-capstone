@@ -9,6 +9,12 @@ export default defineConfig(({ mode }) => {
   // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '')
   
+  // Create a properly formatted env object with string values
+  const envWithStringValues = {}
+  Object.keys(env).forEach(key => {
+    envWithStringValues[key] = JSON.stringify(env[key])
+  })
+  
   return {
     plugins: [
       vue(),
@@ -55,7 +61,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      'process.env': env
+      // Support both process.env and import.meta.env
+      'process.env': env,
+      // Ensure VITE_ prefixed variables are properly exposed
+      ...envWithStringValues
     }
   }
 })

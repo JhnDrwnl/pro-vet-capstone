@@ -15,13 +15,14 @@
           >
         </div>
         <div class="relative">
-          <button 
+          <button
             @click="toggleFilter"
             :class="['p-2 rounded-lg flex items-center gap-2', isFilterActive ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100']"
           >
             <FilterIcon class="w-5 h-5" />
             <span class="text-sm">Filter</span>
           </button>
+
 
           <!-- Filter Panel -->
           <div v-if="isFilterActive" class="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-50">
@@ -32,29 +33,30 @@
               </button>
             </div>
 
+
             <!-- Document Types -->
             <div class="mb-6">
               <h3 class="text-xs font-medium text-gray-500 uppercase mb-3">Document Types</h3>
               <div class="space-y-2">
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     v-model="filters.types.all"
                     class="rounded text-blue-600 focus:ring-blue-500"
                   >
                   <span class="text-sm text-gray-700">All documents</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     v-model="filters.types.pdf"
                     class="rounded text-blue-600 focus:ring-blue-500"
                   >
                   <span class="text-sm text-gray-700">PDF Files</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     v-model="filters.types.doc"
                     class="rounded text-blue-600 focus:ring-blue-500"
                   >
@@ -63,37 +65,38 @@
               </div>
             </div>
 
+
             <!-- Time Period -->
             <div>
               <h3 class="text-xs font-medium text-gray-500 uppercase mb-3">Time Period</h3>
               <div class="space-y-2">
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     v-model="filters.time.week"
                     class="rounded text-blue-600 focus:ring-blue-500"
                   >
                   <span class="text-sm text-gray-700">Last week</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     v-model="filters.time.recent"
                     class="rounded text-blue-600 focus:ring-blue-500"
                   >
                   <span class="text-sm text-gray-700">Last 30 days</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     v-model="filters.time.quarter"
                     class="rounded text-blue-600 focus:ring-blue-500"
                   >
                   <span class="text-sm text-gray-700">Last quarter</span>
                 </label>
                 <label class="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     v-model="filters.time.year"
                     class="rounded text-blue-600 focus:ring-blue-500"
                   >
@@ -102,8 +105,9 @@
               </div>
             </div>
 
+
             <!-- Apply Filters Button -->
-            <button 
+            <button
               @click="applyFilters"
               class="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
@@ -111,7 +115,7 @@
             </button>
           </div>
         </div>
-        <button 
+        <button
           @click="toggleSelect"
           :class="['p-2 rounded-lg', isSelectActive ? 'bg-blue-100 text-blue-600' : 'hover:bg-gray-100']"
         >
@@ -119,6 +123,7 @@
         </button>
       </div>
     </div>
+
 
     <!-- Selected Files Actions -->
     <div v-if="selectedFiles.length > 0" class="mb-4 flex justify-between items-center bg-white rounded-lg p-4 shadow-sm">
@@ -132,6 +137,7 @@
         </button>
       </div>
     </div>
+
 
     <!-- Main Content -->
     <div class="flex gap-6">
@@ -150,15 +156,15 @@
               </tr>
             </thead>
             <tbody>
-              <tr 
-                v-for="file in filteredFiles" 
+              <tr
+                v-for="file in filteredFiles"
                 :key="file.id"
                 @click="selectFile(file)"
                 class="hover:bg-gray-50 cursor-pointer"
               >
                 <td v-if="isSelectActive" class="py-3">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     :checked="selectedFiles.includes(file)"
                     @click.stop="toggleFileSelection(file)"
                     class="rounded text-blue-600 focus:ring-blue-500"
@@ -182,6 +188,7 @@
             </tbody>
           </table>
         </div>
+
 
         <!-- Recently Added Section -->
         <div class="bg-white rounded-xl shadow-sm p-6">
@@ -202,15 +209,15 @@
               </tr>
             </thead>
             <tbody>
-              <tr 
-                v-for="file in recentFiles" 
+              <tr
+                v-for="file in recentFiles"
                 :key="file.id"
                 @click="selectFile(file)"
                 class="hover:bg-gray-50 cursor-pointer"
               >
                 <td v-if="isSelectActive" class="py-3">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     :checked="selectedFiles.includes(file)"
                     @click.stop="toggleFileSelection(file)"
                     class="rounded text-blue-600 focus:ring-blue-500"
@@ -236,6 +243,7 @@
         </div>
       </div>
 
+
       <!-- File Details Sidebar -->
       <div v-if="selectedFile" class="w-80 bg-white rounded-xl shadow-sm p-6">
         <div class="flex justify-between items-center mb-6">
@@ -244,7 +252,7 @@
             <XIcon class="w-5 h-5 text-gray-600" />
           </button>
         </div>
-        
+       
         <!-- File Icon -->
         <div class="flex justify-center mb-6">
           <div :class="[
@@ -255,6 +263,7 @@
           </div>
         </div>
 
+
         <!-- File Info -->
         <div class="space-y-4">
           <div>
@@ -262,26 +271,31 @@
             <p class="text-gray-500">{{ selectedFile.name }}</p>
           </div>
 
+
           <div>
             <h3 class="text-sm font-medium text-gray-900">Description</h3>
             <p class="text-gray-500">{{ selectedFile.description }}</p>
           </div>
+
 
           <div>
             <h3 class="text-sm font-medium text-gray-900">Size</h3>
             <p class="text-gray-500">{{ selectedFile.size }}</p>
           </div>
 
+
           <div>
             <h3 class="text-sm font-medium text-gray-900">Added</h3>
             <p class="text-gray-500">{{ selectedFile.dateAdded }}</p>
           </div>
+
 
           <div>
             <h3 class="text-sm font-medium text-gray-900">Pet Name</h3>
             <p class="text-gray-500">{{ selectedFile.petName }}</p>
           </div>
         </div>
+
 
         <!-- Action Buttons -->
         <div class="grid grid-cols-3 gap-4 mt-8">
@@ -304,9 +318,10 @@
 </div>
 </template>
 
+
 <script setup>
 import { ref, computed } from 'vue'
-import { 
+import {
 SearchIcon,
 BellIcon,
 FileIcon,
@@ -319,11 +334,13 @@ CheckSquareIcon,
 XIcon
 } from 'lucide-vue-next'
 
+
 const searchQuery = ref('')
 const selectedFile = ref(null)
 const isFilterActive = ref(false)
 const isSelectActive = ref(false)
 const selectedFiles = ref([])
+
 
 // Sample data - only document types
 const files = ref([
@@ -374,8 +391,10 @@ const files = ref([
 }
 ])
 
+
 // Recent files (showing last 3)
 const recentFiles = computed(() => files.value.slice(0, 3))
+
 
 // Filter state
 const filters = ref({
@@ -391,6 +410,7 @@ time: {
   year: false
 }
 })
+
 
 // Function to clear all filters
 const clearFilters = () => {
@@ -409,23 +429,27 @@ filters.value = {
 }
 }
 
+
 // Function to apply filters
 const applyFilters = () => {
 // Implementation of filter logic
 isFilterActive.value = false
 }
 
+
 // Updated filteredFiles computed property
 const filteredFiles = computed(() => {
 let result = files.value
 
+
 // Apply search filter
 if (searchQuery.value) {
-  result = result.filter(file => 
+  result = result.filter(file =>
     file.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     file.petName.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 }
+
 
 // Apply document type filters
 if (!filters.value.types.all) {
@@ -436,6 +460,7 @@ if (!filters.value.types.all) {
     result = result.filter(file => file.type === 'doc')
   }
 }
+
 
 // Apply time filters
 if (filters.value.time.week) {
@@ -463,23 +488,28 @@ if (filters.value.time.year) {
   })
 }
 
+
 return result
 })
+
 
 // Function to select a file
 const selectFile = (file) => {
 selectedFile.value = file
 }
 
+
 // Function to close file details
 const closeFileDetails = () => {
 selectedFile.value = null
 }
 
+
 // Function to toggle filter
 const toggleFilter = () => {
 isFilterActive.value = !isFilterActive.value
 }
+
 
 // Function to toggle select mode
 const toggleSelect = () => {
@@ -488,6 +518,7 @@ if (!isSelectActive.value) {
   selectedFiles.value = []
 }
 }
+
 
 // Function to toggle file selection
 const toggleFileSelection = (file) => {
@@ -499,11 +530,13 @@ if (index === -1) {
 }
 }
 
+
 // Function to cancel selection
 const cancelSelection = () => {
 selectedFiles.value = []
 isSelectActive.value = false
 }
+
 
 // Function to delete selected files
 const deleteSelectedFiles = () => {
@@ -512,6 +545,7 @@ selectedFiles.value = []
 isSelectActive.value = false
 }
 </script>
+
 
 <style scoped>
 /* Add if you need any specific styles */

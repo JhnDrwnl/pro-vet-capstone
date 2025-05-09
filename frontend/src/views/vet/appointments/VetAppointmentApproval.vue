@@ -36,7 +36,7 @@
             All Statuses
           </button>
           <button 
-            v-for="status in ['pending', 'approved', 'cancelled']" 
+            v-for="status in ['pending', 'approved', 'cancelled', 'ended']" 
             :key="status"
             @click="toggleStatusFilter(status)"
             class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 capitalize"
@@ -781,6 +781,7 @@
   import { useAppointmentStore } from '@/stores/modules/appointmentStore';
   import { useProfileStore } from '@/stores/modules/profileStore';
   import { usePetsStore } from '@/stores/modules/petsStore';
+  import { useAuthStore } from '@/stores/modules/authStore';
   import { parseISO, format } from 'date-fns';
   
   // Router and route
@@ -791,11 +792,12 @@
   const defaultPhotoURL = ref('data:image/svg+xml,%3Csvg xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22 width%3D%2236%22 height%3D%2236%22 viewBox%3D%220 0 36 36%22%3E%3Ccircle cx%3D%2218%22 cy%3D%2218%22 r%3D%2218%22 fill%3D%22%23f0f0f0%22%2F%3E%3Cpath d%3D%22M18 20.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5%22 stroke%3D%22%23bec3c9%22 stroke-width%3D%222%22 fill%3D%22none%22%2F%3E%3C%2Fsvg%3E');
   
   // Default pet photo URL
-  const defaultPetPhotoURL = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSJjdXJyZW50Q29sb3IiIGQ9Ik04LjM1IDNjMS4xOC0uMTcgMi40MyAxLjEyIDIuNzkgMi45Yy4zNiAxLjc3LS4yOSAzLjM1LTEuNDcgMy41M2MtMS4xNy4xOC0yLjQzLTEuMTEtMi44LTIuODljLS4zNy0xLjc3LjMtMy4zNSAxLjQ4LTMuNTRtNy4xNSAwYzEuMTkuMTkgMS44NSAxLjc3IDEuNSAzLjU0Yy0uMzggMS43OC0xLjYzIDMuMDctMi44MSAyLjg5Yy0xLjE5LS4xOC0xLjg0LTEuNzYtMS40Ny0zLjUzYy4zNi0xLjc4IDEuNjEtMy4wNyAyLjc4LTIuOU0zIDcuNmMxLjE0LS40OSAyLjY5LjQgMy41IDEuOTVjLjc2IDEuNTguNSAzLjI0LS42MyAzLjczcy0yLjY3LS4zOS0zLjQ2LTEuOTZTMS45IDguMDggMyA3LjZtMTggMGMxLjEuNDggMS4zOCAyLjE1LjU5IDMuNzJzLTIuMzMgMi44NS0zLjQ2IDEuOTZzLTEuMzktMi4xNS0uNjMtMy43M0MxOC4zMSA4IDE5Ljg2IDcuMTEgMjEgNy42bS0xLjY3IDEwLjc4Yy4wNC45NC0uNjggMS45OC0xLjU0IDIuMzdjLTEuNzkuODItMy45MS0uODgtNS45LS44OHMtNC4xMyAxLjc3LTUuODkgLjg4Yy0xLS40OS0xLjY5LTEuNzktMS41Ni0yLjg3Yy4xOC0xLjQ5IDEuOTctMi4yOSAzLjAzLTMuMzhjMS40MS0xLjQxIDIuNDEtNC4wNiA0LjQyLTQuMDZjMiAwIDMuMDYgMi42MSA0LjQxIDQuMDZjMS4xMSAxLjIyIDIuOTYgMi4yNSAzLjAzIDMuODgiLz48L3N2Zz4=';
+  const defaultPetPhotoURL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"%3E%3Ccircle cx="11" cy="4" r="2"/%3E%3Ccircle cx="18" cy="8" r="2"/%3E%3Ccircle cx="20" cy="16" r="2"/%3E%3Cpath d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z"/%3E%3C/g%3E%3C/svg%3E';
   
   const appointmentStore = useAppointmentStore();
   const profileStore = useProfileStore();
   const petsStore = usePetsStore();
+  const authStore = useAuthStore();
   
   // Modified headers array - changed clientName to ownerName
   const headers = [
@@ -885,7 +887,7 @@
   // Search input class
   const searchInputClass = "w-full sm:w-[300px] pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200";
   
-  // Improved fetchAppointments function to ensure pet data is fully loaded
+  // Improved fetchAppointments function to ensure pet data is fully loaded and filter by current vet
   const fetchAppointments = async () => {
   initialLoading.value = true;
   
@@ -893,8 +895,21 @@
     // First, fetch all appointments
     await appointmentStore.fetchAppointments();
     
-    // Get the appointments from the store
-    const fetchedAppointments = [...appointmentStore.appointments];
+    // Get the current user (veterinarian) ID
+    const currentVetId = authStore.user?.userId;
+    
+    if (!currentVetId) {
+      console.error('No veterinarian ID found in auth store');
+      return;
+    }
+    
+    // Get the appointments from the store and filter by the current veterinarian
+    const fetchedAppointments = [...appointmentStore.appointments].filter(appointment => {
+      // Only include appointments assigned to this veterinarian
+      return appointment.doctorId === currentVetId;
+    });
+    
+    console.log(`Filtered ${fetchedAppointments.length} appointments for veterinarian ID: ${currentVetId}`);
     
     // Create an array to hold all the promises for data fetching
     const dataFetchPromises = [];
@@ -1195,10 +1210,10 @@
   }
   
   return age;
-  };
+};
   
-  // Fix for duplicate data - use a Set to track unique appointment IDs
-  const filteredAndSortedAppointments = computed(() => {
+// Fix for duplicate data - use a Set to track unique appointment IDs
+const filteredAndSortedAppointments = computed(() => {
   // Create a Map to store unique appointments by ID
   const uniqueAppointments = new Map();
   
@@ -1243,9 +1258,9 @@
     if (aValue > bValue) return sortOrder.value === 'asc' ? 1 : -1;
     return 0;
   });
-  });
+});
   
-  const totalPagesComputed = computed(() => {
+const totalPagesComputed = computed(() => {
   if (!filteredAndSortedAppointments.value) {
     return 1;
   }
@@ -1267,34 +1282,34 @@
   }
   
   return result;
-  });
+});
   
-  const totalPages = computed(() => {
+const totalPages = computed(() => {
   return totalPagesComputed.value > 0 ? totalPagesComputed.value : 1;
-  });
+});
   
-  const paginatedAppointments = computed(() => {
+const paginatedAppointments = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage;
   const end = start + itemsPerPage;
   return filteredAndSortedAppointments.value.slice(start, end);
-  });
+});
   
-  const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage);
-  const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredAndSortedAppointments.value.length));
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage);
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage, filteredAndSortedAppointments.value.length));
   
-  const prevPage = () => {
+const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value--;
   }
-  };
+};
   
-  const nextPage = () => {
+const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value++;
   }
-  };
+};
   
-  const getStatusClass = (status) => {
+const getStatusClass = (status) => {
   const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
   switch (status?.toLowerCase()) {
     case 'pending':
@@ -1306,13 +1321,15 @@
     case 'cancelled':
     case 'rejected':
       return `${baseClasses} bg-red-100 text-red-800`;
+    case 'ended':
+      return `${baseClasses} bg-slate-200 text-slate-700`;
     default:
       return `${baseClasses} bg-gray-100 text-gray-800`;
   }
-  };
+};
   
-  // Improved approval process to ensure complete data loading
-  const startApprovalProcess = async (appointment) => {
+// Improved approval process to ensure complete data loading
+const startApprovalProcess = async (appointment) => {
   isLoading.value = true;
   
   try {
@@ -1408,10 +1425,10 @@
   } finally {
     isLoading.value = false;
   }
-  };
+};
   
-  // Set appointment to processing status
-  const setProcessingStatus = async (appointment, actionType) => {
+// Set appointment to processing status
+const setProcessingStatus = async (appointment, actionType) => {
   isLoading.value = true;
   pendingAction.value = actionType;
   
@@ -1466,10 +1483,10 @@
   } finally {
     isLoading.value = false;
   }
-  };
+};
   
-  // Cancel processing and revert to original status
-  const cancelProcessing = async (appointment) => {
+// Cancel processing and revert to original status
+const cancelProcessing = async (appointment) => {
   isLoading.value = true;
   
   try {
@@ -1518,15 +1535,28 @@
   } finally {
     isLoading.value = false;
   }
-  };
+};
   
-  // Watch for changes in the appointmentStore
-  watch(() => appointmentStore.appointments, (newAppointments) => {
+// Watch for changes in the appointmentStore
+watch(() => appointmentStore.appointments, (newAppointments) => {
   // When the store's appointments change, update the local appointments
   // This ensures reactivity when appointments are updated elsewhere
   if (newAppointments.length > 0) {
+    // Get the current user (veterinarian) ID
+    const currentVetId = authStore.user?.userId;
+    
+    if (!currentVetId) {
+      console.error('No veterinarian ID found in auth store');
+      return;
+    }
+    
+    // Filter appointments for the current veterinarian
+    const filteredAppointments = newAppointments.filter(appointment => 
+      appointment.doctorId === currentVetId
+    );
+    
     // We need to merge the store data with our local data that has additional properties
-    appointments.value = newAppointments.map(storeAppointment => {
+    appointments.value = filteredAppointments.map(storeAppointment => {
       // Find the corresponding local appointment to preserve its additional properties
       const localAppointment = appointments.value.find(a => a.id === storeAppointment.id);
       
@@ -1573,10 +1603,10 @@
       return storeAppointment;
     });
   }
-  }, { deep: true });
+}, { deep: true });
   
-  // Modified: Cancel appointment functions
-  const closeCancelModal = async () => {
+// Modified: Cancel appointment functions
+const closeCancelModal = async () => {
   // If we're closing the modal without completing the cancellation,
   // revert the appointment back to its original status
   if (selectedAppointment.value) {
@@ -1611,9 +1641,9 @@
   selectedAppointment.value = null;
   cancellationReason.value = '';
   reasonError.value = '';
-  };
+};
   
-  const cancelAppointment = async () => {
+const cancelAppointment = async () => {
   if (!selectedAppointment.value) return;
   
   // Validate reason
@@ -1664,29 +1694,29 @@
   } finally {
     cancelLoading.value = false;
   }
-  };
+};
   
-  // Multi-step approval form navigation
-  const goToApprovalStep = (index) => {
+// Multi-step approval form navigation
+const goToApprovalStep = (index) => {
   // Only allow going to steps that have been completed or the current step
   if (index <= approvalStep.value) {
     approvalStep.value = index;
   }
-  };
+};
   
-  const nextApprovalStep = () => {
+const nextApprovalStep = () => {
   if (approvalStep.value < approvalSteps.length - 1) {
     approvalStep.value++;
   }
-  };
+};
   
-  const previousApprovalStep = () => {
+const previousApprovalStep = () => {
   if (approvalStep.value > 0) {
     approvalStep.value--;
   }
-  };
+};
   
-  const cancelApprovalProcess = () => {
+const cancelApprovalProcess = () => {
   // Revert the appointment status to its original state
   if (selectedAppointment.value) {
     cancelProcessing(selectedAppointment.value);
@@ -1695,21 +1725,21 @@
   // Close the approval form
   showApprovalForm.value = false;
   selectedAppointment.value = null;
-  };
+};
   
-  const finalizeApproval = async () => {
+const finalizeApproval = async () => {
   if (!selectedAppointment.value) return;
   
   isLoading.value = true;
   
   try {
-    // Update the appointment status to approved
+    // Update the appointment status to approved with approvedAt timestamp
     await appointmentStore.updateAppointment(
       selectedAppointment.value.id, 
       {
         status: 'approved',
         approvedBy: 'vet',
-        approvedAt: new Date()
+        approvedAt: new Date() // Always set approvedAt when approving
       }
     );
     
@@ -1737,15 +1767,15 @@
   } finally {
     isLoading.value = false;
   }
-  };
+};
   
-  const closeSuccessModal = () => {
+const closeSuccessModal = () => {
   showSuccessModal.value = false;
   successTitle.value = '';
   successMessage.value = '';
-  };
+};
   
-  const exportToCSV = () => {
+const exportToCSV = () => {
   isLoading.value = true;
   
   setTimeout(() => {
@@ -1793,7 +1823,11 @@
   
     isLoading.value = false;
   }, 1000);
-  };
+};
+
+// Ensure useRoute and useRouter are called unconditionally
+const currentRoute = useRoute();
+const vueRouter = useRouter();
   </script>
   
   <style scoped>

@@ -1,212 +1,736 @@
+<!-- views/user/Telehealth.vue -->
 <template>
   <div class="telehealth-container">
-    <!-- Session List View -->
-    <div v-if="!activeSession" class="sessions-list">
-      <div class="flex items-center mb-4">
-        <h1 class="text-2xl font-bold">
-          {{ showingApprovedOnly ? 'Approved Telehealth Appointments' : 'My Telehealth Appointments' }}
-        </h1>
-      </div>
-      
-      <div class="filter-controls mb-4">
-        <select v-model="statusFilter" class="form-select mr-2">
-          <option value="all">All Appointments</option>
-          <option value="approved">Approved</option>
-          <option value="scheduled">Scheduled</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <button @click="refreshSessions" class="btn btn-primary mr-2">
-          <RefreshCwIcon class="w-4 h-4 mr-2" />
-          Refresh
-        </button>
-        <button @click="loadApprovedSessions" class="btn btn-success">
-          <CheckIcon class="w-4 h-4 mr-2" />
-          Show Approved Only
-        </button>
-      </div>
-      
-      <div v-if="loading" class="text-center py-4">
-        <div class="spinner"></div>
-        <p>Loading appointments...</p>
-      </div>
-      
-      <div v-else-if="filteredSessions.length === 0" class="empty-state">
-        <p>No telehealth appointments found.</p>
-        <button @click="refreshSessions" class="btn btn-primary mt-4">
-          <RefreshCwIcon class="w-4 h-4 mr-2" />
-          Refresh Appointments
-        </button>
-      </div>
-      
-      <div v-else class="sessions-grid">
-        <div 
-          v-for="appointment in filteredSessions" 
-          :key="appointment.id" 
-          class="session-card"
-          @click="selectSession(appointment)"
-        >
-          <div class="card-header">
-            <span :class="['status-badge', `status-${appointment.status}`]">
-              {{ appointment.status }}
-            </span>
-            <h3 class="session-title">{{ appointment.title || 'Telehealth Appointment' }}</h3>
-          </div>
-          
-          <div class="card-body">
-            <p><strong>Doctor:</strong> {{ appointment.doctorName || 'Veterinarian' }}</p>
-            <p><strong>Pet:</strong> {{ appointment.petName || 'Your Pet' }} ({{ appointment.petType || 'Pet' }})</p>
-            <p><strong>Scheduled:</strong> {{ formatDate(appointment.scheduledTime || appointment.date) }}</p>
-          </div>
-          
-          <div class="card-footer">
-            <button 
-              v-if="(appointment.status === 'scheduled' || appointment.status === 'approved') && isSessionJoinable(appointment)" 
-              class="btn btn-success"
-              @click.stop="joinSession(appointment)"
-            >
-              <PhoneIcon class="w-4 h-4 mr-2" />
-              Join Call
-            </button>
-            <button 
-              v-else-if="appointment.status === 'scheduled' || appointment.status === 'approved'" 
-              class="btn btn-secondary" 
-              disabled
-            >
-              Not Yet Available
-            </button>
-            <button 
-              v-if="appointment.status === 'scheduled' || appointment.status === 'approved'" 
-              class="btn btn-danger ml-2"
-              @click.stop="cancelSession(appointment)"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Active Session View -->
-    <div v-else class="active-session">
-      <div class="session-header">
-        <h2>{{ activeSession.title || 'Telehealth Appointment' }}</h2>
-        <div class="patient-info">
-          <span><strong>Doctor:</strong> {{ activeSession.doctorName || 'Veterinarian' }}</span>
-          <span><strong>Pet:</strong> {{ activeSession.petName || 'Your Pet' }} ({{ activeSession.petType || 'Pet' }})</span>
-        </div>
-        <div class="call-status" v-if="callStatus">
-          <span :class="['status-indicator', callStatus === 'connected' ? 'connected' : 'connecting']"></span>
-          {{ callStatus === 'connected' ? 'Connected' : 'Connecting...' }}
-        </div>
-        <button @click="endCall" class="btn btn-danger">
-          <PhoneOffIcon class="w-5 h-5 mr-2" />
-          End Call
-        </button>
-      </div>
-      
-      <div class="video-container" :class="{ 'remote-active': remoteStreamActive }">
-        <div class="remote-video">
-          <video ref="remoteVideoRef" autoplay playsinline></video>
-          <div v-if="!remoteStreamActive" class="video-placeholder">
-            <div class="waiting-animation">
-              <div class="pulse-ring"></div>
-              <UserIcon class="w-12 h-12 text-white" />
-            </div>
-            <p>Waiting for veterinarian to join...</p>
-            <p class="text-sm text-gray-400 mt-2">
-              Your veterinarian will appear here when they join
-            </p>
-          </div>
-        </div>
-        
-        <div class="local-video" :class="{ 'pip-mode': remoteStreamActive }">
-          <video ref="localVideoRef" autoplay playsinline muted></video>
-          <div class="call-controls">
-            <button @click="toggleMute" :class="['btn', isMuted ? 'btn-secondary' : 'btn-primary']">
-              <MicOffIcon v-if="isMuted" class="w-5 h-5" />
-              <MicIcon v-else class="w-5 h-5" />
-            </button>
-            <button @click="toggleVideo" :class="['btn', isVideoOff ? 'btn-secondary' : 'btn-primary']">
-              <VideoOffIcon v-if="isVideoOff" class="w-5 h-5" />
-              <VideoIcon v-else class="w-5 h-5" />
-            </button>
-            <button @click="toggleScreenShare" :class="['btn', isScreenSharing ? 'btn-success' : 'btn-primary']">
-              <MonitorIcon class="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <div class="session-tools">
-        <div class="notes-section">
-          <h3>Appointment Notes</h3>
-          <div class="notes-content">
-            {{ activeSession.notes || 'No notes available for this appointment.' }}
-          </div>
-        </div>
-        
-        <div class="chat-section">
-          <h3>Chat</h3>
-          <div class="chat-messages" ref="chatMessagesRef">
-            <div 
-              v-for="(message, index) in chatMessages" 
-              :key="index"
-              :class="['message', message.sender === 'patient' ? 'sent' : 'received']"
-            >
-              <div class="message-content">
-                {{ message.text }}
+    <!-- Loading spinner during initial data load -->
+    <LoadingSpinner v-if="loading" isOverlay text="Loading appointments..." />
+
+    <!-- Carousel View (Optimized for small screens) -->
+    <div v-if="currentView === 'carousel' && !activeSession" class="h-full flex flex-col bg-gray-50 overflow-auto">
+      <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 flex-1 min-h-0 px-2 md:px-4 pb-4">
+        <div class="w-full bg-white shadow-lg rounded-2xl overflow-hidden flex flex-col">
+          <div class="p-4 md:p-6 pb-8 md:pb-10 space-y-3 md:space-y-4 overflow-y-auto flex-1">
+            <!-- Optimized grid layout for mobile -->
+            <div class="grid lg:grid-cols-2 gap-4 lg:gap-8 min-h-0 lg:min-h-[600px]">
+              <!-- Left Column - Adjusted padding for mobile -->
+              <div class="flex flex-col px-2 md:px-4">
+                <!-- Reduced padding for small screens -->
+                <div class="pt-6 sm:pt-12 md:pt-24 lg:pt-48">
+                  <div class="space-y-3">
+                    <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 leading-tight">
+                      {{ slides[currentSlide].title }}
+                    </h1>
+                    <p class="text-base sm:text-lg md:text-xl text-gray-600">
+                      {{ slides[currentSlide].subtitle }}
+                    </p>
+                  </div>
+
+                  <!-- Meeting Controls - Responsive spacing -->
+                  <div class="mt-4 sm:mt-6 md:mt-8">
+                    <div class="flex flex-wrap gap-2 sm:gap-4">
+                      <button 
+                        @click="currentView = 'sessions'"
+                        class="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white text-sm sm:text-base font-medium rounded-full hover:bg-blue-700 transition-colors"
+                      >
+                        <VideoIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                        Sessions
+                      </button>
+                      <button 
+                        @click="navigateToAppointments()"
+                        class="inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white text-sm sm:text-base font-medium rounded-full hover:bg-blue-700 transition-colors"
+                      >
+                        <CalendarPlusIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                        Create New
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="message-time">
-                {{ formatTime(message.timestamp) }}
+
+              <!-- Right Column - Animation centered & sized appropriately -->
+              <div class="flex items-center justify-center py-4 sm:py-6">
+                <!-- Animation container with better responsive sizing -->
+                <div class="relative w-full max-w-[250px] sm:max-w-[300px] md:max-w-md mx-auto">
+                  <div class="aspect-square relative">
+                    <div class="absolute inset-0 bg-blue-50 rounded-full overflow-hidden">
+                      <TransitionGroup name="slide">
+                        <div 
+                          v-for="(slide, index) in slides" 
+                          :key="slide.id"
+                          v-show="currentSlide === index"
+                          class="absolute inset-0 transition-all duration-300"
+                        >
+                          <div :id="`lottie-container-${index}`" class="w-full h-full"></div>
+                        </div>
+                      </TransitionGroup>
+                    </div>
+                  </div>
+
+                  <!-- Carousel Dots - Centered below animation -->
+                  <div class="flex justify-center gap-2 mt-4 sm:mt-6">
+                    <button 
+                      v-for="(slide, index) in slides" 
+                      :key="slide.id"
+                      @click="goToSlide(index)"
+                      :aria-label="`Go to slide ${index + 1}`"
+                      :class="[
+                        'w-2 h-2 rounded-full transition-all',
+                        currentSlide === index 
+                          ? 'bg-blue-600 w-4' 
+                          : 'bg-gray-300 hover:bg-gray-400'
+                      ]"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <div class="chat-input">
-            <input 
-              v-model="newMessage" 
-              @keyup.enter="sendMessage"
-              placeholder="Type a message..."
-              class="form-control"
-            />
-            <button @click="sendMessage" class="btn btn-primary">
-              <SendIcon class="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
     </div>
-    
-    <!-- Network Status Banner -->
-    <div v-if="!isOnline" class="network-status-banner">
-      <AlertTriangleIcon class="w-5 h-5 mr-2" />
-      You are currently offline. Some features may not work properly.
-    </div>
-    
-    <!-- Incoming Call Modal -->
-    <div v-if="incomingCall" class="incoming-call-modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>Incoming Call</h3>
-        </div>
-        <div class="modal-body">
-          <div class="incoming-call-info">
-            <PhoneIcon class="w-16 h-16 text-green-500 mb-4 animate-pulse" />
-            <h4 class="text-lg font-semibold mb-2">{{ incomingCall.callerName }} is calling</h4>
-            <p>{{ incomingCall.sessionTitle }}</p>
+
+    <!-- Session List View - Optimized for mobile -->
+    <div v-else-if="currentView === 'sessions' && !activeSession" class="h-full flex flex-col bg-gray-50 overflow-auto">
+      <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 flex-1 min-h-0 px-2 md:px-4 pb-4">
+        <div class="w-full bg-white shadow-lg rounded-2xl overflow-hidden flex flex-col">
+          <!-- Updated to better spacing on mobile -->
+          <div class="p-4 md:p-6 pb-8 md:pb-10 space-y-3 md:space-y-4 overflow-y-auto flex-1">
+            <div class="flex items-center mb-4 sm:mb-6">
+              <button 
+                @click="currentView = 'carousel'" 
+                class="p-1 sm:p-2 mr-2 sm:mr-4 rounded-full hover:bg-gray-100 text-gray-600"
+              >
+                <ArrowLeftIcon class="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                Telehealth Sessions
+              </h1>
+            </div>
             
-            <div class="modal-buttons mt-6">
-              <button @click="acceptIncomingCall" class="btn btn-success">
-                <PhoneIcon class="w-4 h-4 mr-2" />
-                Accept
-              </button>
-              <button @click="declineIncomingCall" class="btn btn-danger">
-                <PhoneOffIcon class="w-4 h-4 mr-2" />
-                Decline
+            <!-- Updated Filter Section - Better mobile spacing -->
+            <div class="flex justify-between items-center mb-4 sm:mb-6">
+              <div class="relative">
+                <div class="flex items-center gap-1 sm:gap-2">
+                  <button 
+                    @click="toggleStatusFilter"
+                    class="p-1.5 sm:p-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    <FilterIcon class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+                  </button>
+                  <span class="text-sm sm:text-base text-gray-700">{{ statusFilterLabel }}</span>
+                </div>
+                
+                <!-- Status Filter Dropdown - Positioned better for mobile -->
+                <div v-if="showStatusFilter" class="absolute top-full mt-1 sm:mt-2 left-0 w-48 sm:w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
+                  <div class="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 border-b border-gray-100">Filter by:</div>
+                  <button 
+                    @click="setStatusFilter('all')"
+                    class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+                    :class="{ 'text-blue-600': currentStatusFilter === 'all' }"
+                  >
+                    All Appointments
+                  </button>
+                  <button 
+                    @click="setStatusFilter('approved')"
+                    class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+                    :class="{ 'text-blue-600': currentStatusFilter === 'approved' }"
+                  >
+                    Approved
+                  </button>
+                  <button 
+                    @click="setStatusFilter('pending')"
+                    class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+                    :class="{ 'text-blue-600': currentStatusFilter === 'pending' }"
+                  >
+                    Pending
+                  </button>
+                  <button 
+                    @click="setStatusFilter('ended')"
+                    class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+                    :class="{ 'text-blue-600': currentStatusFilter === 'ended' }"
+                  >
+                    Ended
+                  </button>
+                  <button 
+                    @click="setStatusFilter('completed')"
+                    class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+                    :class="{ 'text-blue-600': currentStatusFilter === 'completed' }"
+                  >
+                    Completed
+                  </button>
+                  <button 
+                    @click="setStatusFilter('cancelled')"
+                    class="w-full px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm hover:bg-gray-50"
+                    :class="{ 'text-blue-600': currentStatusFilter === 'cancelled' }"
+                  >
+                    Cancelled
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div v-if="filteredSessions.length === 0" class="bg-gray-50 rounded-xl p-8 sm:p-12 text-center">
+              <div class="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <CalendarIcon class="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+              </div>
+              <p class="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">No telehealth appointments found.</p>
+              <button 
+                @click="refreshSessions" 
+                class="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white text-sm rounded-full hover:bg-blue-700"
+              >
+                <RefreshCwIcon class="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                Refresh Appointments
               </button>
             </div>
+            
+            <!-- UPDATED: Optimized grid for mobile with consistent card sizes -->
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+              <div 
+                v-for="appointment in filteredSessions" 
+                :key="appointment.id" 
+                class="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full"
+              >
+                <div class="p-4 sm:p-5 flex flex-col flex-grow">
+                  <div class="flex justify-between items-start mb-3 sm:mb-4">
+                    <div class="flex-1 min-w-0">
+                      <h2 class="text-base sm:text-lg font-semibold text-gray-900 mb-1 break-words">
+                        {{ cleanTitle(appointment.title) || (appointment.serviceNames && cleanTitle(appointment.serviceNames[0])) || 'Telehealth Session' }}
+                      </h2>
+                      <div class="flex items-center text-xs sm:text-sm text-gray-500">
+                        <ClockIcon class="w-4 h-4 flex-shrink-0 mr-1" />
+                        <span>{{ appointment.time || formatTime(appointment.scheduledTime || appointment.date) }}</span>
+                      </div>
+                    </div>
+                    <span 
+                      :class="[
+                        'ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap',
+                        appointment.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                        appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        appointment.status === 'ended' ? 'bg-slate-200 text-slate-700' :
+                        appointment.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                        'bg-red-100 text-red-800'
+                      ]"
+                    >
+                      {{ appointment.status }}
+                    </span>
+                  </div>
+                  
+                  <div class="space-y-3 mb-4 flex-grow">
+                    <div class="flex items-start">
+                      <CalendarIcon class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div class="text-xs sm:text-sm text-gray-500">Date</div>
+                        <div class="text-xs sm:text-sm font-medium">{{ formatDateOnly(appointment.scheduledTime || appointment.date) }}</div>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                      <UserIcon class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div class="text-xs sm:text-sm text-gray-500">Doctor</div>
+                        <div class="text-xs sm:text-sm font-medium break-words">{{ appointment.doctorName || 'Not assigned' }}</div>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                      <PawPrintIcon class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div class="text-xs sm:text-sm text-gray-500">Pet</div>
+                        <div class="text-xs sm:text-sm font-medium break-words">{{ appointment.petName || 'Not specified' }}</div>
+                      </div>
+                    </div>
+                    
+                    <div v-if="appointment.serviceNames && appointment.serviceNames.length > 0" class="flex items-start">
+                      <StethoscopeIcon class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                      <div class="min-w-0">
+                        <div class="text-xs sm:text-sm text-gray-500">Services</div>
+                        <div class="text-xs sm:text-sm font-medium break-words">{{ appointment.serviceNames.join(', ') }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-auto">
+                    <button 
+                      v-if="appointment.status === 'approved' && isAppointmentTime(appointment)" 
+                      class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 text-white text-xs sm:text-sm rounded-full hover:bg-blue-700"
+                      @click="joinSession(appointment)"
+                    >
+                      <PhoneIcon class="w-4 h-4 mr-2 flex-shrink-0" />
+                      Join Call
+                    </button>
+                    <button 
+                      v-else-if="appointment.status === 'approved' && isAppointmentPast(appointment)"
+                      class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 bg-gray-300 text-gray-700 text-xs sm:text-sm rounded-full cursor-not-allowed" 
+                      disabled
+                    >
+                      <ClockIcon class="w-4 h-4 mr-2 flex-shrink-0" />
+                      Appointment Ended
+                    </button>
+                    <button 
+                      v-else-if="appointment.status === 'approved' && !isAppointmentTime(appointment)"
+                      class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 bg-gray-300 text-gray-700 text-xs sm:text-sm rounded-full cursor-not-allowed" 
+                      disabled
+                    >
+                      <ClockIcon class="w-4 h-4 mr-2 flex-shrink-0" />
+                      {{ getTimeUntilAppointment(appointment) }}
+                    </button>
+                    <button 
+                      v-else
+                      class="w-full inline-flex items-center justify-center px-3 sm:px-4 py-2 sm:py-3 bg-gray-300 text-gray-700 text-xs sm:text-sm rounded-full cursor-not-allowed" 
+                      disabled
+                    >
+                      <ClockIcon class="w-4 h-4 mr-2 flex-shrink-0" />
+                      Not Available
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Added bottom spacing to match Carousel view -->
+            <div class="h-4 sm:h-6 md:h-8"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session Details View -->
+    <div v-else-if="currentView === 'details' && !activeSession" class="h-full flex flex-col bg-gray-50 overflow-auto">
+      <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6 flex-1 min-h-0 px-2 md:px-4 pb-4">
+        <div class="w-full bg-white shadow-lg rounded-2xl overflow-hidden flex flex-col">
+          <div class="p-4 md:p-6 pb-8 md:pb-10 space-y-3 md:space-y-4 overflow-y-auto flex-1">
+            <div class="flex items-center mb-4 sm:mb-6">
+              <button 
+                @click="currentView = 'sessions'" 
+                class="p-1 sm:p-2 mr-2 sm:mr-4 rounded-full hover:bg-gray-100 text-gray-600"
+              >
+                <ArrowLeftIcon class="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                Session Details
+              </h1>
+            </div>
+            
+            <div v-if="selectedSession" class="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden p-4 sm:p-6">
+              <div class="flex justify-between items-start mb-4 sm:mb-6">
+                <div>
+                  <h2 class="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 mb-1 sm:mb-2">
+                    {{ cleanTitle(selectedSession.title) || (selectedSession.serviceNames && cleanTitle(selectedSession.serviceNames[0])) || 'Telehealth Session' }}
+                  </h2>
+                  <div class="flex items-center text-sm sm:text-base text-gray-500">
+                    <ClockIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                    <span>{{ selectedSession.time || formatTime(selectedSession.scheduledTime || selectedSession.date) }}</span>
+                  </div>
+                </div>
+                <span 
+                  :class="[
+                    'px-2 sm:px-3 py-1 sm:py-1.5 text-sm font-medium rounded-full',
+                    selectedSession.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                    selectedSession.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    selectedSession.status === 'ended' ? 'bg-slate-200 text-slate-700' :
+                    selectedSession.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                    'bg-red-100 text-red-800'
+                  ]"
+                >
+                  {{ selectedSession.status }}
+                </span>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                <div class="space-y-3 sm:space-y-4">
+                  <div class="flex items-start">
+                    <CalendarIcon class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-3 sm:mr-4 mt-0.5" />
+                    <div>
+                      <div class="text-sm sm:text-base text-gray-500">Date</div>
+                      <div class="text-sm sm:text-base font-medium">{{ formatDateOnly(selectedSession.scheduledTime || selectedSession.date) }}</div>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-start">
+                    <UserIcon class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-3 sm:mr-4 mt-0.5" />
+                    <div>
+                      <div class="text-sm sm:text-base text-gray-500">Doctor</div>
+                      <div class="text-sm sm:text-base font-medium">{{ selectedSession.doctorName || 'Not assigned' }}</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="space-y-3 sm:space-y-4">
+                  <div class="flex items-start">
+                    <PawPrintIcon class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-3 sm:mr-4 mt-0.5" />
+                    <div>
+                      <div class="text-sm sm:text-base text-gray-500">Pet</div>
+                      <div class="text-sm sm:text-base font-medium">{{ selectedSession.petName || 'Not specified' }}</div>
+                    </div>
+                  </div>
+                  
+                  <div v-if="selectedSession.serviceNames && selectedSession.serviceNames.length > 0" class="flex items-start">
+                    <StethoscopeIcon class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-3 sm:mr-4 mt-0.5" />
+                    <div>
+                      <div class="text-sm sm:text-base text-gray-500">Services</div>
+                      <div class="text-sm sm:text-base font-medium">{{ selectedSession.serviceNames.join(', ') }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div v-if="selectedSession.notes" class="mb-6 sm:mb-8">
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-3">Notes</h3>
+                <div class="bg-white p-3 sm:p-4 rounded-lg text-sm sm:text-base text-gray-700">
+                  {{ selectedSession.notes }}
+                </div>
+              </div>
+              
+              <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <button 
+                  v-if="selectedSession.status === 'approved' && isAppointmentTime(selectedSession)" 
+                  class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white text-sm sm:text-base rounded-full hover:bg-blue-700"
+                  @click="joinSession(selectedSession)"
+                >
+                  <PhoneIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                  Join Call
+                </button>
+                <button
+                  v-else-if="selectedSession.status === 'approved' && isAppointmentPast(selectedSession)"
+                  class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 text-sm sm:text-base rounded-full cursor-not-allowed" 
+                  disabled
+                >
+                  <ClockIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                  Appointment Ended
+                </button>
+                <button
+                  v-else-if="selectedSession.status === 'approved' && !isAppointmentTime(selectedSession)"
+                  class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 text-sm sm:text-base rounded-full cursor-not-allowed" 
+                  disabled
+                >
+                  <ClockIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                  {{ getTimeUntilAppointment(selectedSession) }}
+                </button>
+                <button 
+                  v-else
+                  class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-gray-300 text-gray-700 text-sm sm:text-base rounded-full cursor-not-allowed" 
+                  disabled
+                >
+                  <ClockIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                  Not Available
+                </button>
+                
+                <button 
+                  class="flex-1 inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-3 bg-gray-200 text-gray-800 text-sm sm:text-base rounded-full hover:bg-gray-300"
+                  @click="currentView = 'sessions'"
+                >
+                  <ArrowLeftIcon class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                  Back to Sessions
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Session View - Better mobile responsiveness -->
+    <div v-if="activeSession" class="h-full flex flex-col bg-gray-100 overflow-hidden">
+      <!-- Header with connection status indicator -->
+      <div class="bg-white border-b border-gray-200 px-3 py-2 sm:px-4 sm:py-3">
+        <div class="flex items-center justify-between">
+          <!-- Left side: Title and patient info -->
+          <div>
+            <h2 class="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+              {{ cleanTitle(activeSession.title) || 'Telehealth Appointment' }}
+            </h2>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600">
+              <span class="flex items-center"><UserIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> {{ activeSession.doctorName || 'Veterinarian' }}</span>
+              <span class="flex items-center"><PawPrintIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> {{ activeSession.petName || 'Your Pet' }}</span>
+              <span class="flex items-center"><ClockIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Time remaining: {{ remainingTime }}</span>
+            </div>
+          </div>
+          
+          <!-- Right side: Controls -->
+          <div class="flex flex-col sm:flex-row sm:items-center">
+            <button 
+              @click="endCall" 
+              class="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1.5 bg-red-600 text-white text-xs sm:text-sm rounded-full hover:bg-red-700 whitespace-nowrap mb-1.5 sm:mb-0 sm:order-2 sm:ml-3"
+            >
+              <PhoneOffIcon class="w-3 h-3 mr-1" />
+              End Call
+            </button>
+            
+            <!-- UPDATED: Always show connection status indicator -->
+            <div class="flex items-center justify-end sm:order-1">
+              <span 
+                :class="[
+                  'w-2 h-2 rounded-full mr-1 sm:mr-2',
+                  remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
+                ]"
+              ></span>
+              <span class="text-xs sm:text-sm text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- UPDATED: Responsive layout with equal height for video and chat on mobile -->
+      <div class="flex-1 overflow-y-auto">
+        <div class="flex flex-col md:flex-row gap-3 p-3 sm:gap-4 sm:p-4">
+          <!-- Video Container - Takes full width on mobile, 2/3 on desktop -->
+          <div class="flex-1 flex flex-col gap-3 sm:gap-4">
+            <!-- Video Container - Tall height on small screens -->
+            <div class="relative bg-gray-900 rounded-xl overflow-hidden md:aspect-video h-[450px] sm:h-[500px] md:h-auto">
+              <!-- Remote Video -->
+              <video id="remote-video" ref="remoteVideoRef" autoplay playsinline class="w-full h-full object-cover"></video>
+              
+              <!-- Waiting Placeholder -->
+              <div v-if="!remoteStreamActive" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 text-white">
+                <div class="relative mb-4 sm:mb-6">
+                  <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-700 flex items-center justify-center">
+                    <UserIcon class="w-8 h-8 sm:w-10 sm:h-10" />
+                  </div>
+                  <div class="absolute inset-0 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                </div>
+                <p class="text-base sm:text-xl font-medium mb-1 sm:mb-2">Waiting for veterinarian to join...</p>
+                <p class="text-xs sm:text-sm text-gray-400">Your veterinarian will appear here when they join</p>
+              </div>
+              
+              <!-- Local Video (PiP) - Increased height on small screens -->
+              <div 
+                class="absolute top-2 right-2 sm:top-4 sm:right-4 w-1/2 md:w-1/3 h-[120px] sm:h-[150px] md:aspect-video md:h-auto bg-gray-800 rounded-lg overflow-hidden shadow-lg"
+              >
+                <video id="local-video" ref="localVideoRef" autoplay playsinline muted class="w-full h-full object-cover transform scale-x-[-1]"></video>
+              </div>
+              
+              <!-- Call Controls - Made more compact on mobile -->
+              <div class="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 sm:gap-3 bg-gray-900/80 px-3 py-1.5 sm:py-2 rounded-full">
+                <button 
+                  @click="toggleMute" 
+                  :class="[
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center',
+                    isMuted ? 'bg-gray-700 text-white' : 'bg-blue-600 text-white'
+                  ]"
+                >
+                  <MicOffIcon v-if="isMuted" class="w-4 h-4 sm:w-5 sm:h-5" />
+                  <MicIcon v-else class="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                <button 
+                  @click="toggleVideo" 
+                  :class="[
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center',
+                    isVideoOff ? 'bg-gray-700 text-white' : 'bg-blue-600 text-white'
+                  ]"
+                >
+                  <VideoOffIcon v-if="isVideoOff" class="w-4 h-4 sm:w-5 sm:h-5" />
+                  <VideoIcon v-else class="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                <button 
+                  @click="toggleChatPanel" 
+                  :class="[
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center',
+                    showChatPanel ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'
+                  ]"
+                >
+                  <MessageSquareIcon class="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                <button 
+                  @click="toggleScreenShare"
+                  :class="[
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center',
+                    isScreenSharing ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'
+                  ]"
+                >
+                  <MonitorIcon class="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+                <button 
+                  @click="toggleSpeaker" 
+                  :class="[
+                    'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center',
+                    isSpeakerMuted ? 'bg-gray-700 text-white' : 'bg-blue-600 text-white'
+                  ]"
+                >
+                  <VolumeXIcon v-if="isSpeakerMuted" class="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Volume2Icon v-else class="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              </div>
+              
+              <!-- Time Remaining Indicator (Mobile) -->
+              <div class="sm:hidden absolute top-4 left-4 bg-gray-900/80 px-2 py-1 rounded-full text-white text-xs">
+                <span class="flex items-center">
+                  <ClockIcon class="w-3 h-3 mr-1" />
+                  {{ remainingTime }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- Mobile Chat Panel - Same height as video on mobile -->
+            <div v-if="showChatPanel && isMobileView" class="bg-white rounded-xl shadow-sm flex flex-col h-[450px] sm:h-[500px]">
+              <div class="p-2 border-b border-gray-100">
+                <h3 class="text-base font-medium text-gray-900">Chat</h3>
+              </div>
+              
+              <div class="flex-1 overflow-y-auto p-2 space-y-2" ref="mobileChatMessagesRef">
+                <div 
+                  v-for="message in chatMessages" 
+                  :key="message.id"
+                  :class="[
+                    'max-w-[80%]',
+                    message.sender === 'vet' ? 'mr-auto' : 'ml-auto'
+                  ]"
+                >
+                  <div 
+                    :class="[
+                      'px-2 py-1 rounded-xl text-xs sm:text-sm',
+                      message.sender === 'vet' ? 'bg-gray-100 text-gray-800' : 'bg-blue-600 text-white'
+                    ]"
+                  >
+                    {{ message.text }}
+                  </div>
+                  <div 
+                    :class="[
+                      'text-[9px] mt-0.5 flex items-center',
+                      message.sender === 'vet' ? 'text-left text-gray-500' : 'text-right text-gray-500'
+                    ]"
+                  >
+                    <span>{{ message.sender === 'vet' ? message.senderName || 'Doctor' : 'You' }}</span>
+                    <span class="mx-1">•</span>
+                    <span>{{ formatTime(message.timestamp) }}</span>
+                    <CheckIcon v-if="message.sender === 'vet' && message.read" class="w-2 h-2 ml-1 text-blue-500" />
+                  </div>
+                </div>
+              </div>
+              
+              <div class="p-2 border-t border-gray-100">
+                <div class="flex gap-2">
+                  <input 
+                    v-model="newMessage" 
+                    @keyup.enter="sendMessage"
+                    placeholder="Type a message..."
+                    class="flex-1 px-2 py-1 text-xs sm:text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button 
+                    @click="sendMessage" 
+                    class="min-w-[32px] h-[32px] bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center justify-center"
+                  >
+                    <SendIcon class="w-3 h-3 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Desktop Chat Section - UPDATED: Fixed responsive issues -->
+          <div v-if="showChatPanel && !isMobileView" class="bg-white rounded-xl shadow-sm flex flex-col md:w-1/3 max-w-sm">
+            <div class="p-4 border-b border-gray-100">
+              <h3 class="text-lg font-medium text-gray-900">Chat</h3>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="chatMessagesRef">
+              <div 
+                v-for="message in chatMessages" 
+                :key="message.id"
+                :class="[
+                  'max-w-[85%]',
+                  message.sender === 'vet' ? 'mr-auto' : 'ml-auto'
+                ]"
+              >
+                <div 
+                  :class="[
+                    'px-4 py-2 rounded-full',
+                    message.sender === 'vet' ? 'bg-gray-100 text-gray-800' : 'bg-blue-600 text-white'
+                  ]"
+                >
+                  {{ message.text }}
+                </div>
+                <div 
+                  :class="[
+                    'text-xs mt-1 flex items-center',
+                    message.sender === 'vet' ? 'text-left text-gray-500' : 'text-right text-gray-500'
+                  ]"
+                >
+                  <span>{{ message.sender === 'vet' ? message.senderName || 'Doctor' : 'You' }}</span>
+                  <span class="mx-1">•</span>
+                  <span>{{ formatTime(message.timestamp) }}</span>
+                  <CheckIcon v-if="message.sender === 'vet' && message.read" class="w-3 h-3 ml-1 text-blue-500" />
+                </div>
+              </div>
+            </div>
+            
+            <!-- UPDATED: Fixed chat input container for desktop -->
+            <div class="p-3 border-t border-gray-100">
+              <div class="flex items-center gap-2 w-full">
+                <input 
+                  v-model="newMessage" 
+                  @keyup.enter="sendMessage"
+                  placeholder="Type a message..."
+                  class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button 
+                  @click="sendMessage" 
+                  class="flex-shrink-0 w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center justify-center"
+                >
+                  <SendIcon class="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Add bottom padding to ensure content isn't hidden behind navigation -->
+        <div class="h-16 sm:h-20"></div>
+      </div>
+    </div>
+
+    <!-- Network Status Banner -->
+    <div v-if="!isOnline" class="fixed bottom-0 left-0 right-0 bg-red-100 text-red-800 px-4 py-3 flex items-center justify-center rounded-t-lg">
+      <AlertTriangleIcon class="w-5 h-5 mr-2" />
+      <span>You are currently offline. Some features may not work properly.</span>
+      <button @click="attemptReconnect" class="ml-4 text-red-800 underline">Try to reconnect</button>
+    </div>
+
+    <!-- Incoming Call Modal -->
+    <div v-if="incomingCall && !isAcceptingCall" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl max-w-md w-full overflow-hidden">
+        <div class="p-6 text-center">
+          <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+            <PhoneIcon class="w-10 h-10 text-green-600" />
+          </div>
+          <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ incomingCall.callerName || 'Someone' }} is calling</h3>
+          <p class="text-gray-600 mb-8">{{ incomingCall.sessionTitle || 'Telehealth Session' }}</p>
+          
+          <div class="flex gap-4">
+            <button 
+              @click="acceptIncomingCall" 
+              class="flex-1 inline-flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-full hover:bg-green-700"
+            >
+              <PhoneIcon class="w-5 h-5 mr-2" />
+              Accept
+            </button>
+            <button 
+              @click="declineIncomingCall" 
+              class="flex-1 inline-flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-full hover:bg-red-700"
+            >
+              <PhoneOffIcon class="w-5 h-5 mr-2" />
+              Decline
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Call Time Expired Modal -->
+    <div v-if="showCallExpiredModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg max-w-md w-full overflow-hidden">
+        <div class="p-6 text-center">
+          <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ClockIcon class="w-10 h-10 text-red-600" />
+          </div>
+          <h3 class="text-xl font-semibold text-gray-900 mb-2">Appointment Time Ended</h3>
+          <p class="text-gray-600 mb-8">The scheduled time for this appointment has ended.</p>
+          
+          <button 
+            @click="acknowledgeCallExpired" 
+            class="inline-flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-full hover:bg-blue-700"
+          >
+            <CheckIcon class="w-5 h-5 mr-2" />
+            OK
+          </button>
         </div>
       </div>
     </div>
@@ -214,22 +738,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue"
-import {
-  getFirestore,
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-  onSnapshot,
-  addDoc,
-  serverTimestamp,
-  orderBy,
-} from "firebase/firestore"
-import { getAuth } from "firebase/auth"
+import { ref, computed, onMounted, watch, nextTick, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
+import lottie from "lottie-web";
 import {
   RefreshCwIcon,
   PhoneIcon,
@@ -243,1188 +754,1814 @@ import {
   MonitorIcon,
   AlertTriangleIcon,
   CheckIcon,
-} from "lucide-vue-next"
-import TelehealthService from "@/services/TelehealthService"
-import WebRTCService from "@/services/WebRTCService"
-import { db } from "@/firebase-config" // Import db directly
+  ArrowLeftIcon,
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CalendarPlusIcon,
+  ClockIcon,
+  XIcon,
+  PawPrintIcon,
+  StethoscopeIcon,
+  FilterIcon,
+  MessageSquareIcon,
+  FolderIcon,
+  Volume2Icon,
+  VolumeXIcon
+} from "lucide-vue-next";
+import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
+import { useAppointmentStore } from "@/stores/modules/appointmentStore";
+import { useAuthStore } from "@/stores/modules/authStore";
+import { useServiceCategoryStore } from "@/stores/modules/ServiceCategoryStore";
+import { db } from '@shared/firebase';
+import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs, arrayUnion, serverTimestamp, addDoc, orderBy } from 'firebase/firestore';
+import WebRTCService from "@/services/webrtc-service";
+import { parseISO, format, isToday, isFuture, addMinutes, subMinutes, isAfter, isBefore, differenceInMinutes, differenceInSeconds } from 'date-fns';
 
-// Firebase setup
-const auth = getAuth()
+// Router and stores
+const router = useRouter();
+const appointmentStore = useAppointmentStore();
+const authStore = useAuthStore();
+const serviceCategoryStore = useServiceCategoryStore();
 
-// State variables
-const loading = ref(true)
-const sessions = ref([])
-const statusFilter = ref("all")
-const activeSession = ref(null)
-const chatMessages = ref([])
-const newMessage = ref("")
-const chatMessagesRef = ref(null)
-const incomingCall = ref(null)
-const showingApprovedOnly = ref(false)
+// View state
+const currentView = ref("carousel");
+const loading = ref(false);
+const sessions = ref([]);
+const currentStatusFilter = ref("all");
+const activeSession = ref(null);
+const selectedSession = ref(null);
+const showStatusFilter = ref(false);
+const showChatPanel = ref(false);
+const isMobileView = ref(false);
+const isAcceptingCall = ref(false);
+const isInitiatingCall = ref(false);
+const isCallInitializing = ref(false);
+const unsubscribeCallStatus = ref(null);
+const isOnline = ref(navigator.onLine);
+const errorMessage = ref("");
+const showingApprovedOnly = ref(false);
+
+// Carousel state
+const currentSlide = ref(0);
+const slides = ref([
+  {
+    id: 1,
+    title: "Video calls and meetings for everyone",
+    subtitle: "Connect, collaborate, and celebrate from anywhere",
+    lottieUrl: "https://lottie.host/eef5246b-5eb6-4e59-aa95-4f876e907fbe/w8vlGAQY2p.json",
+  },
+  {
+    id: 2,
+    title: "Connect with healthcare professionals",
+    subtitle: "Get expert medical advice from the comfort of your home",
+    lottieUrl: "https://lottie.host/8e319c9a-aa16-4c67-9762-5e8a6f1fb661/c6cXxUKVrd.json",
+  },
+  {
+    id: 3,
+    title: "Therapy sessions",
+    subtitle: "Join supportive communities and share experiences",
+    lottieUrl: "https://lottie.host/1e246ac2-6990-4be8-aae7-ce4c1ca7a244/OQ88rj0UOx.json",
+  },
+  {
+    id: 4,
+    title: "Follow up consultation",
+    subtitle: "Access counseling whenever you need it",
+    lottieUrl: "https://lottie.host/61024576-6d81-4689-a26b-377afb392172/gNHIvH2Tin.json",
+  }
+]);
 
 // WebRTC state
-const localVideoRef = ref(null)
-const remoteVideoRef = ref(null)
-const isMuted = ref(false)
-const isVideoOff = ref(false)
-const isScreenSharing = ref(false)
-const remoteStreamActive = ref(false)
-const callStatus = ref("")
+const localVideoRef = ref(null);
+const remoteVideoRef = ref(null);
+const localStream = ref(null);
+const remoteStream = ref(null);
+const isMuted = ref(false);
+const isVideoOff = ref(false);
+const isScreenSharing = ref(false);
+const isSpeakerMuted = ref(false);
+const remoteStreamActive = ref(false);
+const callStatus = ref("");
+const chatMessages = ref([]);
+const newMessage = ref("");
+const chatMessagesRef = ref(null);
+const mobileChatMessagesRef = ref(null);
+const incomingCall = ref(null);
+let incomingCallsUnsubscribe = null;
+let networkStatusInterval = null;
+let autoplayInterval;
+let lottieInstances = [];
+let chatMessagesUnsubscribe = null;
+const appointmentEndTime = ref(null);
+const remainingTime = ref('');
+let appointmentTimer = null;
+const showCallExpiredModal = ref(false);
 
-// Network status monitoring
-const isOnline = ref(navigator.onLine)
-let networkStatusInterval = null
+// Function to clean title by removing empty parentheses
+const cleanTitle = (text) => {
+  if (!text) return text;
+  // Remove empty parentheses and trim
+  return text.replace(/()\s*()/g, '').trim();
+};
 
-// WebRTC service instance
-let webRTCService = null
-let unsubscribeMessages = null
-let unsubscribeSession = null
-let localStream = null
+// Function to remove minutes from title
+const removeMinutes = (text) => {
+  if (!text) return text;
+  return text.replace(/\s*\d+\s*minutes/, '');
+};
 
-// Remote stream check interval
-let remoteStreamCheckInterval = null
+// Check for mobile view
+const checkMobileView = () => {
+  isMobileView.value = window.innerWidth < 768;
+};
+
+// Toggle chat panel visibility
+const toggleChatPanel = () => {
+  showChatPanel.value = !showChatPanel.value;
+
+  // Scroll to bottom of chat when opening
+  if (showChatPanel.value) {
+    nextTick(() => {
+      if (isMobileView.value) {
+        if (mobileChatMessagesRef.value) {
+          mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+        }
+      } else {
+        if (chatMessagesRef.value) {
+          chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+        }
+      }
+    });
+  }
+};
+
+// Navigation method for appointments
+const navigateToAppointments = () => {
+  router.push({ name: 'UserAppointments' });
+};
 
 // Computed properties
 const filteredSessions = computed(() => {
-  if (statusFilter.value === "all") {
-    return sessions.value
+  // First filter by status
+  let filtered = sessions.value;
+  if (currentStatusFilter.value !== "all") {
+    filtered = filtered.filter((session) => session.status === currentStatusFilter.value);
   }
-  return sessions.value.filter((session) => session.status === statusFilter.value)
-})
 
-// Network status monitoring
-const setupNetworkMonitoring = () => {
-  // Listen for online/offline events
-  window.addEventListener("online", handleOnline)
-  window.addEventListener("offline", handleOffline)
+  // Then filter by category - only show Telehealth Services
+  return filtered.filter(appointment => {
+    // Check if the appointment has a direct category property
+    if (appointment.category && appointment.category.toLowerCase().includes('telehealth')) {
+      return true;
+    }
 
-  // Also check periodically
-  networkStatusInterval = setInterval(() => {
-    const currentStatus = navigator.onLine
-    if (isOnline.value !== currentStatus) {
-      isOnline.value = currentStatus
-      if (currentStatus) {
-        handleOnline()
-      } else {
-        handleOffline()
+    // If not, check if any of the services belong to the Telehealth category
+    if (appointment.services && appointment.services.length > 0) {
+      // Check if any service name contains "telehealth" or "follow-up"
+      if (appointment.serviceNames && appointment.serviceNames.some(name => 
+        name.toLowerCase().includes('telehealth') || 
+        name.toLowerCase().includes('follow-up'))) {
+        return true;
       }
+      
+      // Try to find the service in the service store
+      return appointment.services.some(serviceId => {
+        const service = serviceCategoryStore.services.find(s => s.id === serviceId);
+        if (!service) return false;
+        
+        // Check if the service belongs to a telehealth category
+        const category = serviceCategoryStore.categories.find(c => c.id === service.categoryId);
+        return category && category.name.toLowerCase().includes('telehealth');
+      });
     }
-  }, 5000)
-}
 
-const handleOnline = () => {
-  console.log("Network connection restored")
-  isOnline.value = true
+    return false;
+  });
+});
 
-  // Refresh data if we're in a session
-  if (activeSession.value) {
-    refreshSessionData(activeSession.value.id)
+const callStatusText = computed(() => {
+  switch (callStatus.value) {
+    case "connected":
+      return "Connected";
+    case "reconnecting":
+      return "Reconnecting...";
+    case "failed":
+      return "Connection failed";
+    case "ended":
+      return "Call ended";
+    default:
+      return "Connecting...";
   }
-}
+});
 
-const handleOffline = () => {
-  console.log("Network connection lost")
-  isOnline.value = false
-}
+// Status filter label for display
+const statusFilterLabel = computed(() => {
+  switch (currentStatusFilter.value) {
+    case "all":
+      return "All Appointments";
+    case "approved":
+      return "Approved";
+    case "pending":
+      return "Pending";
+    case "ended":
+      return "Ended";
+    case "completed":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "All Appointments";
+  }
+});
 
-const refreshSessionData = async (sessionId) => {
+// Format functions for displaying appointment data correctly
+const formatDateOnly = (timestamp) => {
+  if (!timestamp) return "N/A";
+
+  // Ensure timestamp is a valid Date object
+  let date;
   try {
-    // Re-subscribe to session updates
-    if (unsubscribeSession) {
-      unsubscribeSession()
+    date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
     }
-
-    // Verify db is available
-    if (!db) {
-      console.error("Firestore db is not initialized")
-      return
-    }
-
-    unsubscribeSession = onSnapshot(
-      doc(db, "appointments", sessionId),
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data()
-          activeSession.value = {
-            id: docSnapshot.id,
-            ...data,
-            title: data.serviceNames ? data.serviceNames[0] : "Telehealth Appointment",
-            doctorName: data.doctorName || "Veterinarian",
-            petName: data.petName || "Your Pet",
-            petType: data.petType || "Pet",
-            scheduledTime: data.date ? new Date(data.date) : new Date(),
-            status: data.status || "pending",
-            notes: data.notes || "",
-          }
-
-          // Check if vet has joined
-          if (data.vetJoinedAt && !remoteStreamActive.value) {
-            // Vet has joined, display their stream
-            if (webRTCService && webRTCService.remoteStream) {
-              webRTCService.displayRemoteStream()
-            } else {
-              // Still connecting
-              callStatus.value = "connecting"
-            }
-          }
-        }
-      },
-      (error) => {
-        console.error("Error in session snapshot:", error)
-        // Handle error gracefully
-        if (!isOnline.value) {
-          console.log("Network appears to be offline, will retry when connection is restored")
-        }
-      },
-    )
-
-    // Re-subscribe to chat messages
-    if (unsubscribeMessages) {
-      unsubscribeMessages()
-    }
-
-    // Verify db is available
-    if (!db) {
-      console.error("Firestore db is not initialized")
-      return
-    }
-
-    unsubscribeMessages = onSnapshot(
-      query(collection(db, "appointments", sessionId, "messages"), orderBy("timestamp", "asc")),
-      (querySnapshot) => {
-        chatMessages.value = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-
-        // Scroll to bottom of chat
-        setTimeout(() => {
-          if (chatMessagesRef.value) {
-            chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
-          }
-        }, 100)
-      },
-      (error) => {
-        console.error("Error in messages snapshot:", error)
-        // Handle error gracefully
-        if (!isOnline.value) {
-          console.log("Network appears to be offline, will retry when connection is restored")
-        }
-      },
-    )
   } catch (error) {
-    console.error("Error refreshing session data:", error)
+    console.error("Error formatting date:", error);
+    return "Invalid Date";
   }
-}
 
-// Update the refreshSessions method
-const refreshSessions = async () => {
-  loading.value = true
-  showingApprovedOnly.value = false
-  try {
-    if (!isOnline.value) {
-      // Don't attempt to fetch if offline
-      loading.value = false
-      return
-    }
-
-    const patientId = auth.currentUser?.uid || "test-patient-id" // Fallback for testing
-
-    console.log("Fetching all appointments for patient:", patientId)
-    // Use TelehealthService to get appointments
-    sessions.value = await TelehealthService.getUserAppointments(patientId, "patient")
-    console.log("Fetched appointments:", sessions.value)
-  } catch (error) {
-    console.error("Error fetching appointments:", error)
-    alert("Failed to load appointments. Please try again later.")
-  } finally {
-    loading.value = false
-  }
-}
-
-// Load only approved sessions
-const loadApprovedSessions = async () => {
-  loading.value = true
-  showingApprovedOnly.value = true
-  try {
-    if (!isOnline.value) {
-      // Don't attempt to fetch if offline
-      loading.value = false
-      return
-    }
-
-    const patientId = auth.currentUser?.uid || "test-patient-id" // Fallback for testing
-
-    console.log("Fetching approved appointments for patient:", patientId)
-    // Use TelehealthService to get approved appointments
-    sessions.value = await TelehealthService.getApprovedAppointments(patientId, "patient")
-    console.log("Fetched approved appointments:", sessions.value)
-
-    // Set filter to show approved sessions
-    statusFilter.value = "approved"
-  } catch (error) {
-    console.error("Error fetching approved appointments:", error)
-    alert("Failed to load approved appointments. Please try again later.")
-  } finally {
-    loading.value = false
-  }
-}
-
-const formatDate = (timestamp) => {
-  if (!timestamp) return "N/A"
-
-  const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
+  // Format date only (without time)
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
-}
+  }).format(date);
+};
 
+// Format time function
 const formatTime = (timestamp) => {
-  if (!timestamp) return ""
+  if (!timestamp) return "";
 
-  const date = timestamp instanceof Date ? timestamp : timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
-}
+  try {
+    // Ensure we have a valid Date object
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
 
-const isSessionJoinable = (session) => {
-  if (!session.scheduledTime && !session.date) return false
+    // Format the time
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  } catch (error) {
+    console.error("Error formatting time:", error);
+    return "";
+  }
+};
 
-  const scheduledTime = session.scheduledTime ? 
-    (session.scheduledTime instanceof Date ? session.scheduledTime : new Date(session.scheduledTime)) : 
-    new Date(session.date)
+// Carousel methods
+const previousSlide = () => {
+  currentSlide.value = (currentSlide.value - 1 + slides.value.length) % slides.value.length;
+};
 
-  const now = new Date()
-  const timeDiff = Math.abs(now - scheduledTime)
-  const minutesDiff = Math.floor(timeDiff / (1000 * 60))
+const nextSlide = () => {
+  currentSlide.value = (currentSlide.value + 1) % slides.value.length;
+};
 
-  // Allow joining 15 minutes before and up to 30 minutes after scheduled time
-  return minutesDiff <= 30
-}
+const goToSlide = (index) => {
+  currentSlide.value = index;
+};
 
-const selectSession = (session) => {
-  // Just view session details, don't join call yet
-  activeSession.value = session
-}
+// Initialize Lottie animations
+const initializeLottieAnimations = () => {
+  // Destroy previous instances if they exist
+  lottieInstances.forEach((instance) => {
+    if (instance) {
+      instance.destroy();
+    }
+  });
 
+  lottieInstances = [];
+
+  // Initialize new instances
+  slides.value.forEach((slide, index) => {
+    const container = document.getElementById(`lottie-container-${index}`);
+    if (container) {
+      const animation = lottie.loadAnimation({
+        container: container,
+        renderer: "svg",
+        loop: true,
+        autoplay: index === currentSlide.value,
+        path: slide.lottieUrl,
+      });
+
+      lottieInstances.push(animation);
+    }
+  });
+};
+
+const startAutoplay = () => {
+  autoplayInterval = setInterval(() => {
+    nextSlide();
+  }, 5000);
+};
+
+const stopAutoplay = () => {
+  clearInterval(autoplayInterval);
+};
+
+// Network status monitoring
+const setupNetworkMonitoring = () => {
+  // Listen for online/offline events
+  window.addEventListener("online", handleOnline);
+  window.addEventListener("offline", handleOffline);
+
+  // Also check periodically
+  networkStatusInterval = setInterval(() => {
+    const currentStatus = navigator.onLine;
+    if (isOnline.value !== currentStatus) {
+      isOnline.value = currentStatus;
+      if (currentStatus) {
+        handleOnline();
+      } else {
+        handleOffline();
+      }
+    }
+  }, 5000);
+};
+
+const handleOnline = () => {
+  console.log("Network connection restored");
+  isOnline.value = true;
+
+  // If we have an active session, ensure we're in call view
+  if (activeSession.value) {
+    currentView.value = 'call';
+  }
+};
+
+const handleOffline = () => {
+  console.log("Network connection lost");
+  isOnline.value = false;
+
+  if (callStatus.value === "connected") {
+    callStatus.value = "reconnecting";
+  }
+};
+
+const attemptReconnect = () => {
+  isOnline.value = true;
+  // If we have an active session, ensure we're in call view
+  if (activeSession.value) {
+    currentView.value = 'call';
+  } else {
+    refreshSessions();
+  }
+};
+
+// Toggle status filter dropdown
+const toggleStatusFilter = () => {
+  showStatusFilter.value = !showStatusFilter.value;
+};
+
+// Set status filter
+const setStatusFilter = (status) => {
+  currentStatusFilter.value = status;
+  showStatusFilter.value = false;
+
+  // Reset approved only flag if selecting a different filter
+  if (status !== 'approved') {
+    showingApprovedOnly.value = false;
+  } else {
+    showingApprovedOnly.value = true;
+  }
+};
+
+// Update the refreshSessions method to fetch real data
+const refreshSessions = async () => {
+  loading.value = true;
+  showingApprovedOnly.value = false;
+
+  try {
+    // Initialize auth if needed
+    if (!authStore.isInitialized) {
+      await authStore.initialize();
+    }
+
+    if (!authStore.user || !authStore.user.userId) {
+      console.log("No user logged in, cannot fetch appointments");
+      sessions.value = [];
+      return;
+    }
+
+    // Fetch categories first
+    await serviceCategoryStore.fetchCategories();
+
+    // Fetch services to get category information
+    await serviceCategoryStore.fetchServices();
+
+    // Fetch appointments for the current user
+    const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+    sessions.value = userAppointments || [];
+
+    console.log(`Fetched ${sessions.value.length} appointments for user`);
+
+    // Check if we have an active call session
+    checkForActiveCallSession();
+  } catch (error) {
+    console.error("Error fetching appointments:", error);
+    errorMessage.value = "Failed to load appointments. Please try again.";
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Check if there's an active call session
+const checkForActiveCallSession = async () => {
+  if (!authStore.user || !authStore.user.userId) return;
+
+  try {
+    // Query for active calls where the user is involved
+    const callsRef = collection(db, 'calls');
+    const q = query(
+      callsRef,
+      where('status', 'in', ['initiating', 'accepted', 'connected']),
+      where('callerId', '==', authStore.user.userId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      // We found an active call
+      const callData = querySnapshot.docs[0].data();
+      const callId = querySnapshot.docs[0].id;
+      
+      // Find the corresponding session
+      const session = sessions.value.find(s => s.id === callId);
+      
+      if (session) {
+        console.log('Found active call session, resuming call view');
+        // Set the active session and view
+        activeSession.value = session;
+        currentView.value = 'call';
+        
+        // Try to reconnect to the call
+        await reconnectToCall(callId);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for active call sessions:', error);
+  }
+};
+
+// Function to reconnect to an existing call
+const reconnectToCall = async (callId) => {
+  try {
+    console.log(`Reconnecting to call: ${callId}`);
+    
+    // Get local media stream
+    localStream.value = await WebRTCService.setupLocalStream();
+    
+    // Attach local stream to video element
+    if (localVideoRef.value) {
+      localVideoRef.value.srcObject = localStream.value;
+    }
+    
+    // Try to reconnect to the call
+    const result = await WebRTCService.reconnectCall(
+      callId,
+      (stream) => {
+        // When we receive the remote stream
+        if (remoteVideoRef.value) {
+          remoteVideoRef.value.srcObject = stream;
+          remoteStreamActive.value = true;
+        }
+      }
+    );
+    
+    // Handle the result
+    if (result && result.remoteStream) {
+      remoteStream.value = result.remoteStream;
+      
+      // Set the remote stream to the video element
+      if (remoteVideoRef.value) {
+        remoteVideoRef.value.srcObject = result.remoteStream;
+        
+        // Check if there are already tracks in the remote stream
+        if (result.remoteStream.getTracks().length > 0) {
+          remoteStreamActive.value = true;
+        }
+      }
+    }
+    
+    // Update the UI for active call
+    callStatus.value = 'connecting';
+    
+  } catch (error) {
+    console.error('Error reconnecting to call:', error);
+    errorMessage.value = "Could not reconnect to the call. Please try again.";
+  }
+};
+
+// Load only approved sessions
+const loadApprovedSessions = async () => {
+  loading.value = true;
+  showingApprovedOnly.value = true;
+
+  try {
+    // Initialize auth if needed
+    if (!authStore.isInitialized) {
+      await authStore.initialize();
+    }
+
+    if (!authStore.user || !authStore.user.userId) {
+      console.log("No user logged in, cannot fetch appointments");
+      sessions.value = [];
+      return;
+    }
+
+    // Fetch categories first
+    await serviceCategoryStore.fetchCategories();
+
+    // Fetch services to get category information
+    await serviceCategoryStore.fetchServices();
+
+    // Fetch appointments for the current user
+    const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+
+    // Filter to only show approved appointments
+    sessions.value = userAppointments || [];
+
+    console.log(`Fetched ${sessions.value.length} appointments for user`);
+
+    // Set filter to show all appointments initially
+    currentStatusFilter.value = "all";
+
+    // Check if we have an active call session
+    checkForActiveCallSession();
+  } catch (error) {
+    console.error("Error fetching approved appointments:", error);
+    errorMessage.value = "Failed to load approved appointments. Please try again.";
+  } finally {
+    loading.value = false;
+  }
+};
+
+// View session details instead of starting a call
+const viewSessionDetails = (session) => {
+  selectedSession.value = session;
+  currentView.value = 'details';
+};
+
+// Function to check if it's time for the appointment
+const isAppointmentTime = (appointment) => {
+  if (!appointment.date || !appointment.time) return false;
+
+  try {
+    // Handle date properly whether it's a string or Date object
+    const appointmentDate = appointment.date instanceof Date 
+      ? appointment.date 
+      : parseISO(appointment.date);
+    
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the start time part
+        const startTimeStr = timeMatch[1].trim();
+        // Get the end time part
+        const endTimeStr = timeMatch[2].trim();
+        
+        // Create date objects for the appointment start and end times
+        const startTimeParts = startTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        const endTimeParts = endTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (startTimeParts && endTimeParts) {
+          // Parse start time
+          let startHours = parseInt(startTimeParts[1]);
+          const startMinutes = parseInt(startTimeParts[2]);
+          const startPeriod = startTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (startPeriod === 'PM' && startHours < 12) startHours += 12;
+          if (startPeriod === 'AM' && startHours === 12) startHours = 0;
+          
+          // Parse end time
+          let endHours = parseInt(endTimeParts[1]);
+          const endMinutes = parseInt(endTimeParts[2]);
+          const endPeriod = endTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (endPeriod === 'PM' && endHours < 12) endHours += 12;
+          if (endPeriod === 'AM' && endHours === 12) endHours = 0;
+          
+          // Create appointment start and end datetime objects
+          const startTime = new Date(appointmentDate);
+          startTime.setHours(startHours, startMinutes, 0, 0);
+          
+          const endTime = new Date(appointmentDate);
+          endTime.setHours(endHours, endMinutes, 0, 0);
+          
+          // If end time is earlier than start time, it means the appointment ends the next day
+          if (endTime < startTime) {
+            endTime.setDate(endTime.getDate() + 1);
+          }
+          
+          // Get current time
+          const now = new Date();
+          
+          // Check if current time is within the appointment time range
+          return now >= startTime && now <= endTime;
+        }
+      }
+    }
+    
+    // If we couldn't parse the time string, return false
+    return false;
+  } catch (error) {
+    console.error('Error checking appointment time:', error);
+    return false;
+  }
+};
+
+// Function to check if an appointment is in the past
+const isAppointmentPast = (appointment) => {
+  if (!appointment.date || !appointment.time) return false;
+
+  try {
+    // Handle date properly whether it's a string or Date object
+    const appointmentDate = appointment.date instanceof Date 
+      ? appointment.date 
+      : parseISO(appointment.date);
+    
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the end time part
+        const endTimeStr = timeMatch[2].trim();
+        
+        // Create date objects for the appointment end time
+        const endTimeParts = endTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (endTimeParts) {
+          // Parse end time
+          let endHours = parseInt(endTimeParts[1]);
+          const endMinutes = parseInt(endTimeParts[2]);
+          const endPeriod = endTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (endPeriod === 'PM' && endHours < 12) endHours += 12;
+          if (endPeriod === 'AM' && endHours === 12) endHours = 0;
+          
+          // Create appointment end datetime object
+          const endTime = new Date(appointmentDate);
+          endTime.setHours(endHours, endMinutes, 0, 0);
+          
+          // Get current time
+          const now = new Date();
+          
+          // Check if current time is after the appointment end time
+          return now > endTime;
+        }
+      }
+    }
+    
+    // If we couldn't parse the time string, return false
+    return false;
+  } catch (error) {
+    console.error('Error checking if appointment is past:', error);
+    return false;
+  }
+};
+
+// Function to get time until appointment
+const getTimeUntilAppointment = (appointment) => {
+  if (!appointment.date || !appointment.time) return 'N/A';
+
+  try {
+    // Handle date properly whether it's a string or Date object
+    const appointmentDate = appointment.date instanceof Date 
+      ? appointment.date 
+      : parseISO(appointment.date);
+    
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the start time part
+        const startTimeStr = timeMatch[1].trim();
+        
+        // Create date objects for the appointment start time
+        const startTimeParts = startTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (startTimeParts) {
+          // Parse start time
+          let startHours = parseInt(startTimeParts[1]);
+          const startMinutes = parseInt(startTimeParts[2]);
+          const startPeriod = startTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (startPeriod === 'PM' && startHours < 12) startHours += 12;
+          if (startPeriod === 'AM' && startHours === 12) startHours = 0;
+          
+          // Create appointment start datetime object
+          const startTime = new Date(appointmentDate);
+          startTime.setHours(startHours, startMinutes, 0, 0);
+          
+          // Get current time
+          const now = new Date();
+          
+          // Calculate the difference in minutes
+          const diffInMinutes = differenceInMinutes(startTime, now);
+          
+          if (diffInMinutes <= 0) {
+            return 'Starting now';
+          } else if (diffInMinutes < 60) {
+            return `Starts in ${diffInMinutes} minutes`;
+          } else {
+            const hours = Math.floor(diffInMinutes / 60);
+            const minutes = diffInMinutes % 60;
+            return `Starts in ${hours}h ${minutes}m`;
+          }
+        }
+      }
+    }
+    
+    // If we couldn't parse the time string, return a generic message
+    return 'Check appointment time';
+  } catch (error) {
+    console.error('Error getting time until appointment:', error);
+    return 'N/A';
+  }
+};
+
+// Add this function to properly handle the remote stream when joining a session
 const joinSession = async (session) => {
   try {
+    // Check if it's time for the appointment
+    if (!isAppointmentTime(session)) {
+      alert('This appointment is not currently available for video call. You can join during the scheduled appointment time.');
+      return;
+    }
+    
     if (!isOnline.value) {
-      alert("You appear to be offline. Please check your internet connection and try again.")
-      return
+      errorMessage.value = "You appear to be offline. Please check your internet connection and try again.";
+      return;
     }
 
-    // Request camera and microphone access
-    try {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      })
-    } catch (error) {
-      console.error("Error accessing camera:", error)
-      alert(`Camera access error: ${error.message || "Unknown error"}`)
-      return
+    // Set flag to indicate call is being initiated
+    isInitiatingCall.value = true;
+    isCallInitializing.value = true;
+    
+    console.log(`Joining session: ${session.id}`);
+    activeSession.value = session;
+    
+    // Check if call document exists first
+    const callDoc = doc(db, 'calls', session.id);
+    const callSnapshot = await getDoc(callDoc);
+    
+    if (!callSnapshot.exists()) {
+      // Create the call document if it doesn't exist
+      console.log('Call document does not exist, creating it now');
+      await setDoc(callDoc, {
+        status: 'initiating',
+        initiatedAt: new Date(),
+        initiatedBy: 'user', // The patient/pet-owner is initiating
+        receiverId: session.doctorId,
+        callerId: authStore.user.userId,
+        callerName: authStore.user.displayName || 'Patient',
+        hasRemoteTracks: false,
+        iceConnectionState: 'new',
+        connectionState: 'new'
+      });
+    } else {
+      // Update existing call document
+      await updateDoc(callDoc, {
+        status: 'initiating',
+        initiatedAt: new Date(),
+        initiatedBy: 'user', // The patient/pet-owner is initiating
+        receiverId: session.doctorId,
+        callerId: authStore.user.userId,
+        callerName: authStore.user.displayName || 'Patient'
+      });
     }
-
-    // Verify db is available
-    if (!db) {
-      console.error("Firestore db is not initialized")
-      alert("Database connection error. Please refresh the page and try again.")
-      return
-    }
-
-    // Update session status to 'in-progress' if it's not already
-    if (session.status === "scheduled" || session.status === "approved") {
-      await updateDoc(doc(db, "appointments", session.id), {
-        status: "in-progress",
-        patientJoinedAt: serverTimestamp(),
-      })
-    }
-
-    activeSession.value = session
-    callStatus.value = "connecting"
-
-    // Subscribe to session updates
-    refreshSessionData(session.id)
-
+    
     // Initialize WebRTC
-    await initializeWebRTC(session.id, localStream)
-
-    // Start checking for remote stream
-    startRemoteStreamCheck()
-  } catch (error) {
-    console.error("Error joining session:", error)
-    alert(`Failed to join session: ${error.message || "Unknown error"}`)
-  }
-}
-
-const startRemoteStreamCheck = () => {
-  // Clear any existing interval
-  if (remoteStreamCheckInterval) {
-    clearInterval(remoteStreamCheckInterval)
-    remoteStreamCheckInterval = null
-  }
-
-  // Check immediately
-  checkRemoteVideoStatus()
-
-  // Then check every second
-  remoteStreamCheckInterval = setInterval(() => {
-    const isActive = checkRemoteVideoStatus()
-
-    // If we've detected the stream is active, we can stop checking
-    if (isActive) {
-      clearInterval(remoteStreamCheckInterval)
-      remoteStreamCheckInterval = null
-    }
-  }, 1000)
-}
-
-// Check if remote video has tracks and is playing
-const checkRemoteVideoStatus = () => {
-  const remoteVideo = remoteVideoRef.value
-
-  if (remoteVideo && remoteVideo.srcObject) {
-    const videoTracks = remoteVideo.srcObject.getVideoTracks()
-    const audioTracks = remoteVideo.srcObject.getAudioTracks()
-
-    // Check if we have video or audio tracks and they're active
-    if ((videoTracks.length > 0 && videoTracks[0].enabled) || (audioTracks.length > 0 && audioTracks[0].enabled)) {
-      remoteStreamActive.value = true
-      callStatus.value = "connected"
-      return true
-    }
-
-    // If we have tracks but they're not active yet
-    if (videoTracks.length > 0 || audioTracks.length > 0) {
-      callStatus.value = "connecting"
-    }
-  }
-
-  return false
-}
-
-const cancelSession = async (session) => {
-  if (!confirm("Are you sure you want to cancel this appointment?")) return
-
-  try {
-    if (!isOnline.value) {
-      alert("You appear to be offline. Please check your internet connection and try again.")
-      return
-    }
-
-    // Verify db is available
-    if (!db) {
-      console.error("Firestore db is not initialized")
-      alert("Database connection error. Please refresh the page and try again.")
-      return
-    }
-
-    await updateDoc(doc(db, "appointments", session.id), {
-      status: "cancelled",
-      cancelledBy: "patient",
-      cancelledAt: serverTimestamp(),
-    })
-
-    if (showingApprovedOnly.value) {
-      await loadApprovedSessions()
-    } else {
-      await refreshSessions()
-    }
-  } catch (error) {
-    console.error("Error cancelling appointment:", error)
-    alert("Failed to cancel appointment. Please try again.")
-  }
-}
-
-const sendMessage = async () => {
-  if (!newMessage.value.trim() || !activeSession.value) return
-
-  try {
-    if (!isOnline.value) {
-      alert("You appear to be offline. Please check your internet connection and try again.")
-      return
-    }
-
-    // Verify db is available
-    if (!db) {
-      console.error("Firestore db is not initialized")
-      alert("Database connection error. Please refresh the page and try again.")
-      return
-    }
-
-    await addDoc(collection(db, "appointments", activeSession.value.id, "messages"), {
-      text: newMessage.value.trim(),
-      sender: "patient",
-      senderName: auth.currentUser?.displayName || "Patient",
-      timestamp: serverTimestamp(),
-    })
-
-    newMessage.value = ""
-  } catch (error) {
-    console.error("Error sending message:", error)
-    alert("Failed to send message. Please try again.")
-  }
-}
-
-const initializeWebRTC = async (sessionId, existingStream = null) => {
-  try {
-    // Make sure we have video elements before initializing
-    if (!localVideoRef.value || !remoteVideoRef.value) {
-      console.error("Video elements not found")
-      await nextTick()
-
-      // Check again after nextTick
-      if (!localVideoRef.value || !remoteVideoRef.value) {
-        throw new Error("Video elements not available after DOM update")
+    try {
+      // Get local media stream
+      localStream.value = await WebRTCService.setupLocalStream();
+      
+      // Attach local stream to video element
+      if (localVideoRef.value) {
+        localVideoRef.value.srcObject = localStream.value;
       }
-    }
-
-    // Initialize WebRTC service
-    webRTCService = new WebRTCService({
-      localVideoRef: localVideoRef.value,
-      remoteVideoRef: remoteVideoRef.value,
-      sessionId,
-      userId: auth.currentUser?.uid || "test-patient-id",
-      userType: "patient",
-      onRemoteStreamActive: () => {
-        remoteStreamActive.value = true
-        callStatus.value = "connected"
-      },
-      onRemoteStreamInactive: () => {
-        remoteStreamActive.value = false
-        callStatus.value = "connecting"
-      },
-      onIncomingCall: (callData) => {
-        incomingCall.value = {
-          sessionId: callData.sessionId,
-          callerName: callData.callerName || "Veterinarian",
-          sessionTitle: callData.sessionTitle || "Telehealth Appointment",
+      
+      // Start the call with onTrack callback
+      const result = await WebRTCService.startCall(
+        session.id,
+        authStore.user.userId,
+        session.doctorId,
+        localStream.value,
+        (stream) => {
+          // When we receive the remote stream
+          if (remoteVideoRef.value) {
+            remoteVideoRef.value.srcObject = stream;
+            // Note that we've received tracks
+            remoteStreamActive.value = true;
+            
+            // Update Firestore to indicate the call is connected with video
+            updateDoc(callDoc, {
+              hasRemoteTracks: true,
+              status: 'connected'
+            });
+          }
         }
-      },
-      existingStream, // Pass the existing stream if available
-    })
-
-    await webRTCService.initialize()
-
-    // Manually attach local stream to video element if WebRTCService doesn't do it
-    if (existingStream && localVideoRef.value) {
-      localVideoRef.value.srcObject = existingStream
-      try {
-        await localVideoRef.value.play()
-      } catch (e) {
-        console.warn("Auto-play prevented for local video:", e)
+      );
+      
+      // Handle the result properly
+      if (result && result.remoteStream) {
+        remoteStream.value = result.remoteStream;
+        
+        // Set the remote stream to the video element
+        if (remoteVideoRef.value) {
+          remoteVideoRef.value.srcObject = result.remoteStream;
+          
+          // Check if there are already tracks in the remote stream
+          if (result.remoteStream.getTracks().length > 0) {
+            remoteStreamActive.value = true;
+          }
+        }
+      } else {
+        console.log('WebRTCService.startCall did not return expected structure:', result);
       }
+      
+      // Update the UI for active call
+      callStatus.value = 'connecting';
+      currentView.value = 'call';
+      
+      // Set document title to indicate active call
+      document.title = "In Call - Telehealth";
+      
+      // Reset initialization flags once call has started
+      isCallInitializing.value = false;
+      isInitiatingCall.value = false;
+      
+      // Start appointment timer
+      startAppointmentTimer(session);
+      
+      // Subscribe to chat messages for this call
+      subscribeToChatMessages(session.id);
+      
+    } catch (error) {
+      console.error('Error accessing media devices:', error);
+      errorMessage.value = "Could not access camera or microphone. Please check your device permissions.";
+      isCallInitializing.value = false;
+      isInitiatingCall.value = false;
     }
-
-    // Manually check remote video status after initialization
-    setTimeout(() => {
-      checkRemoteVideoStatus()
-    }, 1000)
   } catch (error) {
-    console.error("Error initializing WebRTC:", error)
-    alert("Failed to initialize video call. Please try again.")
+    console.error('Error joining session:', error);
+    errorMessage.value = "Failed to join the session. Please try again.";
+    isCallInitializing.value = false;
+    isInitiatingCall.value = false;
   }
-}
+};
 
+// Subscribe to chat messages
+const subscribeToChatMessages = (callId) => {
+  // Clean up any existing subscription
+  if (chatMessagesUnsubscribe) {
+    chatMessagesUnsubscribe();
+    chatMessagesUnsubscribe = null;
+  }
+
+  try {
+    // Create a reference to the messages collection for this call
+    const messagesRef = collection(db, 'calls', callId, 'messages');
+    
+    // Create a query to get messages ordered by timestamp
+    const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
+    
+    // Subscribe to the query
+    chatMessagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+      // Process the snapshot to update the chat messages
+      const newMessages = [];
+      
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        
+        // Convert server timestamp to Date object
+        const timestamp = data.timestamp ? data.timestamp.toDate() : new Date();
+        
+        // Add the message to the array
+        newMessages.push({
+          id: doc.id,
+          text: data.text,
+          sender: data.sender,
+          senderId: data.senderId,
+          senderName: data.senderName,
+          timestamp: timestamp,
+          read: data.read
+        });
+      });
+      
+      // Update the chat messages
+      chatMessages.value = newMessages;
+      
+      // Scroll to bottom of chat
+      nextTick(() => {
+        if (isMobileView.value) {
+          if (mobileChatMessagesRef.value) {
+            mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+          }
+        } else {
+          if (chatMessagesRef.value) {
+            chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+          }
+        }
+      });
+      
+      // Mark messages as read
+      markMessagesAsRead(newMessages);
+    });
+  } catch (error) {
+    console.error('Error subscribing to chat messages:', error);
+  }
+};
+
+// Mark messages as read
+const markMessagesAsRead = async (messages) => {
+  if (!activeSession.value || !authStore.user) return;
+
+  try {
+    // Find messages that are from vet (not user) and are unread
+    const unreadMessages = messages.filter(msg => 
+      msg.sender === 'vet' && 
+      msg.senderId !== authStore.user.userId && 
+      !msg.read
+    );
+    
+    // Mark each unread message as read
+    for (const message of unreadMessages) {
+      const messageRef = doc(db, 'calls', activeSession.value.id, 'messages', message.id);
+      await updateDoc(messageRef, { read: true });
+    }
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+  }
+};
+
+// Similarly update the acceptIncomingCall function
 const acceptIncomingCall = async () => {
-  if (!incomingCall.value) return
+  if (!incomingCall.value) return;
 
   try {
-    if (!isOnline.value) {
-      alert("You appear to be offline. Please check your internet connection and try again.")
-      return
+    // Check if it's time for the appointment
+    if (incomingCall.value.appointment && !isAppointmentTime(incomingCall.value.appointment)) {
+      alert('This appointment is not currently available for video call. You can join during the scheduled appointment time.');
+      declineIncomingCall();
+      return;
     }
-
-    // Find the session
-    const sessionId = incomingCall.value.sessionId
-    const docSnap = await getDoc(doc(db, "appointments", sessionId))
-
-    if (docSnap.exists()) {
-      const data = docSnap.data()
-      const session = {
-        id: docSnap.id,
-        ...data,
-        title: data.serviceNames ? data.serviceNames[0] : "Telehealth Appointment",
-        doctorName: data.doctorName || "Veterinarian",
-        petName: data.petName || "Your Pet",
-        petType: data.petType || "Pet",
-        scheduledTime: data.date ? new Date(data.date) : new Date(),
-        status: data.status || "pending",
-        notes: data.notes || "",
+    
+    // Set accepting call flag to true to hide the modal immediately
+    isAcceptingCall.value = true;
+    isCallInitializing.value = true;
+    
+    console.log(`Accepting call: ${incomingCall.value.id}`);
+    
+    // Find the session for this call
+    const session = sessions.value.find(s => s.id === incomingCall.value.id);
+    if (session) {
+      activeSession.value = session;
+    } else {
+      // Create a temporary session object if not found
+      activeSession.value = {
+        id: incomingCall.value.id,
+        title: incomingCall.value.sessionTitle,
+        doctorId: incomingCall.value.callerId,
+        doctorName: incomingCall.value.callerName
+      };
+    }
+    
+    // Update call status in Firebase
+    const callDoc = doc(db, 'calls', incomingCall.value.id);
+    await updateDoc(callDoc, {
+      status: 'accepted',
+      acceptedAt: new Date(),
+      acceptedBy: 'user' // The patient/pet-owner is accepting
+    });
+    
+    // Initialize WebRTC
+    try {
+      // Get local media stream
+      localStream.value = await WebRTCService.setupLocalStream();
+      
+      // Attach local stream to video element
+      if (localVideoRef.value) {
+        localVideoRef.value.srcObject = localStream.value;
       }
-
-      // Join the session
-      await joinSession(session)
-
-      // Clear the incoming call
-      incomingCall.value = null
+      
+      // Answer the call with onTrack callback - using answerCall instead of joinCall
+      const result = await WebRTCService.answerCall(
+        incomingCall.value.id,
+        localStream.value,
+        (stream) => {
+          // When we receive the remote stream
+          if (remoteVideoRef.value) {
+            remoteVideoRef.value.srcObject = stream;
+            remoteStreamActive.value = true;
+          }
+        }
+      );
+      
+      // Handle the result properly
+      if (result && result.remoteStream) {
+        remoteStream.value = result.remoteStream;
+        
+        // Set the remote stream to the video element
+        if (remoteVideoRef.value) {
+          remoteVideoRef.value.srcObject = result.remoteStream;
+          
+          // Check if there are already tracks in the remote stream
+          if (result.remoteStream.getTracks().length > 0) {
+            remoteStreamActive.value = true;
+          }
+        }
+      } else {
+        console.log('WebRTCService.answerCall did not return expected structure:', result);
+      }
+      
+      // Update the UI for active call
+      callStatus.value = 'connecting';
+      currentView.value = 'call';
+      
+      // Set document title to indicate active call
+      document.title = "In Call - Telehealth";
+      
+      // Start appointment timer if we have a session
+      if (activeSession.value) {
+        startAppointmentTimer(activeSession.value);
+      }
+      
+      // Subscribe to chat messages for this call
+      subscribeToChatMessages(incomingCall.value.id);
+      
+      // Clear incoming call state
+      incomingCall.value = null;
+      isAcceptingCall.value = false;
+      isCallInitializing.value = false;
+      
+    } catch (error) {
+      console.error('Error accessing media devices:', error);
+      errorMessage.value = "Could not access camera or microphone. Please check your device permissions.";
+      incomingCall.value = null;
+      isAcceptingCall.value = false;
+      isCallInitializing.value = false;
     }
   } catch (error) {
-    console.error("Error accepting call:", error)
-    alert(`Error accepting call: ${error.message || "Unknown error"}`)
+    console.error('Error accepting call:', error);
+    errorMessage.value = "Failed to accept the call. Please try again.";
+    incomingCall.value = null;
+    isAcceptingCall.value = false;
+    isCallInitializing.value = false;
   }
-}
+};
 
+// FIXED: Properly implemented declineIncomingCall function
 const declineIncomingCall = async () => {
-  if (!incomingCall.value) return
+  try {
+    if (!incomingCall.value) return;
+    
+    // Store the call ID in a local variable before any async operations
+    const callId = incomingCall.value.id;
+    
+    if (!callId) {
+      console.error('Invalid call ID');
+      incomingCall.value = null;
+      return;
+    }
+    
+    console.log(`Declining call: ${callId}`);
+    
+    // Update the call status in Firestore to 'rejected'
+    const callDoc = doc(db, 'calls', callId);
+    await updateDoc(callDoc, {
+      status: 'rejected',
+      rejectedAt: new Date(),
+      rejectedBy: 'user' // The patient/pet-owner is rejecting
+    });
+    
+    // Use WebRTCService to reject the call
+    WebRTCService.rejectCall(callId);
+    
+    // Clear the incoming call state
+    incomingCall.value = null;
+  } catch (error) {
+    console.error('Error declining call:', error);
+    errorMessage.value = "Failed to decline the call. Please try again.";
+    // Still clear the incoming call state even if there was an error
+    incomingCall.value = null;
+  }
+};
+
+// Function to start the appointment timer
+const startAppointmentTimer = (appointment) => {
+  if (!appointment.date || !appointment.time) return;
 
   try {
-    // Notify the caller that the call was declined
-    if (webRTCService) {
-      await webRTCService.declineCall(incomingCall.value.sessionId)
+    // Parse the appointment time (e.g., "4:00 PM - 4:20 PM")
+    if (appointment.time) {
+      const timeMatch = appointment.time.match(/(\d+:\d+\s*[APM]+)\s*-\s*(\d+:\d+\s*[APM]+)/i);
+      if (timeMatch && timeMatch.length >= 3) {
+        // Get the end time part
+        const endTimeStr = timeMatch[2].trim();
+        
+        // Create date objects for the appointment end time
+        const endTimeParts = endTimeStr.match(/(\d+):(\d+)\s*([APM]+)/i);
+        
+        if (endTimeParts) {
+          // Parse end time
+          let endHours = parseInt(endTimeParts[1]);
+          const endMinutes = parseInt(endTimeParts[2]);
+          const endPeriod = endTimeParts[3].toUpperCase();
+          
+          // Convert to 24-hour format
+          if (endPeriod === 'PM' && endHours < 12) endHours += 12;
+          if (endPeriod === 'AM' && endHours === 12) endHours = 0;
+          
+          // Create appointment end datetime object
+          const appointmentDate = appointment.date instanceof Date 
+            ? appointment.date 
+            : parseISO(appointment.date);
+          const endTime = new Date(appointmentDate);
+          endTime.setHours(endHours, endMinutes, 0, 0);
+          
+          // Set appointment end time
+          appointmentEndTime.value = endTime;
+          
+          // Update remaining time every second
+          appointmentTimer = setInterval(() => {
+            const now = new Date();
+            const diffInSeconds = differenceInSeconds(appointmentEndTime.value, now);
+            
+            if (diffInSeconds <= 0) {
+              // Time is up, show modal and end call
+              clearInterval(appointmentTimer);
+              remainingTime.value = '00:00';
+              showCallExpiredModal.value = true;
+            } else {
+              // Calculate remaining time
+              const minutes = Math.floor(diffInSeconds / 60);
+              const seconds = diffInSeconds % 60;
+              remainingTime.value = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+          }, 1000);
+        }
+      }
     }
-
-    // Clear the incoming call
-    incomingCall.value = null
   } catch (error) {
-    console.error("Error declining call:", error)
-    alert(`Error declining call: ${error.message || "Unknown error"}`)
+    console.error('Error starting appointment timer:', error);
   }
-}
+};
 
-const toggleMute = () => {
-  if (!webRTCService) return
+// Function to acknowledge call expired
+const acknowledgeCallExpired = () => {
+  showCallExpiredModal.value = false;
+  endCall();
+};
 
-  isMuted.value = !isMuted.value
-  webRTCService.toggleAudio(isMuted.value)
-}
-
-const toggleVideo = () => {
-  if (!webRTCService) return
-
-  isVideoOff.value = !isVideoOff.value
-  webRTCService.toggleVideo(isVideoOff.value)
-}
-
-const toggleScreenShare = async () => {
-  if (!webRTCService) return
+// Updated sendMessage function to use Firebase for real-time communication
+const sendMessage = async () => {
+  if (newMessage.value.trim() === '' || !activeSession.value) return;
 
   try {
-    if (isScreenSharing.value) {
-      await webRTCService.stopScreenSharing()
-    } else {
-      await webRTCService.startScreenSharing()
-    }
-
-    isScreenSharing.value = !isScreenSharing.value
+    // Create a reference to the messages collection for this call
+    const messagesRef = collection(db, 'calls', activeSession.value.id, 'messages');
+    
+    // Add the new message to Firestore
+    await addDoc(messagesRef, {
+      text: newMessage.value,
+      sender: 'user', // 'user' for patient/pet-owner, 'vet' for veterinarian
+      senderId: authStore.user.userId,
+      senderName: authStore.user.displayName || 'Patient',
+      timestamp: serverTimestamp(),
+      read: false
+    });
+    
+    // Clear the input field
+    newMessage.value = '';
+    
+    // Scroll to bottom of chat
+    nextTick(() => {
+      if (isMobileView.value) {
+        if (mobileChatMessagesRef.value) {
+          mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+        }
+      } else {
+        if (chatMessagesRef.value) {
+          chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+        }
+      }
+    });
   } catch (error) {
-    console.error("Error toggling screen share:", error)
-
-    if (error.name === "NotAllowedError") {
-      alert("Screen sharing permission was denied.")
-    } else {
-      alert("Failed to share screen. Please try again.")
-    }
+    console.error('Error sending message:', error);
   }
-}
+};
 
+// End call - UPDATED to handle remoteStream safely
 const endCall = async () => {
   try {
-    // Clear remote stream check interval if it exists
-    if (remoteStreamCheckInterval) {
-      clearInterval(remoteStreamCheckInterval)
-      remoteStreamCheckInterval = null
+    // First, update the call status in Firestore to notify the vet
+    if (activeSession.value) {
+      const callDoc = doc(db, 'calls', activeSession.value.id);
+      
+      // Update the call status to 'ended' to trigger the vet's UI to update
+      await updateDoc(callDoc, {
+        status: 'ended',
+        endedAt: new Date(),
+        endedBy: 'user', // Indicate that the user (pet owner) ended the call
+        iceConnectionState: 'closed',
+        connectionState: 'closed'
+      });
+      
+      console.log('Call status updated to ended in Firestore');
+    }
+    
+    // Clean up chat messages subscription
+    if (chatMessagesUnsubscribe) {
+      chatMessagesUnsubscribe();
+      chatMessagesUnsubscribe = null;
+    }
+    
+    // Clear appointment timer
+    if (appointmentTimer) {
+      clearInterval(appointmentTimer);
+      appointmentTimer = null;
+    }
+    
+    // Use WebRTCService to hang up
+    WebRTCService.hangUp();
+
+    // Clean up local state
+    if (localStream.value) {
+      localStream.value.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch (e) {
+          console.error('Error stopping track:', e);
+        }
+      });
+      localStream.value = null;
     }
 
-    if (webRTCService) {
-      await webRTCService.disconnect()
+    // Safely handle remoteStream cleanup
+    if (remoteStream.value) {
+      remoteStream.value.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch (e) {
+          console.error('Error stopping remote track:', e);
+        }
+      });
+      remoteStream.value = null;
     }
 
-    // Clean up local stream if it exists
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop())
-      localStream = null
+    // Clear video elements' srcObject
+    if (localVideoRef.value) {
+      localVideoRef.value.srcObject = null;
+    }
+    
+    if (remoteVideoRef.value) {
+      remoteVideoRef.value.srcObject = null;
     }
 
-    // Verify db is available
-    if (!db) {
-      console.error("Firestore db is not initialized")
-      alert("Database connection error. Please refresh the page and try again.")
-      return
-    }
+    // Reset all state variables
+    remoteStreamActive.value = false;
+    activeSession.value = null;
+    chatMessages.value = [];
+    isMuted.value = false;
+    isVideoOff.value = false;
+    isScreenSharing.value = false;
+    isSpeakerMuted.value = false;
+    showChatPanel.value = false;
+    currentView.value = 'sessions';
+    callStatus.value = "";
+    remainingTime.value = '';
 
-    if (activeSession.value && isOnline.value) {
-      await updateDoc(doc(db, "appointments", activeSession.value.id), {
-        status: "completed",
-        endedAt: serverTimestamp(),
-      })
-    }
-
-    // Clean up subscriptions
-    if (unsubscribeMessages) {
-      unsubscribeMessages()
-    }
-
-    if (unsubscribeSession) {
-      unsubscribeSession()
-    }
-
-    activeSession.value = null
-    remoteStreamActive.value = false
-    callStatus.value = ""
-
-    // Refresh sessions
-    if (showingApprovedOnly.value) {
-      await loadApprovedSessions()
-    } else {
-      await refreshSessions()
-    }
+    // Reset flags
+    isAcceptingCall.value = false;
+    isInitiatingCall.value = false;
+    isCallInitializing.value = false;
+    
+    // Reset document title to remove any "In Call" indicators
+    document.title = "Telehealth Sessions";
+    
+    // Force garbage collection
+    setTimeout(() => {
+      if (window.gc) window.gc();
+    }, 100);
   } catch (error) {
-    console.error("Error ending call:", error)
-    alert("Failed to end call properly. Please refresh the page.")
+    console.error("Error ending call:", error);
+    
+    // Even if there's an error, still reset the UI state
+    remoteStreamActive.value = false;
+    activeSession.value = null;
+    currentView.value = 'sessions';
+    
+    // Reset document title
+    document.title = "Telehealth Sessions";
   }
-}
+};
+
+// Toggle mute
+const toggleMute = () => {
+  isMuted.value = !isMuted.value;
+  WebRTCService.toggleMute(isMuted.value);
+};
+
+// Toggle video
+const toggleVideo = () => {
+  isVideoOff.value = !isVideoOff.value;
+  WebRTCService.toggleVideo(isVideoOff.value);
+};
+
+// Toggle speaker
+const toggleSpeaker = () => {
+  isSpeakerMuted.value = !isSpeakerMuted.value;
+
+  // If we have a remote video element, mute/unmute it
+  if (remoteVideoRef.value) {
+    remoteVideoRef.value.muted = isSpeakerMuted.value;
+  }
+};
+
+// Add this function to handle screen sharing ended event
+const handleScreenShareEnded = () => {
+  console.log('Screen sharing ended event received');
+  isScreenSharing.value = false;
+  
+  // Try to recover camera if needed
+  if (activeSession.value) {
+    recoverFromScreenShareError().catch(error => {
+      console.error('Error recovering from screen share end:', error);
+    });
+  }
+};
+
+// Add this function to recover from screen share errors
+const recoverFromScreenShareError = async () => {
+  try {
+    console.log('Attempting to recover from screen share error');
+    
+    // Get a new camera stream
+    const cameraStream = await navigator.mediaDevices.getUserMedia({ 
+      video: true, 
+      audio: localStream.value && localStream.value.getAudioTracks().length > 0 
+    });
+    
+    // Replace the video track
+    const videoTrack = cameraStream.getVideoTracks()[0];
+    if (videoTrack) {
+      // Get the sender that's sending the current video track
+      const sender = WebRTCService.getVideoSender();
+      if (sender) {
+        // Replace the track in the RTCPeerConnection
+        await sender.replaceTrack(videoTrack);
+      }
+      
+      // Create a new local stream if needed
+      if (!localStream.value) {
+        localStream.value = new MediaStream();
+        
+        // Add audio track if we had one before
+        const audioTrack = cameraStream.getAudioTracks()[0];
+        if (audioTrack) {
+          localStream.value.addTrack(audioTrack);
+        }
+      } else {
+        // Replace the track in our local stream
+        const oldVideoTracks = localStream.value.getVideoTracks();
+        oldVideoTracks.forEach(track => {
+          track.stop(); // Stop the old track
+          localStream.value.removeTrack(track);
+        });
+      }
+      
+      localStream.value.addTrack(videoTrack);
+      
+      // Update the local video element
+      if (localVideoRef.value) {
+        localVideoRef.value.srcObject = localStream.value;
+      }
+    }
+    
+    // Reset screen sharing state
+    isScreenSharing.value = false;
+    
+    console.log('Successfully recovered from screen share error');
+  } catch (error) {
+    console.error('Failed to recover from screen share error:', error);
+  }
+};
+
+// Fix the toggleScreenShare function to properly handle browser UI screen share ending
+const toggleScreenShare = async () => {
+  try {
+    // If we're currently screen sharing and trying to turn it off
+    if (isScreenSharing.value) {
+      // Get back to camera video
+      try {
+        // Get a new camera stream
+        const cameraStream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: localStream.value && localStream.value.getAudioTracks().length > 0 
+        });
+        
+        // Replace the video track
+        const videoTrack = cameraStream.getVideoTracks()[0];
+        if (videoTrack) {
+          // Get the sender that's sending the current video track
+          const sender = WebRTCService.getVideoSender();
+          if (sender) {
+            // Replace the track in the RTCPeerConnection
+            await sender.replaceTrack(videoTrack);
+          }
+          
+          // Replace the track in our local stream
+          const oldVideoTracks = localStream.value.getVideoTracks();
+          oldVideoTracks.forEach(track => {
+            track.stop(); // Stop the old track
+            localStream.value.removeTrack(track);
+          });
+          
+          localStream.value.addTrack(videoTrack);
+          
+          // Update the local video element
+          if (localVideoRef.value) {
+            localVideoRef.value.srcObject = localStream.value;
+          }
+        }
+        
+        // Toggle screen sharing state
+        isScreenSharing.value = false;
+      } catch (error) {
+        console.error('Error switching back to camera:', error);
+        isScreenSharing.value = false; // Still update the UI state
+        throw error;
+      }
+    } else {
+      // Starting screen share
+      try {
+        // Request screen sharing
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+          video: true,
+          audio: false // Most screen sharing doesn't include audio
+        });
+        
+        // Get the video track from screen sharing
+        const screenVideoTrack = screenStream.getVideoTracks()[0];
+        
+        if (screenVideoTrack) {
+          // Listen for the "ended" event on the screen share track
+          screenVideoTrack.addEventListener('ended', async () => {
+            // The user has ended screen sharing via the browser UI
+            console.log('Screen sharing ended by user');
+            
+            // Only attempt to switch back if we're still in screen sharing mode
+            if (isScreenSharing.value) {
+              try {
+                // Get a new camera stream
+                const cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                  video: true, 
+                  audio: localStream.value && localStream.value.getAudioTracks().length > 0 
+                });
+                
+                // Replace the video track
+                const videoTrack = cameraStream.getVideoTracks()[0];
+                if (videoTrack) {
+                  // Get the sender that's sending the current video track
+                  const sender = WebRTCService.getVideoSender();
+                  if (sender) {
+                    // Replace the track in the RTCPeerConnection
+                    await sender.replaceTrack(videoTrack);
+                  }
+                  
+                  // Replace the track in our local stream
+                  const oldVideoTracks = localStream.value.getVideoTracks();
+                  oldVideoTracks.forEach(track => {
+                    track.stop(); // Stop the old track
+                    localStream.value.removeTrack(track);
+                  });
+                  
+                  localStream.value.addTrack(videoTrack);
+                  
+                  // Update the local video element
+                  if (localVideoRef.value) {
+                    localVideoRef.value.srcObject = localStream.value;
+                  }
+                }
+                
+                // Update UI state
+                isScreenSharing.value = false;
+              } catch (error) {
+                console.error('Error switching back to camera after screen share ended:', error);
+                // Still update UI state even if there was an error
+                isScreenSharing.value = false;
+              }
+            }
+          });
+          
+          // Get the sender that's sending the current video track
+          const sender = WebRTCService.getVideoSender();
+          if (sender) {
+            // Replace the track in the RTCPeerConnection
+            await sender.replaceTrack(screenVideoTrack);
+          }
+          
+          // Replace the track in our local stream
+          const oldVideoTracks = localStream.value.getVideoTracks();
+          oldVideoTracks.forEach(track => {
+            track.stop(); // Stop the old track
+            localStream.value.removeTrack(track);
+          });
+          
+          localStream.value.addTrack(screenVideoTrack);
+          
+          // Update the local video element
+          if (localVideoRef.value) {
+            localVideoRef.value.srcObject = localStream.value;
+          }
+          
+          // Toggle screen sharing state
+          isScreenSharing.value = true;
+        }
+      } catch (error) {
+        // User cancelled the screen sharing prompt
+        console.error('Error starting screen share:', error);
+        isScreenSharing.value = false; // Ensure UI state is correct
+        throw error;
+      }
+    }
+    
+    return localStream.value;
+  } catch (error) {
+    console.error('Error toggling screen share:', error);
+    errorMessage.value = "Failed to toggle screen sharing. Please try again.";
+    isScreenSharing.value = false; // Ensure UI state is correct
+    throw error;
+  }
+};
+
+// Setup incoming calls listener
+const setupIncomingCallsListener = () => {
+  if (!authStore.user || !authStore.user.userId) return;
+
+  try {
+    incomingCallsUnsubscribe = WebRTCService.listenForIncomingCalls(
+      authStore.user.userId,
+      (callData) => {
+        // Find the appointment details
+        const appointment = sessions.value.find(s => s.id === callData.id);
+        
+        if (appointment) {
+          // Check if it's time for the appointment
+          if (!isAppointmentTime(appointment)) {
+            console.log("Ignoring incoming call outside of appointment time");
+            return;
+          }
+          
+          incomingCall.value = {
+            id: callData.id,
+            callerId: callData.callerId,
+            callerName: appointment.doctorName || 'Doctor',
+            sessionTitle: appointment.title || 'Telehealth Session',
+            appointment: appointment
+          };
+          
+          // Add a listener to check if the call gets canceled or ended by the vet
+          const callDoc = doc(db, 'calls', callData.id);
+          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+              // If the call was rejected or ended by the vet, hide the incoming call modal
+              if (data.status === 'rejected' || data.status === 'ended') {
+                console.log('Call was rejected or ended by the veterinarian');
+                // Hide the incoming call modal
+                if (incomingCall.value && incomingCall.value.id === callData.id) {
+                  incomingCall.value = null;
+                }
+                // Unsubscribe from this listener
+                callStatusUnsubscribe();
+              }
+            }
+          });
+        } else {
+          incomingCall.value = {
+            id: callData.id,
+            callerId: callData.callerId,
+            callerName: 'Doctor',
+            sessionTitle: 'Telehealth Session'
+          };
+          
+          // Add the same listener for unknown appointments
+          const callDoc = doc(db, 'calls', callData.id);
+          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+              // If the call was rejected or ended by the vet, hide the incoming call modal
+              if (data.status === 'rejected' || data.status === 'ended') {
+                console.log('Call was rejected or ended by the veterinarian');
+                // Hide the incoming call modal
+                if (incomingCall.value && incomingCall.value.id === callData.id) {
+                  incomingCall.value = null;
+                }
+                // Unsubscribe from this listener
+                callStatusUnsubscribe();
+              }
+            }
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up incoming calls listener:', error);
+  }
+};
 
 // Lifecycle hooks
 onMounted(() => {
-  // Set up network monitoring
-  setupNetworkMonitoring()
+  checkMobileView();
+  window.addEventListener("resize", checkMobileView);
 
-  // Load sessions
-  refreshSessions()
+  // Initialize auth if needed
+  if (!authStore.isInitialized) {
+    authStore.initialize();
+  }
 
-  // Set up chat messages ref
-  watch(chatMessages, () => {
-    setTimeout(() => {
-      if (chatMessagesRef.value) {
-        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
-      }
-    }, 100)
-  })
-})
+  // Fetch categories first
+  serviceCategoryStore.fetchCategories();
 
+  // Fetch services to get category information
+  serviceCategoryStore.fetchServices();
+
+  // Load approved sessions by default
+  loadApprovedSessions();
+
+  // Initialize Lottie animations
+  initializeLottieAnimations();
+  startAutoplay();
+
+  // Setup network monitoring
+  setupNetworkMonitoring();
+
+  // Setup incoming calls listener
+  setupIncomingCallsListener();
+
+  // Listen for screen sharing state changes from WebRTCService
+  window.addEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
+});
+
+// Clean up when component is unmounted
 onUnmounted(() => {
+  stopAutoplay();
+  clearInterval(networkStatusInterval);
+  window.removeEventListener("resize", checkMobileView);
+  window.removeEventListener("online", handleOnline);
+  window.removeEventListener("offline", handleOffline);
+  window.removeEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
+
   // Clean up WebRTC
-  if (webRTCService) {
-    webRTCService.disconnect()
+  if (activeSession.value) {
+    endCall();
   }
 
-  // Clean up local stream if it exists
-  if (localStream) {
-    localStream.getTracks().forEach((track) => track.stop())
-    localStream = null
+  // Unsubscribe from incoming calls listener
+  if (incomingCallsUnsubscribe) {
+    incomingCallsUnsubscribe();
+  }
+  
+  // Clean up chat messages subscription
+  if (chatMessagesUnsubscribe) {
+    chatMessagesUnsubscribe();
+    chatMessagesUnsubscribe = null;
+  }
+  
+  // Clear appointment timer
+  if (appointmentTimer) {
+    clearInterval(appointmentTimer);
+    appointmentTimer = null;
+  }
+});
+
+// Watchers
+watch(currentSlide, (newSlide, oldSlide) => {
+  lottieInstances.forEach((instance, index) => {
+    if (index === newSlide) {
+      instance.play();
+    } else {
+      instance.pause();
+    }
+  });
+});
+
+// Watch for call status changes to update UI - UPDATED to safely check remoteStream
+watch(() => callStatus.value, (newStatus) => {
+  if (newStatus === 'connected') {
+    // Double check remote stream when connection is established
+    if (remoteStream.value && typeof remoteStream.value.getTracks === 'function') {
+      try {
+        const tracks = remoteStream.value.getTracks();
+        if (tracks && tracks.length > 0) {
+          remoteStreamActive.value = true;
+        }
+      } catch (error) {
+        console.error('Error checking remote stream tracks:', error);
+      }
+    } else {
+      // If remoteStream doesn't have getTracks, we might still be connected
+      // if the remote video element has a srcObject
+      if (remoteVideoRef.value && remoteVideoRef.value.srcObject) {
+        remoteStreamActive.value = true;
+      }
+    }
+  }
+});
+
+// Watch for Firestore call status updates
+watch(() => activeSession.value, async (newSession) => {
+  if (unsubscribeCallStatus.value) {
+    unsubscribeCallStatus.value(); // Unsubscribe from previous listener
+    unsubscribeCallStatus.value = null;
   }
 
-  // Clear any intervals
-  if (remoteStreamCheckInterval) {
-    clearInterval(remoteStreamCheckInterval)
-    remoteStreamCheckInterval = null
-  }
+  if (newSession) {
+    // Listen for call status updates in Firestore
+    const callDoc = doc(db, 'calls', newSession.id);
+    const unsubscribe = onSnapshot(callDoc, (snapshot) => {
+      const data = snapshot.data();
+      if (data) {
+        // Update call status based on Firestore
+        if (data.status === 'connected') {
+          callStatus.value = 'connected';
+          remoteStreamActive.value = true; // Update remote stream active state when connected
 
-  if (networkStatusInterval) {
-    clearInterval(networkStatusInterval)
-    networkStatusInterval = null
-  }
+          // Check if remote stream has tracks flag is set
+          if (data.hasRemoteTracks) {
+            remoteStreamActive.value = true;
+          }
+        } else if (data.status === 'ended' && !isCallInitializing.value) {
+          callStatus.value = 'ended';
+          // Auto end call if the other party ended it
+          if (activeSession.value) {
+            endCall();
+          }
+        }
+      }
+    });
 
-  // Remove network event listeners
-  window.removeEventListener("online", handleOnline)
-  window.removeEventListener("offline", handleOffline)
-
-  // Clean up subscriptions
-  if (unsubscribeMessages) {
-    unsubscribeMessages()
+    unsubscribeCallStatus.value = unsubscribe;
   }
-
-  if (unsubscribeSession) {
-    unsubscribeSession()
-  }
-})
+});
 </script>
 
 <style scoped>
+/* Slide transition animations */
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-enter-from {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.slide-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.slide-enter-to,
+.slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .telehealth-container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  position: relative;
-}
-
-.sessions-list h1 {
-  margin-bottom: 20px;
-}
-
-.filter-controls {
-  display: flex;
-  margin-bottom: 20px;
-}
-
-.form-select {
-  padding: 8px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  margin-right: 10px;
-}
-
-.btn {
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-primary {
-  background-color: #4a6cf7;
-  color: white;
-  border: none;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-}
-
-.btn-success {
-  background-color: #28a745;
-  color: white;
-  border: none;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.spinner {
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border-left-color: #4a6cf7;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 10px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-}
-
-.sessions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.session-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
-  cursor: pointer;
-  background-color: white;
-}
-
-.session-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  padding: 15px;
-  border-bottom: 1px solid #e0e0e0;
-  position: relative;
-}
-
-.status-badge {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.status-scheduled {
-  background-color: #e3f2fd;
-  color: #0d47a1;
-}
-
-.status-approved {
-  background-color: #e8f5e9;
-  color: #1b5e20;
-}
-
-.status-in-progress {
-  background-color: #e8f5e9;
-  color: #1b5e20;
-}
-
-.status-completed {
-  background-color: #eeeeee;
-  color: #424242;
-}
-
-.status-cancelled {
-  background-color: #ffebee;
-  color: #b71c1c;
-}
-
-.session-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-right: 80px;
-}
-
-.card-body {
-  padding: 15px;
-}
-
-.card-body p {
-  margin-bottom: 8px;
-}
-
-.card-footer {
-  padding: 15px;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-}
-
-/* Active Session Styles */
-.active-session {
-  background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.session-header {
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #e0e0e0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.session-header h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.patient-info {
-  display: flex;
-  gap: 20px;
-}
-
-.call-status {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  color: #666;
-}
-
-.status-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-
-.status-indicator.connecting {
-  background-color: #ffc107;
-  animation: pulse 1.5s infinite;
-}
-
-.status-indicator.connected {
-  background-color: #28a745;
-}
-
-@keyframes pulse {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
-}
-
-.video-container {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 20px;
-  padding: 20px;
-  background-color: #1a1a1a;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-/* When remote stream is active, adjust the layout */
-.video-container.remote-active {
-  grid-template-columns: 3fr 1fr;
-}
-
-.remote-video {
-  position: relative;
-  width: 100%;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  overflow: hidden;
-  aspect-ratio: 16 / 9;
-}
-
-.remote-video video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.video-placeholder {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 18px;
-  background-color: rgba(0, 0, 0, 0.7);
-}
-
-.waiting-animation {
-  position: relative;
-  margin-bottom: 20px;
-}
-
-.pulse-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  animation: pulse-ring 1.5s ease-out infinite;
-}
-
-@keyframes pulse-ring {
-  0% {
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0.8;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.3);
-    opacity: 0;
-  }
-}
-
-.local-video {
-  position: relative;
-  width: 100%;
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  overflow: hidden;
-  aspect-ratio: 3 / 4;
-  transition: all 0.3s ease;
-}
-
-/* Picture-in-picture mode when remote stream is active */
-.local-video.pip-mode {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  width: 25%;
-  max-width: 200px;
-  aspect-ratio: 3 / 4;
-  z-index: 10;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.local-video video {
-  width: 100%;
+  min-height: 100%;
   height: 100%;
-  object-fit: cover;
+  padding-bottom: 1.5rem;
 }
 
-.call-controls {
-  position: absolute;
-  bottom: 10px;
-  left: 0;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
+.telehealth-container > div:first-child {
+  min-height: calc(100% + 1.25rem);
 }
 
-.session-tools {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  padding: 20px;
-}
-
-.notes-section, .chat-section {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 15px;
-  height: 400px;
-  display: flex;
-  flex-direction: column;
-}
-
-.notes-section h3, .chat-section h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.notes-content {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 10px;
-  background-color: white;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
-}
-
-.form-control {
-  width: 100%;
-  padding: 8px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  font-family: inherit;
-}
-
-.chat-messages {
-  flex-grow: 1;
-  overflow-y: auto;
-  margin-bottom: 10px;
-  padding-right: 5px;
-}
-
-.message {
-  margin-bottom: 10px;
-  max-width: 80%;
-}
-
-.message.sent {
-  margin-left: auto;
-}
-
-.message-content {
-  padding: 10px;
-  border-radius: 8px;
-  word-break: break-word;
-}
-
-.sent .message-content {
-  background-color: #e3f2fd;
-}
-
-.received .message-content {
-  background-color: #f1f1f1;
-}
-
-.message-time {
-  font-size: 12px;
-  color: #666;
-  margin-top: 2px;
-  text-align: right;
-}
-
-.chat-input {
-  display: flex;
-  gap: 10px;
-}
-
-.chat-input input {
-  flex-grow: 1;
-}
-
-/* Network Status Banner */
-.network-status-banner {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-/* Incoming Call Modal */
-.incoming-call-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.incoming-call-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.animate-pulse {
-  animation: pulse 1.5s infinite;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .video-container {
-    grid-template-columns: 1fr;
-  }
-  
-  .video-container.remote-active {
-    grid-template-columns: 1fr;
-  }
-  
-  .local-video.pip-mode {
-    width: 35%;
-  }
-  
-  .session-tools {
-    grid-template-columns: 1fr;
-  }
-  
-  .session-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .patient-info {
-    margin: 10px 0;
-    flex-direction: column;
-    gap: 5px;
+@media (min-width: 768px) {
+  .telehealth-container {
+    min-height: calc(100% + 1.25rem);
   }
 }
 </style>

@@ -1,3 +1,4 @@
+//main.js
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from '@/App.vue';
@@ -10,7 +11,6 @@ import notificationSyncService from './services/notificationSyncService';
 
 // Import stores
 import { useNotificationsStore } from './stores/modules/notifications';
-import { useTelehealthStore } from './stores/modules/teleHealthStore';
 
 // Create Vue app
 const app = createApp(App);
@@ -32,10 +32,6 @@ app.config.globalProperties.$notifications = notificationService;
 
 // Initialize the stores here, before mounting the app
 const notificationsStore = useNotificationsStore();
-const telehealthStore = useTelehealthStore();
-
-// Make telehealth store available globally
-app.config.globalProperties.$telehealth = telehealthStore;
 
 // Mount the app
 app.mount('#app');
@@ -51,11 +47,6 @@ setTimeout(async () => {
     // Initialize services
     await notificationService.initialize();
     await notificationSyncService.initialize();
-    
-    // Initialize telehealth services if needed
-    if (telehealthStore.initialize && typeof telehealthStore.initialize === 'function') {
-      await telehealthStore.initialize();
-    }
     
     console.log('Services initialized successfully');
   } catch (error) {

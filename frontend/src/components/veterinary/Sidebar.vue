@@ -208,7 +208,7 @@
       icon: Calendar,
       label: 'Appointments',
       subItems: [
-        { href: '/vet/appointments/vetappointmentapproval', icon: Check, label: 'Appointment Approval' },
+        { href: '/vet/appointments/vetappointmentapproval', icon: Check, label: 'Appointments' },
         { href: '/vet/appointments/vetcalendar', icon: Calendar, label: 'Calendar' },
       ]
     },

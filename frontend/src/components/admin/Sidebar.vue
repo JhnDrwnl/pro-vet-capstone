@@ -232,14 +232,6 @@ const navItems = [
     ]
   },
   { 
-    icon: Clock, 
-    label: 'Session',
-    subItems: [
-      { href: '/admin/session/online', label: 'Online' },
-      { href: '/admin/session/walkin', label: 'Walk-in' }
-    ]
-  },
-  { 
     icon: Database, 
     label: 'Data',
     subItems: [
@@ -247,11 +239,6 @@ const navItems = [
       { href: '/admin/datamanagement/petprofiles', label: 'Pet Profiles' },
       { href: '/admin/datamanagement/veterinarians', label: 'Veterinarians' }
     ]
-  },
-  { 
-    href: '/admin/telehealth', 
-    icon: Video, 
-    label: 'Telehealth' 
   },
   { 
     icon: MessageCircleCode,
