@@ -38,9 +38,7 @@ if not firebase_admin._apps:
 
 # Get Gemini API key from environment variables
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# if not GEMINI_API_KEY:
-#     # Fallback to hardcoded key for testing (remove in production)
-#     GEMINI_API_KEY = "AIzaSyBqAW39u5D6RwW0LJ2qqJQTtIOEwgDQBmA"
+
 
 # Language detection function
 def detect_language(text: str) -> str:
