@@ -20,7 +20,7 @@ sys.path.append(project_root)
 models = {}
 feature_names = {}
 species_list = ['dog', 'cat', 'chicken', 'fish', 'hamster', 'rabbit', 'snake', 'turtle']
-models_dir = os.path.join(project_root, 'species_models')
+models_dir = os.path.join(project_root, 'ml-backend/prediction_models')
 
 print(f"Loading models from: {models_dir}")
 

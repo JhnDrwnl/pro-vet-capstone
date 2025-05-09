@@ -1,0 +1,168 @@
+version: "3.1"
+
+stories:
+  - story: greeting path with office hours
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: OfficeHoursIntent
+      - action: action_office_hours
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: greeting path with office days
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: OfficeDaysIntent
+      - action: action_office_days
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: office location path
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: OfficeLocationIntent
+      - action: action_office_location
+      - intent: VeterinariansIntent
+      - action: action_veterinarians_info
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: services information path
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: ServicesOfferIntent
+      - action: action_services_offer
+      - intent: PetSpeciesAcceptedIntent
+      - action: action_pet_species_accepted
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: appointment information path
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: AppointmentIntent
+      - action: action_appointment
+      - intent: AppointmentBasicVeterinaryServicesIntent
+      - action: action_appointment_basic_services
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: walk-in services path
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: WalkInBasicVeterinaryServicesIntent
+      - action: action_walkin_basic_services
+      - intent: BasicServiceChecklistIntent
+      - action: action_basic_service_checklist
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: elective services path
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: WalkinElectiveVeterinaryServicesIntent
+      - action: action_walkin_elective_services
+      - intent: ElectiveServiceChecklistIntent
+      - action: action_elective_service_checklist
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: health certificate path
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+      - intent: WalkinVeterinaryHealthCertificateIntent
+      - action: action_walkin_health_certificate
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct veterinarians inquiry with office hours
+    steps:
+      - intent: VeterinariansIntent
+      - action: action_veterinarians_info
+      - intent: OfficeHoursIntent
+      - action: action_office_hours
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct veterinarians inquiry with office days
+    steps:
+      - intent: VeterinariansIntent
+      - action: action_veterinarians_info
+      - intent: OfficeDaysIntent
+      - action: action_office_days
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct services inquiry
+    steps:
+      - intent: ServicesOfferIntent
+      - action: action_services_offer
+      - intent: AppointmentIntent
+      - action: action_appointment
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct pet species inquiry
+    steps:
+      - intent: PetSpeciesAcceptedIntent
+      - action: action_pet_species_accepted
+      - intent: ServicesOfferIntent
+      - action: action_services_offer
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct appointment inquiry
+    steps:
+      - intent: AppointmentIntent
+      - action: action_appointment
+      - intent: PetSpeciesAcceptedIntent
+      - action: action_pet_species_accepted
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct walk-in services inquiry
+    steps:
+      - intent: WalkInBasicVeterinaryServicesIntent
+      - action: action_walkin_basic_services
+      - intent: AppointmentBasicVeterinaryServicesIntent
+      - action: action_appointment_basic_services
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct elective services inquiry
+    steps:
+      - intent: WalkinElectiveVeterinaryServicesIntent
+      - action: action_walkin_elective_services
+      - intent: BasicServiceChecklistIntent
+      - action: action_basic_service_checklist
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: direct health certificate inquiry
+    steps:
+      - intent: WalkinVeterinaryHealthCertificateIntent
+      - action: action_walkin_health_certificate
+      - intent: OfficeLocationIntent
+      - action: action_office_location
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+
+  - story: language detection
+    steps:
+      - intent: DetectLanguageIntent
+      - action: action_detect_language
+
+  - story: fallback path
+    steps:
+      - intent: nlu_fallback
+      - action: action_gemini_fallback
+      - intent: GoodbyeIntent
+      - action: action_goodbye

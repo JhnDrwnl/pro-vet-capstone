@@ -1,0 +1,982 @@
+version: "3.1"
+
+nlu:
+- lookup: language
+  examples: |
+    - english
+    - tagalog
+    - taglish
+
+- intent: DetectLanguageIntent
+  examples: |
+    - Please speak in [english](language)
+    - Please answer in [english](language)
+    - I prefer [english](language) answer
+    - Gusto ko [tagalog](language)
+    - Let's speak in [english](language)
+    - Can you respond in [english](language)?
+    - Pwede [tagalog](language)
+    - I'd like to continue in [english](language)
+    - Mas gusto ko [tagalog](language) na sagot
+    - Pwede ba [tagalog](language) na sagot
+    - Please use [english](language)
+    - Mag [tagalog](language) ka
+    - Answer in [english](language)
+    - Sumagot ka [tagalog](language)
+    - Let's mix [taglish](language)
+    - Switch to [english](language) please
+    - Mag [tagalog](language)
+    - Can we use [taglish](language) instead
+    - I want [english](language) responses
+    - Gusto ko [tagalog](language) na sagot
+    - Please reply in [english](language)
+    - Sagutin mo ako sa [tagalog](language)
+    - Let's use [taglish](language) para mas madali
+
+
+- intent: GreetingIntent
+  examples: |
+    - Hello
+    - Hi there
+    - Good morning
+    - Good afternoon
+    - Good evening
+    - Hey
+    - Greetings
+    - How are you?
+    - Hi, I need help with my pet
+    - Hello, is this the vet clinic?
+    - I'd like to speak with someone about my pet
+    - Hey there, I have a question
+    - Hi! I'm new here
+    - Hello, I'm checking in for my appointment
+    - Good day
+    - Hi, I'm wondering if you can help me
+    - Hello, is anyone available?
+    - Hi, I need to schedule a visit for my pet
+    - Hey, just reaching out about my dog
+    - Hello, I'm interested in your veterinary services
+    - Kamusta
+    - Magandang umaga
+    - Magandang hapon
+    - Magandang gabi
+    - Kumusta po
+    - Hello po
+    - Mabuhay
+    - Magandang araw
+    - Kamusta po kayo
+    - Nandito na po ako
+    - Pwede po magtanong
+    - Magandang buhay
+    - Kumusta ang araw mo
+    - Nandito na ako para sa appointment
+    - Pwede po ba akong humingi ng tulong
+    - Magandang umaga po sa inyo
+    - Kamusta po ang klinika ngayon
+    - Nais ko pong magtanong tungkol sa aking alagang hayop
+    - Magandang araw po, bukas pa po ba kayo
+    - Kamusta po, may appointment ako ngayon
+    - Hello po
+    - Hi, kumusta po kayo
+    - Good morning po sa clinic
+    - Hello, pwede magtanong about my pet?
+    - Hi there, may appointment ako today
+    - Kamusta, I need help with my dog
+    - Hello, nandito na ako for my pet's checkup
+    - Hi, pwede ba mag-ask ng question?
+    - Good afternoon, dito po ba ang vet clinic?
+    - Hey, gusto ko lang mag-inquire about your services
+    - Hello po, I'm here for my pet's vaccination
+    - Hi, may problema po ang cat ko
+    - Kamusta po, I'd like to schedule an appointment
+    - Hello, pwede po ba malaman ang clinic hours niyo?
+    - Hi there, dito po ba nagpapa-groom ng pets?
+    - Good evening po, open pa po ba kayo?
+    - Hello, I'm worried about my pet po
+    - Hi, first time ko po dito with my puppy
+    - Kamusta po, can I ask about your veterinary services?
+    - Hello po, I need advice about my pet's diet
+
+- intent: OfficeHoursIntent
+  examples: |
+    - What are your office hours?
+    - When do you open?
+    - What time does the office close?
+    - Are you open from 8 am to 5 pm?
+    - What are your business hours?
+    - Until what time are you open?
+    - What time do you start operations?
+    - When does the office open in the morning?
+    - Are you still open at 4:30 pm?
+    - Do you close at exactly 5 pm?
+    - What hours are you available?
+    - Can I visit at 8:30 in the morning?
+    - Is the office open during lunch hours?
+    - Do you have extended hours?
+    - What's your daily schedule?
+    - Are you open right now?
+    - What time should I arrive before you close?
+    - Do you open at 8 am sharp?
+    - How late are you open?
+    - What are your operating hours?
+    - Ano ang oras ng opisina ninyo?
+    - Anong oras kayo nagbubukas?
+    - Anong oras nagsasara ang opisina?
+    - Bukas ba kayo mula alas-8 ng umaga hanggang alas-5 ng hapon?
+    - Ano ang oras ng negosyo ninyo?
+    - Hanggang anong oras kayo bukas?
+    - Anong oras kayo nagsisimulang mag-operate?
+    - Kailan nagbubukas ang opisina sa umaga?
+    - Bukas pa ba kayo ng alas-4:30 ng hapon?
+    - Nagsasara ba kayo ng eksakto alas-5 ng hapon?
+    - Anong oras kayo available?
+    - Pwede ba akong bumisita ng 8:30 ng umaga?
+    - Bukas ba ang opisina sa oras ng tanghalian?
+    - May extended hours ba kayo?
+    - Ano ang pang-araw-araw na iskedyul ninyo?
+    - Bukas ba kayo ngayon?
+    - Anong oras ako dapat dumating bago kayo magsara?
+    - Nagbubukas ba kayo ng eksakto alas-8 ng umaga?
+    - Gaano katagal kayo bukas?
+    - Ano ang oras ng operasyon ninyo?
+    - What time po kayo open?
+    - Anong oras po ang closing ninyo?
+    - Open po ba kayo from 8 am to 5 pm?
+    - Ano po ang office hours ninyo?
+    - Hanggang what time po kayo open?
+    - What time po kayo nag-start ng operations?
+    - Kailan po nagbubukas ang office sa morning?
+    - Open pa rin po ba kayo at 4:30 pm?
+    - Nagsasara po ba kayo exactly 5 pm?
+    - Anong hours po kayo available?
+    - Pwede po ba akong mag-visit at 8:30 in the morning?
+    - Open po ba ang office during lunch hours?
+    - May extended hours po ba kayo?
+    - Ano po ang daily schedule ninyo?
+    - Open po ba kayo right now?
+    - What time po ako dapat dumating before mag-close?
+    - Nag-o-open po ba kayo at 8 am sharp?
+    - How late po kayo open?
+    - Ano po ang operating hours ninyo?
+    - Bukas pa po ba ang office?
+
+
+- intent: OfficeDaysIntent
+  examples: |
+    - What days are you open?
+    - Is the Provincial Vet Office open on weekends?
+    - Do you operate on Saturdays and Sundays?
+    - Are you closed on holidays?
+    - What are your working days?
+    - Can I visit your office on a Saturday?
+    - Is the office open on Sundays?
+    - Which days of the week are you open?
+    - Are you available on weekends?
+    - Do you provide services on holidays?
+    - Is the Provincial Vet Office closed on weekends?
+    - What's your schedule for the week?
+    - Are you only open on weekdays?
+    - Can I come in on a Sunday for an emergency?
+    - Do you work on public holidays?
+    - What days should I avoid coming to your office?
+    - Is the office operational on weekends?
+    - When is the Provincial Vet Office closed?
+    - Do you have weekend hours?
+    - Are there any days when the office is not available?
+    - Anong araw kayo bukas?
+    - Bukas ba ang Provincial Vet Office tuwing weekend?
+    - Nag-ooperate ba kayo tuwing Sabado at Linggo?
+    - Sarado ba kayo tuwing holiday?
+    - Ano ang mga araw ng trabaho ninyo?
+    - Pwede ba akong bumisita sa opisina ninyo tuwing Sabado?
+    - Bukas ba ang opisina tuwing Linggo?
+    - Anong mga araw ng linggo kayo bukas?
+    - Available ba kayo tuwing weekend?
+    - Nagbibigay ba kayo ng serbisyo tuwing holiday?
+    - Sarado ba ang Provincial Vet Office tuwing weekend?
+    - Ano ang iskedyul ninyo sa buong linggo?
+    - Bukas lang ba kayo tuwing weekdays?
+    - Pwede ba akong pumunta ng Linggo para sa emergency?
+    - Nagtatrabaho ba kayo tuwing pista opisyal?
+    - Anong mga araw ang dapat kong iwasan na pumunta sa opisina ninyo?
+    - Operational ba ang opisina tuwing weekend?
+    - Kailan sarado ang Provincial Vet Office?
+    - May oras ba kayo ng pagbubukas tuwing weekend?
+    - May mga araw ba na hindi available ang opisina?
+    - What days po kayo open?
+    - Open ba ang Provincial Vet Office during weekends?
+    - Nag-o-operate ba kayo on Saturdays and Sundays?
+    - Closed po ba kayo during holidays?
+    - Ano po ang working days ninyo?
+    - Pwede po ba akong mag-visit sa office ninyo on a Saturday?
+    - Open po ba ang office on Sundays?
+    - Which days of the week po kayo open?
+    - Available po ba kayo on weekends?
+    - Nag-provide po ba kayo ng services during holidays?
+    - Closed po ba ang Provincial Vet Office on weekends?
+    - What's your schedule po for the week?
+    - Open lang po ba kayo on weekdays?
+    - Pwede po ba akong pumunta on a Sunday for an emergency?
+    - Do you work po on public holidays?
+    - Anong days po ang dapat kong iwasan to come to your office?
+    - Operational po ba ang office on weekends?
+    - When is the Provincial Vet Office po closed?
+    - May weekend hours po ba kayo?
+    - Are there any days po na hindi available ang office?
+
+- intent: OfficeLocationIntent
+  examples: |
+    - Where is your clinic located?
+    - What's your address?
+    - How do I get to your clinic?
+    - Can you give me directions to your office?
+    - Is your clinic near [landmark]?
+    - Do you have parking available?
+    - Which building are you in?
+    - What's the nearest landmark to your clinic?
+    - Is your clinic accessible by public transportation?
+    - What floor is your office on?
+    - Where is your clinic located?
+    - What's your office address?
+    - How do I get to your veterinary clinic?
+    - Do you have parking available?
+    - Is your clinic near any landmarks?
+    - Can you give me directions to your office?
+    - Which floor is your clinic on?
+    - Is there public transportation available to your location?
+    - What's the nearest intersection to your clinic?
+    - Do you have multiple locations?
+    - Saan matatagpuan ang klinika ninyo?
+    - Ano ang address ng opisina ninyo?
+    - Paano pumunta sa veterinary clinic ninyo?
+    - May parking ba sa klinika ninyo?
+    - Malapit ba kayo sa anumang kilalang lugar?
+    - Pwede bang bigyan niyo ako ng direksyon papunta sa inyo?
+    - Saang palapag ang klinika ninyo?
+    - May available ba na pampublikong transportasyon papunta sa inyo?
+    - Ano ang pinakamalapit na kanto sa klinika ninyo?
+    - May iba pa ba kayong sangay?
+    - Saan matatagpuan ang inyong klinika?
+    - Ano ang address ninyo?
+    - Paano pumunta sa inyong klinika?
+    - Pwede bang bigyan mo ako ng direksyon papunta sa opisina ninyo?
+    - Malapit ba ang klinika ninyo sa Kapitolyo?
+    - May available na parking ba kayo?
+    - Saang building kayo?
+    - Ano ang pinakamalapit na landmark sa inyong klinika?
+    - Accessible ba ang klinika ninyo sa pampublikong transportasyon?
+    - Nasa anong palapag ang opisina ninyo?
+    - Where po ba located ang clinic ninyo?
+    - Ano po ang address ng vet office ninyo?
+    - Paano po pumunta sa location ninyo?
+    - May parking space ba sa clinic?
+    - Malapit ba kayo sa any landmark?
+    - Can you give directions po papunta sa inyo?
+    - What floor po ang clinic ninyo?
+    - May public transpo ba na dumadaan near your clinic?
+    - Ano po ang nearest intersection sa location ninyo?
+    - May ibang branch pa po ba kayo?
+    - San ba location niyo?
+    - Pano pumunta dyan?
+    - Address niyo please?
+    - Malapit ba kayo sa mall?
+    - May parking ba dyan?
+    - Anong landmark malapit sa inyo?
+    - Madali ba kayo mahanap?
+    - Downtown ba kayo?
+    - San exactly location niyo?
+    - Anong building kayo?
+
+- intent: VeterinariansIntent
+  examples: |
+    - Who are the veterinarians at your clinic?
+    - Can you tell me about your vets?
+    - What are the specializations of your doctors?
+    - How experienced are your veterinarians?
+    - Are vets available for consultations?
+    - Do you have specialists for exotic pets?
+    - Which vet should I see for my dog's skin condition?
+    - Are your veterinarians certified?
+    - How many vets work at your clinic?
+    - Who are the veterinarians in your clinic?
+    - What are the specializations of your vets?
+    - How experienced is your vet?
+    - Do you have a vet who specializes in exotic pets?
+    - Can you tell me about your veterinary team?
+    - Is there a vet available who specializes in feline medicine?
+    - How long has your head veterinarian been practicing?
+    - Are all your vets licensed and certified?
+    - Do you have veterinarians who can perform complex surgeries?
+    - Which vet should I see for my dog's skin condition?
+    - Who is the head veterinarian at your practice?
+    - Sino-sino ang mga beterinaryo sa klinika ninyo?
+    - Ano ang mga espesyalisasyon ng mga vet ninyo?
+    - Gaano na katagal nagpapraktis ang vet niyo?
+    - May beterinaryo ba kayo na espesyalista sa mga exotic pets?
+    - Pwede bang malaman ang tungkol sa inyong veterinary team?
+    - May available ba kayong vet na espesyalista sa mga pusa?
+    - Gaano na katagal nagpapraktis ang head veterinarian ninyo?
+    - Lisensyado at sertipikado ba ang lahat ng vet ninyo?
+    - May mga beterinaryo ba kayo na makakapagsagawa ng komplikadong operasyon?
+    - Sinong vet ang dapat kong kausapin para sa skin condition ng aso ko?
+    - Sino-sino ang mga beterinaryo sa inyong klinika?
+    - Pwede mo bang sabihin sa akin ang tungkol sa inyong mga vet?
+    - Ano ang mga espesyalisasyon ng inyong mga doktor?
+    - Gaano katagal na ang karanasan ng inyong mga beterinaryo?
+    - Available ba si Doc para sa konsultasyon?
+    - Mayroon ba kayong mga espesyalista para sa exotic pets?
+    - Sinong vet ang dapat kong kausapin para sa skin condition ng aking aso?
+    - Sertipikado ba ang inyong mga beterinaryo?
+    - Ilang vet ang nagtatrabaho sa inyong klinika?
+    - Sino ang head veterinarian sa inyong opisina?
+    - Sino-sino po ang veterinarians sa clinic ninyo?
+    - Ano po ang specializations ng mga vet ninyo?
+    - How experienced na po si Dr. Boongaling?
+    - May vet po ba kayo na expert sa exotic pets?
+    - Can you tell me about your vet team po?
+    - May available po ba na vet na specialist sa cats?
+    - Gaano na po katagal practicing ang head vet ninyo?
+    - Licensed and certified po ba lahat ng vets ninyo?
+    - May vets po ba kayo who can perform complex surgeries?
+    - Which vet po ang dapat kong i-consult para sa skin problem ng dog ko?
+    - Ilan doctors meron kayo?
+    - Ano specialties ng mga vet niyo?
+    - Nandyan pa ba si Doc Manglicmot?
+    - May vet ba kayo for exotic pets?
+    - Gaano na katagal mga vet niyo?
+    - Sino head vet niyo?
+    - May cat specialist ba kayo?
+    - Certified ba lahat ng vet niyo?
+    - Pwede ba ako magrequest ng specific na vet?
+    - May female vet ba kayo?
+
+- intent: AppointmentIntent
+  examples: |
+    - How do I schedule an appointment?
+    - Can I book an appointment online?
+    - What's your availability this week?
+    - Do I need an appointment for vaccinations?
+    - How far in advance should I book?
+    - Can I get a same-day appointment?
+    - What information do I need to provide when booking?
+    - How long are typical appointments?
+    - Can I reschedule my appointment?
+    - How do I schedule an appointment?
+    - Can I book an appointment online?
+    - What's the earliest available slot for a check-up?
+    - Do I need to make an appointment for vaccinations?
+    - How far in advance should I book for a surgery?
+    - Can I reschedule my pet's appointment?
+    - What information do I need to provide when booking?
+    - Do you accept walk-ins or only appointments?
+    - How long does a typical appointment last?
+    - Can I request a specific veterinarian for my appointment?
+    - Do you send appointment reminders?
+    - Paano ako makakakuha ng appointment?
+    - Pwede bang mag-book ng appointment online?
+    - Ano ang pinakamaagang available na oras para sa check-up?
+    - Kailangan ko bang kumuha ng appointment para sa mga bakuna?
+    - Gaano kaaga dapat mag-book para sa operasyon?
+    - Pwede bang i-reschedule ang appointment ng aking alagang hayop?
+    - Anong impormasyon ang kailangan kong ibigay kapag nag-bo-book?
+    - Tumatanggap ba kayo ng walk-in o appointment lang?
+    - Gaano katagal ang karaniwang appointment?
+    - Pwede bang humiling ng partikular na beterinaryo para sa aking appointment?
+    - Paano ako mag-schedule ng appointment?
+    - Pwede ba akong mag-book ng appointment online?
+    - Ano ang availability ninyo ngayong linggo?
+    - Kailangan ko ba ng appointment para sa mga bakuna?
+    - Gaano kaaga dapat ako mag-book?
+    - Pwede ba akong kumuha ng appointment sa araw ding ito?
+    - Anong impormasyon ang kailangan kong ibigay kapag nagbo-book?
+    - Gaano katagal ang karaniwang appointment?
+    - Pwede ko bang i-reschedule ang aking appointment?
+    - Nagpapadala ba kayo ng mga paalala para sa appointment?
+    - Paano po mag-schedule ng appointment?
+    - Can I book an appointment po online?
+    - What's the earliest available slot po para sa check-up?
+    - Kailangan po ba ng appointment para sa vaccinations?
+    - How far in advance po dapat mag-book for surgery?
+    - Pwede po bang i-reschedule ang pet appointment ko?
+    - Anong information po ang need i-provide when booking?
+    - Tumatanggap po ba kayo ng walk-ins or appointments lang?
+    - How long po usually ang isang appointment?
+    - Pwede po bang mag-request ng specific veterinarian for my appointment?
+    - Pano magpa-appointment?
+    - Pwede ba mag-book online?
+    - Need ba mag-schedule in advance?
+    - Ano availability niyo this week?
+    - Gaano kaaga dapat mag-book?
+    - Pwede pa ba bukas magpa-appointment?
+    - Tumatanggap ba kayo ng walk-in?
+    - Gaano katagal usually ang appointment?
+    - Pwede ba i-reschedule yung appointment ko?
+    - Anong info kailangan ko para magpa-appointment?
+
+- intent: PetSpeciesAcceptedIntent
+  examples: |
+    - What types of animals do you treat?
+    - Which pet species do you accept at your clinic?
+    - Do you provide services for exotic pets?
+    - Can I bring my bird to your veterinary clinic?
+    - Are you able to treat farm animals?
+    - What animals are you qualified to handle?
+    - Do you accept reptiles as patients?
+    - Can you treat my hamster?
+    - Which species of animals do you specialize in?
+    - Do you provide care for large animals like horses?
+    - Are cats and dogs the only animals you treat?
+    - Can I bring my rabbit to your clinic?
+    - Do you accept fish for treatment?
+    - What's the range of animals you can provide care for?
+    - Are there any animals you don't treat?
+    - Do you have experience with guinea pigs?
+    - Can you handle livestock like cows and pigs?
+    - What about wildlife? Do you treat them?
+    - Is your clinic equipped to handle all types of pets?
+    - Which animal species are you most experienced with?
+    - Anong uri ng hayop ang tinatanggap ninyo?
+    - Aling mga species ng alagang hayop ang pwede sa klinika ninyo?
+    - Tumatanggap ba kayo ng mga exotic pets?
+    - Pwede ko bang dalhin ang ibon ko sa inyong klinika?
+    - Kaya ba ninyong gamutin ang mga hayop sa bukid?
+    - Anong mga hayop ang kwalipikado ninyong gamutin?
+    - Tumatanggap ba kayo ng mga reptile bilang pasyente?
+    - Pwede ba ninyong gamutin ang hamster ko?
+    - Sa anong species ng hayop kayo nag-ispecialize?
+    - Nagbibigay ba kayo ng pangangalaga sa malalaking hayop tulad ng kabayo?
+    - Pusa at aso lang ba ang tinatanggap ninyong hayop?
+    - Pwede ko bang dalhin ang kuneho ko sa klinika ninyo?
+    - Tumatanggap ba kayo ng isda para gamutin?
+    - Ano ang saklaw ng mga hayop na pwede ninyong alagaan?
+    - May mga hayop ba na hindi ninyo tinatanggap?
+    - May karanasan ba kayo sa pag-aalaga ng guinea pigs?
+    - Kaya ba ninyong gamutin ang mga hayop tulad ng baka at baboy?
+    - Paano naman ang mga wildlife? Tinatanggap ninyo ba sila?
+    - Kumpleto ba ang kagamitan ng klinika ninyo para sa lahat ng uri ng alagang hayop?
+    - Sa anong species ng hayop kayo may pinakamaraming karanasan?
+    - What types of animals po ang tinatanggap ninyo?
+    - Anong pet species po ang pwede sa clinic ninyo?
+    - Do you provide services po para sa exotic pets?
+    - Pwede ko po bang dalhin ang bird ko sa veterinary clinic ninyo?
+    - Kaya niyo po bang i-treat ang farm animals?
+    - Anong animals po ang qualified kayong i-handle?
+    - Tumatanggap po ba kayo ng reptiles as patients?
+    - Can you treat po ang hamster ko?
+    - Sa anong species of animals po kayo nag-specialize?
+    - Nagbibigay po ba kayo ng care para sa large animals like horses?
+    - Cats and dogs lang po ba ang tina-treat ninyo?
+    - Pwede ko po bang dalhin ang rabbit ko sa clinic ninyo?
+    - Tumatanggap po ba kayo ng fish for treatment?
+    - Ano po ang range ng animals na pwede ninyong i-provide ng care?
+    - May mga animals po ba na hindi ninyo tina-treat?
+    - May experience po ba kayo with guinea pigs?
+    - Kaya niyo po bang i-handle ang livestock like cows and pigs?
+    - Paano po ang wildlife? Tina-treat niyo po ba sila?
+    - Is your clinic po equipped para sa lahat ng types ng pets?
+    - Sa anong animal species po kayo may pinaka-maraming experience?
+
+- intent: ServicesOfferIntent
+  examples: |
+    - What services do you offer at your veterinary clinic?
+    - Can you list all the veterinary services available?
+    - Do you treat dogs?
+    - Do you vaccinate dogs?
+    - What are all the services I can get for my pet at your clinic?
+    - Do you deworm dogs?
+    - Do you offer vaccination?
+    - What types of medical care do you offer for animals?
+    - Do you offer treatment?
+    - What veterinary assistance can I get from your facility?
+    - Do you offer deworming?
+    - What are the different categories of services you offer?
+    - Can you give me an overview of your veterinary services?
+    - What services can I expect when I visit your clinic?
+    - Do you have a list of all services provided?
+    - What medical treatments are available for pets at your clinic?
+    - Can you outline the services your veterinary practice offers?
+    - What kind of veterinary care do you provide?
+    - What's the full range of services available at your clinic?
+    - Can you describe all the veterinary services you offer?
+    - Anong mga serbisyo ang iniaalok ninyo sa inyong klinika?
+    - Pwede bang ilista ang lahat ng available na serbisyong beterinaryo?
+    - Nanggagamot ba kayo ng hayop?
+    - Nagbabakuna ba kayo?
+    - Ano ang lahat ng serbisyo na pwede kong makuha para sa aking alagang hayop sa inyong klinika?
+    - Pwede bang sabihin ninyo ang tungkol sa saklaw ng mga serbisyo na iniaalok ninyo?
+    - Nangpupurga ba kayo?
+    - Anong uri ng medikal na pangangalaga ang iniaalok ninyo para sa mga hayop?
+    - Pwede bang ipaliwanag ang lahat ng serbisyong available sa inyong klinika?
+    - Anong tulong beterinaryo ang pwede kong makuha sa inyong pasilidad?
+    - Nagbibigay ba kayo ng komprehensibong serbisyo sa pangangalaga ng alagang hayop?
+    - Ano ang iba't ibang kategorya ng serbisyo na iniaalok ninyo?
+    - Pwede bang bigyan ninyo ako ng pangkalahatang ideya ng inyong mga serbisyong beterinaryo?
+    - Anong mga serbisyo ang pwede kong asahan kapag bumisita ako sa inyong klinika?
+    - Mayroon ba kayong listahan ng lahat ng serbisyong ibinibigay?
+    - Anong mga medikal na paggamot ang available para sa mga alagang hayop sa inyong klinika?
+    - Pwede bang ibalangkas ang mga serbisyo na iniaalok ng inyong praktis na beterinaryo?
+    - Anong uri ng pangangalagang beterinaryo ang ibinibigay ninyo?
+    - Ano ang buong saklaw ng mga serbisyong available sa inyong klinika?
+    - Pwede bang ilarawan ang lahat ng serbisyong beterinaryo na iniaalok ninyo?
+    - Anong services po ang offer ninyo sa veterinary clinic ninyo?
+    - Can you list po lahat ng available na veterinary services?
+    - What kind of treatments po ang pwede ninyong i-provide sa pet ko?
+    - Nag-o-offer po ba kayo ng specialized veterinary services?
+    - Ano po ang lahat ng services na pwede kong makuha para sa pet ko sa clinic ninyo?
+    - Could you tell me po about sa range ng services na provide ninyo?
+    - Anong veterinary procedures po ang perform ninyo?
+    - What types of medical care po ang offer ninyo para sa animals?
+    - Pwede niyo po bang i-explain lahat ng services available sa clinic ninyo?
+    - Anong veterinary assistance po ang pwede kong makuha sa facility ninyo?
+    - Do you provide po comprehensive pet care services?
+    - Ano po ang different categories ng services na offer ninyo?
+    - Can you give me po ang overview ng veterinary services ninyo?
+    - Anong services po ang pwede kong i-expect kapag nag-visit ako sa clinic ninyo?
+    - May list po ba kayo ng lahat ng services na provided?
+    - What medical treatments po ang available para sa pets sa clinic ninyo?
+    - Pwede niyo po bang i-outline ang services na offer ng veterinary practice ninyo?
+    - What kind of veterinary care po ang provide ninyo?
+    - Ano po ang full range ng services available sa clinic ninyo?
+    - Can you describe po lahat ng veterinary services na offer ninyo?
+
+- intent: WalkInBasicVeterinaryServicesIntent
+  examples: |
+    - Can I walk in for a basic pet consultation?
+    - Do you accept walk-ins for vaccinations?
+    - I need deworming for my dog, can I just come in without an appointment?
+    - Are walk-in consultations available today?
+    - Can I bring my cat in for a check-up without scheduling?
+    - Do I need an appointment for basic treatment or can I walk in?
+    - Is it possible to get supplementation for my pet without booking ahead?
+    - Can I get technical assistance as a walk-in client?
+    - Are there specific hours for walk-in veterinary services?
+    - Can I just drop by for my pet's vaccination?
+    - Do you provide immediate treatment for walk-in patients?
+    - Is there a waiting time for walk-in consultations?
+    - Can I get my pet dewormed if I just walk in?
+    - Do you offer basic check-ups for walk-in clients?
+    - Can I come in without an appointment for my pet's regular medication?
+    - Are there any basic services that require appointments, or can I walk in for all of them?
+    - What's the process for walk-in consultations?
+    - Can I get immediate veterinary assistance if I walk in with my pet?
+    - Do you treat minor issues for walk-in patients?
+    - Is there a difference in service between appointments and walk-ins for basic veterinary care?
+    - Pwede bang pumunta na lang ako para sa basic na konsultasyon ng aking alagang hayop?
+    - Tumatanggap ba kayo ng walk-in para sa mga bakuna?
+    - Kailangan ng aso ko ng deworming, pwede ba akong pumunta na lang nang walang appointment?
+    - May available ba na walk-in na konsultasyon ngayon?
+    - Pwede ko bang dalhin ang pusa ko para sa check-up nang hindi nag-iischedule?
+    - Kailangan ko ba ng appointment para sa basic na paggamot o pwede akong walk-in na lang?
+    - Posible bang makakuha ng supplementation para sa aking alagang hayop nang hindi nag-book nang maaga?
+    - Pwede bang makakuha ng technical assistance bilang walk-in na kliyente?
+    - May specific na oras ba para sa walk-in na serbisyong beterinaryo?
+    - Pwede ba akong dumaan na lang para sa bakuna ng aking alagang hayop?
+    - Nagbibigay ba kayo ng agarang paggamot para sa mga walk-in na pasyente?
+    - May waiting time ba para sa walk-in na konsultasyon?
+    - Pwede bang ipadeworming ang aking alagang hayop kung walk-in lang ako?
+    - Nag-aalok ba kayo ng basic na check-up para sa mga walk-in na kliyente?
+    - Pwede ba akong pumunta nang walang appointment para sa regular na gamot ng aking alagang hayop?
+    - May mga basic na serbisyo ba na nangangailangan ng appointment, o pwede akong walk-in para sa lahat ng ito?
+    - Ano ang proseso para sa walk-in na konsultasyon?
+    - Pwede bang makakuha ng agarang tulong beterinaryo kung walk-in ako kasama ang aking alagang hayop?
+    - Ginagamot ba ninyo ang mga minor na isyu para sa mga walk-in na pasyente?
+    - May pagkakaiba ba sa serbisyo sa pagitan ng may appointment at walk-in para sa basic na pangangalagang beterinaryo?
+    - Pwede po bang mag-walk in for basic pet consultation?
+    - Do you accept po walk-ins para sa vaccinations?
+    - I need deworming po para sa dog ko, pwede bang pumunta na lang without appointment?
+    - May available po ba na walk-in consultations today?
+    - Pwede ko po bang dalhin ang cat ko for check-up without scheduling?
+    - Kailangan ko po ba ng appointment para sa basic treatment o pwede mag-walk in?
+    - Is it possible po na makakuha ng supplementation para sa pet ko without booking ahead?
+    - Pwede po bang makakuha ng technical assistance as walk-in client?
+    - May specific hours po ba para sa walk-in veterinary services?
+    - Pwede po ba akong mag-drop by lang para sa pet vaccination?
+    - Nagbibigay po ba kayo ng immediate treatment para sa walk-in patients?
+    - May waiting time po ba para sa walk-in consultations?
+    - Pwede ko po bang ipadeworming ang pet ko kung walk-in lang?
+    - Do you offer po basic check-ups para sa walk-in clients?
+    - Pwede po ba akong pumunta without appointment para sa regular medication ng pet ko?
+    - May basic services po ba na need ng appointments, o pwede mag-walk in for all of them?
+    - Ano po ang process para sa walk-in consultations?
+    - Pwede po bang makakuha ng immediate veterinary assistance kung mag-walk in ako with my pet?
+    - Tina-treat niyo po ba ang minor issues para sa walk-in patients?
+    - May difference po ba sa service between appointments at walk-ins para sa basic veterinary care?
+
+- intent: AppointmentBasicVeterinaryServicesIntent
+  examples: |
+    - How do I schedule an appointment for pet vaccination?
+    - Can I book an online appointment for a consultation?
+    - I'd like to make an appointment for my dog's deworming.
+    - What's the process for scheduling a basic veterinary check-up?
+    - How far in advance should I book for a consultation?
+    - Can I schedule an appointment for supplementation for my pet?
+    - Is it possible to get technical assistance through an appointment?
+    - How do I book an appointment through your online system?
+    - What information do I need to provide when scheduling a basic veterinary service?
+    - Can I request a specific veterinarian when booking an appointment?
+    - How long does a typical appointment for basic services last?
+    - Do you send reminders for scheduled appointments?
+    - Can I reschedule my pet's vaccination appointment if needed?
+    - What's the cancellation policy for appointments?
+    - Are there specific days for certain types of appointments?
+    - How do I know if my appointment has been confirmed?
+    - Can I book multiple services in one appointment?
+    - Is there an online portal where I can schedule my pet's check-up?
+    - What's the earliest available appointment for basic treatment?
+    - Do you offer after-hours appointments for basic veterinary services?
+    - Paano ako makakakuha ng appointment para sa bakuna ng aking alagang hayop?
+    - Pwede ba akong mag-book ng online appointment para sa konsultasyon?
+    - Gusto kong gumawa ng appointment para sa deworming ng aso ko.
+    - Ano ang proseso para sa pag-schedule ng basic na check-up sa beterinaryo?
+    - Gaano kaaga dapat mag-book para sa konsultasyon?
+    - Pwede ba akong mag-schedule ng appointment para sa supplementation ng aking alagang hayop?
+    - Posible bang makakuha ng technical assistance sa pamamagitan ng appointment?
+    - Paano ako mag-book ng appointment sa pamamagitan ng inyong online system?
+    - Anong impormasyon ang kailangan kong ibigay kapag nag-iischedule ng basic na serbisyong beterinaryo?
+    - Pwede ba akong humiling ng specific na beterinaryo kapag nag-bo-book ng appointment?
+    - Gaano katagal ang karaniwang appointment para sa basic na serbisyo?
+    - Nagpapadala ba kayo ng mga paalala para sa mga naka-schedule na appointment?
+    - Pwede bang i-reschedule ang appointment ng bakuna ng aking alagang hayop kung kinakailangan?
+    - Ano ang patakaran sa pagkansela ng mga appointment?
+    - May specific na araw ba para sa ilang uri ng appointment?
+    - Paano ko malalaman kung nakumpirma na ang aking appointment?
+    - Pwede ba akong mag-book ng maraming serbisyo sa isang appointment?
+    - May online portal ba kung saan pwede kong i-schedule ang check-up ng aking alagang hayop?
+    - Ano ang pinakamaagang available na appointment para sa basic na paggamot?
+    - Nag-aalok ba kayo ng mga appointment pagkatapos ng regular na oras para sa basic na serbisyong beterinaryo?
+    - Paano po ako makakakuha ng appointment para sa pet vaccination?
+    - Can I book po an online appointment para sa consultation?
+    - I'd like to make an appointment po para sa deworming ng dog ko.
+    - What's the process po para sa scheduling ng basic veterinary check-up?
+    - How far in advance po dapat mag-book para sa consultation?
+    - Pwede po ba akong mag-schedule ng appointment para sa supplementation ng pet ko?
+    - Is it possible po na makakuha ng technical assistance through appointment?
+    - Paano po ako mag-book ng appointment through your online system?
+    - Anong information po ang need kong i-provide when scheduling a basic veterinary service?
+    - Pwede po ba akong mag-request ng specific veterinarian when booking an appointment?
+    - How long po ang typical appointment para sa basic services?
+    - Nagse-send po ba kayo ng reminders para sa scheduled appointments?
+    - Pwede ko po bang i-reschedule ang pet vaccination appointment ko if needed?
+    - What's the cancellation policy po para sa appointments?
+    - May specific days po ba para sa certain types ng appointments?
+    - Paano ko po malalaman if confirmed na ang appointment ko?
+    - Can I book po multiple services in one appointment?
+    - May online portal po ba where I can schedule ang pet check-up ko?
+    - What's the earliest available appointment po para sa basic treatment?
+    - Do you offer po after-hours appointments para sa basic veterinary services?
+
+- intent: BasicServiceChecklistIntent
+  examples: |
+    - What documents do I need to bring for a basic veterinary service?
+    - Can you provide a checklist of requirements for pet vaccination?
+    - Where can I secure the necessary documents for a consultation?
+    - What are the requirements for deworming services?
+    - Do I need to bring any specific documents for my pet's check-up?
+    - Is there a checklist of requirements for supplementation services?
+    - Where can I get the forms needed for basic veterinary treatment?
+    - What paperwork is required for technical assistance?
+    - Do I need to prepare any documents before bringing my pet for basic services?
+    - Where can I find the requirements checklist for veterinary consultation?
+    - Are there any specific forms I need to fill out for basic services?
+    - What identification documents are required for my pet's treatment?
+    - Where can I secure the necessary permits for basic veterinary care?
+    - Is there a list of requirements I can download before my visit?
+    - What records should I bring for my pet's first visit?
+    - Where can I get the vaccination record form?
+    - Do I need to bring previous medical records for a basic check-up?
+    - What's the complete checklist of requirements for basic veterinary services?
+    - Where can I secure a pet health booklet?
+    - Are there any specific requirements for different types of pets?
+    - Anong mga dokumento ang kailangan kong dalhin para sa basic na serbisyong beterinaryo?
+    - Pwede bang magbigay ng checklist ng mga kinakailangan para sa bakuna ng alagang hayop?
+    - Saan ko pwedeng kunin ang mga kinakailangang dokumento para sa konsultasyon?
+    - Ano ang mga kinakailangan para sa serbisyo ng deworming?
+    - Kailangan ko bang magdala ng anumang specific na dokumento para sa check-up ng aking alagang hayop?
+    - Mayroon bang checklist ng mga kinakailangan para sa serbisyo ng supplementation?
+    - Saan ko makukuha ang mga form na kailangan para sa basic na paggamot ng beterinaryo?
+    - Anong mga papeles ang kinakailangan para sa technical assistance?
+    - Kailangan ko bang maghanda ng anumang dokumento bago dalhin ang aking alagang hayop para sa basic na serbisyo?
+    - Saan ko matatagpuan ang checklist ng mga kinakailangan para sa konsultasyon sa beterinaryo?
+    - May mga specific na form ba na kailangan kong sagutan para sa basic na serbisyo?
+    - Anong mga dokumento ng pagkakakilanlan ang kinakailangan para sa paggamot ng aking alagang hayop?
+    - Saan ko pwedeng kunin ang mga kinakailangang permit para sa basic na pangangalagang beterinaryo?
+    - Mayroon bang listahan ng mga kinakailangan na pwede kong i-download bago ang aking pagbisita?
+    - Anong mga record ang dapat kong dalhin para sa unang pagbisita ng aking alagang hayop?
+    - Saan ko makukuha ang form ng record ng bakuna?
+    - Kailangan ko bang magdala ng mga nakaraang medikal na record para sa basic na check-up?
+    - Ano ang kumpletong checklist ng mga kinakailangan para sa basic na serbisyong beterinaryo?
+    - Saan ko pwedeng kunin ang health booklet ng alagang hayop?
+    - May mga specific na kinakailangan ba para sa iba't ibang uri ng alagang hayop?
+    - Anong documents po ang need kong dalhin para sa basic veterinary service?
+    - Can you provide po a checklist of requirements para sa pet vaccination?
+    - Saan ko po pwedeng i-secure ang necessary documents para sa consultation?
+    - What are the requirements po para sa deworming services?
+    - Kailangan ko po bang magdala ng any specific documents para sa pet check-up ko?
+    - Is there a checklist po ng requirements para sa supplementation services?
+    - Saan ko po makukuha ang forms na needed para sa basic veterinary treatment?
+    - What paperwork po ang required para sa technical assistance?
+    - Kailangan ko po bang mag-prepare ng any documents before bringing my pet para sa basic services?
+    - Saan ko po pwedeng makita ang requirements checklist para sa veterinary consultation?
+    - May specific forms po ba na need kong i-fill out para sa basic services?
+    - What identification documents po ang required para sa pet treatment?
+    - Saan ko po pwedeng i-secure ang necessary permits para sa basic veterinary care?
+    - May list of requirements po ba na pwede kong i-download before my visit?
+    - What records po ang dapat kong dalhin para sa first visit ng pet ko?
+    - Saan ko po makukuha ang vaccination record form?
+    - Kailangan ko po bang dalhin ang previous medical records para sa basic check-up?
+    - What's the complete checklist po ng requirements para sa basic veterinary services?
+    - Saan po ako pwedeng kumuha ng pet health booklet?
+    - May specific requirements po ba para sa different types ng pets?
+
+- intent: WalkinElectiveVeterinaryServicesIntent
+  examples: |
+    - What elective veterinary services do you offer?
+    - How can our barangay request for a veterinary medical mission?
+    - What are the requirements to organize a spay and neuter program in our community?
+    - Does the provincial veterinary office conduct regular large animal castration services?
+    - How often do you provide artificial insemination services for livestock in rural areas?
+    - What is the process for requesting epidemiological surveillance in our area?
+    - Can you share the schedule for the upcoming veterinary services in our district?
+    - How many animals can be accommodated during a mass vaccination program?
+    - What documentation does our barangay need to submit to request estrus synchronization services?
+    - Are there any fees associated with the mass veterinary services provided?
+    - How far in advance should we coordinate for a veterinary medical mission?
+    - What areas will be covered in the next rabies vaccination campaign?
+    - How can farmers' associations request for artificial insemination services?
+    - What is the typical duration of a spay and neuter program in a barangay?
+    - Does the veterinary office provide training for local volunteers during medical missions?
+    - What is the success rate of the artificial insemination program for cattle in communities?
+    - How many veterinarians are typically deployed for a mass vaccination campaign?
+    - What equipment should the barangay prepare for a visiting veterinary team?
+    - How are the communities selected for the veterinary medical missions?
+    - Can schools request for educational veterinary programs alongside vaccination drives?
+    - Ano-ano ang mga serbisyong beterinaryo na inyong iniaalok?
+    - Paano makakahiling ang aming barangay ng veterinary medical mission?
+    - Ano ang mga kinakailangan para makapagsagawa ng spay at neuter program sa aming komunidad?
+    - Nagsasagawa ba ang provincial veterinary office ng regular na serbisyo para sa pagkapon ng malalaking hayop?
+    - Gaano kadalas kayo nagbibigay ng serbisyong artificial insemination para sa mga hayop sa mga rural na lugar?
+    - Ano ang proseso para humiling ng epidemiological surveillance sa aming lugar?
+    - Pwede bang ibahagi ninyo ang iskedyul ng mga darating na serbisyong beterinaryo sa aming distrito?
+    - Ilang hayop ang kayang alagaan sa isang mass vaccination program?
+    - Anong mga dokumento ang kailangan isumite ng aming barangay para humiling ng estrus synchronization services?
+    - May bayad ba ang mga serbisyong beterinaryo na ibinibigay sa masa?
+    - Gaano katagal dapat ang koordinasyon para sa isang veterinary medical mission?
+    - Anong mga lugar ang saklaw sa susunod na kampanya ng rabies vaccination?
+    - Paano makakahiling ang mga asosasyon ng magsasaka para sa serbisyong artificial insemination?
+    - Gaano katagal ang karaniwang programa ng spay at neuter sa isang barangay?
+    - Nagbibigay ba ang tanggapan ng beterinaryo ng pagsasanay para sa mga lokal na boluntaryo sa panahon ng medical missions?
+    - Ano ang success rate ng programa ng artificial insemination para sa mga baka sa mga komunidad?
+    - Ilang beterinaryo ang karaniwang ipinapadala para sa isang mass vaccination campaign?
+    - Anong mga kagamitan ang dapat ihanda ng barangay para sa bumibisitang veterinary team?
+    - Paano napipili ang mga komunidad para sa veterinary medical missions?
+    - Maaari bang humiling ang mga paaralan ng educational veterinary programs kasabay ng vaccination drives?
+    - Ano bang mga elective services meron kayo sa vet office?
+    - Pano ba mag-apply ng vet mission dito sa barangay namin?
+    - Ano ba requirements para mag-organize ng libre spay and neuter sa community?
+    - Regular ba kayo nag-oorganize ng kapon services para sa mga kalabaw at baka?
+    - Gaano kadalas yung AI services niyo para sa mga farm animals sa probinsya?
+    - Pano ba mag-request ng disease surveillance dito sa area namin?
+    - Pwede pa-share ng schedule ng next vet services sa district namin?
+    - Ilan bang hayop kaya i-accommodate sa isang barangay pag mass vaccination?
+    - Anong docs ba need i-submit para mag-request ng AI services sa lugar namin?
+    - May bayad ba yung mass vet services na provide niyo?
+    - Ilang months before dapat mag-coordinate for vet mission?
+    - Saan-saan yung next rabies vax campaign niyo?
+    - Pano ba mag-apply ng AI services yung farmers' coop namin?
+    - Gaano katagal usually yung spay/neuter program sa isang barangay?
+    - Nag-train ba kayo ng local volunteers during vet missions?
+    - Ano success rate ng AI program niyo sa mga baka sa probinsya?
+    - Ilan usually yung vets na deployed sa mass vaccination?
+    - Anong equipment dapat i-prepare ng barangay for visiting vet team?
+    - Pano niyo ba pinipili yung communities for vet missions?
+    - Pwede ba mag-request yung school namin ng educational vet program kasama ng vaccination?
+
+
+- intent: ElectiveServiceChecklistIntent
+  examples: |
+    - What documents do I need to bring for rabies vaccination?
+    - Can you provide a checklist of requirements for animal castration?
+    - Where can I secure the necessary documents for spaying services?
+    - What are the requirements for artificial insemination?
+    - Do I need to bring any specific documents for large animal castration?
+    - Is there a checklist of requirements for estrus synchronization?
+    - Where can I get the forms needed for veterinary medical missions?
+    - What paperwork is required for neutering services?
+    - Do I need to prepare any documents before bringing my pet for spaying?
+    - Where can I find the requirements checklist for elective veterinary procedures?
+    - Are there any specific forms I need to fill out for castration services?
+    - What identification documents are required for my pet's elective procedures?
+    - Where can I secure the necessary permits for mass rabies vaccination?
+    - Is there a list of requirements I can download before my elective service appointment?
+    - What records should I bring for my pet's spaying procedure?
+    - Where can I get the rabies vaccination record form?
+    - Do I need to bring previous medical records for elective procedures?
+    - What's the complete checklist of requirements for artificial insemination?
+    - Where can I secure documentation for epidemiological surveillance?
+    - Are there any specific requirements for different types of elective services?
+    - Anong mga dokumento ang kailangan kong dalhin para sa bakuna sa rabies?
+    - Pwede bang magbigay ng checklist ng mga kinakailangan para sa kapon ng hayop?
+    - Saan ko pwedeng kunin ang mga kinakailangang dokumento para sa serbisyo ng ligation?
+    - Ano ang mga kinakailangan para sa artificial insemination?
+    - Kailangan ko bang magdala ng anumang specific na dokumento para sa kapon ng malaking hayop?
+    - Mayroon bang checklist ng mga kinakailangan para sa estrus synchronization?
+    - Saan ko makukuha ang mga form na kailangan para sa veterinary medical mission?
+    - Anong mga papeles ang kinakailangan para sa serbisyo ng neutering?
+    - Kailangan ko bang maghanda ng anumang dokumento bago dalhin ang aking alagang hayop para sa ligation?
+    - Saan ko matatagpuan ang checklist ng mga kinakailangan para sa elective na procedure ng beterinaryo?
+    - May mga specific na form ba na kailangan kong sagutan para sa serbisyo ng kapon?
+    - Anong mga dokumento ng pagkakakilanlan ang kinakailangan para sa elective na procedure ng aking alagang hayop?
+    - Saan ko pwedeng kunin ang mga kinakailangang permit para sa mass rabies vaccination?
+    - Mayroon bang listahan ng mga kinakailangan na pwede kong i-download bago ang aking appointment para sa elective na serbisyo?
+    - Anong mga record ang dapat kong dalhin para sa procedure ng ligation ng aking alagang hayop?
+    - Saan ko makukuha ang form ng record ng bakuna sa rabies?
+    - Kailangan ko bang magdala ng mga nakaraang medikal na record para sa elective na procedure?
+    - Ano ang kumpletong checklist ng mga kinakailangan para sa artificial insemination?
+    - Saan ko pwedeng kunin ang dokumentasyon para sa epidemiological surveillance?
+    - May mga specific na kinakailangan ba para sa iba't ibang uri ng elective na serbisyo?
+    - Anong documents po ang need kong dalhin para sa rabies vaccination?
+    - Can you provide po a checklist of requirements para sa animal castration?
+    - Saan ko po pwedeng i-secure ang necessary documents para sa spaying services?
+    - What are the requirements po para sa artificial insemination?
+    - Kailangan ko po bang magdala ng any specific documents para sa large animal castration?
+    - Is there a checklist po ng requirements para sa estrus synchronization?
+    - Saan ko po makukuha ang forms na needed para sa veterinary medical missions?
+    - What paperwork po ang required para sa neutering services?
+    - Kailangan ko po bang mag-prepare ng any documents before bringing my pet para sa spaying?
+    - Saan ko po pwedeng makita ang requirements checklist para sa elective veterinary procedures?
+    - May specific forms po ba na need kong i-fill out para sa castration services?
+    - What identification documents po ang required para sa elective procedures ng pet ko?
+    - Saan ko po pwedeng i-secure ang necessary permits para sa mass rabies vaccination?
+    - May list of requirements po ba na pwede kong i-download before my elective service appointment?
+    - What records po ang dapat kong dalhin para sa spaying procedure ng pet ko?
+    - Saan ko po makukuha ang rabies vaccination record form?
+    - Kailangan ko po bang dalhin ang previous medical records para sa elective procedures?
+    - What's the complete checklist po ng requirements para sa artificial insemination?
+    - Saan po ako pwedeng kumuha ng documentation para sa epidemiological surveillance?
+    - May specific requirements po ba para sa different types ng elective services?
+
+- intent: WalkinVeterinaryHealthCertificateIntent
+  examples: |
+    - Can I walk in to get a health certificate for my animal?
+    - Do you issue health certificates for transport without an appointment?
+    - I need a health certificate for slaughter, can I just come in?
+    - Are walk-in services available for obtaining health certificates?
+    - Can I bring my animal for a health status check without scheduling?
+    - Do I need an appointment for a veterinary health certificate or can I walk in?
+    - Is it possible to get a health certificate for transport as a walk-in client?
+    - Can I get a health certificate immediately if I walk in with my animal?
+    - Are there specific hours for walk-in health certificate services?
+    - Can I just drop by to get a health certificate for my livestock?
+    - Do you provide immediate health certification for walk-in animals?
+    - Is there a waiting time for walk-in health certificate requests?
+    - Can I get my animal's health status certified if I just walk in?
+    - Do you offer health certificates for walk-in clients?
+    - Can I come in without an appointment for a health certificate required for slaughter?
+    - Are there any health certificate services that require appointments, or can I walk in for all of them?
+    - What's the process for walk-in health certification?
+    - Can I get immediate veterinary health certification if I walk in with my animal?
+    - Do you issue health certificates for transport for walk-in patients?
+    - Is there a difference in service between appointments and walk-ins for health certificate issuance?
+    - Pwede bang pumunta na lang ako para kumuha ng health certificate para sa aking hayop?
+    - Nagbibigay ba kayo ng health certificate para sa transportasyon nang walang appointment?
+    - Kailangan ko ng health certificate para sa pagkatay, pwede ba akong pumunta na lang?
+    - May available ba na walk-in na serbisyo para sa pagkuha ng health certificate?
+    - Pwede ko bang dalhin ang aking hayop para sa pagsusuri ng kalusugan nang hindi nag-iischedule?
+    - Kailangan ko ba ng appointment para sa health certificate ng beterinaryo o pwede akong walk-in na lang?
+    - Posible bang makakuha ng health certificate para sa transportasyon bilang walk-in na kliyente?
+    - Pwede bang makakuha ng health certificate kaagad kung walk-in ako kasama ang aking hayop?
+    - May specific na oras ba para sa walk-in na serbisyo ng health certificate?
+    - Pwede ba akong dumaan na lang para kumuha ng health certificate para sa aking hayop sa bukid?
+    - Nagbibigay ba kayo ng agarang sertipikasyon ng kalusugan para sa mga walk-in na hayop?
+    - May waiting time ba para sa walk-in na kahilingan ng health certificate?
+    - Pwede bang ma-certify ang kalusugan ng aking hayop kung walk-in lang ako?
+    - Nag-aalok ba kayo ng health certificate para sa mga walk-in na kliyente?
+    - Pwede ba akong pumunta nang walang appointment para sa health certificate na kinakailangan para sa pagkatay?
+    - May mga serbisyo ba ng health certificate na nangangailangan ng appointment, o pwede akong walk-in para sa lahat ng ito?
+    - Ano ang proseso para sa walk-in na sertipikasyon ng kalusugan?
+    - Pwede bang makakuha ng agarang sertipikasyon ng kalusugan ng beterinaryo kung walk-in ako kasama ang aking hayop?
+    - Nagbibigay ba kayo ng health certificate para sa transportasyon para sa mga walk-in na pasyente?
+    - May pagkakaiba ba sa serbisyo sa pagitan ng may appointment at walk-in para sa pag-isyu ng health certificate?
+    - Pwede po bang mag-walk in para kumuha ng health certificate para sa animal ko?
+    - Do you issue po health certificates para sa transport without appointment?
+    - I need a health certificate po para sa slaughter, pwede bang pumunta na lang?
+    - May available po ba na walk-in services para sa obtaining health certificates?
+    - Pwede ko po bang dalhin ang animal ko para sa health status check without scheduling?
+    - Kailangan ko po ba ng appointment para sa veterinary health certificate o pwede mag-walk in?
+    - Is it possible po na makakuha ng health certificate para sa transport as walk-in client?
+    - Pwede po bang makakuha ng health certificate immediately if mag-walk in ako with my animal?
+    - May specific hours po ba para sa walk-in health certificate services?
+    - Pwede po ba akong mag-drop by lang para kumuha ng health certificate para sa livestock ko?
+    - Nagbibigay po ba kayo ng immediate health certification para sa walk-in animals?
+    - May waiting time po ba para sa walk-in health certificate requests?
+    - Pwede ko po bang ma-certify ang health status ng animal ko kung walk-in lang?
+    - Do you offer po health certificates para sa walk-in clients?
+    - Pwede po ba akong pumunta without appointment para sa health certificate na required for slaughter?
+    - May health certificate services po ba na need ng appointments, o pwede mag-walk in for all of them?
+    - Ano po ang process para sa walk-in health certification?
+    - Pwede po bang makakuha ng immediate veterinary health certification kung mag-walk in ako with my animal?
+    - Nag-i-issue po ba kayo ng health certificates para sa transport for walk-in patients?
+    - May difference po ba sa service between appointments at walk-ins para sa health certificate issuance?
+
+- intent: GoodbyeIntent
+  examples: |
+    - Goodbye
+    - Bye
+    - See you later
+    - Take care
+    - Thanks, goodbye
+    - That's all I needed, thanks
+    - I'll see you at our appointment
+    - Goodbye, see you next week
+    - Thanks for your help, bye
+    - I'll bring my pet in tomorrow, goodbye
+    - That's all for now
+    - Have a nice day
+    - Good night
+    - I'll call back later
+    - Thanks for the information, goodbye
+    - I need to go now
+    - Bye, thanks for your assistance
+    - See you at the clinic
+    - I'll end our conversation here
+    - Until next time
+    - Paalam
+    - Hanggang sa muli
+    - Salamat po
+    - Salamat, paalam na po
+    - Babalik na lang po ako bukas
+    - Dadalhin ko na lang po ang aso ko sa clinic
+    - Maraming salamat po sa tulong
+    - Hanggang dito na lang po muna
+    - Magandang araw po sa inyo
+    - Salamat sa impormasyon
+    - Babalik na lang po ako
+    - Tatawag na lang po ako ulit
+    - Salamat po sa pag-alaga sa alagang hayop ko
+    - Hanggang sa susunod na appointment
+    - Salamat po sa oras ninyo
+    - Kailangan ko na pong umalis
+    - Magpapareserve na lang po ako
+    - Salamat po sa payo
+    - Sige po, salamat
+    - Hanggang dito na lang muna
+    - Sige po, thank you
+    - Thank you, babalik na lang ako
+    - Bye, salamat po sa help
+    - Salamat sa information, goodbye
+    - I'll bring my pet bukas, thank you
+    - Sige, see you sa appointment namin
+    - Thank you po sa assistance
+    - Bye, tatawag na lang ulit ako
+    - Salamat, I'll visit the clinic tomorrow
+    - Sige po, goodbye muna
+    - Thank you sa pag-alaga sa pet ko
+    - Hanggang dito na lang, thank you
+    - I'll end our chat na po, salamat
+    - Salamat po, I'll see you next time
+    - Bye muna, babalik ako mamaya
+    - Thank you po, that's all I needed
+    - Sige po, have a nice day
+    - Salamat for the advice, goodbye
+    - I need to go na po, thank you
+    - Bye po, see you sa clinic

@@ -1,267 +1,291 @@
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+import pandas as pd
 import numpy as np
 import os
+import argparse
+import joblib
+import json
+import logging
+from datetime import datetime
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, VotingClassifier
+from sklearn.metrics import classification_report, accuracy_score, f1_score, confusion_matrix
 import matplotlib.pyplot as plt
+from data_cleaner import DataCleaner
 
-class ModelBuilder:
-    def __init__(self, input_dim, output_dim, model_type='classification'):
-        """
-        Initialize the model builder.
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class ImprovedModelTrainer:
+    def __init__(self, data_path, target_column='Future Disease', output_dir='improved_models'):
+        """Initialize the model trainer with data path and configuration."""
+        self.data_path = data_path
+        self.target_column = target_column
+        self.output_dir = output_dir
+        self.data_cleaner = DataCleaner(data_path)
         
-        Args:
-            input_dim: Dimension of the input features
-            output_dim: Dimension of the output (1 for binary, n for multi-class)
-            model_type: 'classification' or 'regression'
-        """
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.model_type = model_type
-        self.model = None
-        self.history = None
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Initialize variables
+        self.df = None
+        self.X_train = None
+        self.X_test = None
+        self.y_train = None
+        self.y_test = None
+        self.feature_names = None
+        self.best_model = None
+        self.best_model_name = None
+        self.metrics = {}
+        
+    def load_and_explore_data(self):
+        """Load and explore the dataset."""
+        logger.info("=== Running Improved Model Training Pipeline ===\n")
+        
+        # Load data using the data cleaner
+        self.df = self.data_cleaner.load_data()
+        
+        # Data exploration
+        logger.info("--- Data Exploration ---")
+        logger.info(f"Dataset shape: {self.df.shape}")
+        logger.info("\nFirst 5 rows:")
+        logger.info(self.df.head())
+        logger.info("\nData types:")
+        logger.info(self.df.dtypes)
+        logger.info("\nMissing values:")
+        logger.info(self.df.isnull().sum())
+        
+        # Target distribution
+        logger.info(f"\nTarget column: {self.target_column}")
+        logger.info("Target distribution:")
+        logger.info(self.df[self.target_column].value_counts())
+        
+        return self.df
     
-    def build_model(self, hidden_layers=[64, 32], dropout_rate=0.2):
-        """
-        Build a neural network model.
+    def preprocess_data(self):
+        """Clean and preprocess the data."""
+        logger.info("\n--- Data Preprocessing ---")
         
-        Args:
-            hidden_layers: List of neurons in each hidden layer
-            dropout_rate: Dropout rate for regularization
-        """
-        model = Sequential()
+        # Clean the data
+        self.df = self.data_cleaner.clean_data()
         
-        # Input layer
-        model.add(Dense(hidden_layers[0], input_dim=self.input_dim, activation='relu'))
-        model.add(BatchNormalization())
-        model.add(Dropout(dropout_rate))
+        # Create basic features
+        logger.info("Creating basic features...")
         
-        # Hidden layers
-        for units in hidden_layers[1:]:
-            model.add(Dense(units, activation='relu'))
-            model.add(BatchNormalization())
-            model.add(Dropout(dropout_rate))
+        # Create age groups if age column exists
+        if 'Age (years)' in self.df.columns:
+            self.df['Age_Group'] = pd.cut(
+                self.df['Age (years)'], 
+                bins=[0, 1, 3, 7, 12, 20],
+                labels=['Puppy/Kitten', 'Young', 'Adult', 'Senior', 'Geriatric']
+            )
         
-        # Output layer
-        if self.model_type == 'classification':
-            if self.output_dim == 1:
-                # Binary classification
-                model.add(Dense(1, activation='sigmoid'))
-                loss = 'binary_crossentropy'
-                metrics = ['accuracy']
-            else:
-                # Multi-class classification
-                model.add(Dense(self.output_dim, activation='softmax'))
-                loss = 'categorical_crossentropy'
-                metrics = ['accuracy']
-        else:
-            # Regression
-            model.add(Dense(1, activation='linear'))
-            loss = 'mean_squared_error'
-            metrics = ['mae']
+        # Create weight categories if weight column exists
+        if 'Weight (kg)' in self.df.columns:
+            self.df['Weight_Category'] = pd.cut(
+                self.df['Weight (kg)'],
+                bins=[0, 2, 5, 10, 20, 50],
+                labels=['Tiny', 'Small', 'Medium', 'Large', 'Giant']
+            )
         
-        # Compile the model
-        model.compile(
-            optimizer=Adam(learning_rate=0.001),
-            loss=loss,
-            metrics=metrics
+        # Create interaction features
+        if 'Age (years)' in self.df.columns and 'Weight (kg)' in self.df.columns:
+            self.df['Age_Weight_Ratio'] = self.df['Age (years)'] / (self.df['Weight (kg)'] + 0.1)
+        
+        # Extract text features from symptoms
+        if 'Symptoms' in self.df.columns:
+            common_symptoms = [
+                'vomiting', 'diarrhea', 'lethargy', 'fever', 'cough', 'sneezing',
+                'limping', 'pain', 'swelling', 'itching', 'rash', 'bleeding'
+            ]
+            
+            for symptom in common_symptoms:
+                self.df[f'Has_{symptom}'] = self.df['Symptoms'].str.contains(
+                    symptom, case=False, na=False).astype(int)
+        
+        # Encode categorical features
+        self.df = self.data_cleaner.encode_categorical_features(self.df)
+        
+        logger.info("Data preprocessing completed")
+        return self.df
+    
+    def split_data(self):
+        """Split the data into training and testing sets."""
+        logger.info("\n--- Splitting Data ---")
+        
+        # Separate features and target
+        X = self.df.drop(columns=[self.target_column])
+        y = self.df[self.target_column]
+        
+        # Store feature names for later use
+        self.feature_names = X.columns.tolist()
+        
+        # Split the data
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        self.model = model
-        print(model.summary())
-        return model
+        logger.info(f"Training set size: {self.X_train.shape}")
+        logger.info(f"Test set size: {self.X_test.shape}")
+        
+        return self.X_train, self.X_test, self.y_train, self.y_test
     
-    def train_model(self, X_train, y_train, X_val=None, y_val=None, 
-                   epochs=50, batch_size=32, save_path='ml_models'):
-        """
-        Train the model.
+    def train_models(self):
+        """Train multiple models and select the best one."""
+        logger.info("\n--- Training Models ---")
         
-        Args:
-            X_train: Training features
-            y_train: Training targets
-            X_val: Validation features (if None, will use validation_split)
-            y_val: Validation targets
-            epochs: Number of training epochs
-            batch_size: Batch size for training
-            save_path: Directory to save the model
-        """
-        if self.model is None:
-            raise ValueError("Model not built. Call build_model first.")
+        # Define preprocessing steps
+        preprocessor = StandardScaler()
         
-        # Create directory if it doesn't exist
-        os.makedirs(save_path, exist_ok=True)
-        
-        # Callbacks
-        callbacks = [
-            EarlyStopping(
-                monitor='val_loss',
-                patience=10,
-                restore_best_weights=True
+        # Define base models
+        base_models = {
+            'random_forest': RandomForestClassifier(
+                n_estimators=200, 
+                max_depth=20,
+                min_samples_split=5,
+                min_samples_leaf=2,
+                class_weight='balanced',
+                random_state=42,
+                n_jobs=-1
             ),
-            ModelCheckpoint(
-                filepath=os.path.join(save_path, 'best_model.h5'),
-                monitor='val_loss',
-                save_best_only=True
+            'gradient_boosting': GradientBoostingClassifier(
+                n_estimators=200,
+                learning_rate=0.1,
+                max_depth=5,
+                random_state=42
             )
-        ]
+        }
         
-        # Train the model
-        if X_val is not None and y_val is not None:
-            # Use provided validation data
-            history = self.model.fit(
-                X_train, y_train,
-                validation_data=(X_val, y_val),
-                epochs=epochs,
-                batch_size=batch_size,
-                callbacks=callbacks,
-                verbose=1
-            )
-        else:
-            # Use validation split
-            history = self.model.fit(
-                X_train, y_train,
-                validation_split=0.2,
-                epochs=epochs,
-                batch_size=batch_size,
-                callbacks=callbacks,
-                verbose=1
-            )
+        # Train and evaluate each model
+        results = {}
         
-        self.history = history.history
-        return history
-    
-    def evaluate_model(self, X_test, y_test):
-        """
-        Evaluate the model on test data.
-        
-        Args:
-            X_test: Test features
-            y_test: Test targets
-        """
-        if self.model is None:
-            raise ValueError("Model not trained. Call train_model first.")
-        
-        # Evaluate the model
-        results = self.model.evaluate(X_test, y_test, verbose=1)
-        
-        # Print results
-        print("\n--- Model Evaluation ---")
-        for metric_name, value in zip(self.model.metrics_names, results):
-            print(f"{metric_name}: {value:.4f}")
-        
-        # Make predictions
-        y_pred = self.model.predict(X_test)
-        
-        # For classification, get class predictions
-        if self.model_type == 'classification':
-            if self.output_dim > 1:
-                # Multi-class
-                y_pred_classes = np.argmax(y_pred, axis=1)
-                y_true_classes = np.argmax(y_test, axis=1)
-            else:
-                # Binary
-                y_pred_classes = (y_pred > 0.5).astype(int).ravel()
-                y_true_classes = y_test.astype(int).ravel()
+        for name, model in base_models.items():
+            logger.info(f"\nTraining {name}...")
             
-            # Calculate confusion matrix
-            from sklearn.metrics import confusion_matrix, classification_report
-            cm = confusion_matrix(y_true_classes, y_pred_classes)
-            print("\nConfusion Matrix:")
-            print(cm)
+            # Create pipeline
+            pipeline = Pipeline(steps=[
+                ('preprocessor', preprocessor),
+                ('classifier', model)
+            ])
             
-            # Classification report
-            print("\nClassification Report:")
-            print(classification_report(y_true_classes, y_pred_classes))
+            # Cross-validation
+            cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+            cv_scores = cross_val_score(pipeline, self.X_train, self.y_train, cv=cv, scoring='f1_weighted')
+            
+            logger.info(f"Cross-validation F1 scores: {cv_scores}")
+            logger.info(f"Mean CV F1 score: {cv_scores.mean():.4f}")
+            
+            # Fit the pipeline on the full training set
+            pipeline.fit(self.X_train, self.y_train)
+            
+            # Make predictions
+            y_pred = pipeline.predict(self.X_test)
+            
+            # Calculate metrics
+            accuracy = accuracy_score(self.y_test, y_pred)
+            f1 = f1_score(self.y_test, y_pred, average='weighted')
+            
+            logger.info(f"{name} - Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
+            
+            # Store results
+            results[name] = {
+                'pipeline': pipeline,
+                'accuracy': accuracy,
+                'f1_score': f1,
+                'cv_score': cv_scores.mean()
+            }
+            
+            # Print classification report
+            logger.info("\nClassification Report:")
+            logger.info(classification_report(self.y_test, y_pred))
+            
+            # Plot confusion matrix
+            plt.figure(figsize=(10, 8))
+            cm = confusion_matrix(self.y_test, y_pred)
+            plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+            plt.title(f'Confusion Matrix - {name}')
+            plt.colorbar()
+            plt.ylabel('True Label')
+            plt.xlabel('Predicted Label')
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.output_dir, f'confusion_matrix_{name}.png'))
+            plt.close()
         
-        return results
+        # Find the best model based on F1 score
+        self.best_model_name = max(results, key=lambda k: results[k]['f1_score'])
+        self.best_model = results[self.best_model_name]['pipeline']
+        
+        logger.info(f"\nBest model: {self.best_model_name}")
+        logger.info(f"Best model accuracy: {results[self.best_model_name]['accuracy']:.4f}")
+        logger.info(f"Best model F1 score: {results[self.best_model_name]['f1_score']:.4f}")
+        
+        # Store metrics
+        self.metrics = {
+            'accuracy': float(results[self.best_model_name]['accuracy']),
+            'f1_score': float(results[self.best_model_name]['f1_score']),
+            'cv_score': float(results[self.best_model_name]['cv_score']),
+            'num_features': len(self.feature_names),
+            'num_classes': len(np.unique(self.y_train)),
+            'num_samples': len(self.df),
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        return self.best_model, self.metrics
     
-    def save_model(self, save_path='ml_models', model_name='pet_disease_model.h5'):
-        """
-        Save the trained model.
+    def save_model(self):
+        """Save the best model and related artifacts."""
+        logger.info("\n--- Saving Model ---")
         
-        Args:
-            save_path: Directory to save the model
-            model_name: Name of the model file
-        """
-        if self.model is None:
-            raise ValueError("Model not trained. Call train_model first.")
+        # Save the best model
+        model_path = os.path.join(self.output_dir, 'best_model.pkl')
+        joblib.dump(self.best_model, model_path)
         
-        # Create directory if it doesn't exist
-        os.makedirs(save_path, exist_ok=True)
+        # Save feature names
+        feature_names_path = os.path.join(self.output_dir, 'feature_names.pkl')
+        joblib.dump(self.feature_names, feature_names_path)
         
-        # Save the model
-        model_path = os.path.join(save_path, model_name)
-        self.model.save(model_path)
-        print(f"Model saved to {model_path}")
+        # Save metrics
+        metrics_path = os.path.join(self.output_dir, 'metrics.json')
+        with open(metrics_path, 'w') as f:
+            json.dump(self.metrics, f, indent=4)
         
-        # Save model architecture as JSON
-        model_json = self.model.to_json()
-        with open(os.path.join(save_path, 'model_architecture.json'), 'w') as json_file:
-            json_file.write(model_json)
+        logger.info(f"Model saved to {model_path}")
+        logger.info(f"Feature names saved to {feature_names_path}")
+        logger.info(f"Metrics saved to {metrics_path}")
         
         return model_path
     
-    def load_model(self, model_path):
-        """
-        Load a saved model.
-        
-        Args:
-            model_path: Path to the saved model
-        """
-        self.model = tf.keras.models.load_model(model_path)
-        print(f"Model loaded from {model_path}")
-        print(self.model.summary())
-        return self.model
-    
-    def plot_training_history(self, save_path='ml_models'):
-        """
-        Plot the training history.
-        
-        Args:
-            save_path: Directory to save the plots
-        """
-        if self.history is None:
-            raise ValueError("No training history available. Train the model first.")
-        
-        # Create directory if it doesn't exist
-        os.makedirs(save_path, exist_ok=True)
-        
-        # Plot training & validation loss
-        plt.figure(figsize=(12, 4))
-        
-        # Loss plot
-        plt.subplot(1, 2, 1)
-        plt.plot(self.history['loss'])
-        plt.plot(self.history['val_loss'])
-        plt.title('Model Loss')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend(['Train', 'Validation'], loc='upper right')
-        
-        # Metric plot (accuracy for classification, MAE for regression)
-        plt.subplot(1, 2, 2)
-        if self.model_type == 'classification':
-            plt.plot(self.history['accuracy'])
-            plt.plot(self.history['val_accuracy'])
-            plt.title('Model Accuracy')
-            plt.ylabel('Accuracy')
-        else:
-            plt.plot(self.history['mae'])
-            plt.plot(self.history['val_mae'])
-            plt.title('Model MAE')
-            plt.ylabel('MAE')
-        
-        plt.xlabel('Epoch')
-        plt.legend(['Train', 'Validation'], loc='lower right')
-        
-        # Save the plot
-        plt.tight_layout()
-        plot_path = os.path.join(save_path, 'training_history.png')
-        plt.savefig(plot_path)
-        plt.close()
-        
-        print(f"Training history plot saved to {plot_path}")
-        return plot_path
+    def run_pipeline(self):
+        """Run the complete training pipeline."""
+        try:
+            self.load_and_explore_data()
+            self.preprocess_data()
+            self.split_data()
+            self.train_models()
+            model_path = self.save_model()
+            return model_path
+        except Exception as e:
+            logger.error(f"Error in pipeline: {str(e)}", exc_info=True)
+            raise
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Train an improved ML model for pet disease prediction')
+    parser.add_argument('--data', type=str, required=True, help='Path to the data file')
+    parser.add_argument('--target', type=str, default='Future Disease', help='Target column name')
+    parser.add_argument('--output', type=str, default='improved_models', help='Output directory for models')
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
+    
+    trainer = ImprovedModelTrainer(
+        data_path=args.data,
+        target_column=args.target,
+        output_dir=args.output
+    )
+    
+    model_path = trainer.run_pipeline()
+    

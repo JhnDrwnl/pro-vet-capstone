@@ -1,0 +1,93 @@
+version: "3.1"
+
+rules:
+  - rule: Detect language at conversation start
+    conversation_start: true
+    steps:
+      - action: action_detect_language
+
+  - rule: Set language when explicitly requested
+    steps:
+      - intent: DetectLanguageIntent
+      - action: action_detect_language
+
+  - rule: Respond to greeting
+    steps:
+      - intent: GreetingIntent
+      - action: action_greeting
+
+  - rule: Provide office hours information
+    steps:
+      - intent: OfficeHoursIntent
+      - action: action_office_hours
+
+  - rule: Provide office days information
+    steps:
+      - intent: OfficeDaysIntent
+      - action: action_office_days
+
+  - rule: Provide office location information
+    steps:
+      - intent: OfficeLocationIntent
+      - action: action_office_location
+
+  - rule: Provide veterinarians information
+    steps:
+      - intent: VeterinariansIntent
+      - action: action_veterinarians_info
+
+  - rule: Provide services offered information
+    steps:
+      - intent: ServicesOfferIntent
+      - action: action_services_offer
+
+  - rule: Handle fallback
+    steps:
+      - intent: nlu_fallback
+      - action: action_gemini_fallback
+
+  - rule: Provide appointment information
+    steps:
+      - intent: AppointmentIntent
+      - action: action_appointment
+
+  - rule: Provide pet species accepted information
+    steps:
+      - intent: PetSpeciesAcceptedIntent
+      - action: action_pet_species_accepted
+
+  - rule: Provide walk-in basic services information
+    steps:
+      - intent: WalkInBasicVeterinaryServicesIntent
+      - action: action_walkin_basic_services
+
+  - rule: Provide appointment basic services information
+    steps:
+      - intent: AppointmentBasicVeterinaryServicesIntent
+      - action: action_appointment_basic_services
+
+  - rule: Provide basic service checklist information
+    steps:
+      - intent: BasicServiceChecklistIntent
+      - action: action_basic_service_checklist
+
+  - rule: Provide elective service checklist information
+    steps:
+      - intent: ElectiveServiceChecklistIntent
+      - action: action_elective_service_checklist
+
+  - rule: Provide walk-in health certificate information
+    steps:
+      - intent: WalkinVeterinaryHealthCertificateIntent
+      - action: action_walkin_health_certificate
+
+  - rule: Provide walk-in elective services information
+    steps:
+      - intent: WalkinElectiveVeterinaryServicesIntent
+      - action: action_walkin_elective_services
+
+  - rule: Say goodbye
+    steps:
+      - intent: GoodbyeIntent
+      - action: action_goodbye
+

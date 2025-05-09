@@ -1,0 +1,1416 @@
+version: "3.1"
+
+intents:
+  - DetectLanguageIntent
+  - GreetingIntent
+  - OfficeHoursIntent
+  - OfficeDaysIntent
+  - OfficeLocationIntent
+  - VeterinariansIntent
+  - AppointmentIntent
+  - PetSpeciesAcceptedIntent
+  - ServicesOfferIntent
+  - WalkInBasicVeterinaryServicesIntent
+  - AppointmentBasicVeterinaryServicesIntent
+  - BasicServiceChecklistIntent
+  - WalkinElectiveVeterinaryServicesIntent
+  - ElectiveServiceChecklistIntent
+  - WalkinVeterinaryHealthCertificateIntent
+  - GoodbyeIntent
+  - nlu_fallback
+
+slots:
+  language:
+    type: text
+    influence_conversation: true
+    mappings:
+    - type: custom
+      action: action_detect_language
+
+responses:
+  utter_DetectLanguageIntent:
+    - text: "Hi there! I'm ProBot, how can I assist you today?"
+      condition:
+        - type: slot
+          name: language
+          value: english 
+    - text: "Please type your message..."
+      condition:
+        - type: slot
+          name: language
+          value: english   
+    - text: "Hello! I'm ProBot, what can I help you with?"
+      condition:
+        - type: slot
+          name: language
+          value: english  
+    - text: "Type your query here and I'll get back to you!"
+      condition:
+        - type: slot
+          name: language
+          value: english   
+    - text: "Enter your message to begin..."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Let me know how I can help!"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Feel free to type your question."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Ask me anything!"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Type your query to get started..."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Hello! I'm ProBot, let me know how I can help!"
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+  utter_GreetingIntent:
+    - text: "Hello! Welcome to InnoVet. I am ProBot, the clinic's virtual assistant. How can I help you and your pet today?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Hi there! Thank you for reaching out. I am ProBot, how may I assist you?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Good day! I'm here to help with any questions about our vet clinic. What can I do for you?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Good day! This is ProBot from Innovet, the Provincial Veterinary Office system. How can I assist you with your pet's needs today?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Greetings! I'm ProBot, your Innovet assistant. I can help you with appointments, pet care questions, or information about our veterinary services. What do you need today?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Hello and welcome to Innovet! I'm ProBot, here to help with all your veterinary needs. What can I do for you today?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Hi! ProBot here from the Provincial Veterinary Office. How can I assist you with your pet today?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Hello! I'm ProBot, your virtual assistant for Innovet, the Provincial Veterinary Office system. How can I help you with your pet today?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Good day! This is ProBot from the Provincial Veterinary Office's Innovet system. How can I assist you with your pet care needs?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Greetings! I'm ProBot, your Innovet assistant. I can help you with appointments, pet care questions, or veterinary services. What do you need today?"
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Kamusta! Ako si ProBot, ang virtual assistant ng Provincial Veterinary Office. Paano ko po kayo matutulungan tungkol sa inyong alagang hayop ngayon?"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Magandang araw! Ako po si ProBot ng Innovet. Handa akong tumulong sa lahat ng inyong pangangailangan sa oofice. Ano po ang maitutulong ko?"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Kumusta po! Ako si ProBot, ang inyong Innovet assistant. Handa akong tumulong sa anumang katanungan tungkol sa appointment, mga katanungan tungkol sa pag-aalaga ng hayop, o mga serbisyong veterinary. Paano ko kayo matutulungan?"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Mabuhay! Ako po si ProBot mula sa Innovet, ang gamit ng Provincial Veterinary Office. Paano ko po kayo matutulungan ngayong araw?"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Magandang araw po! Ako si ProBot, ang virtual assistant ng Innovet. Ano pong tulong ang kailangan ninyo para sa inyong alagang hayop?"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Kumusta po kayo! Ako po si ProBot mula sa Provincial Veterinary Office. Handa akong tumulong sa inyo tungkol sa pag-aalaga ng inyong alagang hayop."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Magandang araw! Ako po si ProBot ng Innovet. Maaari ko kayong tulungan sa pag-schedule ng appointment, mga katanungan sa pag-aalaga ng hayop, o impormasyon tungkol sa aming mga serbisyo."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Maligayang pagbati! Ako po si ProBot, ang virtual assistant ng Provincial Veterinary Office. Paano ko kayo matutulungan ngayon?"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Magandang araw! Ako po si ProBot ng Innovet. Handa akong tumulong sa anumang katanungan o pangangailangan ninyo tungkol sa inyong alagang hayop."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Kumusta po! Ako si ProBot mula sa Provincial Veterinary Office. Ano pong tulong ang kailangan ninyo para sa inyong alagang hayop ngayong araw?"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Hello po! I am ProBot from Innovet, the Provincial Veterinary Office system. How can I help you with your pet today?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Hi there! Welcome sa Innovet. I'm ProBot, ready to assist with all your pet care needs. Ano po ang maitutulong ko?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Kamusta! I am ProBot from Innovet. I can help you with appointments, pet care questions, or veterinary services po. What do you need today?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Good day po! Ako si ProBot from the Provincial Veterinary Office. How can I assist you with your pet's needs today?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Kumusta! Welcome to Innovet. I'm ProBot, your virtual assistant. What can I do for you and your pet po?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Hello! Ako po si ProBot ng Provincial Veterinary Office. I can help you with appointments, pet care information, or any questions about our services."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Hi po! ProBot here from Innovet. Paano ko kayo matutulungan with your pet care needs today?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Magandang araw! I'm ProBot from the Provincial Veterinary Office. How can I assist you with your pet today po?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Hello there! Ako si ProBot from Innovet. I'm here to help with any questions or concerns about your pet's health and care."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Kumusta po! This is ProBot from the Provincial Veterinary Office. What kind of assistance do you need for your pet today?"
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_OfficeHoursIntent:
+    - text: "The Provincial Veterinary Office is open from 8:00 AM to 5:00 PM. We close for lunch from 12:00 PM to 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Our clinic hours are 8:00 AM to 5:00 PM. Please note that we have a lunch break from 12:00 PM to 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "We're open on weekdays from 8:00 AM until 5:00 PM, with a lunch break between 12:00 PM and 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "The Provincial Veterinary Office operates from 8:00 AM to 5:00 PM. We take a lunch break from 12:00 PM to 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Our operating hours are 8:00 AM to 12:00 PM and 1:00 PM to 5:00 PM, Monday to Friday."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Ang Provincial Veterinary Office ay bukas mula 8:00 ng umaga hanggang 5:00 ng hapon. Kami ay nagsasara para sa tanghalian mula 12:00 ng tanghali hanggang 1:00 ng hapon. "
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang oras ng aming klinika ay 8:00 ng umaga hanggang 5:00 ng hapon, Lunes hanggang Biyernes. Pakitandaan na kami ay may lunch break mula 12:00 ng tanghali hanggang 1:00 ng hapon. "
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Kami ay bukas tuwing weekdays mula 8:00 ng umaga hanggang 5:00 ng hapon, may lunch break mula 12:00 ng tanghali hanggang 1:00 ng hapon."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang Provincial Veterinary Office ay nagbubukas ng 8:00 ng umaga at nagsasara ng 5:00 ng hapon tuwing weekdays lamang. May lunch break kami mula 12:00 ng tanghali hanggang 1:00 ng hapon."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang oras ng aming operasyon ay 8:00 ng umaga hanggang 12:00 ng tanghali at 1:00 ng hapon hanggang 5:00 ng hapon, Lunes hanggang Biyernes."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Open po kami Monday to Friday, 8:00 AM to 5:00 PM. May lunch break po tayo 12:00 PM to 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Ang clinic hours po natin ay 8:00 AM hanggang 5:00 PM, weekdays lang po. May break po tayo ng lunch time, 12:00 PM to 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "The Provincial Veterinary Office po is open from 8:00 AM to 5:00 PM. Nagsasara po kami for lunch from 12:00 PM to 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "We operate from 8:00 AM hanggang 5:00 PM. Please note na may lunch break kami from 12:00 PM hanggang 1:00 PM."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Ang operating hours po ng Provincial Veterinary Office ay 8:00 AM to 12:00 PM and 1:00 PM to 5:00 PM. "
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+          
+  utter_OfficeDaysIntent:
+    - text: "The Provincial Veterinary Office is open Monday to Friday only. We are closed on weekends and holidays."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "We operate on weekdays only, from Monday to Friday. The office remains closed on Saturdays, Sundays, and all public holidays."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Our office is available on regular working days, Monday through Friday. We don't provide services on weekends or holidays."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "The Provincial Veterinary Office works on a standard weekday schedule, Monday to Friday. We are not open on weekends or during holidays."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "We're open five days a week, Monday to Friday. Please note that our office is closed on weekends and all recognized holidays."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Ang Provincial Veterinary Office ay bukas lamang tuwing Lunes hanggang Biyernes. Kami ay sarado tuwing weekend at holidays."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Kami ay nag-ooperate tuwing weekdays lamang, mula Lunes hanggang Biyernes. Ang opisina ay sarado tuwing Sabado, Linggo, at lahat ng pista opisyal."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang aming opisina ay available sa mga regular na araw ng trabaho, Lunes hanggang Biyernes. Hindi kami nagbibigay ng serbisyo tuwing weekend o holidays."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang Provincial Veterinary Office ay gumagana sa isang karaniwang iskedyul ng weekday, Lunes hanggang Biyernes. Hindi kami bukas tuwing weekend o sa panahon ng mga holiday."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Kami ay bukas ng limang araw sa isang linggo, Lunes hanggang Biyernes. Pakitandaan na ang aming opisina ay sarado tuwing weekend at lahat ng kinikilalang holidays."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Open po ang Provincial Veterinary Office Monday to Friday only. Closed po kami during weekends and holidays."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "We operate po on weekdays lang, Monday to Friday. Ang office po natin ay closed tuwing Saturday, Sunday, at lahat ng public holidays."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Available po ang office namin on regular working days, Monday to Friday. Hindi po kami nag-provide ng services during weekends or holidays."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Ang Provincial Veterinary Office po ay may standard weekday schedule, Monday to Friday. Hindi po kami open during weekends or holidays."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Open po kami five days a week, Monday to Friday lang. Please note po na closed ang office namin during weekends at lahat ng recognized holidays."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_OfficeLocationIntent:
+    - text: "The Provincial Veterinary Office is located at Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro. We're inside the Provincial Capitol grounds."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "You can find us at the Oriental Mindoro Provincial Capitol Complex in Barangay Camilmil, Calapan City."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Our clinic address is Provincial Veterinary Office, Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "We're located within the Provincial Capitol Complex in Calapan City, specifically in Barangay Camilmil, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "To get to our clinic, head to the Oriental Mindoro Provincial Capitol Complex in Calapan City. The Provincial Veterinary Office is within the government complex in Barangay Camilmil."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Yes, we have parking available for clients at the Provincial Capitol Complex where our office is located."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "We're located within the Provincial Capitol complex in Barangay Camilmil, Calapan City."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Our clinic address is Provincial Veterinary Office, Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "The Provincial Veterinary Office is located at Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Ang Provincial Veterinary Office ay matatagpuan sa Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro. Nasa loob kami ng Provincial Capitol grounds."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Makikita ninyo kami sa Oriental Mindoro Provincial Capitol Complex sa Barangay Camilmil, Calapan City. Bahagi kami ng pangunahing government complex."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang address ng aming klinika ay Provincial Veterinary Office, Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Kami ay nasa loob ng Provincial Capitol Complex sa Calapan City, partikular sa Barangay Camilmil, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Para makarating sa aming klinika, pumunta sa Oriental Mindoro Provincial Capitol Complex sa Calapan City. Ang Provincial Veterinary Office ay nasa loob ng government complex sa Barangay Camilmil."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Oo, may available na parking para sa mga kliyente sa Provincial Capitol Complex kung saan matatagpuan ang aming opisina."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang aming opisina ay matatagpuan sa Barangay Camilmil, Calapan City."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang Provincial Veterinary Office ay matatagpuan sa Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang aming lokasyon ay Oriental Mindoro Provincial Capitol Complex sa Calapan City."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Our office po is located sa Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City. We're inside the Capitol grounds po."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "You can find us po sa Provincial Capitol Complex sa Calapan City, Oriental Mindoro. Just look for the Provincial Veterinary Office sa loob ng complex."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Ang address po namin is Provincial Veterinary Office, Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "We're located po within the Provincial Capitol Complex sa Calapan City, specifically sa Barangay Camilmil, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "To get to our clinic po, pumunta kayo sa Oriental Mindoro Provincial Capitol Complex sa Calapan City. The Provincial Veterinary Office is within the government complex sa Barangay Camilmil."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Yes po, may parking available for clients sa Provincial Capitol Complex kung saan located ang aming office."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Nasa loob po kami ng Provincial Capitol complex sa Barangay Camilmil, Calapan City."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Our clinic address po is Provincial Veterinary Office, Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "The Provincial Veterinary Office po ay located sa Oriental Mindoro Provincial Capitol Complex, Barangay Camilmil, Calapan City, Oriental Mindoro."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+          
+  utter_VeterinariansIntent:
+    - text: "The Provincial Veterinary Office has 3 licensed veterinarians: Mr. Alfredo P. Manglicmot, Mrs. Anna Rochelle A. Bongaling, and Mr. Grimaldo C. Catapang (Provincial Veterinarian). They are all highly qualified and experienced professionals ready to help with your pet's needs."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "We have three veterinarians at our Provincial Veterinary Office: Dr. Manglicmot and Dra. Bongaling, both Veterinarian IV, and our Provincial Veterinarian, Dr. Catapang. All are licensed and experienced in various aspects of animal healthcare."   
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Our veterinarians have various specializations. Dr. Manglicmot and Dr. Bongaling are both Veterinarian IV with expertise in general veterinary medicine, while Dr. Catapang, our Provincial Veterinarian, oversees all veterinary services in the province."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Our veterinarians, Dr. Manglicmot, Dr. Bongaling, and Dr. Catapang, are available during our office hours. For specific appointment requests with a particular veterinarian, please contact our office directly."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "The Provincial Veterinary Office has 3 licensed veterinarians: Dr. Alfredo P. Manglicmot, Dr. Anna Rochelle A. Bongaling, and Dr. Grimaldo C. Catapang."
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: "Ang aming head veterinarian ay si Dr. Grimaldo C. Catapang, na humahawak ng posisyon bilang Provincial Veterinarian. Pinamumunuan niya ang aming veterinary team at nangangasiwa sa iba't ibang programa sa kalusugan ng hayop sa aming probinsya."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Mayroon kaming tatlong beterinaryo sa aming Provincial Veterinary Office: sina Dr. Manglicmot at Dr. Bongaling, parehong Veterinarian IV, at ang aming Provincial Veterinarian na si Dr. Catapang. Lahat sila ay lisensiyado at may karanasan sa iba't ibang aspeto ng pangangalaga sa kalusugan ng hayop."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang Provincial Veterinary Office ay may 3 lisensyadong beterinaryo: si G. Alfredo P. Manglicmot, Gng. Anna Rochelle A. Bongaling, at G. Grimaldo C. Catapang (Provincial Veterinarian). Silang lahat ay mga kwalipikado at may karanasang propesyonal na handang tumulong sa pangangailangan ng inyong alagang hayop."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang aming mga beterinaryo ay may iba't ibang espesyalisasyon. Sina Dr. Manglicmot at Dr. Bongaling ay parehong Veterinarian IV na may kadalubhasaan sa pangkalahatang medisina ng hayop, habang si Dr. Catapang, ang aming Provincial Veterinarian, ay nangangasiwa sa lahat ng serbisyong beterinaryo sa probinsya."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang aming mga beterinaryo, sina Dr. Manglicmot, Dr. Bongaling, at Dr. Catapang, ay available sa oras ng aming opisina. Para sa mga partikular na kahilingan ng appointment sa isang partikular na beterinaryo, mangyaring direktang makipag-ugnayan sa aming opisina."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+    - text: "Ang Provincial Veterinary Office ay may 3 licensed veterinarians: si Dr. Alfredo P. Manglicmot (Veterinarian IV), Dr. Anna Rochelle A. Bongaling (Veterinarian IV), at Dr. Grimaldo C. Catapang (Provincial Veterinarian). Sila ay mga kwalipikado at may karanasang propesyonal na handang tumulong sa pangangailangan ng inyong alagang hayop."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "We have three veterinarians po sa aming Provincial Veterinary Office: si Dr. Manglicmot at Dr. Bongaling, both Veterinarian IV, at ang aming Provincial Veterinarian na si Dr. Catapang. Lahat sila ay licensed at experienced sa various aspects ng animal healthcare."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Our veterinarians po ay may iba't ibang specializations. Si Dr. Manglicmot at Dr. Bongaling ay both Veterinarian IV with expertise sa general veterinary medicine, while si Dr. Catapang, ang aming Provincial Veterinarian, ay nag-o-oversee ng all veterinary services sa province."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "Ang aming veterinarians po, sina Dr. Manglicmot, Dr. Bongaling, at Dr. Catapang, ay available during our office hours. Para sa specific appointment requests with a particular veterinarian, please contact our office directly po."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+    - text: "May 3 licensed veterinarians po ang Provincial Veterinary Office: si Dr. Alfredo P. Manglicmot, si Dr. Anna Rochelle A. Bongaling, at si Dr. Grimaldo C. Catapang po ang aming Provincial Veterinarian."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_ServicesOfferIntent:
+    - text: |
+        The Provincial Veterinary Office offers a wide range of services:
+        1. Walk-in Veterinary Services: We provide basic veterinary services such as consultation, treatment, vaccination, deworming, supplementation, and technical assistance to walk-in clients.
+        2. Elective Veterinary Services: We offer mass rabies vaccination, large animal castration, spay and neuter services, estrus synchronization and artificial insemination, epidemiological surveillance, and veterinary medical mission.
+        3. Veterinary Health Certificate: We issue certificates for transport, slaughter, and other processes and transactions.
+        4. Other Support Services: We provide trainings, orientation, lectures, seminars, animal dispersal, and technical assistance to various livestock projects.
+       
+        How can we help you and your pet today?
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: |
+        Our clinic provides comprehensive veterinary care including:
+        • Walk-in services (consultation, treatment, vaccination, deworming)
+        • Elective procedures (spay/neuter, castration, artificial insemination)
+        • Health certificates for animal transport and slaughter
+        • Support services like trainings and technical assistance
+        
+        Which of these services are you interested in?
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: |
+        Here at the Provincial Veterinary Office, we offer:
+        
+        1. Basic veterinary care: consultations, vaccinations, deworming, and treatments
+        2. Surgical procedures: spaying, neutering, and castration for large animals
+        3. Specialized services: artificial insemination, estrus synchronization
+        4. Documentation: health certificates for transport and slaughter
+        5. Community support: trainings, seminars, and technical assistance
+        
+        Which of these services would you like to know more about?
+      condition:
+        - type: slot
+          name: language
+          value: english
+    - text: |
+        Ang Provincial Veterinary Office ay nag-aalok ng mga sumusunod na serbisyo:
+        1. Walk-in Veterinary Services: Nagbibigay kami ng basic na serbisyong beterinaryo tulad ng konsultasyon, paggamot, pagbabakuna, deworming, supplementation, at technical assistance sa mga walk-in clients.
+        2. Elective Veterinary Services: Nag-aalok kami ng mass rabies vaccination, kapon para sa malalaking hayop, spay at neuter services, estrus synchronization at artificial insemination, epidemiological surveillance, at veterinary medical mission.
+        3. Veterinary Health Certificate: Nag-iisyu kami ng mga sertipiko para sa transportasyon, pagkatay, at iba pang mga proseso at transaksyon.
+        4. Iba pang Support Services: Nagbibigay kami ng mga pagsasanay, oryentasyon, lectures, seminar, animal dispersal, at technical assistance sa iba't ibang livestock projects.
+        
+        Paano namin kayo matutulungan ngayon?
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: |
+        Sa aming klinika, nag-aalok kami ng:
+        • Mga serbisyong walk-in (konsultasyon, paggamot, pagbabakuna, deworming)
+        • Elective procedures (spay/neuter, kapon, artificial insemination)
+        • Health certificates para sa transportasyon at pagkatay ng hayop
+        • Support services tulad ng trainings at technical assistance
+        
+        Alin sa mga serbisyong ito ang interesado kayo?
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: |
+        Dito sa Provincial Veterinary Office, nag-aalok kami ng mga sumusunod:
+        
+        1. Pangunahing pangangalagang pangkalusugan ng hayop: konsultasyon, pagbabakuna, deworming, at paggamot
+        2. Mga pamamaraang surgical: spaying, neutering, at kapon para sa malalaking hayop
+        3. Mga espesyal na serbisyo: artificial insemination, estrus synchronization
+        4. Dokumentasyon: health certificates para sa transportasyon at pagkatay
+        5. Suporta sa komunidad: mga pagsasanay, seminar, at technical assistance
+        
+        Alin sa mga serbisyong ito ang nais ninyong malaman nang higit pa?
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: |
+        Nag-aalok kami ng iba't ibang serbisyong beterinaryo sa Provincial Veterinary Office. Kabilang sa aming mga serbisyo ang:
+        
+        Para sa regular na pangangalaga ng alagang hayop:
+        - Konsultasyon at check-up
+        - Pagbabakuna kasama ang rabies shots
+        - Deworming treatments
+        - Nutritional supplementation
+        
+        Para sa mga pangangailangang surgical:
+        - Spaying at neutering
+        - Kapon para sa hayop
+        
+        Nagbibigay din kami ng:
+        - Veterinary health certificates
+        - Technical assistance
+        - Training at seminar para sa mga may-ari ng alagang hayop
+        
+        May specific na serbisyo ba na hinahanap ninyo?
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: |
+        Dito sa Provincial Veterinary Office, nag-aalok kami ng:
+        1. Basic na pangangalagang beterinaryo: konsultasyon, pagbabakuna, deworming, at paggamot
+        2. Surgical procedures: spaying, neutering, at kapon para sa malalaking hayop
+        3. Specialized services: artificial insemination, estrus synchronization
+        4. Documentation: health certificates para sa transportasyon at pagkatay
+        5. Community support: trainings, seminars, at technical assistance
+        
+        Alin sa mga serbisyong ito ang gusto ninyong malaman pa?
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: |
+        The Provincial Veterinary Office po offers a wide range of services:
+        1. Walk-in Veterinary Services: Nagbibigay po kami ng basic veterinary services like consultation, treatment, vaccination, deworming, supplementation, at technical assistance sa mga walk-in clients.
+        2. Elective Veterinary Services: We offer po mass rabies vaccination, large animal castration, spay and neuter services, estrus synchronization at artificial insemination, epidemiological surveillance, at veterinary medical mission.
+        3. Veterinary Health Certificate: Nag-iissue po kami ng certificates for transport, slaughter, at other processes and transactions.
+        4. Other Support Services: Nagbibigay po kami ng trainings, orientation, lectures, seminars, animal dispersal, at technical assistance sa various livestock projects.
+        
+        How can we help you and your pet today po?
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_AppointmentIntent:
+    - text: |
+        You can book an appointment through our InnoVet system or by visiting our clinic in person. 
+        To book through InnoVet:
+        1. Click "Create" in the sidebar menu
+        2. Select the service you need (Elective Veterinary Services, Telehealth, etc.)
+        3. Choose your pet that needs the service
+        4. Select your preferred veterinarian
+        5. Pick an available date and time (except weekends and holidays)
+        6. Review your appointment summary and confirm
+        
+        We recommend booking at least 24 hours in advance, but same-day appointments may be available depending on our schedule.
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: |
+        To schedule an appointment, you have two options:
+        
+        Option 1: Use our InnoVet online system
+        • Navigate to the sidebar and click "Create"
+        • Choose your required service category
+        • Select your pet from the list
+        • Pick your preferred veterinarian
+        • Select an available date and time slot
+        • Confirm your booking details
+        
+        Option 2: Visit our clinic in person
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: |
+        Booking an appointment is easy! Just follow these steps in our InnoVet system:
+        
+        1. Click the "Create" button in the sidebar
+        2. Browse and select the appropriate service category
+        3. Choose which of your pets needs the service
+        4. Select your preferred veterinarian
+        5. Pick from available time slots (weekdays only)
+        6. Review and confirm your appointment
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: |
+        Pwede kang mag-book ng appointment sa pamamagitan ng aming InnoVet system o sa personal na pagbisita sa aming opisina.
+        
+        Para mag-book gamit ang InnoVet:
+        1. I-click ang "Create" sa sidebar
+        2. Piliin ang serbisyong kailangan mo
+        3. Piliin ang iyong alagang hayop na nangangailangan ng serbisyo
+        4. Pumili ng gusto mong beterinaryo
+        5. Pumili ng available na petsa at oras (maliban sa weekend at holidays)
+        6. Suriin ang detalye ng iyong appointment at i-confirm
+        
+        Inirerekomenda naming mag-book 24 na oras bago ang appointment, ngunit maaaring may available na appointment sa araw ding iyon depende sa aming iskedyul.
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: |
+        Para mag-schedule ng appointment, may dalawang paraan ka:
+        
+        Paraan 1: Gamitin ang aming InnoVet online system
+        • Pumunta sa sidebar at i-click ang "Create"
+        • Piliin ang kategorya ng serbisyong kailangan mo
+        • Piliin ang iyong alagang hayop mula sa listahan
+        • Pumili ng gusto mong beterinaryo
+        • Pumili ng available na petsa at oras
+        • I-confirm ang mga detalye ng iyong booking
+        
+        Paraan 2: Bumisita sa aming opisina nang personal
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: |
+        Ang pag-book ng appointment ay simple lamang! Sundin ang mga hakbang na ito sa aming InnoVet system:
+        
+        1. I-click ang "Create" button sa sidebar menu
+        2. Tumingin at pumili ng angkop na kategorya ng serbisyo
+        3. Piliin kung alin sa iyong mga alagang hayop ang nangangailangan ng serbisyo
+        4. Pumili ng nais mong beterinaryo
+        5. Pumili mula sa mga available na oras (tuwing weekdays lamang)
+        6. Suriin at kumpirmahin ang iyong appointment
+        
+        Tandaan na ang mga appointment ay available lamang tuwing Lunes hanggang Biyernes, at hindi tuwing weekend o holidays.
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: |
+        Madali lang mag-book ng appointment! Sundin lang ang mga hakbang na ito sa aming InnoVet system:
+        
+        1. I-click ang "Create" button sa sidebar
+        2. Pumili ng naaangkop na kategorya ng serbisyo
+        3. Piliin kung alin sa iyong mga alagang hayop ang nangangailangan ng serbisyo
+        4. Pumili ng gusto mong beterinaryo
+        5. Pumili mula sa mga available na time slot (weekdays lang)
+        6. Suriin at i-confirm ang iyong appointment
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: |
+        Para po mag-book ng appointment, pwede po sa InnoVet system o sa clinic mismo.
+        
+        Sa InnoVet po:
+        1. Click po sa "Create" sa sidebar
+        2. Select po ng service na kailangan niyo
+        3. Choose po ng pet na need ng service
+        4. Pick po ng preferred vet
+        5. Select po ng available date and time (except weekends and holidays)
+        6. Review po ng appointment details at confirm
+        
+        Mas maganda po mag-book at least 24 hours in advance, pero minsan may same-day slots din po depende sa availability.
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: |
+        To schedule an appointment po, you have two options:
+        
+        Option 1: Use our InnoVet online system po
+        • Navigate po sa sidebar at i-click ang "Create"
+        • Choose po ng required service category ninyo
+        • Select po ng pet ninyo from the list
+        • Pick po ng preferred veterinarian
+        • Select po ng available date and time slot
+        • Confirm po ng booking details ninyo
+        
+        Option 2: Visit our clinic in person po
+        
+        Note po na weekdays lang kami open, Monday to Friday, 8:00 AM to 5:00 PM.
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_PetSpeciesAcceptedIntent:
+    - text: "At our Provincial Veterinary Office, we primarily treat companion animals including dogs (canine), cats (feline), birds (such as pigeons, parrots, lovebirds, and finches), small mammals (including rabbits, hamsters, guinea pigs, mice, and rats), and some reptiles. We specialize in these common household pets and are fully equipped to provide them with quality care. For larger animals like livestock or exotic species not mentioned, we may need to refer you to a specialized veterinary service."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Our Provincial Veterinary Office accepts and treats the following pet species: dogs and cats as our most common patients, various birds including pigeons and parrots, small mammals such as rabbits and hamsters, and some reptiles depending on our available specialists. We're equipped to handle routine check-ups, vaccinations, and common treatments for these animals. If you have a pet that falls outside these categories, please call ahead so we can advise if we can accommodate them or recommend a more suitable facility."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Here at our Provincial Veterinary Office, we primarily care for common household pets. We accept dogs and cats, various birds (pigeons, parrots, lovebirds, finches), small mammals (rabbits, hamsters, guinea pigs, mice, rats), and some reptiles. Our facilities and staff are specially trained to handle these animals. For farm animals, wildlife, or exotic species not mentioned, we can provide referrals to appropriate specialized veterinary services."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Sa aming Provincial Veterinary Office, pangunahin kaming gumagamot ng mga alagang hayop kabilang ang mga aso (canine), pusa (feline), ibon (tulad ng kalapati, loro, lovebirds, at finches), maliliit na mammal (kabilang ang mga kuneho, hamster, guinea pig, daga, at rats), at ilang reptile. Nag-ispecialize kami sa mga karaniwang alagang hayop at kumpleto ang aming kagamitan para magbigay ng de-kalidad na pangangalaga. Para sa mas malalaking hayop tulad ng livestock o mga exotic species na hindi nabanggit, maaaring kailangan naming i-refer kayo sa isang specialized veterinary service."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Ang aming Provincial Veterinary Office ay tumatanggap at gumagamot ng mga sumusunod na uri ng alagang hayop: aso at pusa bilang aming pinakakaraniwang pasyente, iba't ibang ibon kabilang ang kalapati at loro, maliliit na mammal tulad ng kuneho at hamster, at ilang reptile depende sa aming available na specialists. Handa kaming mangalaga para sa routine check-ups, bakuna, at karaniwang paggamot para sa mga hayop na ito. Kung mayroon kayong alaga na wala sa mga kategoryang ito, mangyaring tumawag muna para makapagbigay kami ng payo kung maaari namin silang tanggapin o magrekomenda ng mas angkop na pasilidad."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Dito sa aming Provincial Veterinary Office, pangunahin naming inaalagaan ang mga karaniwang alagang hayop sa bahay. Tumatanggap kami ng mga aso at pusa, iba't ibang uri ng ibon (kalapati, loro, lovebirds, finches), maliliit na mammal (kuneho, hamster, guinea pig, daga, rats), at ilang reptile. Ang aming pasilidad at staff ay espesyal na sinanay para mangalaga sa mga hayop na ito. Para sa mga hayop sa bukid, wildlife, o mga exotic species na hindi nabanggit, makakapagbigay kami ng mga referral sa angkop na specialized veterinary services."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Sa aming Provincial Veterinary Office, tumatanggap kami ng mga common pets like dogs, cats, birds (such as pigeons, parrots, at iba pang house birds), small mammals (like rabbits, hamsters, guinea pigs, mice, at rats), at some reptiles. We're fully equipped po to handle these types of animals. Kung may exotic pet po kayo or large farm animals, we might need to refer you to specialized veterinary services na mas equipped para sa kanila."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Here at our Provincial Veterinary Office po, we primarily care for common household pets. Tumatanggap po kami ng dogs and cats, various birds (like pigeons, parrots, lovebirds, finches), small mammals (rabbits, hamsters, guinea pigs, mice, rats), at some reptiles. Our facilities and staff po ay specially trained to handle these animals. Para po sa farm animals, wildlife, o exotic species na hindi nabanggit, we can provide referrals po sa appropriate specialized veterinary services."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Ang Provincial Veterinary Office po namin accepts and treats the following pet species: dogs and cats as our most common patients, iba't ibang birds including pigeons and parrots, small mammals like rabbits and hamsters, at some reptiles depending sa available specialists namin. We're equipped po to handle routine check-ups, vaccinations, at common treatments for these animals. Kung may pet po kayo na wala sa categories na ito, please call ahead po para ma-advise namin if we can accommodate them o kaya recommend ng more suitable facility."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_WalkInBasicVeterinaryServicesIntent:
+    - text: "Yes, we accept walk-in clients for basic veterinary services including consultation, treatment, vaccination, deworming, supplementation, and technical assistance. Our services are available Monday to Friday from 8 AM to 5 PM. No appointment is necessary for these basic services."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "The Provincial Veterinary Office welcomes walk-in clients for basic veterinary services. You can visit us anytime between 8 AM and 5 PM, Monday through Friday, for consultations, vaccinations, deworming, treatment, supplementation, or technical assistance without an appointment."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "You're welcome to walk in for basic veterinary services such as pet consultations, vaccinations, deworming, treatment, supplementation, and technical assistance. Our office is open to serve you from Monday to Friday, 8 AM to 5 PM. No prior booking is required for these services."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "We provide walk-in services for basic veterinary needs including consultations, vaccinations, deworming, treatment, supplementation, and technical assistance. Feel free to visit our office during our operating hours: Monday to Friday, 8 AM to 5 PM."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "The Provincial Veterinary Office offers walk-in services for basic pet care needs. You can come in without an appointment for consultations, vaccinations, deworming, treatment, supplementation, or technical assistance during our business hours: Monday to Friday, 8 AM to 5 PM."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Tumatanggap kami ng walk-in na kliyente para sa mga basic na serbisyong beterinaryo kabilang ang konsultasyon, paggamot, pagbabakuna, deworming, supplementation, at technical assistance. Ang aming mga serbisyo ay available mula Lunes hanggang Biyernes, 8 AM hanggang 5 PM. Hindi kinakailangan ng appointment para sa mga basic na serbisyong ito."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Ang Provincial Veterinary Office ay tumatanggap ng walk-in na kliyente para sa mga basic na serbisyong beterinaryo. Maaari kang bumisita sa amin anumang oras mula 8 AM hanggang 5 PM, Lunes hanggang Biyernes, para sa mga konsultasyon, pagbabakuna, deworming, paggamot, supplementation, o technical assistance nang walang appointment."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Malugod naming tinatanggap ang mga walk-in para sa mga basic na serbisyong beterinaryo tulad ng konsultasyon ng alagang hayop, pagbabakuna, deworming, paggamot, supplementation, at technical assistance. Ang aming opisina ay bukas para paglingkuran ka mula Lunes hanggang Biyernes, 8 AM hanggang 5 PM. Hindi kinakailangan ng paunang booking para sa mga serbisyong ito."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Nagbibigay kami ng walk-in na serbisyo para sa mga basic na pangangailangang beterinaryo kabilang ang mga konsultasyon, pagbabakuna, deworming, paggamot, supplementation, at technical assistance. Huwag mag-atubiling bumisita sa aming opisina sa aming oras ng operasyon: Lunes hanggang Biyernes, 8 AM hanggang 5 PM."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Ang Provincial Veterinary Office ay nag-aalok ng walk-in na serbisyo para sa mga basic na pangangailangan ng alagang hayop. Maaari kang pumunta nang walang appointment para sa mga konsultasyon, pagbabakuna, deworming, paggamot, supplementation, o technical assistance sa aming oras ng negosyo: Lunes hanggang Biyernes, 8 AM hanggang 5 PM."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "We accept walk-in clients para sa basic veterinary services including consultation, treatment, vaccination, deworming, supplementation, at technical assistance. Available po ang aming services Monday to Friday from 8 AM to 5 PM. Hindi na po kailangan ng appointment para sa mga basic services na ito."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Ang Provincial Veterinary Office po ay welcome sa walk-in clients para sa basic veterinary services. Pwede po kayong pumunta anytime between 8 AM and 5 PM, Monday through Friday, para sa consultations, vaccinations, deworming, treatment, supplementation, o technical assistance without an appointment."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Welcome po kayo to walk in para sa basic veterinary services tulad ng pet consultations, vaccinations, deworming, treatment, supplementation, at technical assistance. Open po ang office namin to serve you from Monday to Friday, 8 AM to 5 PM. No prior booking is required po para sa mga services na ito."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Nag-provide po kami ng walk-in services para sa basic veterinary needs including consultations, vaccinations, deworming, treatment, supplementation, at technical assistance. Feel free po to visit our office during our operating hours: Monday to Friday, 8 AM to 5 PM."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Ang Provincial Veterinary Office po ay nag-o-offer ng walk-in services para sa basic pet care needs. Pwede po kayong pumunta without an appointment para sa consultations, vaccinations, deworming, treatment, supplementation, o technical assistance during our business hours: Monday to Friday, 8 AM to 5 PM."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_AppointmentBasicVeterinaryServicesIntent:
+    - text: "To schedule an appointment for basic veterinary services, you can use our InnoVet system. Here's how: 1) Click 'Create' in the sidebar menu, 2) Select 'Basic Veterinary Services', 3) Choose your pet that needs the service, 4) Select your preferred veterinarian, 5) Pick an available date and time (Monday to Friday, 8 AM to 5 PM), 6) Review and confirm your appointment. This system helps you book consultations, treatments, vaccinations, deworming, supplementation, and technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Booking an appointment for basic veterinary services is easy through our InnoVet system. Simply follow these steps: 1) Click 'Create' in the sidebar, 2) Choose 'Basic Veterinary Services', 3) Select the pet requiring service, 4) Choose a veterinarian, 5) Select a date and time (weekdays 8 AM-5 PM), 6) Confirm your booking. We offer services including consultations, vaccinations, deworming, treatments, supplementation, and technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "You can schedule appointments for basic veterinary services through our InnoVet system. The process is: 1) Click 'Create' in the sidebar, 2) Select 'Basic Veterinary Services', 3) Choose your pet, 4) Select a veterinarian, 5) Pick a weekday appointment time between 8 AM and 5 PM, 6) Confirm your booking. We provide consultations, vaccinations, deworming, treatments, supplementation, and technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "For scheduling basic veterinary services like consultations, vaccinations, deworming, treatments, supplementation, or technical assistance, please use our InnoVet system. The booking process is: 1) Click 'Create' in the sidebar menu, 2) Select the service (Basic Veterinary Services), 3) Choose your pet, 4) Select a veterinarian, 5) Pick a weekday time slot (8 AM-5 PM), 6) Review and confirm."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "The Provincial Veterinary Office uses the InnoVet system for appointment bookings. To schedule basic veterinary services (consultations, vaccinations, deworming, treatments, supplementation, technical assistance), follow these steps: 1) Click 'Create' in the sidebar, 2) Select 'Basic Veterinary Services', 3) Choose your pet, 4) Select a veterinarian, 5) Pick an available weekday time (8 AM-5 PM), 6) Confirm your appointment."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Para mag-schedule ng appointment para sa mga basic na serbisyong beterinaryo, maaari mong gamitin ang aming sistema na InnoVet. Narito kung paano: 1) I-click ang 'Create' sa sidebar menu, 2) Piliin ang 'Basic Veterinary Services', 3) Piliin ang iyong alagang hayop na nangangailangan ng serbisyo, 4) Pumili ng gusto mong beterinaryo, 5) Pumili ng available na petsa at oras (Lunes hanggang Biyernes, 8 AM hanggang 5 PM), 6) Suriin at kumpirmahin ang iyong appointment. Ang sistemang ito ay tumutulong sa iyo na mag-book ng mga konsultasyon, paggamot, pagbabakuna, deworming, supplementation, at technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Ang pag-book ng appointment para sa mga basic na serbisyong beterinaryo ay madali sa pamamagitan ng aming sistema na InnoVet. Sundin lamang ang mga hakbang na ito: 1) I-click ang 'Create' sa sidebar, 2) Piliin ang 'Basic Veterinary Services', 3) Piliin ang alagang hayop na nangangailangan ng serbisyo, 4) Pumili ng beterinaryo, 5) Pumili ng petsa at oras (weekdays 8 AM-5 PM), 6) Kumpirmahin ang iyong booking. Nag-aalok kami ng mga serbisyo kabilang ang mga konsultasyon, pagbabakuna, deworming, paggamot, supplementation, at technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Maaari kang mag-schedule ng mga appointment para sa mga basic na serbisyong beterinaryo sa pamamagitan ng aming sistema na InnoVet. Ang proseso ay: 1) I-click ang 'Create' sa sidebar, 2) Piliin ang 'Basic Veterinary Services', 3) Piliin ang iyong alagang hayop, 4) Pumili ng beterinaryo, 5) Pumili ng weekday appointment time sa pagitan ng 8 AM at 5 PM, 6) Kumpirmahin ang iyong booking. Nagbibigay kami ng mga konsultasyon, pagbabakuna, deworming, paggamot, supplementation, at technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Para sa pag-schedule ng mga basic na serbisyong beterinaryo tulad ng mga konsultasyon, pagbabakuna, deworming, paggamot, supplementation, o technical assistance, mangyaring gamitin ang aming sistema na InnoVet. Ang proseso ng pag-book ay: 1) I-click ang 'Create' sa sidebar menu, 2) Piliin ang serbisyo (Basic Veterinary Services), 3) Piliin ang iyong alagang hayop, 4) Pumili ng beterinaryo, 5) Pumili ng weekday time slot (8 AM-5 PM), 6) Suriin at kumpirmahin."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Ang Provincial Veterinary Office ay gumagamit ng sistema na InnoVet para sa mga booking ng appointment. Para mag-schedule ng mga basic na serbisyong beterinaryo (mga konsultasyon, pagbabakuna, deworming, paggamot, supplementation, technical assistance), sundin ang mga hakbang na ito: 1) I-click ang 'Create' sa sidebar, 2) Piliin ang 'Basic Veterinary Services', 3) Piliin ang iyong alagang hayop, 4) Pumili ng beterinaryo, 5) Pumili ng available na weekday time (8 AM-5 PM), 6) Kumpirmahin ang iyong appointment."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Para mag-schedule po ng appointment para sa basic veterinary services, pwede niyong gamitin ang aming InnoVet system. Here's how po: 1) Click 'Create' sa sidebar menu, 2) Select 'Basic Veterinary Services', 3) Choose your pet na need ng service, 4) Select your preferred veterinarian, 5) Pick an available date and time (Monday to Friday, 8 AM to 5 PM), 6) Review and confirm your appointment. This system helps you book consultations, treatments, vaccinations, deworming, supplementation, at technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Ang pag-book po ng appointment para sa basic veterinary services ay easy through our InnoVet system. Simply follow these steps po: 1) Click 'Create' sa sidebar, 2) Choose 'Basic Veterinary Services', 3) Select the pet requiring service, 4) Choose a veterinarian, 5) Select a date and time (weekdays 8 AM-5 PM), 6) Confirm your booking. We offer services including consultations, vaccinations, deworming, treatments, supplementation, at technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Pwede po kayong mag-schedule ng appointments para sa basic veterinary services through our InnoVet system. The process po is: 1) Click 'Create' sa sidebar, 2) Select 'Basic Veterinary Services', 3) Choose your pet, 4) Select a veterinarian, 5) Pick a weekday appointment time between 8 AM and 5 PM, 6) Confirm your booking. We provide consultations, vaccinations, deworming, treatments, supplementation, at technical assistance."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Para sa pag-schedule po ng basic veterinary services like consultations, vaccinations, deworming, treatments, supplementation, o technical assistance, please use our InnoVet system. The booking process po is: 1) Click 'Create' sa sidebar menu, 2) Select the service (Basic Veterinary Services), 3) Choose your pet, 4) Select a veterinarian, 5) Pick a weekday time slot (8 AM-5 PM), 6) Review and confirm."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Ang Provincial Veterinary Office po ay gumagamit ng InnoVet system para sa appointment bookings. To schedule basic veterinary services (consultations, vaccinations, deworming, treatments, supplementation, technical assistance), follow these steps po: 1) Click 'Create' sa sidebar, 2) Select 'Basic Veterinary Services', 3) Choose your pet, 4) Select a veterinarian, 5) Pick an available weekday time (8 AM-5 PM), 6) Confirm your appointment."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+          
+  utter_BasicServiceChecklistIntent:
+    - text: "For basic veterinary services, you'll need to complete the following documents: 1) Client Request Form before the service, 2) Client Consultation form during your visit, and 3) Client Satisfaction Survey Form after the service is completed. If you're booking an appointment online, please click on the Profile section in the sidebar, navigate to the Pet tab, add your pet's information including health details and any previous medical actions taken. This information helps us provide better care for your pet."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "When visiting our clinic for basic services like vaccinations, deworming, or check-ups, please bring any previous medical records or vaccination history if available. You'll need to fill out our Client Request Form upon arrival, complete the Client Consultation during your visit, and provide feedback through our Client Satisfaction Survey after the service. For online appointments, use the Profile section, go to the Pet tab, and ensure all pet details are complete and up-to-date."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "For your pet's veterinary visit, we require you to complete three main forms: the Client Request Form (before service), Client Consultation (during visit), and Client Satisfaction Survey (after service). If you're scheduling online, please access your Profile, go to the Pet tab, and make sure to add all relevant pet information including health history and previous treatments. This documentation helps us provide the best possible care for your pet."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Para sa mga basic na serbisyong beterinaryo, kailangan mong kumpletuhin ang mga sumusunod na dokumento: 1) Client Request Form bago ang serbisyo, 2) Client Consultation form habang nasa pagbisita, at 3) Client Satisfaction Survey Form pagkatapos makumpleto ang serbisyo. Kung nag-book ka ng appointment online, mangyaring i-click ang Profile section sa sidebar, pumunta sa Pet tab, idagdag ang impormasyon ng iyong alagang hayop kasama ang mga detalye ng kalusugan at anumang nakaraang medikal na aksyon. Ang impormasyong ito ay tumutulong sa amin na magbigay ng mas mahusay na pangangalaga para sa iyong alagang hayop."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Kapag bumibisita sa aming klinika para sa mga basic na serbisyo tulad ng bakuna, deworming, o check-up, mangyaring magdala ng anumang nakaraang medikal na rekord o kasaysayan ng bakuna kung mayroon. Kailangan mong sagutan ang aming Client Request Form pagdating, kumpletuhin ang Client Consultation habang nasa pagbisita, at magbigay ng feedback sa pamamagitan ng aming Client Satisfaction Survey pagkatapos ng serbisyo. Para sa mga online na appointment, gamitin ang Profile section, pumunta sa Pet tab, at tiyaking kumpleto at up-to-date ang lahat ng detalye ng alagang hayop."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Para sa pagbisita ng iyong alagang hayop sa beterinaryo, kinakailangan naming kumpletuhin mo ang tatlong pangunahing form: ang Client Request Form (bago ang serbisyo), Client Consultation (habang nasa pagbisita), at Client Satisfaction Survey (pagkatapos ng serbisyo). Kung nag-iiskedyul ka online, mangyaring i-access ang iyong Profile, pumunta sa Pet tab, at tiyaking idagdag ang lahat ng may-kaugnayang impormasyon ng alagang hayop kasama ang kasaysayan ng kalusugan at nakaraang mga paggamot. Ang dokumentasyong ito ay tumutulong sa amin na magbigay ng pinakamahusay na posibleng pangangalaga para sa iyong alagang hayop."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Para sa basic veterinary services, kailangan mo pong kumpletuhin ang following documents: 1) Client Request Form bago ang service, 2) Client Consultation form during your visit, at 3) Client Satisfaction Survey Form after ma-complete ang service. Kung nag-book ka ng appointment online, please click sa Profile section sa sidebar, navigate sa Pet tab, i-add ang pet information mo including health details at any previous medical actions taken. Ang information na ito ay tumutulong sa amin na mag-provide ng better care para sa pet mo."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "When visiting our clinic para sa basic services like vaccinations, deworming, o check-ups, please bring po any previous medical records o vaccination history kung available. Kailangan mong i-fill out ang Client Request Form upon arrival, i-complete ang Client Consultation during your visit, at mag-provide ng feedback through our Client Satisfaction Survey after the service. Para sa online appointments, gamitin po ang Profile section, punta sa Pet tab, at i-ensure na complete at up-to-date ang lahat ng pet details."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Para sa pet's veterinary visit mo, we require you po na mag-complete ng three main forms: ang Client Request Form (before service), Client Consultation (during visit), at Client Satisfaction Survey (after service). Kung nag-schedule ka online, please access ang Profile mo, punta sa Pet tab, at make sure na i-add lahat ng relevant pet information including health history at previous treatments. Ang documentation na ito ay helps us provide the best possible care para sa pet mo."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_WalkinElectiveVeterinaryServicesIntent:
+    - text: "The Provincial Veterinary Office provides several elective veterinary services including mass rabies vaccination, large animal castration, spay and neuter services, estrus synchronization, artificial insemination, epidemiological surveillance, and veterinary medical missions. These services require advance coordination with local government units and proper resource planning."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Our elective veterinary services include mass rabies vaccination campaigns, spay and neuter programs, large animal castration, artificial insemination, estrus synchronization, epidemiological surveillance, and veterinary medical missions. These services are scheduled based on resource availability and require coordination with LGUs at least 1-2 months in advance."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "To request elective veterinary services such as medical missions, spay/neuter programs, or vaccination campaigns, your barangay should submit a formal request letter to the Provincial Veterinary Office. The letter should include the proposed date, location, estimated number of animals, and contact person. We recommend submitting requests at least 6-8 weeks before your desired date."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "For organizing veterinary services in your community, we require a formal request letter, a suitable venue with proper facilities, local volunteers to assist our team, and coordination with your barangay officials. Our team will evaluate the request based on our schedule and resource availability."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "There are no fees for most of our elective veterinary services as these are part of our provincial programs. However, some specialized services may require cost-sharing arrangements with the requesting organization, which will be discussed during the coordination process."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Ang Provincial Veterinary Office ay nagbibigay ng ilang mga serbisyong beterinaryo kabilang ang mass rabies vaccination, pagkapon ng malalaking hayop, spay at neuter services, estrus synchronization, artificial insemination, epidemiological surveillance, at veterinary medical missions. Ang mga serbisyong ito ay nangangailangan ng paunang koordinasyon sa mga lokal na pamahalaan at wastong pagpaplano ng resources."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Ang aming mga serbisyong beterinaryo ay kinabibilangan ng mga kampanya sa pagbabakuna laban sa rabies, mga programa ng spay at neuter, pagkapon ng malalaking hayop, artificial insemination, estrus synchronization, epidemiological surveillance, at veterinary medical missions. Ang mga serbisyong ito ay naka-iskedyul batay sa availability ng resources at nangangailangan ng koordinasyon sa mga LGU ng hindi bababa sa 1-2 buwan bago ang aktibidad."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Para humiling ng mga serbisyong beterinaryo tulad ng medical missions, spay/neuter programs, o vaccination campaigns, ang inyong barangay ay dapat magsumite ng pormal na request letter sa Provincial Veterinary Office. Ang sulat ay dapat kasama ang iminumungkahing petsa, lokasyon, tinatayang bilang ng mga hayop, at contact person. Inirerekomenda namin na magsumite ng mga kahilingan ng hindi bababa sa 6-8 linggo bago ang inyong ninanais na petsa."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Para sa pag-oorganisa ng mga serbisyong beterinaryo sa inyong komunidad, kailangan namin ng pormal na request letter, angkop na venue na may wastong pasilidad, mga lokal na boluntaryo para tumulong sa aming team, at koordinasyon sa mga opisyal ng inyong barangay. Susuriin ng aming team ang kahilingan batay sa aming iskedyul at availability ng resources."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Walang bayad ang karamihan sa aming mga serbisyong beterinaryo dahil ito ay bahagi ng aming mga programa sa probinsya. Gayunpaman, ang ilang mga specialized services ay maaaring mangailangan ng cost-sharing arrangements sa requesting organization, na tatalakayin sa proseso ng koordinasyon."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Ang Provincial Vet Office namin ay nag-o-offer ng iba't ibang elective services tulad ng mass rabies vaccination, large animal castration, spay and neuter services, estrus synchronization, artificial insemination, epidemiological surveillance, at veterinary medical missions. Kailangan ng advance coordination with LGUs at proper planning para sa mga services na ito."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Ang elective vet services namin include rabies vaccination campaigns, spay/neuter programs, kapon services para sa malalaking hayop, AI services, estrus synchronization, disease surveillance, at vet medical missions. Naka-schedule ang mga ito based sa availability ng resources at kailangan ng coordination with LGUs at least 1-2 months in advance."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Para mag-request ng vet services tulad ng medical missions, spay/neuter programs, o vaccination campaigns, dapat mag-submit ang barangay niyo ng formal request letter sa Provincial Vet Office. Include niyo sa letter ang proposed date, location, estimated number of animals, at contact person. Recommended na mag-submit kayo ng request at least 6-8 weeks before ang target date niyo."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Para mag-organize ng vet services sa community niyo, kailangan namin ng formal request letter, suitable venue with proper facilities, local volunteers para tumulong sa team namin, at coordination with barangay officials niyo. I-e-evaluate ng team namin ang request based sa schedule at resource availability namin."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Karamihan sa elective vet services namin ay free of charge kasi part ito ng provincial programs namin. Pero may mga specialized services na baka need ng cost-sharing arrangements with the requesting organization, na pag-uusapan during the coordination process."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_ElectiveServiceChecklistIntent:
+    - text: "For elective veterinary services, you'll need: 1) A Letter of Request (1 original or via email) addressed to the Provincial Governor, Attention: Provincial Veterinarian, 2) A proposed itinerary, and 3) An inventory of animals to be served. Submit your request to PROVET through email or at the PROVET front desk. You'll need to coordinate logistics with PROVET and ensure coordination with local counterparts like barangay officials. After the service, please evaluate using the Client Satisfaction Survey Form."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Para sa mga elective na serbisyo ng beterinaryo, kailangan mo ng: 1) Liham ng Kahilingan (1 orihinal o sa pamamagitan ng email) na naka-address sa Provincial Governor, Attention: Provincial Veterinarian, 2) Iminungkahing itinerary, at 3) Imbentaryo ng mga hayop na pagsisilbihan. Isumite ang iyong kahilingan sa PROVET sa pamamagitan ng email o sa PROVET front desk. Kailangan mong makipag-coordinate sa logistics sa PROVET at tiyaking may koordinasyon sa mga lokal na katuwang tulad ng mga opisyal ng barangay. Pagkatapos ng serbisyo, mangyaring suriin gamit ang Client Satisfaction Survey Form."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Para sa elective veterinary services, kailangan niyo po ng: 1) Letter of Request (1 original o via email) addressed sa Provincial Governor, Attention: Provincial Veterinarian, 2) Proposed itinerary, at 3) Inventory ng animals na ise-serve. Submit niyo po ang request sa PROVET through email o sa PROVET front desk. Need niyo pong i-coordinate ang logistics with PROVET at ensure coordination with local counterparts like barangay officials. After the service, please evaluate using the Client Satisfaction Survey Form po."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_WalkinVeterinaryHealthCertificateIntent:
+    - text: "Walk-in services are available for obtaining Veterinary Health Certificates at the Provincial Veterinary Office from Monday to Friday during office hours. These certificates are issued to animal raisers as a requirement for transport, slaughter, and other processes that require establishing the current health status of their animals. If you need this service outside regular hours, Animal Quarantine Offices at the Ports offer this service 24/7, including weekends. No appointment is necessary, but please bring your animal for health status verification."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "May available na walk-in na serbisyo para sa pagkuha ng Veterinary Health Certificate sa Provincial Veterinary Office mula Lunes hanggang Biyernes sa oras ng opisina. Ang mga sertipikadong ito ay ibinibigay sa mga nag-aalaga ng hayop bilang kinakailangan para sa transportasyon, pagkatay, at iba pang proseso na nangangailangan ng pagtatatag ng kasalukuyang kalagayan ng kalusugan ng kanilang mga hayop. Kung kailangan mo ng serbisyong ito sa labas ng regular na oras, ang Animal Quarantine Offices sa mga Port ay nag-aalok ng serbisyong ito 24/7, kasama ang mga weekend. Hindi kinakailangan ang appointment, ngunit mangyaring dalhin ang iyong hayop para sa beripikasyon ng kalagayan ng kalusugan."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Available ang walk-in services para sa Veterinary Health Certificates sa Provincial Veterinary Office from Monday to Friday during office hours. Ang certificates na ito ay ini-issue sa animal raisers as requirement para sa transport, slaughter, at other processes na need i-establish ang current health status ng animals nila. Kung kailangan niyo po ng service na ito outside regular hours, ang Animal Quarantine Offices sa Ports ay nag-o-offer ng service na ito 24/7, including weekends. Hindi po kailangan ng appointment, pero please bring your animal po para sa health status verification."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+  utter_GoodbyeIntent:
+    - text: "Goodbye! Thank you for chatting with us today."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Goodbye! We look forward to seeing you and your pet at the clinic."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Thank you for your time. Have a wonderful day!"
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Goodbye! Don't hesitate to contact us if you have more questions."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Goodbye! We appreciate your trust in our veterinary services."
+      condition:
+        - type: slot
+          name: language
+          value: english
+
+    - text: "Paalam! Salamat po sa pakikipag-usap sa amin ngayong araw."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Hanggang sa muli! Palagi po kaming nandito para tumulong sa pangangalaga ng inyong alaga."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Paalam! Inaasahan po namin ang pagkikita natin sa klinika kasama ang inyong alaga."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Salamat po sa inyong oras. Magkaroon po kayo ng magandang araw!"
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Hanggang sa susunod! Tandaan po na nandito kami para sa lahat ng pangangailangan ng inyong alaga."
+      condition:
+        - type: slot
+          name: language
+          value: tagalog
+
+    - text: "Thank you! Babalik kami sa inyo kapag may update na po."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Goodbye! Salamat po sa pag-contact sa amin ngayong araw."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Thank you sa time niyo! Have a great day ahead po."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "See you! Salamat po sa pagtitiwala sa aming services."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+
+    - text: "Goodbye! Salamat po sa pag-reach out sa amin today."
+      condition:
+        - type: slot
+          name: language
+          value: taglish
+ 
+actions:
+  - action_detect_language
+  - action_detect_language_goodbye
+  - action_greeting
+  - action_office_hours
+  - action_office_days
+  - action_office_location
+  - action_veterinarians_info
+  - action_services_offer
+  - action_appointment
+  - action_pet_species_accepted
+  - action_walkin_basic_services
+  - action_appointment_basic_services
+  - action_basic_service_checklist
+  - action_walkin_elective_services
+  - action_elective_service_checklist
+  - action_walkin_health_certificate
+  - action_goodbye
+  - action_gemini_fallback
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
