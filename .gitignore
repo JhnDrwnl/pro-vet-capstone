@@ -1,62 +1,57 @@
-# Ignore model files
+# .gitinore
+# === ML model & data files ===
 ml-backend/species_models/*.pkl
-
-# Ignore CSV files
-*.csv
 ml-backend/*.csv
 ml-backend/species_data/*.csv
-
-# Ignore JSON files
+*.csv
 *.json
 
-# Python cache files
+# === Python ===
 *.pyc
 *.pyo
 *.pyd
 __pycache__/
 
-# Node.js
+# === Virtual Environments ===
+ml-backend/venv/
+rasa-venv/
+
+# === TensorFlow & large binaries ===
+ml-backend/venv/Lib/site-packages/*tensorflow*
+ml-backend/venv/Lib/site-packages/clang/native/libclang.dll
+ml-backend/venv/Lib/site-packages/tensorflow/python/_pywrap_tensorflow_internal.pyd
+
+# === Node.js ===
 node_modules/
-build/
+chatbot-backend/node-server/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+build/
+.pnp
+.pnp.js
 
-# Django
+# === Django ===
 db.sqlite3
 /static/
 
-# Environment files
+# === Environment ===
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# production
-/build
-
-# misc
-.DS_Store
-
-# Ignore virtual environment folder
-ml-backend/venv/
-
-# Ignore TensorFlow-related files (as they seem to be large too)
-ml-backend/venv/Lib/site-packages/*tensorflow*
-
-# Ignore other large files
+# === Logs, coverage, and temp files ===
 *.log
 *.tmp
+/coverage
+.DS_Store
 
-# Specific file exceptions (ignore these large files)
-ml-backend/venv/Lib/site-packages/clang/native/libclang.dll
-ml-backend/venv/Lib/site-packages/tensorflow/python/_pywrap_tensorflow_internal.pyd
+# === Rasa ===
+rasa/models/
+rasa/rasa.db
+chatbot-backend/rasa/.rasa/cache/
+
+# === Secrets ===
+firebase-service-account.json

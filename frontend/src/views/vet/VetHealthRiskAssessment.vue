@@ -47,6 +47,11 @@
       </div>
       
       <div class="form-group">
+        <label for="past-diagnosis">Past Diagnosis</label>
+        <input id="past-diagnosis" v-model="patientData.pastDiagnosis" type="text" placeholder="Enter any previous diagnoses" />
+      </div>
+      
+      <div class="form-group">
         <label for="symptoms">Symptoms</label>
         <textarea id="symptoms" v-model="patientData.symptoms" rows="4"></textarea>
       </div>
@@ -74,6 +79,7 @@
             v-for="(prediction, index) in predictionResult.predictions" 
             :key="index"
             class="prediction-item"
+            :class="{'primary-prediction': index === 0}"
           >
             <div class="disease-name">{{ prediction.disease }}</div>
             <div class="probability">
@@ -112,6 +118,7 @@ export default {
         age: null,
         weight: null,
         breed: '',
+        pastDiagnosis: '',
         symptoms: ''
       },
       species: 'dog',
@@ -180,10 +187,13 @@ export default {
           'Age (years)': this.patientData.age,
           'Weight (kg)': this.patientData.weight,
           'Breed': this.patientData.breed,
+          'Past Diagnosis': this.patientData.pastDiagnosis,
           'Symptoms': this.patientData.symptoms
         },
         species: this.species
       };
+      
+      console.log('Sending prediction request:', formattedData);
       
       // Set up message listener
       if (this.messageListener) {
@@ -248,6 +258,7 @@ export default {
         age: null,
         weight: null,
         breed: '',
+        pastDiagnosis: '',
         symptoms: ''
       };
     }
@@ -377,6 +388,11 @@ textarea {
 
 .prediction-item:last-child {
   border-bottom: none;
+}
+
+.primary-prediction {
+  background-color: rgba(76, 175, 80, 0.1);
+  border-left: 4px solid #4CAF50;
 }
 
 .disease-name {
