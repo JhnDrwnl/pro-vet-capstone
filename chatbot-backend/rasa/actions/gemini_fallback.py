@@ -29,9 +29,9 @@ load_dotenv()
 
 # Set Gemini API key from environment variable or use hardcoded value
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    # Fallback to hardcoded key for testing (remove in production)
-    GEMINI_API_KEY = "AIzaSyBqAW39u5D6RwW0LJ2qqJQTtIOEwgDQBmA"
+# if not GEMINI_API_KEY:
+#     # Fallback to hardcoded key for testing (remove in production)
+#     GEMINI_API_KEY = "AIzaSyBqAW39u5D6RwW0LJ2qqJQTtIOEwgDQBmA"
     
 logger.info(f"Using Gemini API key: {GEMINI_API_KEY[:5]}...")  # Log first 5 chars for security
 
