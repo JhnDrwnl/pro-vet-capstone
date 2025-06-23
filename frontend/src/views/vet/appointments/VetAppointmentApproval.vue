@@ -1734,7 +1734,7 @@ switch (status?.toLowerCase()) {
   case 'approved':
     return `${baseClasses} bg-green-100 text-green-800`;
   case 'completed':
-    return `${baseClasses} bg-purple-100 text-purple-800`; // Purple color for completed status
+    return `${baseClasses} bg-purple-100 text-purple-800`;
   case 'cancelled':
   case 'rejected':
     return `${baseClasses} bg-red-100 text-red-800`;
@@ -2341,5 +2341,3 @@ table {
 }
 }
 </style>
-
-

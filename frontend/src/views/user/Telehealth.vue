@@ -200,16 +200,8 @@
                         <span>{{ appointment.time || formatTime(appointment.scheduledTime || appointment.date) }}</span>
                       </div>
                     </div>
-                    <span 
-                      :class="[
-                        'ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap',
-                        appointment.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                        appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        appointment.status === 'ended' ? 'bg-slate-200 text-slate-700' :
-                        appointment.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                        'bg-red-100 text-red-800'
-                      ]"
-                    >
+                    <!-- UPDATED: Using getStatusClass function for status styling -->
+                    <span :class="getStatusClass(appointment.status)">
                       {{ appointment.status }}
                     </span>
                   </div>
@@ -223,19 +215,112 @@
                       </div>
                     </div>
                     
+                    <!-- UPDATED: Doctor section with profile image -->
                     <div class="flex items-start">
-                      <UserIcon class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                      <div class="w-5 h-5 rounded-full overflow-hidden bg-blue-100 mr-3 flex-shrink-0 mt-0.5">
+                        <img 
+                          v-if="appointment.doctorPhotoURL" 
+                          :src="appointment.doctorPhotoURL" 
+                          :alt="appointment.doctorName || 'Doctor'"
+                          class="w-full h-full object-cover"
+                          @error="onDoctorImageError"
+                        />
+                        <UserIcon v-else class="w-5 h-5 text-blue-600" />
+                      </div>
                       <div>
                         <div class="text-xs sm:text-sm text-gray-500">Doctor</div>
                         <div class="text-xs sm:text-sm font-medium break-words">{{ appointment.doctorName || 'Not assigned' }}</div>
                       </div>
                     </div>
                     
+                    <!-- UPDATED: Pet section with paw icon -->
                     <div class="flex items-start">
                       <PawPrintIcon class="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
                       <div>
-                        <div class="text-xs sm:text-sm text-gray-500">Pet</div>
-                        <div class="text-xs sm:text-sm font-medium break-words">{{ appointment.petName || 'Not specified' }}</div>
+                        <div class="text-xs sm:text-sm text-gray-500">
+                          {{ hasPet(appointment) ? (hasMultiplePets(appointment) ? 'Pets' : 'Pet') : 'Pet' }}
+                        </div>
+                        
+                        <!-- No pets case -->
+                        <div v-if="!hasPet(appointment)" class="text-xs sm:text-sm font-medium break-words">
+                          Not specified
+                        </div>
+                        
+                        <!-- Single pet case -->
+                        <div v-else-if="!hasMultiplePets(appointment)" class="flex items-center space-x-2">
+                          <div class="relative w-6 h-6 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                            <img 
+                              v-if="getPetImage(appointment)" 
+                              :src="getPetImage(appointment)" 
+                              alt="Pet" 
+                              class="w-full h-full object-cover"
+                              @error="onPetImageError"
+                            />
+                            <PawPrintIcon v-else class="w-4 h-4 absolute inset-0 m-auto text-gray-400" />
+                          </div>
+                          <div class="text-xs sm:text-sm font-medium">
+                            {{ getPetName(appointment) }}
+                            <span v-if="getPetSpecies(appointment)" class="text-gray-500">
+                              ({{ getPetSpecies(appointment) }})
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <!-- Multiple pets case - with overlapping images -->
+                        <div v-else class="flex flex-col">
+                          <!-- Overlapping profile pictures with proper styling -->
+                          <div class="flex items-center">
+                            <div class="flex mr-2 relative" style="width: 40px; height: 24px;">
+                              <!-- Render in reverse order so first pet is at the back -->
+                              <div 
+                                v-for="(petIndex, photoIndex) in [...Array(Math.min(3, getPetCount(appointment))).keys()].reverse()" 
+                                :key="photoIndex"
+                                class="absolute h-6 w-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center overflow-hidden"
+                                :style="{ 
+                                  left: `${photoIndex * 8}px`, 
+                                  zIndex: photoIndex + 1
+                                }"
+                              >
+                                <img 
+                                  v-if="appointment.petPhotos && appointment.petPhotos[petIndex]"
+                                  :src="appointment.petPhotos[petIndex]" 
+                                  :alt="appointment.petNames ? appointment.petNames[petIndex] : 'Pet'"
+                                  class="h-6 w-6 rounded-full object-cover" 
+                                  @error="onPetImageError"
+                                />
+                                <PawPrintIcon v-else class="w-4 h-4 text-gray-400" />
+                              </div>
+                              
+                              <!-- Show +X more if there are more than 3 pets -->
+                              <div 
+                                v-if="getPetCount(appointment) > 3" 
+                                class="absolute h-6 w-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600"
+                                :style="{ left: '16px', zIndex: 4 }"
+                              >
+                                +{{ getPetCount(appointment) - 3 }}
+                              </div>
+                            </div>
+                            
+                            <!-- Pet count -->
+                            <div class="text-xs sm:text-sm font-medium">
+                              {{ getPetCount(appointment) }} pets
+                            </div>
+                          </div>
+                          
+                          <!-- Pet names with species groups -->
+                          <div class="mt-1 ml-1">
+                            <div v-for="(group, groupIndex) in getPetGroups(appointment)" :key="groupIndex" class="text-xs text-gray-600">
+                              <span v-if="group.indices.length <= 2">
+                                {{ group.indices.map(idx => appointment.petNames[idx]).join(', ') }}
+                              </span>
+                              <span v-else>
+                                {{ group.indices.slice(0, 2).map(idx => appointment.petNames[idx]).join(', ') }} 
+                                +{{ group.indices.length - 2 }}
+                              </span>
+                              <span class="text-gray-500">({{ group.species }})</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -321,16 +406,8 @@
                     <span>{{ selectedSession.time || formatTime(selectedSession.scheduledTime || selectedSession.date) }}</span>
                   </div>
                 </div>
-                <span 
-                  :class="[
-                    'px-2 sm:px-3 py-1 sm:py-1.5 text-sm font-medium rounded-full',
-                    selectedSession.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                    selectedSession.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    selectedSession.status === 'ended' ? 'bg-slate-200 text-slate-700' :
-                    selectedSession.status === 'completed' ? 'bg-gray-100 text-gray-800' :
-                    'bg-red-100 text-red-800'
-                  ]"
-                >
+                <!-- UPDATED: Using getStatusClass function for status styling -->
+                <span :class="getStatusClass(selectedSession.status)">
                   {{ selectedSession.status }}
                 </span>
               </div>
@@ -345,8 +422,18 @@
                     </div>
                   </div>
                   
+                  <!-- UPDATED: Doctor section with profile image -->
                   <div class="flex items-start">
-                    <UserIcon class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-3 sm:mr-4 mt-0.5" />
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-blue-100 mr-3 sm:mr-4 mt-0.5">
+                      <img 
+                        v-if="selectedSession.doctorPhotoURL" 
+                        :src="selectedSession.doctorPhotoURL" 
+                        :alt="selectedSession.doctorName || 'Doctor'"
+                        class="w-full h-full object-cover"
+                        @error="onDoctorImageError"
+                      />
+                      <UserIcon v-else class="w-10 h-10 p-2 text-blue-600" />
+                    </div>
                     <div>
                       <div class="text-sm sm:text-base text-gray-500">Doctor</div>
                       <div class="text-sm sm:text-base font-medium">{{ selectedSession.doctorName || 'Not assigned' }}</div>
@@ -355,11 +442,83 @@
                 </div>
                 
                 <div class="space-y-3 sm:space-y-4">
+                  <!-- UPDATED: Pet section in details view with paw icon -->
                   <div class="flex items-start">
                     <PawPrintIcon class="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mr-3 sm:mr-4 mt-0.5" />
                     <div>
-                      <div class="text-sm sm:text-base text-gray-500">Pet</div>
-                      <div class="text-sm sm:text-base font-medium">{{ selectedSession.petName || 'Not specified' }}</div>
+                      <div class="text-sm sm:text-base text-gray-500">
+                        {{ hasPet(selectedSession) ? (hasMultiplePets(selectedSession) ? 'Pets' : 'Pet') : 'Pet' }}
+                      </div>
+                      
+                      <!-- No pets case -->
+                      <div v-if="!hasPet(selectedSession)" class="text-sm sm:text-base font-medium">
+                        Not specified
+                      </div>
+                      
+                      <!-- Single pet case -->
+                      <div v-else-if="!hasMultiplePets(selectedSession)" class="flex items-center space-x-2">
+                        <div class="relative w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                          <img 
+                            v-if="getPetImage(selectedSession)" 
+                            :src="getPetImage(selectedSession)" 
+                            alt="Pet" 
+                            class="w-full h-full object-cover"
+                            @error="onPetImageError"
+                          />
+                          <PawPrintIcon v-else class="w-5 h-5 absolute inset-0 m-auto text-gray-400" />
+                        </div>
+                        <div class="text-sm sm:text-base font-medium">
+                          {{ getPetName(selectedSession) }}
+                          <span v-if="getPetSpecies(selectedSession)" class="text-gray-500">
+                            ({{ getPetSpecies(selectedSession) }})
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Multiple pets case - with overlapping images -->
+                      <div v-else>
+                        <div class="flex items-center mb-2">
+                          <div class="flex -space-x-2 mr-2">
+                            <div 
+                              v-for="(petIndex, photoIndex) in [...Array(Math.min(3, getPetCount(selectedSession))).keys()]" 
+                              :key="photoIndex" 
+                              class="relative w-8 h-8 rounded-full overflow-hidden bg-gray-200 border-2 border-white"
+                              :style="{ zIndex: 3 - photoIndex }"
+                            >
+                              <img 
+                                v-if="selectedSession.petPhotos && selectedSession.petPhotos[petIndex]" 
+                                :src="selectedSession.petPhotos[petIndex]" 
+                                :alt="selectedSession.petNames ? selectedSession.petNames[petIndex] : 'Pet'" 
+                                class="w-full h-full object-cover"
+                                @error="onPetImageError"
+                              />
+                              <PawPrintIcon v-else class="w-5 h-5 absolute inset-0 m-auto text-gray-400" />
+                            </div>
+                            <div 
+                              v-if="getPetCount(selectedSession) > 3" 
+                              class="relative w-8 h-8 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600"
+                            >
+                              +{{ getPetCount(selectedSession) - 3 }}
+                            </div>
+                          </div>
+                          <div class="text-sm sm:text-base font-medium">
+                            {{ getPetCount(selectedSession) }} pets
+                          </div>
+                        </div>
+                        
+                        <!-- List all pets by species groups -->
+                        <div class="space-y-2 mt-2">
+                          <div v-for="(group, groupIndex) in getPetGroups(selectedSession)" :key="groupIndex" class="text-sm">
+                            <div class="font-medium text-gray-700">{{ group.species }} <span class="text-gray-500">({{ group.indices.length }})</span></div>
+                            <ul class="text-sm space-y-1 mt-1 ml-2">
+                              <li v-for="idx in group.indices" :key="idx" class="flex items-center">
+                                <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                <span>{{ selectedSession.petNames[idx] }}</span>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -432,39 +591,202 @@
     <div v-if="activeSession" class="h-full flex flex-col bg-gray-100 overflow-hidden">
       <!-- Header with connection status indicator -->
       <div class="bg-white border-b border-gray-200 px-3 py-2 sm:px-4 sm:py-3">
-        <div class="flex items-center justify-between">
-          <!-- Left side: Title and patient info -->
-          <div>
-            <h2 class="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+        <!-- Mobile header (visible on small screens) -->
+        <div class="sm:hidden">
+          <!-- Top row: Title and End Call button -->
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900">
               {{ cleanTitle(activeSession.title) || 'Telehealth Appointment' }}
             </h2>
-            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600">
-              <span class="flex items-center"><UserIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> {{ activeSession.doctorName || 'Veterinarian' }}</span>
-              <span class="flex items-center"><PawPrintIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> {{ activeSession.petName || 'Your Pet' }}</span>
-              <span class="flex items-center"><ClockIcon class="w-3 h-3 sm:w-4 sm:h-4 mr-1" /> Time remaining: {{ remainingTime }}</span>
-            </div>
-          </div>
-          
-          <!-- Right side: Controls -->
-          <div class="flex flex-col sm:flex-row sm:items-center">
             <button 
               @click="endCall" 
-              class="inline-flex items-center justify-center px-2 py-1 sm:px-3 sm:py-1.5 bg-red-600 text-white text-xs sm:text-sm rounded-full hover:bg-red-700 whitespace-nowrap mb-1.5 sm:mb-0 sm:order-2 sm:ml-3"
+              class="inline-flex items-center justify-center px-3 py-0.5 bg-red-600 text-white text-xs rounded-full hover:bg-red-700"
             >
               <PhoneOffIcon class="w-3 h-3 mr-1" />
               End Call
             </button>
-            
-            <!-- UPDATED: Always show connection status indicator -->
-            <div class="flex items-center justify-end sm:order-1">
-              <span 
-                :class="[
-                  'w-2 h-2 rounded-full mr-1 sm:mr-2',
-                  remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'
-                ]"
-              ></span>
-              <span class="text-xs sm:text-sm text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
+          </div>
+          
+          <!-- Bottom row: User/pet info and Connected status -->
+          <div class="flex items-center justify-between mt-1">
+            <div class="flex items-center text-xs text-gray-600 space-x-2">
+              <!-- UPDATED: Doctor with profile image -->
+              <span class="flex items-center">
+                <div class="w-5 h-5 rounded-full overflow-hidden bg-blue-100 mr-1">
+                  <img 
+                    v-if="activeSession.doctorPhotoURL" 
+                    :src="activeSession.doctorPhotoURL" 
+                    :alt="activeSession.doctorName || 'Veterinarian'"
+                    class="w-full h-full object-cover"
+                    @error="onDoctorImageError"
+                  />
+                  <UserIcon v-else class="w-5 h-5 p-1 text-blue-600" />
+                </div>
+                {{ activeSession.doctorName || 'Veterinarian' }}
+              </span>
+              
+              <!-- Pet display for mobile - Updated to match table style -->
+              <div v-if="!hasPet(activeSession)" class="flex items-center">
+                <PawPrintIcon class="w-3 h-3 mr-1" /> 
+                No Pet
+              </div>
+              <div v-else-if="!hasMultiplePets(activeSession)" class="flex items-center">
+                <div class="w-5 h-5 rounded-full bg-gray-100 overflow-hidden mr-1">
+                  <img 
+                    v-if="getPetImage(activeSession)"
+                    :src="getPetImage(activeSession)" 
+                    :alt="getPetName(activeSession)"
+                    class="w-full h-full object-cover" 
+                    @error="onPetImageError"
+                  />
+                  <PawPrintIcon v-else class="w-3 h-3 absolute inset-0 m-auto text-gray-400" />
+                </div>
+                {{ getPetName(activeSession) }}
+              </div>
+              <div v-else class="flex items-center">
+                <div class="flex relative w-5 h-5 mr-1">
+                  <div 
+                    v-for="(petIndex, photoIndex) in [0, 1].slice(0, Math.min(2, getPetCount(activeSession)))" 
+                    :key="photoIndex"
+                    class="absolute w-4 h-4 rounded-full border border-white bg-gray-100 overflow-hidden"
+                    :style="{ left: `${photoIndex * 3}px`, zIndex: photoIndex + 1 }"
+                  >
+                    <img 
+                      v-if="activeSession.petPhotos && activeSession.petPhotos[petIndex]"
+                      :src="activeSession.petPhotos[petIndex]" 
+                      :alt="activeSession.petNames ? activeSession.petNames[petIndex] : 'Pet'"
+                      class="w-full h-full object-cover" 
+                      @error="onPetImageError"
+                    />
+                    <PawPrintIcon v-else class="w-3 h-3 absolute inset-0 m-auto text-gray-400" />
+                  </div>
+                </div>
+                {{ getPetCount(activeSession) }} Pets
+              </div>
             </div>
+            
+            <!-- Connection status -->
+            <div class="flex items-center">
+              <span 
+                class="w-2 h-2 rounded-full mr-1"
+                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'"
+              ></span>
+              <span class="text-xs text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Desktop header (hidden on small screens) -->
+        <div class="hidden sm:flex items-center justify-between">
+          <!-- Left side: Title and patient info -->
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900 truncate">
+              {{ cleanTitle(activeSession.title) || 'Telehealth Appointment' }}
+            </h2>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+              <!-- UPDATED: Doctor with profile image -->
+              <span class="flex items-center">
+                <div class="w-6 h-6 rounded-full overflow-hidden bg-blue-100 mr-2">
+                  <img 
+                    v-if="activeSession.doctorPhotoURL" 
+                    :src="activeSession.doctorPhotoURL" 
+                    :alt="activeSession.doctorName || 'Veterinarian'"
+                    class="w-full h-full object-cover"
+                    @error="onDoctorImageError"
+                  />
+                  <UserIcon v-else class="w-6 h-6 p-1 text-blue-600" />
+                </div>
+                {{ activeSession.doctorName || 'Veterinarian' }}
+              </span>
+            
+              <!-- Pet display for desktop - Updated to match table style -->
+              <div v-if="!hasPet(activeSession)" class="flex items-center">
+                <PawPrintIcon class="w-4 h-4 mr-1" /> No Pet
+              </div>
+              <div v-else-if="!hasMultiplePets(activeSession)" class="flex items-center">
+                <div class="flex-shrink-0 h-6 w-6 mr-2 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center overflow-hidden">
+                  <img 
+                    v-if="getPetImage(activeSession)"
+                    :src="getPetImage(activeSession)" 
+                    :alt="getPetName(activeSession)"
+                    class="h-6 w-6 rounded-full object-cover" 
+                    @error="onPetImageError"
+                  />
+                  <PawPrintIcon v-else class="w-4 h-4 text-gray-400" />
+                </div>
+                <span class="font-medium">
+                  {{ getPetName(activeSession) }}
+                  <span v-if="getPetSpecies(activeSession)" class="text-gray-500">({{ getPetSpecies(activeSession) }})</span>
+                </span>
+              </div>
+              <div v-else class="flex items-center">
+                <!-- Overlapping profile pictures for multiple pets -->
+                <div class="flex mr-2 relative" style="width: 40px; height: 24px;">
+                  <!-- Render in reverse order so first pet is at the back -->
+                  <div 
+                    v-for="(petIndex, photoIndex) in [...Array(Math.min(3, getPetCount(activeSession))).keys()].reverse()" 
+                    :key="photoIndex"
+                    class="absolute h-6 w-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center overflow-hidden"
+                    :style="{ 
+                      left: `${photoIndex * 10}px`, 
+                      zIndex: photoIndex + 1
+                    }"
+                  >
+                    <img 
+                      v-if="activeSession.petPhotos && activeSession.petPhotos[petIndex]"
+                      :src="activeSession.petPhotos[petIndex]" 
+                      :alt="activeSession.petNames ? activeSession.petNames[petIndex] : 'Pet'"
+                      class="h-6 w-6 rounded-full object-cover" 
+                      @error="onPetImageError"
+                    />
+                    <PawPrintIcon v-else class="w-4 h-4 text-gray-400" />
+                  </div>
+                  
+                  <!-- Show +X more if there are more than 3 pets -->
+                  <div 
+                    v-if="getPetCount(activeSession) > 3" 
+                    class="absolute h-6 w-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600"
+                    :style="{ left: '20px', zIndex: 4 }"
+                  >
+                    +{{ getPetCount(activeSession) - 3 }}
+                  </div>
+                </div>
+                
+                <!-- Pet names by species groups -->
+                <div v-for="(group, groupIndex) in getPetGroups(activeSession)" :key="groupIndex" class="mr-2">
+                  <span class="font-medium">
+                    <span v-if="group.indices.length <= 2">
+                      {{ group.indices.map(idx => activeSession.petNames[idx]).join(', ') }}
+                    </span>
+                    <span v-else>
+                      {{ group.indices.slice(0, 2).map(idx => activeSession.petNames[idx]).join(', ') }} 
+                      +{{ group.indices.length - 2 }}
+                    </span>
+                    <span class="text-gray-500">({{ group.species }})</span>
+                  </span>
+                </div>
+              </div>
+            
+              <span class="flex items-center"><ClockIcon class="w-4 h-4 mr-1" /> Time remaining: {{ remainingTime }}</span>
+            </div>
+          </div>
+          
+          <!-- Right side: Connection status and End Call button -->
+          <div class="flex items-center">
+            <div class="flex items-center mr-4">
+              <span 
+                class="w-2 h-2 rounded-full mr-2"
+                :class="remoteStreamActive ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'"
+              ></span>
+              <span class="text-sm text-gray-600">{{ remoteStreamActive ? 'Connected' : 'Connecting...' }}</span>
+            </div>
+            <button 
+              @click="endCall" 
+              class="inline-flex items-center justify-center px-3 py-1.5 bg-red-600 text-white text-sm rounded-full hover:bg-red-700"
+            >
+              <PhoneOffIcon class="w-4 h-4 mr-1" />
+              End Call
+            </button>
           </div>
         </div>
       </div>
@@ -482,8 +804,16 @@
               <!-- Waiting Placeholder -->
               <div v-if="!remoteStreamActive" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-800 text-white">
                 <div class="relative mb-4 sm:mb-6">
-                  <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-700 flex items-center justify-center">
-                    <UserIcon class="w-8 h-8 sm:w-10 sm:h-10" />
+                  <!-- UPDATED: Doctor profile image in waiting screen -->
+                  <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                    <img 
+                      v-if="activeSession.doctorPhotoURL" 
+                      :src="activeSession.doctorPhotoURL" 
+                      :alt="activeSession.doctorName || 'Veterinarian'"
+                      class="w-full h-full object-cover"
+                      @error="onDoctorImageError"
+                    />
+                    <UserIcon v-else class="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
                   </div>
                   <div class="absolute inset-0 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
                 </div>
@@ -688,8 +1018,16 @@
     <div v-if="incomingCall && !isAcceptingCall" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl max-w-md w-full overflow-hidden">
         <div class="p-6 text-center">
-          <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-            <PhoneIcon class="w-10 h-10 text-green-600" />
+          <!-- UPDATED: Doctor profile image in incoming call modal -->
+          <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 overflow-hidden">
+            <img 
+              v-if="incomingCall && incomingCall.callerPhotoURL" 
+              :src="incomingCall.callerPhotoURL" 
+              :alt="incomingCall.callerName || 'Doctor'"
+              class="w-full h-full object-cover"
+              @error="onDoctorImageError"
+            />
+            <PhoneIcon v-else class="w-10 h-10 text-green-600" />
           </div>
           <h3 class="text-xl font-semibold text-gray-900 mb-2">{{ incomingCall.callerName || 'Someone' }} is calling</h3>
           <p class="text-gray-600 mb-8">{{ incomingCall.sessionTitle || 'Telehealth Session' }}</p>
@@ -773,6 +1111,7 @@ import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 import { useAppointmentStore } from "@/stores/modules/appointmentStore";
 import { useAuthStore } from "@/stores/modules/authStore";
 import { useServiceCategoryStore } from "@/stores/modules/ServiceCategoryStore";
+import { usePetsStore } from "@/stores/modules/petsStore";
 import { db } from '@shared/firebase';
 import { collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs, arrayUnion, serverTimestamp, addDoc, orderBy } from 'firebase/firestore';
 import WebRTCService from "@/services/webrtc-service";
@@ -783,6 +1122,7 @@ const router = useRouter();
 const appointmentStore = useAppointmentStore();
 const authStore = useAuthStore();
 const serviceCategoryStore = useServiceCategoryStore();
+const petsStore = usePetsStore();
 
 // View state
 const currentView = ref("carousel");
@@ -857,6 +1197,27 @@ const remainingTime = ref('');
 let appointmentTimer = null;
 const showCallExpiredModal = ref(false);
 
+const getStatusClass = (status) => {
+  const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
+  switch (status?.toLowerCase()) {
+    case 'pending':
+      return `${baseClasses} bg-yellow-100 text-yellow-800`;
+    case 'processing':
+      return `${baseClasses} bg-blue-100 text-blue-800`;
+    case 'approved':
+      return `${baseClasses} bg-green-100 text-green-800`;
+    case 'completed':
+      return `${baseClasses} bg-purple-100 text-purple-800`;
+    case 'cancelled':
+    case 'rejected':
+      return `${baseClasses} bg-red-100 text-red-800`;
+    case 'ended':
+      return `${baseClasses} bg-slate-200 text-slate-700`;
+    default:
+      return `${baseClasses} bg-gray-100 text-gray-800`;
+  }
+};
+
 // Function to clean title by removing empty parentheses
 const cleanTitle = (text) => {
   if (!text) return text;
@@ -898,6 +1259,152 @@ const toggleChatPanel = () => {
 // Navigation method for appointments
 const navigateToAppointments = () => {
   router.push({ name: 'UserAppointments' });
+};
+
+// Pet helper functions
+const hasPet = (appointment) => {
+  if (!appointment) return false;
+  
+  // Check for petIds array
+  if (appointment.petIds && Array.isArray(appointment.petIds) && appointment.petIds.length > 0) {
+    return true;
+  }
+
+  // Check for single petId
+  if (appointment.petId && typeof appointment.petId === 'string' && appointment.petId.trim() !== '') {
+    return true;
+  }
+
+  // Check for petName (as a fallback)
+  if (appointment.petName && typeof appointment.petName === 'string' && appointment.petName.trim() !== '') {
+    return true;
+  }
+
+  return false;
+};
+
+const hasMultiplePets = (appointment) => {
+  if (!appointment) return false;
+  return appointment.petIds && Array.isArray(appointment.petIds) && appointment.petIds.length > 1;
+};
+
+const getPetCount = (appointment) => {
+  if (!appointment) return 0;
+  
+  if (appointment.petIds && Array.isArray(appointment.petIds)) {
+    return appointment.petIds.length;
+  } else if (appointment.petId || appointment.petName) {
+    return 1;
+  }
+  return 0;
+};
+
+const getPetName = (appointment) => {
+  if (!appointment) return 'Not specified';
+  
+  // If we have a direct pet name on the appointment
+  if (appointment.petName && appointment.petName !== 'Not specified') {
+    return appointment.petName;
+  }
+  
+  // If we have multiple pet names, return the first one
+  if (appointment.petNames && appointment.petNames.length > 0) {
+    return appointment.petNames[0];
+  }
+  
+  return 'Not specified';
+};
+
+const getPetSpecies = (appointment) => {
+  if (!appointment) return '';
+  
+  // If we have a direct species on the appointment
+  if (appointment.petSpecies) {
+    return appointment.petSpecies;
+  }
+  
+  // If we have multiple pet species, return the first one
+  if (appointment.petSpeciesArray && appointment.petSpeciesArray.length > 0) {
+    return appointment.petSpeciesArray[0];
+  }
+  
+  return '';
+};
+
+const getPetImage = (appointment) => {
+  if (!appointment) return null;
+  
+  // If we have a direct photo URL on the appointment
+  if (appointment.petPhotoURL) {
+    return appointment.petPhotoURL;
+  }
+  
+  // If we have multiple pet photos, return the first one
+  if (appointment.petPhotos && appointment.petPhotos.length > 0) {
+    return appointment.petPhotos[0];
+  }
+  
+  return null;
+};
+
+const getPetGroups = (appointment) => {
+  if (!appointment || !appointment.petNames || !appointment.petSpeciesArray) {
+    return [];
+  }
+
+  // Create a map to group pets by species
+  const speciesGroups = new Map();
+
+  // Process each pet
+  appointment.petNames.forEach((name, index) => {
+    const species = appointment.petSpeciesArray[index] || 'Unknown';
+
+    // If this species doesn't exist in the map yet, create it
+    if (!speciesGroups.has(species)) {
+      speciesGroups.set(species, {
+        species: species,
+        indices: [], // Store the indices of pets in this group
+        image: appointment.petPhotos && appointment.petPhotos[index] ? appointment.petPhotos[index] : null,
+        name: name
+      });
+    }
+
+    // Add this pet's index to the group
+    speciesGroups.get(species).indices.push(index);
+  });
+
+  // Convert the map to an array
+  return Array.from(speciesGroups.values());
+};
+
+const getPetList = (appointment) => {
+  if (!appointment || !appointment.petNames) {
+    return [];
+  }
+  
+  const pets = [];
+  
+  appointment.petNames.forEach((name, index) => {
+    pets.push({
+      name: name,
+      species: appointment.petSpeciesArray ? appointment.petSpeciesArray[index] : '',
+      image: appointment.petPhotos ? appointment.petPhotos[index] : null
+    });
+  });
+  
+  return pets;
+};
+
+// Handle pet image loading errors
+const onPetImageError = (event) => {
+  // Replace with paw print icon or default pet image
+  event.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"%3E%3Ccircle cx="11" cy="4" r="2"/%3E%3Ccircle cx="18" cy="8" r="2"/%3E%3Ccircle cx="20" cy="16" r="2"/%3E%3Cpath d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z"/%3E%3C/g%3E%3C/svg%3E';
+};
+
+// Handle doctor image loading errors
+const onDoctorImageError = (event) => {
+  // Replace with user icon or default doctor image
+  event.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"%3E%3Ccircle cx="12" cy="8" r="5"/%3E%3Cpath d="M20 21a8 8 0 0 0-16 0"/%3E%3C/g%3E%3C/svg%3E';
 };
 
 // Computed properties
@@ -1128,6 +1635,7 @@ const toggleStatusFilter = () => {
 const setStatusFilter = (status) => {
   currentStatusFilter.value = status;
   showStatusFilter.value = false;
+  currentPage.value = 1;
 
   // Reset approved only flag if selecting a different filter
   if (status !== 'approved') {
@@ -1159,11 +1667,102 @@ const refreshSessions = async () => {
 
     // Fetch services to get category information
     await serviceCategoryStore.fetchServices();
-
+    
     // Fetch appointments for the current user
     const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+    
+    // Process each appointment to load pet data
+    const dataFetchPromises = [];
+    
+    userAppointments.forEach(appointment => {
+      // Handle multiple pets
+      if (appointment.petIds && Array.isArray(appointment.petIds) && appointment.petIds.length > 0) {
+        // Initialize arrays to store pet data
+        appointment.petNames = [];
+        appointment.petPhotos = [];
+        appointment.petSpeciesArray = []; 
+        
+        // Fetch data for each pet
+        appointment.petIds.forEach((petId, index) => {
+          if (petId && typeof petId === 'string' && petId.trim() !== '') {
+            const petPromise = petsStore.getPetById(authStore.user.userId, petId)
+              .then(petData => {
+                if (petData) {
+                  // Add pet data to arrays
+                  appointment.petNames[index] = petData.name || 'Unnamed Pet';
+                  appointment.petPhotos[index] = petData.photoURL || null;
+                  appointment.petSpeciesArray[index] = petData.species || '';
+                  
+                  // Set the first pet's data as the main pet data for backward compatibility
+                  if (index === 0) {
+                    appointment.petName = petData.name || 'Unnamed Pet';
+                    appointment.petPhotoURL = petData.photoURL || null;
+                    appointment.petSpecies = petData.species || '';
+                  }
+                }
+              })
+              .catch(error => {
+                console.error(`Error fetching pet data for appointment ${appointment.id}, pet ${petId}:`, error);
+              });
+            
+            dataFetchPromises.push(petPromise);
+          }
+        });
+      } else if (appointment.petId) {
+        // Handle single pet case
+        const isValidPetId = typeof appointment.petId === 'string' && appointment.petId.trim() !== '';
+        
+        if (isValidPetId) {
+          const petPromise = petsStore.getPetById(authStore.user.userId, appointment.petId)
+            .then(petData => {
+              if (petData) {
+                appointment.petName = petData.name || 'Unnamed Pet';
+                appointment.petPhotoURL = petData.photoURL || null;
+                appointment.petSpecies = petData.species || '';
+                
+                // Initialize arrays for consistency
+                appointment.petNames = [petData.name || 'Unnamed Pet'];
+                appointment.petPhotos = [petData.photoURL || null];
+                appointment.petSpeciesArray = [petData.species || ''];
+              }
+            })
+            .catch(error => {
+              console.error(`Error fetching pet data for appointment ${appointment.id}:`, error);
+              // Set default pet data to prevent UI issues
+              appointment.petPhotoURL = null;
+              appointment.petSpecies = 'Unknown';
+            });
+          
+          dataFetchPromises.push(petPromise);
+        }
+      }
+      
+      // Fetch doctor photo if doctorId is available
+      if (appointment.doctorId) {
+        const doctorPromise = getDoc(doc(db, 'users', appointment.doctorId))
+          .then(docSnapshot => {
+            if (docSnapshot.exists()) {
+              const doctorData = docSnapshot.data();
+              appointment.doctorPhotoURL = doctorData.photoURL || null;
+              
+              // Update doctor name if not already set
+              if (!appointment.doctorName && (doctorData.firstName || doctorData.lastName)) {
+                appointment.doctorName = `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim();
+              }
+            }
+          })
+          .catch(error => {
+            console.error(`Error fetching doctor data for appointment ${appointment.id}:`, error);
+          });
+        
+        dataFetchPromises.push(doctorPromise);
+      }
+    });
+    
+    // Wait for all pet and doctor data to be fetched
+    await Promise.allSettled(dataFetchPromises);
+    
     sessions.value = userAppointments || [];
-
     console.log(`Fetched ${sessions.value.length} appointments for user`);
 
     // Check if we have an active call session
@@ -1285,9 +1884,100 @@ const loadApprovedSessions = async () => {
 
     // Fetch services to get category information
     await serviceCategoryStore.fetchServices();
-
+    
     // Fetch appointments for the current user
     const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+    
+    // Process each appointment to load pet data
+    const dataFetchPromises = [];
+    
+    userAppointments.forEach(appointment => {
+      // Handle multiple pets
+      if (appointment.petIds && Array.isArray(appointment.petIds) && appointment.petIds.length > 0) {
+        // Initialize arrays to store pet data
+        appointment.petNames = [];
+        appointment.petPhotos = [];
+        appointment.petSpeciesArray = []; 
+        
+        // Fetch data for each pet
+        appointment.petIds.forEach((petId, index) => {
+          if (petId && typeof petId === 'string' && petId.trim() !== '') {
+            const petPromise = petsStore.getPetById(authStore.user.userId, petId)
+              .then(petData => {
+                if (petData) {
+                  // Add pet data to arrays
+                  appointment.petNames[index] = petData.name || 'Unnamed Pet';
+                  appointment.petPhotos[index] = petData.photoURL || null;
+                  appointment.petSpeciesArray[index] = petData.species || '';
+                  
+                  // Set the first pet's data as the main pet data for backward compatibility
+                  if (index === 0) {
+                    appointment.petName = petData.name || 'Unnamed Pet';
+                    appointment.petPhotoURL = petData.photoURL || null;
+                    appointment.petSpecies = petData.species || '';
+                  }
+                }
+              })
+              .catch(error => {
+                console.error(`Error fetching pet data for appointment ${appointment.id}, pet ${petId}:`, error);
+              });
+            
+            dataFetchPromises.push(petPromise);
+          }
+        });
+      } else if (appointment.petId) {
+        // Handle single pet case
+        const isValidPetId = typeof appointment.petId === 'string' && appointment.petId.trim() !== '';
+        
+        if (isValidPetId) {
+          const petPromise = petsStore.getPetById(authStore.user.userId, appointment.petId)
+            .then(petData => {
+              if (petData) {
+                appointment.petName = petData.name || 'Unnamed Pet';
+                appointment.petPhotoURL = petData.photoURL || null;
+                appointment.petSpecies = petData.species || '';
+                
+                // Initialize arrays for consistency
+                appointment.petNames = [petData.name || 'Unnamed Pet'];
+                appointment.petPhotos = [petData.photoURL || null];
+                appointment.petSpeciesArray = [petData.species || ''];
+              }
+            })
+            .catch(error => {
+              console.error(`Error fetching pet data for appointment ${appointment.id}:`, error);
+              // Set default pet data to prevent UI issues
+              appointment.petPhotoURL = null;
+              appointment.petSpecies = 'Unknown';
+            });
+          
+          dataFetchPromises.push(petPromise);
+        }
+      }
+      
+      // Fetch doctor photo if doctorId is available
+      if (appointment.doctorId) {
+        const doctorPromise = getDoc(doc(db, 'users', appointment.doctorId))
+          .then(docSnapshot => {
+            if (docSnapshot.exists()) {
+              const doctorData = docSnapshot.data();
+              appointment.doctorPhotoURL = doctorData.photoURL || null;
+              
+              // Update doctor name if not already set
+              if (!appointment.doctorName && (doctorData.firstName || doctorData.lastName)) {
+                appointment.doctorName = `${doctorData.firstName || ''} ${doctorData.lastName || ''}`.trim();
+              }
+            }
+          })
+          .catch(error => {
+            console.error(`Error fetching doctor data for appointment ${appointment.id}:`, error);
+          });
+        
+        dataFetchPromises.push(doctorPromise);
+      }
+    });
+    
+    // Wait for all pet and doctor data to be fetched
+    await Promise.allSettled(dataFetchPromises);
 
     // Filter to only show approved appointments
     sessions.value = userAppointments || [];
@@ -1574,6 +2264,8 @@ const joinSession = async (session) => {
             updateDoc(callDoc, {
               hasRemoteTracks: true,
               status: 'connected'
+            }).catch(error => {
+              console.error('Error updating connection state:', error);
             });
           }
         }
@@ -1739,7 +2431,8 @@ const acceptIncomingCall = async () => {
         id: incomingCall.value.id,
         title: incomingCall.value.sessionTitle,
         doctorId: incomingCall.value.callerId,
-        doctorName: incomingCall.value.callerName
+        doctorName: incomingCall.value.callerName,
+        doctorPhotoURL: incomingCall.value.callerPhotoURL
       };
     }
     
@@ -2319,68 +3012,47 @@ const setupIncomingCallsListener = () => {
   try {
     incomingCallsUnsubscribe = WebRTCService.listenForIncomingCalls(
       authStore.user.userId,
-      (callData) => {
+      async (callData) => {
         // Find the appointment details
         const appointment = sessions.value.find(s => s.id === callData.id);
         
-        if (appointment) {
-          // Check if it's time for the appointment
-          if (!isAppointmentTime(appointment)) {
-            console.log("Ignoring incoming call outside of appointment time");
-            return;
+        // FIXED: Fetch caller (vet) information if not already included
+        if (callData.callerId && (!callData.callerName || !callData.callerPhotoURL)) {
+          try {
+            const callerDoc = await getDoc(doc(db, 'users', callData.callerId));
+            if (callerDoc.exists()) {
+              const callerData = callerDoc.data();
+              callData.callerName = `${callerData.firstName || ''} ${callerData.lastName || ''}`.trim() || 'Veterinarian';
+              callData.callerPhotoURL = callerData.photoURL || null;
+            }
+          } catch (error) {
+            console.error('Error fetching caller info:', error);
           }
-          
-          incomingCall.value = {
-            id: callData.id,
-            callerId: callData.callerId,
-            callerName: appointment.doctorName || 'Doctor',
-            sessionTitle: appointment.title || 'Telehealth Session',
-            appointment: appointment
-          };
-          
-          // Add a listener to check if the call gets canceled or ended by the vet
-          const callDoc = doc(db, 'calls', callData.id);
-          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
-            const data = snapshot.data();
-            if (data) {
-              // If the call was rejected or ended by the vet, hide the incoming call modal
-              if (data.status === 'rejected' || data.status === 'ended') {
-                console.log('Call was rejected or ended by the veterinarian');
-                // Hide the incoming call modal
-                if (incomingCall.value && incomingCall.value.id === callData.id) {
-                  incomingCall.value = null;
-                }
-                // Unsubscribe from this listener
-                callStatusUnsubscribe();
-              }
-            }
-          });
-        } else {
-          incomingCall.value = {
-            id: callData.id,
-            callerId: callData.callerId,
-            callerName: 'Doctor',
-            sessionTitle: 'Telehealth Session'
-          };
-          
-          // Add the same listener for unknown appointments
-          const callDoc = doc(db, 'calls', callData.id);
-          const callStatusUnsubscribe = onSnapshot(callDoc, (snapshot) => {
-            const data = snapshot.data();
-            if (data) {
-              // If the call was rejected or ended by the vet, hide the incoming call modal
-              if (data.status === 'rejected' || data.status === 'ended') {
-                console.log('Call was rejected or ended by the veterinarian');
-                // Hide the incoming call modal
-                if (incomingCall.value && incomingCall.value.id === callData.id) {
-                  incomingCall.value = null;
-                }
-                // Unsubscribe from this listener
-                callStatusUnsubscribe();
-              }
-            }
-          });
         }
+        
+        // Set the incoming call data
+        incomingCall.value = {
+          ...callData,
+          appointment: appointment
+        };
+        
+        // Play a ringtone
+        const audio = new Audio('/sounds/ringtone.mp3');
+        audio.loop = true;
+        audio.play().catch(error => {
+          console.error('Error playing ringtone:', error);
+        });
+        
+        // Store the audio element to stop it later
+        incomingCall.value.ringtone = audio;
+      },
+      () => {
+        // Call was cancelled by the caller
+        if (incomingCall.value && incomingCall.value.ringtone) {
+          incomingCall.value.ringtone.pause();
+          incomingCall.value.ringtone = null;
+        }
+        incomingCall.value = null;
       }
     );
   } catch (error) {
@@ -2389,137 +3061,113 @@ const setupIncomingCallsListener = () => {
 };
 
 // Lifecycle hooks
-onMounted(() => {
-  checkMobileView();
-  window.addEventListener("resize", checkMobileView);
-
+onMounted(async () => {
   // Initialize auth if needed
   if (!authStore.isInitialized) {
-    authStore.initialize();
+    await authStore.initialize();
   }
 
-  // Fetch categories first
-  serviceCategoryStore.fetchCategories();
-
-  // Fetch services to get category information
-  serviceCategoryStore.fetchServices();
-
-  // Load approved sessions by default
-  loadApprovedSessions();
+  // Check for mobile view
+  checkMobileView();
+  window.addEventListener('resize', checkMobileView);
 
   // Initialize Lottie animations
   initializeLottieAnimations();
+
+  // Start autoplay for carousel
   startAutoplay();
 
   // Setup network monitoring
   setupNetworkMonitoring();
 
+  // Fetch sessions
+  await refreshSessions();
+
   // Setup incoming calls listener
   setupIncomingCallsListener();
 
-  // Listen for screen sharing state changes from WebRTCService
-  window.addEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
-});
+  // Watch for changes in the current slide
+  watch(currentSlide, (newSlide, oldSlide) => {
+    // Pause the old animation
+    if (lottieInstances[oldSlide]) {
+      lottieInstances[oldSlide].pause();
+    }
 
-// Clean up when component is unmounted
-onUnmounted(() => {
-  stopAutoplay();
-  clearInterval(networkStatusInterval);
-  window.removeEventListener("resize", checkMobileView);
-  window.removeEventListener("online", handleOnline);
-  window.removeEventListener("offline", handleOffline);
-  window.removeEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
-
-  // Clean up WebRTC
-  if (activeSession.value) {
-    endCall();
-  }
-
-  // Unsubscribe from incoming calls listener
-  if (incomingCallsUnsubscribe) {
-    incomingCallsUnsubscribe();
-  }
-  
-  // Clean up chat messages subscription
-  if (chatMessagesUnsubscribe) {
-    chatMessagesUnsubscribe();
-    chatMessagesUnsubscribe = null;
-  }
-  
-  // Clear appointment timer
-  if (appointmentTimer) {
-    clearInterval(appointmentTimer);
-    appointmentTimer = null;
-  }
-});
-
-// Watchers
-watch(currentSlide, (newSlide, oldSlide) => {
-  lottieInstances.forEach((instance, index) => {
-    if (index === newSlide) {
-      instance.play();
-    } else {
-      instance.pause();
+    // Play the new animation
+    if (lottieInstances[newSlide]) {
+      lottieInstances[newSlide].play();
     }
   });
-});
 
-// Watch for call status changes to update UI - UPDATED to safely check remoteStream
-watch(() => callStatus.value, (newStatus) => {
-  if (newStatus === 'connected') {
-    // Double check remote stream when connection is established
-    if (remoteStream.value && typeof remoteStream.value.getTracks === 'function') {
-      try {
-        const tracks = remoteStream.value.getTracks();
-        if (tracks && tracks.length > 0) {
-          remoteStreamActive.value = true;
-        }
-      } catch (error) {
-        console.error('Error checking remote stream tracks:', error);
-      }
-    } else {
-      // If remoteStream doesn't have getTracks, we might still be connected
-      // if the remote video element has a srcObject
-      if (remoteVideoRef.value && remoteVideoRef.value.srcObject) {
-        remoteStreamActive.value = true;
-      }
+  // Watch for changes in the active session
+  watch(activeSession, (newSession, oldSession) => {
+    if (newSession) {
+      // We have an active session, ensure we're in call view
+      currentView.value = 'call';
+    } else if (oldSession) {
+      // We had an active session but now we don't, go back to sessions view
+      currentView.value = 'sessions';
     }
-  }
-});
+  });
 
-// Watch for Firestore call status updates
-watch(() => activeSession.value, async (newSession) => {
-  if (unsubscribeCallStatus.value) {
-    unsubscribeCallStatus.value(); // Unsubscribe from previous listener
-    unsubscribeCallStatus.value = null;
-  }
-
-  if (newSession) {
-    // Listen for call status updates in Firestore
-    const callDoc = doc(db, 'calls', newSession.id);
-    const unsubscribe = onSnapshot(callDoc, (snapshot) => {
-      const data = snapshot.data();
-      if (data) {
-        // Update call status based on Firestore
-        if (data.status === 'connected') {
-          callStatus.value = 'connected';
-          remoteStreamActive.value = true; // Update remote stream active state when connected
-
-          // Check if remote stream has tracks flag is set
-          if (data.hasRemoteTracks) {
-            remoteStreamActive.value = true;
-          }
-        } else if (data.status === 'ended' && !isCallInitializing.value) {
-          callStatus.value = 'ended';
-          // Auto end call if the other party ended it
-          if (activeSession.value) {
-            endCall();
-          }
+  // Watch for changes in chat messages to scroll to bottom
+  watch(chatMessages, () => {
+    nextTick(() => {
+      if (isMobileView.value) {
+        if (mobileChatMessagesRef.value) {
+          mobileChatMessagesRef.value.scrollTop = mobileChatMessagesRef.value.scrollHeight;
+        }
+      } else {
+        if (chatMessagesRef.value) {
+          chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
         }
       }
     });
+  });
+});
 
-    unsubscribeCallStatus.value = unsubscribe;
+onUnmounted(() => {
+  // Clean up event listeners
+  window.removeEventListener('resize', checkMobileView);
+  window.removeEventListener('online', handleOnline);
+  window.removeEventListener('offline', handleOffline);
+
+  // Stop autoplay
+  stopAutoplay();
+
+  // Clean up Lottie animations
+  lottieInstances.forEach((instance) => {
+    if (instance) {
+      instance.destroy();
+    }
+  });
+
+  // Clean up network monitoring
+  if (networkStatusInterval) {
+    clearInterval(networkStatusInterval);
+  }
+
+  // Clean up WebRTC
+  WebRTCService.hangUp();
+
+  // Clean up local stream
+  if (localStream.value) {
+    localStream.value.getTracks().forEach(track => track.stop());
+  }
+
+  // Clean up incoming calls listener
+  if (incomingCallsUnsubscribe) {
+    incomingCallsUnsubscribe();
+  }
+
+  // Clean up chat messages subscription
+  if (chatMessagesUnsubscribe) {
+    chatMessagesUnsubscribe();
+  }
+
+  // Clean up appointment timer
+  if (appointmentTimer) {
+    clearInterval(appointmentTimer);
   }
 });
 </script>
