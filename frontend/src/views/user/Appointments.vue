@@ -2,8 +2,6 @@
 <template>
   <!-- Main wrapper with fixed height and no scrolling, aligned with sidebar -->
   <div class="h-screen flex flex-col bg-gray-50 -mt-4 md:mt-0">
-    <!-- No need for a custom loading overlay - use your LoadingSpinner component -->
-    
     <!-- Fixed header with stepper - adjusted padding to align with sidebar -->
     <div class="bg-white shadow-lg rounded-2xl p-3 mb-2 mx-0 md:mx-4 mt-0">
       <div class="flex w-full justify-between items-start">
@@ -190,7 +188,7 @@
               v-else
               v-for="doctor in veterinarians" 
               :key="doctor.userId || doctor.id" 
-              class="flex items-center p-3 md:p-4 border rounded-2xl cursor-pointer transition-all duration-200"
+              class="flex flex-col p-3 md:p-4 border rounded-2xl cursor-pointer transition-all duration-200"
               :class="[
                 selectedDoctor === doctor
                   ? 'border-blue-200 bg-blue-50'
@@ -198,38 +196,74 @@
               ]"
               @click="selectDoctor(doctor)"
             >
-              <!-- Doctor image with placeholder -->
-              <div class="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden">
-                <img
-                  v-if="doctor.photoURL"
-                  :src="processPhotoURL(doctor.photoURL)"
-                  :alt="`Dr. ${doctor.firstName} ${doctor.lastName}`"
-                  class="w-full h-full object-cover"
-                  @error="handleImageError($event, doctor)"
-                />
-                <div 
-                  v-else 
-                  class="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500"
-                >
-                  <User2 class="w-6 h-6 md:w-8 md:h-8" />
+              <div class="flex items-center mb-3">
+                <!-- Doctor image with placeholder -->
+                <div class="w-12 h-12 md:w-16 md:h-16 rounded-xl overflow-hidden">
+                  <img
+                    v-if="doctor.photoURL"
+                    :src="processPhotoURL(doctor.photoURL)"
+                    :alt="`Dr. ${doctor.firstName} ${doctor.lastName}`"
+                    class="w-full h-full object-cover"
+                    @error="handleImageError($event, doctor)"
+                  />
+                  <div 
+                    v-else 
+                    class="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500"
+                  >
+                    <User2 class="w-6 h-6 md:w-8 md:h-8" />
+                  </div>
+                </div>
+                <div class="ml-3 md:ml-4 flex-1">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-base md:text-lg font-semibold text-gray-900">
+                      {{ `${getDoctorTitle(doctor)} ${doctor.firstName} ${doctor.lastName}` }}
+                    </h3>
+                  </div>
+                  <p class="text-xs md:text-sm text-gray-500">{{ doctor.specialty || 'Veterinarian' }}</p>
+                  <div class="flex items-center mt-1">
+                    <Star 
+                      v-for="i in 5" 
+                      :key="i"
+                      class="w-3 h-3 md:w-4 md:h-4"
+                      :class="i <= (doctor.rating || 5) ? 'text-yellow-400' : 'text-gray-200'"
+                      :fill="i <= (doctor.rating || 5) ? 'currentColor' : 'none'"
+                    />
+                    <span class="ml-1 text-xs md:text-sm text-gray-600">{{ doctor.rating || 5 }}</span>
+                  </div>
                 </div>
               </div>
-              <div class="ml-3 md:ml-4 flex-1">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-base md:text-lg font-semibold text-gray-900">
-                    {{ `${getDoctorTitle(doctor)} ${doctor.firstName} ${doctor.lastName}` }}
-                  </h3>
+              
+              <!-- Schedule/Availability Section -->
+              <div class="mt-1 border-t border-gray-100 pt-3">
+                <div class="flex items-center mb-2">
+                  <CalendarDays class="w-4 h-4 text-blue-500 mr-2" />
+                  <span class="text-sm font-medium text-gray-700">Schedule & Availability</span>
                 </div>
-                <p class="text-xs md:text-sm text-gray-500">{{ doctor.specialty || 'Veterinarian' }}</p>
-                <div class="flex items-center mt-1">
-                  <Star 
-                    v-for="i in 5" 
-                    :key="i"
-                    class="w-3 h-3 md:w-4 md:h-4"
-                    :class="i <= (doctor.rating || 5) ? 'text-yellow-400' : 'text-gray-200'"
-                    :fill="i <= (doctor.rating || 5) ? 'currentColor' : 'none'"
-                  />
-                  <span class="ml-1 text-xs md:text-sm text-gray-600">{{ doctor.rating || 5 }}</span>
+                
+                <!-- Schedule display -->
+                <div class="text-xs text-gray-600 mb-2">
+                  {{ doctor.schedule || 'Mon-Fri, 9:00 AM to 5:00 PM' }}
+                </div>
+                
+                <!-- Availability indicators -->
+                <div class="flex flex-wrap gap-1">
+                  <!-- Parse the schedule to show availability for today -->
+                  <div 
+                    class="px-2 py-1 rounded-full text-xs"
+                    :class="isDoctorAvailableToday(doctor) 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'"
+                  >
+                    {{ isDoctorAvailableToday(doctor) ? 'Available Today' : 'Not Available Today' }}
+                  </div>
+                  
+                  <!-- Show next available day if not available today -->
+                  <div 
+                    v-if="!isDoctorAvailableToday(doctor)"
+                    class="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs"
+                  >
+                    Next Available: {{ getNextAvailableDay(doctor) }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -321,7 +355,7 @@
                 </div>
               </div>
             </div>
-  
+
             <!-- Legend for calendar -->
             <div class="flex flex-wrap gap-4 mb-6 text-xs mt-4">
               <div class="flex items-center">
@@ -435,17 +469,17 @@
             <p class="text-xs md:text-sm text-gray-500 text-center">Select options on the left to see your appointment details here.</p>
           </div>
       
-          <!-- Service Details -->
+          <!-- Service Details - Updated with equal spacing from top and sides -->
           <div v-else-if="currentStep.id === 'service' && selectedCategory" class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             <div 
               v-for="service in filteredServices" 
               :key="service.id"
-              class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col"
+              class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col cursor-pointer"
               :class="{ 'ring-2 ring-blue-500': selectedServices.includes(service.id) }"
             >
-              <div class="p-3 md:p-4 flex flex-col items-center flex-grow">
-                <!-- Updated service image with placeholder -->
-                <div class="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden mb-2 md:mb-3">
+              <!-- Updated image container with equal padding on top and sides -->
+              <div class="p-3 pt-3">
+                <div class="w-full aspect-[4/3] rounded-lg overflow-hidden">
                   <img 
                     v-if="service.coverPhoto" 
                     :src="service.coverPhoto" 
@@ -456,15 +490,20 @@
                     v-else 
                     class="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500"
                   >
-                    <ImageIcon class="w-6 h-6 md:w-8 md:h-8" />
+                    <ImageIcon class="w-8 h-8" />
                   </div>
                 </div>
-                <h3 class="text-xs md:text-sm font-semibold text-center mb-1 md:mb-2">{{ service.name }}</h3>
+              </div>
+              
+              <!-- Content below image -->
+              <div class="px-3 pb-2 flex flex-col items-center">
+                <h3 class="text-xs md:text-sm font-semibold text-center mb-1">{{ service.name }}</h3>
                 <p v-if="service.processingTime" class="text-[10px] md:text-xs text-blue-600 font-medium">
                   {{ service.processingTime }}
                 </p>
               </div>
-              <div class="flex justify-between items-center px-3 md:px-4 py-2 md:py-3 bg-gray-50 border-t border-gray-100">
+              
+              <div class="flex justify-between items-center px-3 py-2 bg-gray-50 border-t border-gray-100 mt-auto">
                 <span class="text-xs md:text-sm font-semibold">{{ service.fees || 'Free' }}</span>
                 <button 
                   @click="toggleService(service.id)"
@@ -476,11 +515,18 @@
             </div>
           </div>
       
-          <!-- Pet Selection -->
+          <!-- Pet Selection - MODIFIED FOR MULTIPLE SELECTION -->
           <div v-else-if="currentStep.id === 'pet' && selectedSpecies" class="space-y-4">
             <!-- User's pets section -->
             <div v-if="userPets.length > 0">
-              <h3 class="text-lg font-semibold text-gray-900 mb-3">Your Pets</h3>
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-semibold text-gray-900">Your Pets</h3>
+                
+                <!-- Show selected count -->
+                <span v-if="selectedPets.length > 0" class="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                  {{ selectedPets.length }} selected
+                </span>
+              </div>
               
               <!-- No pets of selected species message -->
               <div v-if="filteredUserPets.length === 0" class="bg-white rounded-lg p-4 text-center">
@@ -500,43 +546,56 @@
                   v-for="pet in filteredUserPets" 
                   :key="pet.id" 
                   class="bg-white px shadow-lg rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-                  :class="{ 'ring-2': selectedPet === pet, 'ring-blue-500': selectedPet === pet }"
-                  @click="selectPet(pet)"
+                  :class="{ 'ring-2 ring-blue-500': isPetSelected(pet) }"
+                  @click="togglePetSelection(pet)"
                 >
-                  <div class="bg-gradient-to-b from-emerald-400 to-emerald-300 h-20 md:h-24 relative">
+                  <div class="bg-gradient-to-b from-emerald-400 to-emerald-300 h-24 md:h-28 relative">
                     <div class="absolute left-1/2 bottom-0 transform -translate-x-1/2 translate-y-1/2">
-                      <div class="bg-white rounded-full p-1 md:p-2 shadow-lg">
-                        <div class="bg-emerald-100 rounded-full p-2 md:p-3">
-                          <!-- Pet image or icon -->
-                          <div v-if="pet.image" class="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden">
-                            <img 
-                              :src="pet.image" 
-                              :alt="pet.name" 
-                              class="w-full h-full object-cover"
-                            />
+                      <!-- Perfect circle container with consistent dimensions -->
+                      <div class="bg-white rounded-full p-1.5 shadow-lg" style="aspect-ratio: 1/1;">
+                        <!-- Pet image container - perfectly circular -->
+                        <div class="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden" style="aspect-ratio: 1/1;">
+                          <img 
+                            v-if="pet.photoURL || pet.image" 
+                            :src="pet.photoURL || pet.image" 
+                            :alt="pet.name" 
+                            class="w-full h-full object-cover"
+                          />
+                          <div 
+                            v-else 
+                            class="w-full h-full bg-emerald-100 flex items-center justify-center"
+                          >
+                            <PawPrint class="w-8 h-8 md:w-10 md:h-10 text-emerald-600" />
                           </div>
-                          <PawPrint v-else class="w-6 h-6 md:w-8 md:h-8 text-emerald-600" />
                         </div>
                       </div>
                     </div>
+                    
+                    <!-- Selection indicator -->
+                    <div 
+                      v-if="isPetSelected(pet)"
+                      class="absolute top-2 right-2 bg-blue-500 rounded-full p-1 shadow-md"
+                    >
+                      <Check class="w-3 h-3 md:w-4 md:h-4 text-white" />
+                    </div>
                   </div>
-                  <div class="pt-6 md:pt-8 pb-3 md:pb-4 px-2 md:px-3">
+                  <div class="pt-10 md:pt-14 pb-3 md:pb-4 px-2 md:px-3">
                     <div class="text-center mb-2 md:mb-3">
-                      <h3 class="text-base md:text-xl font-semibold text-gray-900">{{ pet.name }}</h3>
+                      <h3 class="text-base md:text-xl font-semibold text-gray-900 break-words">{{ pet.name }}</h3>
                       <p class="text-xs text-gray-500">{{ pet.species }}</p>
                     </div>
                     <div class="grid grid-cols-3 gap-1 text-[10px] md:text-xs">
                       <div class="px-2 md:px-4 text-center">
                         <span class="block text-gray-500">Breed</span>
-                        <span class="font-medium text-gray-900">{{ pet.breed || 'Unknown' }}</span>
+                        <span class="font-medium text-gray-900 break-words">{{ pet.breed || 'Unknown' }}</span>
                       </div>
                       <div class="px-2 md:px-4 text-center">
                         <span class="block text-gray-500">Age</span>
-                        <span class="font-medium text-gray-900">{{ formatPetAge(pet) }}</span>
+                        <span class="font-medium text-gray-900 break-words">{{ formatPetAge(pet) }}</span>
                       </div>
                       <div class="px-2 md:px-4 text-center">
                         <span class="block text-gray-500">Weight</span>
-                        <span class="font-medium text-gray-900">{{ pet.weight ? `${pet.weight} kg` : 'Unknown' }}</span>
+                        <span class="font-medium text-gray-900 break-words">{{ pet.weight ? `${pet.weight} kg` : 'Unknown' }}</span>
                       </div>
                     </div>
                   </div>
@@ -574,7 +633,7 @@
                   v-else 
                   class="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500"
                 >
-                  <User2 class="w-10 h-10 md:w-12 md:h-12" />
+                  <User2 class="w-10 h-10 md:w-12" />
                 </div>
               </div>
               <h2 class="text-xl md:text-2xl font-semibold text-gray-900">
@@ -582,9 +641,81 @@
               </h2>
               <p class="text-sm md:text-base text-gray-500">{{ selectedDoctor.specialty || 'Veterinarian' }}</p>
               <div class="flex items-center mt-1">
-                <span class="text-xs md:text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                  {{ selectedDoctor.experience || '5' }} years experience
+                <span class="text-xs md:text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full" v-if="selectedDoctor.experience">
+                  {{ selectedDoctor.experience }} years experience
                 </span>
+              </div>
+            </div>
+            
+            <!-- Schedule & Availability Section -->
+            <div class="bg-white rounded-xl p-4 shadow-md">
+              <h3 class="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                <CalendarDays class="w-5 h-5 text-blue-600 mr-2" />
+                Schedule & Availability
+              </h3>
+              
+              <div class="space-y-3">
+                <!-- Regular schedule -->
+                <div class="flex items-start">
+                  <Clock class="w-5 h-5 text-gray-500 mr-2 mt-0.5" />
+                  <div>
+                    <p class="text-sm font-medium text-gray-700">Regular Hours</p>
+                    <p class="text-sm text-gray-600">{{ selectedDoctor.schedule || 'Mon-Fri, 9:00 AM to 5:00 PM' }}</p>
+                  </div>
+                </div>
+                
+                <!-- Current availability status -->
+                <div class="flex items-start">
+                  <div 
+                    class="w-5 h-5 rounded-full mr-2 mt-0.5 flex items-center justify-center"
+                    :class="isDoctorAvailableToday(selectedDoctor) ? 'bg-green-100' : 'bg-red-100'"
+                  >
+                    <div 
+                      class="w-3 h-3 rounded-full"
+                      :class="isDoctorAvailableToday(selectedDoctor) ? 'bg-green-500' : 'bg-red-500'"
+                    ></div>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-700">Current Status</p>
+                    <p 
+                      class="text-sm"
+                      :class="isDoctorAvailableToday(selectedDoctor) ? 'text-green-600' : 'text-red-600'"
+                    >
+                      {{ isDoctorAvailableToday(selectedDoctor) ? 'Available Today' : 'Not Available Today' }}
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- Next available day if not available today -->
+                <div v-if="!isDoctorAvailableToday(selectedDoctor)" class="flex items-start">
+                  <CalendarDays class="w-5 h-5 text-gray-500 mr-2 mt-0.5" />
+                  <div>
+                    <p class="text-sm font-medium text-gray-700">Next Available</p>
+                    <p class="text-sm text-blue-600">{{ getNextAvailableDay(selectedDoctor) }}</p>
+                  </div>
+                </div>
+                
+                <!-- Weekly availability calendar -->
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                  <p class="text-sm font-medium text-gray-700 mb-2">Weekly Availability</p>
+                  <div class="grid grid-cols-7 gap-1">
+                    <div 
+                      v-for="(day, index) in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']" 
+                      :key="day"
+                      class="flex flex-col items-center"
+                    >
+                      <span class="text-xs text-gray-500 mb-1">{{ day }}</span>
+                      <div 
+                        class="w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                        :class="isDoctorAvailableOnDay(selectedDoctor, index) 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'"
+                      >
+                        {{ isDoctorAvailableOnDay(selectedDoctor, index) ? '✓' : '✕' }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
       
@@ -651,7 +782,7 @@
             </div>
           </div>
       
-          <!-- Appointment Summary -->
+          <!-- Appointment Summary - MODIFIED FOR MULTIPLE PETS -->
           <div v-else-if="currentStep.id === 'datetime'" class="space-y-4 md:space-y-6">
             <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6">Appointment Summary</h2>
       
@@ -688,13 +819,22 @@
                 </div>
               </div>
               
-              <div v-if="selectedPet" class="flex items-center space-x-3 md:space-x-4 bg-white rounded-lg p-3 md:p-4 shadow-md">
+              <!-- Multiple Pets Section - MODIFIED: Removed X buttons -->
+              <div v-if="selectedPets.length > 0" class="flex items-center space-x-3 md:space-x-4 bg-white rounded-lg p-3 md:p-4 shadow-md">
                 <div class="bg-green-100 rounded-full p-1 md:p-2">
                   <PawPrint class="w-5 h-5 md:w-6 md:h-6 text-green-600" />
                 </div>
                 <div class="flex-1">
-                  <p class="text-sm md:text-base font-medium text-gray-500">Pet</p>
-                  <p class="text-base md:text-xl font-semibold text-gray-900">{{ selectedPet.name }} ({{ getSpeciesName(selectedPet.species) }})</p>
+                  <p class="text-sm md:text-base font-medium text-gray-500">Pets ({{ selectedPets.length }})</p>
+                  <div class="flex flex-wrap gap-2 mt-1">
+                    <div 
+                      v-for="pet in selectedPets" 
+                      :key="pet.id"
+                      class="flex items-center bg-green-50 rounded-full px-2 py-1"
+                    >
+                      <span class="text-sm font-medium text-green-800">{{ pet.name }}</span>
+                    </div>
+                  </div>
                 </div>
                 <!-- Add edit button to go back to pet step -->
                 <button 
@@ -704,6 +844,7 @@
                   <Edit class="w-4 h-4 md:w-5 md:h-5" />
                 </button>
               </div>
+              
               <div v-if="selectedDoctor" class="flex items-center space-x-3 md:space-x-4 bg-white rounded-lg p-3 md:p-4 shadow-md">
                 <div class="bg-purple-100 rounded-full p-1 md:p-2">
                   <User2 class="w-5 h-5 md:w-6 md:h-6 text-purple-600" />
@@ -822,13 +963,17 @@
         </div>
         <h2 class="text-xl md:text-2xl font-bold text-gray-900 mb-2">Appointment Booked!</h2>
         <p class="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
-          Your appointment has been successfully booked. We look forward to seeing you and {{ selectedBookingDetails.petName }} on {{ selectedBookingDetails.formattedDate }} at {{ selectedBookingDetails.time }}.
+          Your appointment has been successfully booked. We look forward to seeing you and your pets on {{ selectedBookingDetails.formattedDate }} at {{ selectedBookingDetails.time }}.
         </p>
         <div class="bg-gray-50 rounded-lg p-3 md:p-4 w-full mb-4 md:mb-6">
           <div class="space-y-2">
             <div class="flex justify-between">
               <span class="text-xs md:text-sm text-gray-500">Services:</span>
               <span class="text-xs md:text-sm text-gray-900 font-medium">{{ selectedBookingDetails.services.join(', ') }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-xs md:text-sm text-gray-500">Pets:</span>
+              <span class="text-xs md:text-sm text-gray-900 font-medium">{{ selectedBookingDetails.petNames.join(', ') }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-xs md:text-sm text-gray-500">Doctor:</span>
@@ -874,7 +1019,7 @@
   <!-- Loading Spinner for initial data loading and when clicking Continue -->
   <LoadingSpinner v-if="initialLoading || isLoading" isOverlay :text="initialLoading ? 'Loading data...' : 'Processing...'" />
 </template>
-  
+
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeMount, onBeforeUnmount, nextTick } from "vue"
 import { useRouter } from "vue-router"
@@ -912,6 +1057,8 @@ import {
   endOfDay,
   isToday,
   isSameDay,
+  addDays,
+  getDay,
 } from "date-fns"
 import docuImage from "@/assets/media/images/appointment/docu.png"
 import { useServiceCategoryStore } from "@/stores/modules/ServiceCategoryStore"
@@ -1568,7 +1715,7 @@ const convertTimeToMinutes = (time) => {
 // State for success modal
 const showSuccessModal = ref(false)
 const selectedBookingDetails = ref({
-  petName: "",
+  petNames: [],
   formattedDate: "",
   time: "",
   services: [],
@@ -1628,7 +1775,9 @@ const currentStepIndex = ref(0)
 const currentStep = computed(() => steps[currentStepIndex.value])
 
 const selectedSpecies = ref(null)
-const selectedPet = ref(null)
+// Replace single pet selection with multiple pets array
+const selectedPet = ref(null) // Keep for backward compatibility
+const selectedPets = ref([]) // New array for multiple pet selection
 const selectedDoctor = ref(null)
 const selectedDate = ref(null)
 const selectedTime = ref(null)
@@ -1638,6 +1787,13 @@ const currentDate = ref(new Date())
 const stepsContainer = ref(null)
 const connectorLine = ref(null)
 const stepRefs = ref([])
+
+// Check if selected category is "Veterinary Health Certificate"
+const isVeterinaryHealthCertificateCategory = computed(() => {
+  if (!selectedCategory.value) return false
+  const category = categories.value.find(cat => cat.id === selectedCategory.value)
+  return category && category.name === "Veterinary Health Certificate"
+})
 
 // Function to fetch veterinarians from Firestore
 const fetchVeterinarians = async () => {
@@ -1796,11 +1952,12 @@ const parseDuration = (durationStr) => {
   return totalMinutes
 }
 
-// Calculate total duration in minutes
+// Calculate total duration in minutes - UPDATED FOR MULTIPLE PETS
 const totalDurationMinutes = computed(() => {
   if (selectedServices.value.length === 0) return 0
 
-  return selectedServices.value.reduce((total, serviceId) => {
+  // Calculate base duration from selected services
+  const baseDuration = selectedServices.value.reduce((total, serviceId) => {
     const service = services.value.find((s) => s.id === serviceId)
     if (!service || !service.processingTime) return total
 
@@ -1808,6 +1965,18 @@ const totalDurationMinutes = computed(() => {
     console.log(`Service ${service.name} has duration: ${duration} minutes`)
     return total + duration
   }, 0)
+  
+  // For Veterinary Health Certificate category, don't multiply by pet count
+  if (isVeterinaryHealthCertificateCategory.value) {
+    return baseDuration
+  }
+  
+  // Multiply by the number of pets selected
+  const petCount = selectedPets.value.length || 1
+  const totalDuration = baseDuration * petCount
+  
+  console.log(`Base duration: ${baseDuration} minutes, Pet count: ${petCount}, Total duration: ${totalDuration} minutes`)
+  return totalDuration
 })
 
 // Format total duration for display
@@ -1885,11 +2054,89 @@ const getAvailableTimeSlots = (date) => {
 
   console.log(`Regular office hours for ${dayOfWeek}: ${officeHours.openTime} - ${officeHours.closeTime}`)
   
-  // Generate time slots based on office hours
+  // Check if a doctor is selected and if the date is a day they work
+  if (selectedDoctor.value) {
+    // Check if the doctor is available on this day
+    const doctorAvailable = isDoctorAvailableOnDay(selectedDoctor.value, date.getDay())
+    
+    if (!doctorAvailable) {
+      console.log(`Doctor ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName} is not available on ${dayOfWeek}`)
+      return []
+    }
+    
+    console.log(`Doctor ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName} is available on ${dayOfWeek}`)
+    
+    // Parse the doctor's working hours if available
+    const doctorHours = parseDoctorWorkingHours(selectedDoctor.value, dayOfWeek)
+    
+    if (doctorHours) {
+      console.log(`Doctor's working hours: ${doctorHours.openTime} - ${doctorHours.closeTime}`)
+      
+      // Generate time slots based on the doctor's working hours
+      return generateTimeSlotsForRange(date, doctorHours.openTime, doctorHours.closeTime, officeHours.lunchStart, officeHours.lunchEnd)
+    }
+  }
+  
+  // If no doctor is selected or no specific hours found, use office hours
   return generateTimeSlotsForRange(date, officeHours.openTime, officeHours.closeTime, officeHours.lunchStart, officeHours.lunchEnd)
 }
 
-// Helper function to generate time slots for a given range
+// New function to parse doctor's working hours from their schedule
+const parseDoctorWorkingHours = (doctor, dayOfWeek) => {
+  if (!doctor || !doctor.schedule) return null
+  
+  // Default office hours to use if we can't parse specific times
+  const defaultHours = { openTime: "09:00", closeTime: "17:00" }
+  
+  try {
+    const schedule = doctor.schedule
+    
+    // Check if the schedule contains time information
+    const timeMatch = schedule.match(/(\d+:\d+\s*(?:AM|PM))\s*(?:to|-)\s*(\d+:\d+\s*(?:AM|PM))/i)
+    
+    if (timeMatch) {
+      // Convert 12-hour format to 24-hour format
+      const openTime = convertTo24HourFormat(timeMatch[1])
+      const closeTime = convertTo24HourFormat(timeMatch[2])
+      
+      return { openTime, closeTime }
+    }
+    
+    // If no specific time found, return default hours
+    return defaultHours
+  } catch (error) {
+    console.error("Error parsing doctor working hours:", error)
+    return defaultHours
+  }
+}
+
+// Helper function to convert 12-hour time format to 24-hour format
+const convertTo24HourFormat = (timeStr) => {
+  if (!timeStr) return "09:00"
+  
+  // Clean up the time string
+  timeStr = timeStr.trim().toUpperCase()
+  
+  // Parse the time components
+  const match = timeStr.match(/(\d+):?(\d*)\s*(AM|PM)/)
+  if (!match) return "09:00"
+  
+  let hours = parseInt(match[1], 10)
+  const minutes = match[2] ? parseInt(match[2], 10) : 0
+  const period = match[3]
+  
+  // Convert to 24-hour format
+  if (period === "PM" && hours < 12) {
+    hours += 12
+  } else if (period === "AM" && hours === 12) {
+    hours = 0
+  }
+  
+  // Format as HH:MM
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+}
+
+// Helper function to generate time slots for a given range - UPDATED FOR MULTIPLE PETS
 const generateTimeSlotsForRange = (date, openTime, closeTime, lunchStart = null, lunchEnd = null) => {
   const slots = []
   const now = new Date()
@@ -1913,7 +2160,10 @@ const generateTimeSlotsForRange = (date, openTime, closeTime, lunchStart = null,
   }
 
   // Determine the interval based on total duration
+  // If no services selected or duration is 0, use default 60 minutes
   const interval = totalDurationMinutes.value > 0 ? totalDurationMinutes.value : 60
+  
+  console.log(`Using interval of ${interval} minutes for time slots`)
 
   while (startTime < endTime) {
     const slotEndTime = new Date(startTime)
@@ -1991,6 +2241,12 @@ const availableTimeSlots = computed(() => {
           return false
         }
         
+        // Check if the appointment status should block the time slot
+        const blockingStatuses = ['approved', 'processing', 'completed']
+        if (!blockingStatuses.includes(appointment.status)) {
+          return false // Don't block for pending, cancelled, or ended appointments
+        }
+        
         // Extract just the start time from the appointment time range
         const appointmentTimeString = appointment.time.split(" - ")[0].trim()
 
@@ -2049,6 +2305,7 @@ const fetchBookedAppointments = async () => {
         time: data.time,
         doctorId: data.doctorId,
         duration: data.duration,
+        status: data.status // Make sure to include the status
       })
     })
     
@@ -2108,6 +2365,8 @@ watch(
       
       // Refresh time slots if a date is already selected
       if (selectedDate.value) {
+        // Reset time selection when doctor changes
+        selectedTime.value = null
         fetchBookedAppointments()
       }
     }
@@ -2157,22 +2416,36 @@ const calendarDays = computed(() => {
 
 const currentMonthYear = computed(() => format(currentDate.value, "MMMM yyyy"))
 
-const canBook = computed(
-  () =>
-    selectedServices.value.length > 0 &&
-    selectedPet.value &&
-    selectedDoctor.value &&
-    selectedDate.value &&
-    selectedTime.value,
-)
+// Update canBook to handle both cases - regular services with pets and Veterinary Health Certificate
+const canBook = computed(() => {
+  if (isVeterinaryHealthCertificateCategory.value) {
+    // For Veterinary Health Certificate, we don't need pet selection
+    return selectedServices.value.length > 0 &&
+           selectedDoctor.value &&
+           selectedDate.value &&
+           selectedTime.value
+  } else {
+    // For regular services, we need pet selection
+    return selectedServices.value.length > 0 &&
+           selectedPets.value.length > 0 &&
+           selectedDoctor.value &&
+           selectedDate.value &&
+           selectedTime.value
+  }
+})
 
 // Updated to ensure both date AND time are selected for the datetime step
+// And to handle Veterinary Health Certificate special case
 const canProceed = computed(() => {
   switch (currentStep.value.id) {
     case "service":
       return selectedServices.value.length > 0
     case "pet":
-      return !!selectedPet.value
+      // For Veterinary Health Certificate, we don't require pet selection
+      if (isVeterinaryHealthCertificateCategory.value) {
+        return true
+      }
+      return selectedPets.value.length > 0
     case "doctor":
       return !!selectedDoctor.value
     case "datetime":
@@ -2209,6 +2482,7 @@ const resetCurrentStep = () => {
     case "pet":
       selectedSpecies.value = null
       selectedPet.value = null
+      selectedPets.value = [] // Clear the pets array
       break
     case "doctor":
       selectedDoctor.value = null
@@ -2258,6 +2532,7 @@ const selectSpecies = (speciesId) => {
   if (selectedSpecies.value === speciesId) {
     selectedSpecies.value = null
     selectedPet.value = null
+    selectedPets.value = [] // Clear the pets array
     // Go back to previous step if deselecting
     if (currentStepIndex.value > 1) {
       currentStepIndex.value = 1
@@ -2270,6 +2545,7 @@ const selectSpecies = (speciesId) => {
   } else {
     selectedSpecies.value = speciesId
     selectedPet.value = null
+    selectedPets.value = [] // Clear the pets array
   
     // Show second column on mobile after selection
     if (isMobile.value) {
@@ -2278,27 +2554,46 @@ const selectSpecies = (speciesId) => {
   }
 }
 
-// Modified to automatically show second column on mobile when selected
-const selectPet = (pet) => {
-  // Toggle selection if clicking the same pet
-  if (selectedPet.value === pet) {
-    selectedPet.value = null
-    // Go back to previous step if deselecting
-    if (currentStepIndex.value > 1) {
-      currentStepIndex.value = 1
-    }
-  
-    // On mobile, go back to first column when deselecting
-    if (isMobile.value) {
-      showSecondColumn.value = false
+// Helper function to check if a pet is selected
+const isPetSelected = (pet) => {
+  return selectedPets.value.some(p => p.id === pet.id)
+}
+
+// Function to toggle pet selection (for multiple selection)
+const togglePetSelection = (pet) => {
+  if (isPetSelected(pet)) {
+    // Remove pet from selection
+    selectedPets.value = selectedPets.value.filter(p => p.id !== pet.id)
+    
+    // If no pets are selected, clear selectedPet as well
+    if (selectedPets.value.length === 0) {
+      selectedPet.value = null
     }
   } else {
-    selectedPet.value = pet
-  
-    // Show second column on mobile after selection
-    if (isMobile.value) {
-      showSecondColumn.value = true
+    // Add pet to selection
+    selectedPets.value.push(pet)
+    
+    // Keep selectedPet in sync with the first selected pet for backward compatibility
+    if (selectedPets.value.length === 1) {
+      selectedPet.value = pet
     }
+  }
+  
+  // Show second column on mobile after selection
+  if (isMobile.value && selectedPets.value.length > 0) {
+    showSecondColumn.value = true
+  }
+}
+
+// Function to remove a pet from selection
+const removePet = (pet) => {
+  selectedPets.value = selectedPets.value.filter(p => p.id !== pet.id)
+  
+  // Update selectedPet for backward compatibility
+  if (selectedPets.value.length > 0) {
+    selectedPet.value = selectedPets.value[0]
+  } else {
+    selectedPet.value = null
   }
 }
 
@@ -2324,10 +2619,9 @@ const selectDoctor = (doctor) => {
       showSecondColumn.value = true
     }
     
-    // Refresh time slots if a date is already selected
-    if (selectedDate.value) {
-      fetchBookedAppointments()
-    }
+    // Reset date and time when changing doctors
+    selectedDate.value = null
+    selectedTime.value = null
   }
 }
 
@@ -2380,7 +2674,7 @@ const selectTime = (timeRange) => {
   }
 }
 
-// Modified to show loading spinner when clicking continue
+// Modified to handle skipping the pet step for Veterinary Health Certificate
 const nextStep = async () => {
   if (currentStepIndex.value < steps.length - 1 && canProceed.value && !isLoading.value) {
     isLoading.value = true
@@ -2390,6 +2684,12 @@ const nextStep = async () => {
       await new Promise((resolve) => setTimeout(resolve, 800))
   
       currentStepIndex.value++
+      
+      // Skip the pet selection step for Veterinary Health Certificate
+      if (isVeterinaryHealthCertificateCategory.value && currentStepIndex.value === 1) {
+        // Go directly to doctor selection (step index 2)
+        currentStepIndex.value = 2
+      }
   
       // On mobile, go back to first column for next step
       if (isMobile.value) {
@@ -2403,7 +2703,13 @@ const nextStep = async () => {
 
 const previousStep = () => {
   if (currentStepIndex.value > 0) {
-    currentStepIndex.value--
+    // If we're at doctor selection (index 2) and have Veterinary Health Certificate,
+    // we need to go back to service (index 0) instead of pet (index 1)
+    if (isVeterinaryHealthCertificateCategory.value && currentStepIndex.value === 2) {
+      currentStepIndex.value = 0
+    } else {
+      currentStepIndex.value--
+    }
   
     // On mobile, go back to first column for previous step
     if (isMobile.value) {
@@ -2428,6 +2734,8 @@ const closeSuccessModal = () => {
   selectedServices.value = []
   selectedSpecies.value = null
   selectedPet.value = null
+  selectedPets.value = [] // Clear the pets array
+  
   selectedDoctor.value = null
   selectedDate.value = null
   selectedTime.value = null
@@ -2450,7 +2758,7 @@ const getTimeRangeForDisplay = (startTime) => {
   return `${startTime} - ${format(endDate, "h:mm a")}`
 }
 
-// Book appointment function
+// Book appointment function - Updated for multiple pets and Veterinary Health Certificate
 const bookAppointment = async () => {
   if (!canBook.value || isLoading.value) return
   
@@ -2464,14 +2772,17 @@ const bookAppointment = async () => {
         return service ? `${service.name} (${service.processingTime || "0 minutes"})` : ""
       })
       .filter((name) => name)
-  
+    
+    // Get pet names for the booking details - handle Veterinary Health Certificate case
+    const petNames = isVeterinaryHealthCertificateCategory.value ? [] : selectedPets.value.map(pet => pet.name)
+    
     // Create appointment data with proper date handling
     const appointmentData = {
       services: selectedServices.value,
       serviceNames: serviceNames,
       duration: totalDurationMinutes.value,
-      petId: selectedPet.value.id,
-      petName: selectedPet.value.name,
+      petIds: isVeterinaryHealthCertificateCategory.value ? [] : selectedPets.value.map(pet => pet.id), // Store all pet IDs
+      petNames: petNames, // Store all pet names
       doctorId: selectedDoctor.value.userId || selectedDoctor.value.id,
       doctorName: `${getDoctorTitle(selectedDoctor.value)} ${selectedDoctor.value.firstName} ${selectedDoctor.value.lastName}`,
       // Store the date as a JavaScript Date object at noon to avoid timezone issues
@@ -2479,6 +2790,7 @@ const bookAppointment = async () => {
       time: selectedTime.value,
       userId: authStore.user?.userId || "guest-user",
       status: "pending",
+      isHealthCertificate: isVeterinaryHealthCertificateCategory.value, // Flag for health certificate
     }
   
     // Use the appointment store to add the appointment
@@ -2492,7 +2804,7 @@ const bookAppointment = async () => {
   
     // Set booking details for success modal
     selectedBookingDetails.value = {
-      petName: selectedPet.value.name,
+      petNames: petNames,
       formattedDate: formatDate(selectedDate.value),
       time: selectedTime.value,
       services: serviceNames,
@@ -2540,108 +2852,7 @@ const initializeAuthAndFetchData = async () => {
   }
 }
 
-// Function to generate a realistic bio if none exists
-const generateBio = (doctor) => {
-  if (!doctor) return ""
-  
-  const specialties = {
-    "Small Animal Medicine": "small animal medicine and preventative care",
-    "Large Animal Medicine": "large animal medicine and farm animal health",
-    Surgery: "veterinary surgery and post-operative care",
-    Dermatology: "animal dermatology and skin conditions",
-    Cardiology: "veterinary cardiology and heart health",
-    Oncology: "veterinary oncology and cancer treatments",
-    Neurology: "animal neurology and neurological disorders",
-    Dentistry: "veterinary dentistry and oral health",
-    "Emergency Medicine": "emergency veterinary medicine and critical care",
-    Ophthalmology: "veterinary ophthalmology and eye care",
-    Behavior: "animal behavior and behavioral therapy",
-    Nutrition: "animal nutrition and dietary management",
-    "Exotic Animals": "exotic animal medicine and specialized care",
-    "Avian Medicine": "avian medicine and bird health",
-    "Reptile Medicine": "reptile medicine and specialized care",
-    "Equine Medicine": "equine medicine and horse health",
-    Theriogenology: "animal reproduction and breeding",
-    Radiology: "veterinary radiology and diagnostic imaging",
-    "Internal Medicine": "internal medicine and complex disease management",
-    "Preventative Care": "preventative care and wellness programs",
-  }
-  
-  const specialty = doctor.specialty || "general veterinary medicine"
-  const specialtyDescription = specialties[specialty] || specialty.toLowerCase()
-  const experience = doctor.experience || "5"
-  const title = doctor.title || "DVM"
-  const gender = doctor.gender?.toLowerCase() === "female" ? "her" : "his"
-  const education = doctor.education ? `with education from ${doctor.education}` : ""
-  
-  return `${getDoctorTitle(doctor)} ${doctor.firstName} ${doctor.lastName} is a dedicated veterinarian with ${experience} years of experience specializing in ${specialtyDescription}. ${gender.charAt(0).toUpperCase() + gender.slice(1)} approach combines compassionate care with evidence-based medicine ${education}. ${gender.charAt(0).toUpperCase() + gender.slice(1)} commitment to animal welfare and continuous professional development ensures that your pets receive the highest quality care.`
-}
-
-// Add a computed property to get the biography text (either real or generated)
-const getBiographyText = (doctor) => {
-  return doctor.bio || generateBio(doctor)
-}
-
-// Fetch categories and services on component mount
-onMounted(async () => {
-  // Initialize the step refs array
-  stepRefs.value = Array(steps.length).fill(null)
-  
-  // Position the connector line
-  positionConnectorLine()
-  
-  // Add resize listener
-  window.addEventListener("resize", positionConnectorLine)
-  
-  try {
-    initialLoading.value = true
-  
-    // Use Promise.all to load data in parallel
-    await Promise.all([
-      fetchOfficeHours(),
-      (async () => {
-        await categoryStore.fetchCategories()
-        await categoryStore.fetchServices()
-        categories.value = categoryStore.categories
-        services.value = categoryStore.services
-      })(),
-      initializeAuthAndFetchData(),
-      fetchVeterinarians(),
-    ])
-  } catch (error) {
-    console.error("Error fetching initial data:", error)
-  } finally {
-    // Add a small delay before hiding the loading indicator to ensure smooth transition
-    setTimeout(() => {
-      initialLoading.value = false
-    }, 300)
-  }
-})
-
-// Watch for changes that might affect the layout
-watch(() => steps.length, positionConnectorLine)
-
-// Call positionConnectorLine after each render
-onMounted(() => {
-  positionConnectorLine()
-})
-
-watch(
-  () => currentStepIndex.value,
-  () => {
-    positionConnectorLine()
-  
-    // If we're on the datetime step, set today as default date if none is selected
-    if (currentStepIndex.value === 3) {
-      setDefaultDateToToday()
-    }
-  },
-)
-
-// Add this to your existing imports and variables
-const isExpanded = ref(false)
-
-// Function to determine the doctor title based on gender
+// Function to get doctor title based on gender
 const getDoctorTitle = (doctor) => {
   if (!doctor) return "Dr."
   
@@ -2654,92 +2865,197 @@ const getDoctorTitle = (doctor) => {
   return "Dr."
 }
 
-// Get the current day's office hours (either special hours or regular hours)
-const currentDayOfficeHours = computed(() => {
-  if (!selectedDate.value) return null
+// Function to check if a doctor is available today
+const isDoctorAvailableToday = (doctor) => {
+  if (!doctor) return false
   
-  // Check if this date has special hours
-  const specialHours = getSpecialHoursForDate(selectedDate.value)
+  // Get the current day of the week (0 = Sunday, 1 = Monday, etc.)
+  const today = new Date().getDay()
   
-  // Get regular office hours for this day
-  const dayOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
-    selectedDate.value.getDay()
-  ]
-  const regularOfficeHours = officeStore.getOfficeHoursForDay(dayOfWeek)
-  
-  // Use special hours if available, otherwise use regular hours
-  return specialHours || regularOfficeHours || { openTime: "08:00", closeTime: "17:00" }
-})
-
-// Format the office hours for display (convert from 24h to 12h format)
-const formatOfficeHours = computed(() => {
-  const hours = currentDayOfficeHours.value || { openTime: "08:00", closeTime: "17:00" }
-  
-  return {
-    openTime: formatTo12Hour(hours.openTime || "08:00"),
-    closeTime: formatTo12Hour(hours.closeTime || "17:00"),
-  }
-})
-
-// Update the isCurrentDayScheduleClosed computed property to use the fetched office hours
-const isCurrentDayScheduleClosed = computed(() => {
-  // Only apply this check for today's date
-  if (!selectedDate.value || !isToday(selectedDate.value)) {
-    return false
-  }
-  
-  const now = new Date()
-  const currentHour = now.getHours()
-  const currentMinute = now.getMinutes()
-  
-  // Get office hours for today
-  const officeHours = currentDayOfficeHours.value
-  
-  // Get closing time (default to 17:00 if not specified)
-  const closeHourParts = (officeHours.closeTime || "17:00").split(":")
-  const closeHour = parseInt(closeHourParts[0], 10)
-  const closeMinute = parseInt(closeHourParts[1], 10)
-  
-  // Check if current time is past closing time
-  return currentHour > closeHour || (currentHour === closeHour && currentMinute >= closeMinute)
-})
-
-// Function to set today as the default date if no date is selected
-const setDefaultDateToToday = () => {
-  if (!selectedDate.value) {
-    const today = new Date()
-  
-    // Only set today as default if it's available and not a holiday/special hours
-    if (isDayAvailable(today) && !isTodayWithSpecialHours(today)) {
-      selectDate(today)
-      fetchBookedAppointments()
-    } else {
-      // Find the next available day
-      let nextAvailableDay = new Date(today)
-      let daysToCheck = 14 // Check up to 14 days ahead
-  
-      while (daysToCheck > 0) {
-        nextAvailableDay.setDate(nextAvailableDay.getDate() + 1)
-        if (
-          isDayAvailable(nextAvailableDay) &&
-          !isTodayWithSpecialHours(nextAvailableDay)
-        ) {
-          selectedDate.value = nextAvailableDay
-          fetchBookedAppointments()
-          break
-        }
-        daysToCheck--
-      }
-    }
-  }
+  // Check if the doctor is available on this day
+  return isDoctorAvailableOnDay(doctor, today)
 }
 
-// Use onMounted to call checkMobile after the component is mounted
-onMounted(() => {
-  checkMobile()
-})
-</script>
+// Function to check if a doctor is available on a specific day
+const isDoctorAvailableOnDay = (doctor, dayIndex) => {
+  if (!doctor || !doctor.schedule) return false
   
+  // Default schedule is Monday to Friday
+  const defaultAvailableDays = [1, 2, 3, 4, 5] // Monday to Friday
+  
+  // Check if the schedule contains specific days
+  const schedule = doctor.schedule.toLowerCase()
+  
+  // Check for common day patterns
+  if (schedule.includes("mon-fri") || schedule.includes("monday to friday") || schedule.includes("monday-friday")) {
+    return defaultAvailableDays.includes(dayIndex)
+  }
+  
+  // Check for specific days
+  const days = [
+    { name: "sunday", abbr: "sun", index: 0 },
+    { name: "monday", abbr: "mon", index: 1 },
+    { name: "tuesday", abbr: "tue", index: 2 },
+    { name: "wednesday", abbr: "wed", index: 3 },
+    { name: "thursday", abbr: "thu", index: 4 },
+    { name: "friday", abbr: "fri", index: 5 },
+    { name: "saturday", abbr: "sat", index: 6 },
+  ]
+  
+  // Check if the day is mentioned in the schedule
+  return days.some(day => 
+    (day.index === dayIndex) && 
+    (schedule.includes(day.name) || schedule.includes(day.abbr))
+  )
+}
+
+// Function to get the next available day for a doctor
+const getNextAvailableDay = (doctor) => {
+  if (!doctor) return "Unknown"
+  
+  // Get the current day of the week (0 = Sunday, 1 = Monday, etc.)
+  const today = new Date().getDay()
+  
+  // Check the next 7 days
+  for (let i = 1; i <= 7; i++) {
+    const nextDayIndex = (today + i) % 7
+    if (isDoctorAvailableOnDay(doctor, nextDayIndex)) {
+      // Return the day name
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+      return dayNames[nextDayIndex]
+    }
+  }
+  
+  return "Not available in the next 7 days"
+}
+
+// Function to get the biography text for a doctor
+const getBiographyText = (doctor) => {
+  if (!doctor) return ""
+  
+  // Check if the doctor has a bio field
+  if (doctor.bio) {
+    return doctor.bio
+  }
+  
+  // Generate a default bio without experience years if not available
+  return `${getDoctorTitle(doctor)} ${doctor.firstName} ${doctor.lastName} is a ${doctor.specialty || "veterinarian"} specializing in providing compassionate care for all types of pets and is dedicated to ensuring the health and wellbeing of your furry family members.`
+}
+
+// State for biography expansion
+const isExpanded = ref(false)
+
+// Format office hours for display
+const formatOfficeHours = computed(() => {
+  if (!officeStore || !officeStore.getOfficeHours) {
+    return { openTime: "9:00 AM", closeTime: "5:00 PM" }
+  }
+  
+  // Get the day of week for the selected date or today
+  const date = selectedDate.value || new Date()
+  const dayOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getDay()]
+  
+  // Get office hours for this day
+  const officeHours = officeStore.getOfficeHoursForDay(dayOfWeek)
+  
+  if (!officeHours || !officeHours.isOpen) {
+    return { openTime: "Closed", closeTime: "Closed" }
+  }
+  
+  // Format the times to 12-hour format
+  const openTime = formatTo12Hour(officeHours.openTime)
+  const closeTime = formatTo12Hour(officeHours.closeTime)
+  
+  return { openTime, closeTime }
+})
+
+// Check if the current day's schedule is closed
+const isCurrentDayScheduleClosed = computed(() => {
+  if (!selectedDate.value || !officeStore || !officeStore.getOfficeHours) return true
+  
+  // Get the day of week for the selected date
+  const dayOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][selectedDate.value.getDay()]
+  
+  // Get office hours for this day
+  const officeHours = officeStore.getOfficeHoursForDay(dayOfWeek)
+  
+  // Check if the office is closed on this day
+  if (!officeHours || !officeHours.isOpen) {
+    return true
+  }
+  
+  // If it's today, check if the current time is after closing time
+  if (isToday(selectedDate.value)) {
+    const now = new Date()
+    const closeHourParts = officeHours.closeTime.split(":")
+    const closeTime = new Date()
+    closeTime.setHours(parseInt(closeHourParts[0], 10), parseInt(closeHourParts[1], 10), 0, 0)
+    
+    // If current time is after closing time, the schedule is closed
+    if (now > closeTime) {
+      return true
+    }
+  }
+  
+  return false
+})
+
+// Initialize data on component mount
+onMounted(async () => {
+  try {
+    initialLoading.value = true
+    
+    // Initialize auth and fetch user data
+    await initializeAuthAndFetchData()
+    
+    // Fetch categories and services
+    await categoryStore.fetchCategories()
+    await categoryStore.fetchServices()
+    
+    // Set local data
+    categories.value = categoryStore.categories
+    services.value = categoryStore.services
+    
+    // Fetch office hours
+    await fetchOfficeHours()
+    
+    // Fetch veterinarians
+    await fetchVeterinarians()
+    
+    // Position the connector line
+    positionConnectorLine()
+    
+    // Add window resize event listener for connector line
+    window.addEventListener("resize", positionConnectorLine)
+    
+    console.log("Initialization complete")
+  } catch (error) {
+    console.error("Error initializing component:", error)
+  } finally {
+    initialLoading.value = false
+  }
+})
+
+// Clean up event listeners
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", positionConnectorLine)
+})
+
+// Use authStore.isInitialized directly in the conditional check
+const shouldInitializeAuth = computed(() => !authStore.isInitialized);
+
+// Call initializeAuthAndFetchData conditionally using a watcher
+watch(shouldInitializeAuth, async (newVal) => {
+  if (newVal) {
+    try {
+      await initializeAuthAndFetchData();
+    } catch (error) {
+      console.error("Error during conditional initialization:", error);
+    }
+  }
+}, { immediate: true });
+</script>
+
 <style>
 /* Prevent the main container from scrolling */
 .h-screen {
