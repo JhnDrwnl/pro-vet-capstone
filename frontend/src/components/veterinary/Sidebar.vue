@@ -39,8 +39,10 @@
                 isOpen ? 'px-4 py-2' : 'p-2 justify-center'
               ]"
             >
-              <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" />
-              <span v-if="isOpen">{{ item.label }}</span>
+              <div class="flex items-center">
+                <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
+                <span v-if="isOpen" class="ml-3">{{ item.label }}</span>
+              </div>
               <ChevronDown 
                 v-if="isOpen" 
                 class="w-4 h-4 ml-auto transition-transform duration-200"
@@ -92,8 +94,8 @@
              ]"
              @click="handleItemClick(item)"
           >
-            <component :is="item.icon" class="w-5 h-5" :class="{ 'mr-3': isOpen }" />
-            <span v-if="isOpen">{{ item.label }}</span>
+            <component :is="item.icon" class="w-5 h-5 flex-shrink-0" />
+            <span v-if="isOpen" class="ml-3">{{ item.label }}</span>
             <!-- Tooltip for collapsed state -->
             <div v-if="!isOpen" 
                  class="fixed left-16 ml-2 px-3 py-2 bg-white border border-gray-200 text-gray-800 text-sm rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity whitespace-nowrap">
@@ -112,139 +114,139 @@
       </div>
     </template>
   </aside>
-  </template>
+</template>
   
-  <script setup>
-  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-  import { useRoute } from 'vue-router';
-  import {
-    LayoutDashboard,
-    Users,
-    Calendar,
-    MessageCircle,
-    Video,
-    ClipboardList,
-    ActivitySquare,
-    PawPrint,
-    PanelLeftClose,
-    PanelRightClose,
-    Settings,
-    Check,
-    ChevronDown
-  } from 'lucide-vue-next';
-  
-  const props = defineProps({
-    isOpen: {
-      type: Boolean,
-      required: true
-    },
-    isSmallScreen: {
-      type: Boolean,
-      required: true,
-      default: false
-    }
-  });
-  
-  const emit = defineEmits(['toggle', 'item-click']);
-  
-  const route = useRoute();
-  const currentRoute = computed(() => route.path);
-  const openSubmenu = ref(null);
-  const hoverTimeout = ref(null);
-  const menuItemRefs = ref({});
-  const sidebarRef = ref(null);
-  
-  const toggleSubmenu = (label) => {
-    if (props.isOpen) {
-      openSubmenu.value = openSubmenu.value === label ? null : label;
-    } else {
-      openSubmenu.value = label;
-    }
-  };
-  
-  const handleMouseEnter = (label) => {
-    clearTimeout(hoverTimeout.value);
-    openSubmenu.value = label;
-  };
-  
-  const handleMouseLeave = () => {
-    hoverTimeout.value = setTimeout(() => {
-      openSubmenu.value = null;
-    }, 300);
-  };
-  
-  const getDropdownStyle = (label) => {
-    if (!sidebarRef.value || !menuItemRefs.value[label]) return {};
-  
-    const sidebarRect = sidebarRef.value.getBoundingClientRect();
-    const itemRect = menuItemRefs.value[label].getBoundingClientRect();
-  
-    return {
-      top: `${itemRect.top - sidebarRect.top}px`,
-      left: `${sidebarRect.width}px`,
-    };
-  };
-  
-  const handleToggle = () => {
-    emit('toggle');
-    openSubmenu.value = null;
-  };
-  
-  const closeOpenSubmenu = () => {
-    openSubmenu.value = null;
-  };
-  
-  const handleItemClick = (item) => {
-    emit('item-click');
-    if (!item.subItems) {
-      closeOpenSubmenu();
-    }
-  };
-  
-  const navItems = [
-    { href: '/vet/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/vet/vetclientpets', icon: Users, label: 'Clients & Pets' },
-    { 
-      icon: Calendar,
-      label: 'Appointments',
-      subItems: [
-        { href: '/vet/appointments/vetappointmentapproval', icon: Check, label: 'Appointments' },
-        { href: '/vet/appointments/vetcalendar', icon: Calendar, label: 'Calendar' },
-      ]
-    },
-    { href: '/vet/vetfeedback', icon: MessageCircle, label: 'Feedback' },
-    { href: '/vet/vettelehealth', icon: Video, label: 'Telehealth' },
-    { href: '/vet/medicalrecords', icon: ClipboardList, label: 'Medical Records' },
-    { href: '/vet/vethealthriskassessment', icon: ActivitySquare, label: 'Health Risk Assessment' },
-    { href: '/vet/settings', icon: Settings, label: 'Settings' },
-  ];
-  
-  const isActiveParent = (item) => {
-    if (item.subItems) {
-      return item.subItems.some(subItem => subItem.href === currentRoute.value);
-    }
-    return false;
-  };
-  
-  onMounted(() => {
-    sidebarRef.value = document.querySelector('aside');
-  });
-  
-  onUnmounted(() => {
-    clearTimeout(hoverTimeout.value);
-  });
-  
-  watch(() => props.isOpen, (newValue) => {
-    if (!newValue) {
-      openSubmenu.value = null;
-    }
-  });
-  </script>
-  
-  <style scoped>
-  .group:hover .group-hover\:visible {
-    visibility: visible;
+<script setup>
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  MessageCircle,
+  Video,
+  ClipboardList,
+  ActivitySquare,
+  PawPrint,
+  PanelLeftClose,
+  PanelRightClose,
+  Settings,
+  Check,
+  ChevronDown,
+  BookOpen
+} from 'lucide-vue-next';
+
+const props = defineProps({
+  isOpen: {
+    type: Boolean,
+    required: true
+  },
+  isSmallScreen: {
+    type: Boolean,
+    required: true,
+    default: false
   }
-  </style>
+});
+
+const emit = defineEmits(['toggle', 'item-click']);
+
+const route = useRoute();
+const currentRoute = computed(() => route.path);
+const openSubmenu = ref(null);
+const hoverTimeout = ref(null);
+const menuItemRefs = ref({});
+const sidebarRef = ref(null);
+
+const toggleSubmenu = (label) => {
+  if (props.isOpen) {
+    openSubmenu.value = openSubmenu.value === label ? null : label;
+  } else {
+    openSubmenu.value = label;
+  }
+};
+
+const handleMouseEnter = (label) => {
+  clearTimeout(hoverTimeout.value);
+  openSubmenu.value = label;
+};
+
+const handleMouseLeave = () => {
+  hoverTimeout.value = setTimeout(() => {
+    openSubmenu.value = null;
+  }, 300);
+};
+
+const getDropdownStyle = (label) => {
+  if (!sidebarRef.value || !menuItemRefs.value[label]) return {};
+
+  const sidebarRect = sidebarRef.value.getBoundingClientRect();
+  const itemRect = menuItemRefs.value[label].getBoundingClientRect();
+
+  return {
+    top: `${itemRect.top - sidebarRect.top}px`,
+    left: `${sidebarRect.width}px`,
+  };
+};
+
+const handleToggle = () => {
+  emit('toggle');
+  openSubmenu.value = null;
+};
+
+const closeOpenSubmenu = () => {
+  openSubmenu.value = null;
+};
+
+const handleItemClick = (item) => {
+  emit('item-click');
+  if (!item.subItems) {
+    closeOpenSubmenu();
+  }
+};
+
+const navItems = [
+  { href: '/vet/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/vet/vetclientpets', icon: Users, label: 'Clients & Pets' },
+  { 
+    icon: Calendar,
+    label: 'Appointments',
+    subItems: [
+      { href: '/vet/appointments/vetappointmentapproval', icon: Check, label: 'Appointments' },
+      { href: '/vet/appointments/vetcalendar', icon: Calendar, label: 'Calendar' },
+    ]
+  },
+  { href: '/vet/vetfeedback', icon: MessageCircle, label: 'Feedback' },
+  { href: '/vet/vettelehealth', icon: Video, label: 'Telehealth' },
+  { href: '/vet/medicalrecords', icon: ClipboardList, label: 'Medical Records' },
+  { href: '/vet/vethealthriskassessment', icon: ActivitySquare, label: 'Health Risk Assessment' },
+  { href: '/vet/veteducationalresources', icon: BookOpen, label: 'Educational Resources'},
+  { href: '/vet/settings', icon: Settings, label: 'Settings' },
+];
+
+const isActiveParent = (item) => {
+  if (item.subItems) {
+    return item.subItems.some(subItem => subItem.href === currentRoute.value);
+  }
+  return false;
+};
+
+onMounted(() => {
+  sidebarRef.value = document.querySelector('aside');
+});
+
+onUnmounted(() => {
+  clearTimeout(hoverTimeout.value);
+});
+
+watch(() => props.isOpen, (newValue) => {
+  if (!newValue) {
+    openSubmenu.value = null;
+  }
+});
+</script>
   
-  
+<style scoped>
+.group:hover .group-hover\:visible {
+  visibility: visible;
+}
+</style>

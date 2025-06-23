@@ -32,27 +32,50 @@
               <router-link to="/user/educational-resources" class="text-blue-600 text-xs font-medium">View All</router-link>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-              <div v-for="(resource, index) in educationalResources.slice(0, 4)" :key="index" 
+            <!-- Loading state -->
+            <div v-if="isLoading" class="flex justify-center items-center h-[90px]">
+              <div class="flex flex-col items-center">
+                <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <p class="mt-2 text-xs text-gray-600">Loading resources...</p>
+              </div>
+            </div>
+            
+            <!-- Resources grid -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+              <div v-for="resource in displayedResources" :key="resource.id" 
                   class="flex border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-[90px]"
-                  @click="openResourceModal(index)">
+                  @click="openResourceModal(resource)">
                 <div class="w-16 md:w-20 h-full bg-blue-100 flex-shrink-0">
-                  <img :src="resource.image" :alt="resource.title" class="w-full h-full object-cover" />
+                  <img 
+                    v-if="resource.coverPhoto" 
+                    :src="resource.coverPhoto" 
+                    :alt="resource.name" 
+                    class="w-full h-full object-cover" 
+                  />
+                  <div v-else class="w-full h-full flex items-center justify-center bg-blue-100">
+                    <FileIcon class="w-6 h-6 text-blue-500" />
+                  </div>
                 </div>
                 <div class="p-2 flex flex-col justify-between flex-1">
                   <div>
                     <div class="flex items-center mb-1">
-                      <span :class="`text-[10px] px-1.5 py-0.5 rounded-full ${resource.tagColor} ${resource.tagTextColor}`">
-                        {{ resource.tag }}
+                      <span :class="`text-[10px] px-1.5 py-0.5 rounded-full ${getTagColor(resource.type)}`">
+                        {{ resource.type }}
                       </span>
                     </div>
-                    <h3 class="text-xs font-medium text-gray-800 line-clamp-2">{{ resource.title }}</h3>
+                    <h3 class="text-xs font-medium text-gray-800 line-clamp-2">{{ resource.name }}</h3>
                   </div>
                   <div class="flex items-center text-[10px] text-gray-500">
                     <ClockIcon class="w-2.5 h-2.5 mr-1" />
-                    <span>{{ resource.duration }}</span>
+                    <span>{{ getReadTime(resource.description) }}</span>
                   </div>
                 </div>
+              </div>
+              
+              <!-- Empty state if no resources -->
+              <div v-if="displayedResources.length === 0" class="col-span-2 flex flex-col items-center justify-center py-4">
+                <BookOpenIcon class="w-8 h-8 text-gray-300 mb-2" />
+                <p class="text-xs text-gray-500">No resources available</p>
               </div>
             </div>
           </div>
@@ -134,16 +157,16 @@
     </div>
 
     <!-- Resource Modal -->
-    <div v-if="isResourceModalOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div v-if="isResourceModalOpen && selectedResource" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-auto">
         <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center z-10">
           <div class="flex items-center">
-            <span :class="`px-2 py-0.5 rounded-full text-xs ${selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].tagColor : ''} ${selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].tagTextColor : ''}`">
-              {{ selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].tag : '' }}
+            <span :class="`px-2 py-0.5 rounded-full text-xs ${getTagColor(selectedResource.type)}`">
+              {{ selectedResource.type }}
             </span>
             <span class="text-xs text-gray-500 ml-2 flex items-center">
               <ClockIcon class="w-3 h-3 mr-1" />
-              {{ selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].duration : '' }}
+              {{ getReadTime(selectedResource.description) }}
             </span>
           </div>
           <button @click="closeResourceModal" class="p-1 rounded-full hover:bg-gray-100">
@@ -153,13 +176,22 @@
         
         <div class="p-6">
           <div class="aspect-video bg-gray-100 rounded-xl overflow-hidden mb-6">
-            <img :src="selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].image : ''" :alt="selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].title : ''" class="w-full h-full object-cover" />
+            <img 
+              v-if="selectedResource.coverPhoto" 
+              :src="selectedResource.coverPhoto" 
+              :alt="selectedResource.name" 
+              class="w-full h-full object-cover" 
+            />
+            <div v-else class="w-full h-full flex items-center justify-center bg-blue-100">
+              <FileIcon class="w-16 h-16 text-blue-500" />
+            </div>
           </div>
           
-          <h1 class="text-2xl font-bold mb-4">{{ selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].title : '' }}</h1>
+          <h1 class="text-2xl font-bold mb-4">{{ selectedResource.name }}</h1>
           
           <div class="prose max-w-none">
-            <p v-html="selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].content : ''"></p>
+            <p v-if="selectedResource.description" v-html="formatDescription(selectedResource.description)"></p>
+            <p v-else class="text-gray-500 italic">No description available</p>
           </div>
           
           <div class="mt-8 flex justify-between items-center pt-4 border-t">
@@ -168,8 +200,8 @@
                 <UserIcon class="w-5 h-5 text-blue-600" />
               </div>
               <div class="ml-3">
-                <p class="text-sm font-medium">{{ selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].author : '' }}</p>
-                <p class="text-xs text-gray-500">{{ selectedResourceIndex !== null ? educationalResources[selectedResourceIndex].authorTitle : '' }}</p>
+                <p class="text-sm font-medium">{{ getCategoryName(selectedResource.categoryId) }}</p>
+                <p class="text-xs text-gray-500">{{ formatDate(selectedResource.createdAt) }}</p>
               </div>
             </div>
             <div class="flex space-x-2">
@@ -182,16 +214,29 @@
             </div>
           </div>
           
-          <div class="mt-8">
+          <div class="mt-8" v-if="relatedResources.length > 0">
             <h3 class="text-lg font-medium mb-4">Related Resources</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div v-for="i in 2" :key="i" class="flex border rounded-lg overflow-hidden hover:shadow-sm transition-shadow">
+              <div 
+                v-for="resource in relatedResources" 
+                :key="resource.id" 
+                class="flex border rounded-lg overflow-hidden hover:shadow-sm transition-shadow cursor-pointer"
+                @click="openResourceModal(resource)"
+              >
                 <div class="w-16 h-16 bg-blue-50 flex-shrink-0">
-                  <img :src="`/placeholder.svg?height=64&width=64`" alt="Related resource" class="w-full h-full object-cover" />
+                  <img 
+                    v-if="resource.coverPhoto" 
+                    :src="resource.coverPhoto" 
+                    :alt="resource.name" 
+                    class="w-full h-full object-cover" 
+                  />
+                  <div v-else class="w-full h-full flex items-center justify-center bg-blue-100">
+                    <FileIcon class="w-6 h-6 text-blue-500" />
+                  </div>
                 </div>
                 <div class="p-2 flex-1">
-                  <h4 class="text-sm font-medium line-clamp-2">{{ i === 1 ? 'Common Health Issues in Pets' : 'Nutrition Guide for Pets' }}</h4>
-                  <p class="text-xs text-gray-500 mt-1">{{ i === 1 ? '4 min read' : '6 min read' }}</p>
+                  <h4 class="text-sm font-medium line-clamp-2">{{ resource.name }}</h4>
+                  <p class="text-xs text-gray-500 mt-1">{{ getReadTime(resource.description) }}</p>
                 </div>
               </div>
             </div>
@@ -203,8 +248,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useResourceCategoryStore } from '@/stores/modules/ResourceCategoryStore';
+import { storeToRefs } from 'pinia';
 import { 
   Clock as ClockIcon, 
   Calendar as CalendarIcon, 
@@ -213,148 +260,118 @@ import {
   User as UserIcon,
   X as XIcon,
   Bookmark as BookmarkIcon,
-  Share as ShareIcon
+  Share as ShareIcon,
+  BookOpen as BookOpenIcon,
+  File as FileIcon
 } from 'lucide-vue-next';
 import CalendarComponent from './dashboard/Calendar.vue';
 
 const router = useRouter();
-const isResourceModalOpen = ref(false);
-const selectedResourceIndex = ref(null);
 
-// Educational Resources
-const educationalResources = ref([
-  {
-    title: "How to Brush Your Dog's Teeth: A Step-by-Step Guide",
-    image: "https://images.unsplash.com/photo-1535930891776-0c2dfb7fda1a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8ZG9nJTIwdGVldGh8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60",
-    tag: "Article",
-    tagColor: "bg-blue-100",
-    tagTextColor: "text-blue-600",
-    duration: "5 min read",
-    author: "Dr. Sarah Johnson",
-    authorTitle: "Veterinary Dentist",
-    content: `
-      <h2>Introduction</h2>
-      <p>Maintaining your dog's dental health is crucial for their overall well-being. Just like humans, dogs can suffer from plaque buildup, gum disease, and tooth decay. Regular brushing is one of the most effective ways to keep your dog's teeth clean and prevent dental issues.</p>
-      
-      <h2>Why Brush Your Dog's Teeth?</h2>
-      <p>Dental disease affects up to 80% of dogs over the age of three. Poor dental hygiene can lead to:</p>
-      <ul>
-        <li>Bad breath</li>
-        <li>Painful gums and teeth</li>
-        <li>Tooth loss</li>
-        <li>Bacterial infections that can spread to vital organs</li>
-      </ul>
-      
-      <h2>What You'll Need</h2>
-      <ul>
-        <li>Dog-specific toothpaste (never use human toothpaste as it contains ingredients toxic to dogs)</li>
-        <li>A dog toothbrush, finger brush, or soft children's toothbrush</li>
-        <li>Treats for positive reinforcement</li>
-        <li>Patience and a calm environment</li>
-      </ul>
-      
-      <h2>Step 1: Get Your Dog Comfortable</h2>
-      <p>Before you start brushing, spend a few days getting your dog used to having their mouth and teeth touched. Gently lift their lips and touch their teeth and gums with your finger. Reward them with praise and treats for staying calm.</p>
-      
-      <h2>Step 2: Introduce the Toothpaste</h2>
-      <p>Let your dog taste a small amount of the toothpaste from your finger. Most dog toothpastes come in flavors like chicken or beef that dogs find appealing. This helps create a positive association with the toothpaste.</p>
-    `
-  },
-  {
-    title: "Common Cat Behaviors Explained",
-    image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2F0fGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60",
-    tag: "Video",
-    tagColor: "bg-red-100",
-    tagTextColor: "text-red-600",
-    duration: "8 min watch",
-    author: "Dr. Emily Chen",
-    authorTitle: "Feline Behavior Specialist",
-    content: `
-      <h2>Understanding Your Cat's Behavior</h2>
-      <p>Cats communicate primarily through body language and vocalizations. Learning to interpret these signals can help strengthen your bond with your feline friend and address any behavioral issues that may arise.</p>
-      
-      <div class="aspect-video bg-gray-100 rounded-lg mb-6 flex items-center justify-center">
-        <div class="text-center p-4">
-          <p class="text-sm text-gray-500 mt-2">Video player placeholder</p>
-        </div>
-      </div>
-      
-      <h2>Common Cat Behaviors Decoded</h2>
-      
-      <h3>Purring</h3>
-      <p>While purring often indicates contentment, cats may also purr when they're anxious, ill, or in pain. It's a self-soothing mechanism. Context is key to understanding what your cat's purr means.</p>
-      
-      <h3>Kneading</h3>
-      <p>That rhythmic pushing of paws against soft surfaces is a behavior cats retain from kittenhood. Kittens knead their mother's belly to stimulate milk flow. When adult cats do this, it typically indicates comfort and contentment.</p>
-    `
-  },
-  {
-    title: "Puppy Vaccination Schedule: What You Need to Know",
-    image: "https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8cHVwcHl8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60",
-    tag: "Guide",
-    tagColor: "bg-green-100",
-    tagTextColor: "text-green-600",
-    duration: "7 min read",
-    author: "Dr. Michael Rodriguez",
-    authorTitle: "Veterinary Immunologist",
-    content: `
-      <h2>Why Vaccinations Are Important</h2>
-      <p>Vaccinations protect your puppy from several potentially fatal diseases. They work by stimulating the immune system to recognize and fight specific infections. Proper vaccination is one of the most important things you can do to give your puppy a healthy start in life.</p>
-      
-      <h2>Core Vaccines for All Puppies</h2>
-      <p>The following vaccines are considered essential for all dogs, regardless of lifestyle or location:</p>
-      
-      <h3>Distemper</h3>
-      <p>Canine distemper is a highly contagious viral disease that affects the respiratory, gastrointestinal, and nervous systems. It can be fatal, and those who survive often have permanent neurological damage.</p>
-    `
-  },
-  {
-    title: "Recognizing Signs of Pain in Your Pet",
-    image: "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2ljayUyMHBldHxlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&w=500&q=60",
-    tag: "FAQ",
-    tagColor: "bg-purple-100",
-    tagTextColor: "text-purple-600",
-    duration: "4 min read",
-    author: "Dr. Lisa Taylor",
-    authorTitle: "Veterinary Pain Specialist",
-    content: `
-      <h2>Why Pain Recognition Matters</h2>
-      <p>Our pets can't tell us when they're in pain, but they do communicate through behavioral and physical changes. Recognizing these signs early can lead to faster treatment and relief for your pet. Many pet owners are surprised to learn that animals instinctively hide their pain as a survival mechanism, making detection even more challenging.</p>
-      
-      <h2>Common Signs of Pain in Dogs</h2>
-      
-      <h3>Behavioral Changes</h3>
-      <ul>
-        <li><strong>Decreased activity:</strong> Reluctance to walk, climb stairs, jump, or play</li>
-        <li><strong>Aggression:</strong> Growling, pinned ears, or biting when approached or touched</li>
-        <li><strong>Vocalization:</strong> Whining, groaning, or crying, especially when moving</li>
-      </ul>
-    `
+// Initialize the store
+const resourceCategoryStore = useResourceCategoryStore();
+
+// Use storeToRefs to maintain reactivity when destructuring store state
+const { 
+  resourceCategories, // Using resourceCategories instead of categories
+  resources, 
+  loading: storeLoading, 
+  error: storeError 
+} = storeToRefs(resourceCategoryStore);
+
+const isResourceModalOpen = ref(false);
+const selectedResource = ref(null);
+const relatedResources = ref([]);
+const isLoading = computed(() => storeLoading.value);
+
+// Fetch resources on component mount
+onMounted(async () => {
+  try {
+    await resourceCategoryStore.fetchResourceCategories(); // Using fetchResourceCategories instead of fetchCategories
+    await resourceCategoryStore.fetchResources();
+  } catch (error) {
+    console.error('Error fetching resources:', error);
   }
-]);
+});
+
+// Get only the first 4 resources for display
+const displayedResources = computed(() => {
+  if (!resources.value) return [];
+  return resources.value.slice(0, 4);
+});
+
+// Helper functions
+const typeColors = {
+    'Document': 'bg-blue-100 text-blue-600',
+    'Video': 'bg-red-100 text-red-600',
+    'Audio': 'bg-purple-100 text-purple-600',
+    'Image': 'bg-green-100 text-green-600',
+    'Other': 'bg-gray-100 text-gray-600'
+  };
+
+function getTagColor(type) {
+  return typeColors[type] || 'bg-gray-100 text-gray-600';
+}
+
+function getReadTime(text) {
+  if (!text) return '1 min read';
+  
+  // Average reading speed: 200 words per minute
+  const wordCount = text.split(/\s+/).length;
+  const minutes = Math.max(1, Math.ceil(wordCount / 200));
+  
+  return `${minutes} min read`;
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return 'Unknown date';
+  
+  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  return date.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+}
+
+function formatDescription(description) {
+  if (!description) return '';
+  
+  // Convert line breaks to paragraphs
+  return description
+    .split('\n')
+    .filter(paragraph => paragraph.trim() !== '')
+    .map(paragraph => `<p>${paragraph}</p>`)
+    .join('');
+}
+
+function getCategoryName(categoryId) {
+  if (!resourceCategories.value) return 'Unknown Category'; // Using resourceCategories instead of categories
+  
+  const category = resourceCategories.value.find(c => c.id === categoryId); // Using resourceCategories instead of categories
+  return category ? category.name : 'Unknown Category';
+}
 
 // Open resource modal
-const isModalOpen = ref(false);
-
-const openResourceModal = (index) => {
-  selectedResourceIndex.value = index;
+function openResourceModal(resource) {
+  selectedResource.value = resource;
   isResourceModalOpen.value = true;
-  isModalOpen.value = true;
   document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
-};
+  
+  // Find related resources (same category, excluding current resource)
+  if (resources.value) {
+    relatedResources.value = resources.value
+      .filter(r => r.categoryId === resource.categoryId && r.id !== resource.id)
+      .slice(0, 2); // Limit to 2 related resources
+  }
+}
 
 // Close resource modal
-const closeResourceModal = () => {
-  selectedResourceIndex.value = null;
+function closeResourceModal() {
+  selectedResource.value = null;
   isResourceModalOpen.value = false;
-  isModalOpen.value = false;
   document.body.style.overflow = ''; // Restore scrolling
-};
-
-// Navigate to educational resources page
-const navigateToResources = () => {
-  router.push('/user/educational-resources');
-};
+}
 
 // Pets
 const pets = ref([
