@@ -1,4 +1,3 @@
-<!-- views/admin/adminsettings/Archive.vue -->
 <template>
   <div class="p-6 bg-white rounded-2xl">
     <div class="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center">
@@ -38,6 +37,8 @@
       <p>Archived Items: {{ archivedItems.length }}</p>
       <p>Services: {{ archivedItems.filter(item => item.itemType === 'service').length }}</p>
       <p>Categories: {{ archivedItems.filter(item => item.itemType === 'category').length }}</p>
+      <p>Resources: {{ archivedItems.filter(item => item.itemType === 'resource').length }}</p>
+      <p>Resource Categories: {{ archivedItems.filter(item => item.itemType === 'resourceCategory').length }}</p>
       <p>Office Hours: {{ archivedItems.filter(item => item.itemType === 'officeHours').length }}</p>
       <p>Holidays: {{ archivedItems.filter(item => item.itemType === 'holiday').length }}</p>
       <p>Contacts: {{ archivedItems.filter(item => item.itemType === 'contact').length }}</p>
@@ -232,16 +233,50 @@
   
   <!-- Confirmation Modal for Permanent Deletion -->
   <div v-if="showDeleteConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full mx-auto p-6">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-auto p-6">
       <div class="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 mx-auto mb-4">
         <AlertCircleIcon class="h-6 w-6 text-yellow-600" />
       </div>
       <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Confirm Permanent Deletion</h3>
-      <p class="text-sm text-gray-500 text-center mb-6">
+      
+      <!-- Special warning for category deletion -->
+      <div v-if="itemToDelete && itemToDelete.itemType === 'resourceCategory'" class="mb-4">
+        <p class="text-sm text-gray-500 text-center mb-3">
+          Are you sure you want to permanently delete the category 
+          <span class="font-semibold">{{ getItemName(itemToDelete) }}</span>?
+        </p>
+        <div v-if="dependentResources.length > 0" class="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+          <div class="flex items-start">
+            <AlertTriangleIcon class="w-5 h-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
+            <div>
+              <p class="text-sm font-medium text-red-800">Warning: Dependent Resources</p>
+              <p class="text-xs text-red-700 mt-1">
+                There are {{ dependentResources.length }} archived resource(s) that belong to this category. 
+                If you delete this category, those resources will become unrestorable.
+              </p>
+              <div class="mt-2 max-h-20 overflow-y-auto">
+                <ul class="text-xs text-red-600 space-y-1">
+                  <li v-for="resource in dependentResources.slice(0, 5)" :key="resource.id" class="flex items-center">
+                    <span class="w-1 h-1 bg-red-400 rounded-full mr-2"></span>
+                    {{ getItemName(resource) }}
+                  </li>
+                  <li v-if="dependentResources.length > 5" class="text-red-500 italic">
+                    ... and {{ dependentResources.length - 5 }} more
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Regular deletion confirmation -->
+      <p v-else class="text-sm text-gray-500 text-center mb-6">
         Are you sure you want to permanently delete 
         <span class="font-semibold">{{ itemToDelete ? getItemName(itemToDelete) : selectedItems.length + ' items' }}</span>? 
         This action cannot be undone.
       </p>
+      
       <div class="flex justify-center space-x-3">
         <button 
           @click="cancelDelete" 
@@ -255,6 +290,42 @@
         >
           <Trash2Icon class="w-4 h-4 mr-1" />
           Delete Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Resource Restoration Confirmation Modal -->
+  <div v-if="showResourceRestoreConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-auto p-6">
+      <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mx-auto mb-4">
+        <InfoIcon class="h-6 w-6 text-blue-600" />
+      </div>
+      <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Category Restoration Required</h3>
+      <p class="text-sm text-gray-500 text-center mb-4">
+        The resource <span class="font-semibold">{{ resourceToRestore ? getItemName(resourceToRestore) : '' }}</span> 
+        belongs to the category <span class="font-semibold">{{ archivedCategoryInfo ? archivedCategoryInfo.name : 'Unknown' }}</span>, 
+        which is currently archived.
+      </p>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+        <p class="text-sm text-blue-800">
+          To restore this resource, we need to restore its category first. 
+          Both the category and the resource will be restored.
+        </p>
+      </div>
+      <div class="flex justify-center space-x-3">
+        <button 
+          @click="cancelResourceRestore" 
+          class="px-4 py-2 border border-gray-300 rounded-full shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button 
+          @click="confirmResourceRestore" 
+          class="px-4 py-2 border border-transparent rounded-full shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 flex items-center"
+        >
+          <RefreshCwIcon class="w-4 h-4 mr-1" />
+          Restore Both
         </button>
       </div>
     </div>
@@ -318,6 +389,8 @@ import { useArchivesStore } from '@/stores/modules/archivesStore';
 import { useOfficeStore } from '@/stores/modules/officeStore';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { usePetsStore } from '@/stores/modules/petsStore';
+import { useResourceCategoryStore } from '@/stores/modules/ResourceCategoryStore';
+import { useResourceStore } from '@/stores/modules/ResourceStore';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@shared/firebase';
 import axios from 'axios';
@@ -339,7 +412,11 @@ import {
   CheckCircle as CheckCircleIcon,
   XCircle as XCircleIcon,
   AlertCircle as AlertCircleIcon,
-  PawPrint as PawPrintIcon
+  AlertTriangle as AlertTriangleIcon,
+  Info as InfoIcon,
+  PawPrint as PawPrintIcon,
+  FileVideo as FileVideoIcon,
+  BookOpen as BookOpenIcon
 } from 'lucide-vue-next';
 
 // Debug mode
@@ -360,6 +437,14 @@ const showSubcategoryDropdown = ref(false);
 const autoDeleteEnabled = ref(true);
 const autoDeleteDays = ref(30); // Default 30 days for auto-deletion
 
+// New state for resource restoration confirmation
+const showResourceRestoreConfirmation = ref(false);
+const resourceToRestore = ref(null);
+const archivedCategoryInfo = ref(null);
+
+// State for dependent resources when deleting categories
+const dependentResources = ref([]);
+
 // Status message and modals
 const statusMessage = ref('');
 const showSuccessModal = ref(false);
@@ -373,6 +458,8 @@ const archivesStore = useArchivesStore();
 const officeStore = useOfficeStore();
 const authStore = useAuthStore();
 const petsStore = usePetsStore();
+const resourceCategoryStore = useResourceCategoryStore();
+const resourceStore = useResourceStore();
 
 // Define your API URL here
 const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000';
@@ -441,6 +528,16 @@ const getItemName = (item) => {
     return `${item.name || 'Unnamed Pet'} (${item.species || 'Pet'})`;
   }
   
+  // For resources, show the name and type
+  if (item.itemType === 'resource') {
+    return `${item.name || 'Unnamed Resource'} (${item.type || 'Resource'})`;
+  }
+  
+  // For resource categories, show the name
+  if (item.itemType === 'resourceCategory') {
+    return item.name || 'Unnamed Category';
+  }
+  
   // Default for other types
   return item.name || item.description || 'Unnamed Item';
 };
@@ -453,6 +550,8 @@ const getItemTypeLabel = (item) => {
     case 'user': return 'User';
     case 'service': return 'Service';
     case 'category': return 'Category';
+    case 'resource': return 'Resource';
+    case 'resourceCategory': return 'Resource Category';
     case 'officeHours': return 'Office Hours';
     case 'holiday': return 'Holiday';
     case 'contact': return 'Contact';
@@ -469,6 +568,8 @@ const getItemTypeClass = (item) => {
     case 'user': return 'bg-indigo-100 text-indigo-800';
     case 'service': return 'bg-green-100 text-green-800';
     case 'category': return 'bg-blue-100 text-blue-800';
+    case 'resource': return 'bg-emerald-100 text-emerald-800';
+    case 'resourceCategory': return 'bg-cyan-100 text-cyan-800';
     case 'officeHours': return 'bg-purple-100 text-purple-800';
     case 'holiday': return 'bg-red-100 text-red-800';
     case 'contact': return 'bg-yellow-100 text-yellow-800';
@@ -614,6 +715,12 @@ const getCategoryItemCount = (category) => {
     ).length;
   }
   
+  if (category.name === 'Educational Resources') {
+    return archivedItems.value.filter(item => 
+      item.itemType === 'resource' || item.itemType === 'resourceCategory'
+    ).length;
+  }
+  
   if (category.name === 'Data Management') {
     const petCount = archivedItems.value.filter(item => item.itemType === 'pet').length;
     return petCount;
@@ -621,6 +728,33 @@ const getCategoryItemCount = (category) => {
   
   // For other categories, return 0 for now
   return 0;
+};
+
+// Check if a category exists in active categories
+const checkCategoryExists = async (categoryId) => {
+  try {
+    // Fetch current active categories
+    await resourceCategoryStore.fetchResourceCategories();
+    const activeCategories = resourceCategoryStore.getActiveResourceCategories;
+    return activeCategories.some(cat => cat.id === categoryId);
+  } catch (error) {
+    console.error('Error checking category existence:', error);
+    return false;
+  }
+};
+
+// Find archived category by ID
+const findArchivedCategory = (categoryId) => {
+  return archivedItems.value.find(item => 
+    item.itemType === 'resourceCategory' && item.originalId === categoryId
+  );
+};
+
+// Find dependent resources for a category
+const findDependentResources = (categoryId) => {
+  return archivedItems.value.filter(item => 
+    item.itemType === 'resource' && item.categoryId === categoryId
+  );
 };
 
 // Fetch archived items
@@ -644,7 +778,7 @@ const fetchArchivedItems = async () => {
   }
 };
 
-// Define categories (keeping the original structure but adding Office)
+// Define categories (updated to include Educational Resources)
 const categories = ref([
   { 
     id: 1, 
@@ -659,23 +793,6 @@ const categories = ref([
     subcategories: [
       {
         name: 'All Users',
-        items: []
-      }
-    ]
-  },
-  { 
-    id: 2, 
-    name: 'Appointments', 
-    icon: CalendarIcon, 
-    bgColor: 'bg-green-100', 
-    hoverBgColor: 'group-hover:bg-green-200', 
-    tabColor: 'bg-green-200', 
-    hoverTabColor: 'group-hover:bg-green-300', 
-    iconColor: 'text-green-600', 
-    textColor: 'text-green-800',
-    subcategories: [
-      {
-        name: 'All Appointments',
         items: []
       }
     ]
@@ -707,6 +824,31 @@ const categories = ref([
   },
   { 
     id: 4, 
+    name: 'Educational Resources', 
+    icon: BookOpenIcon, 
+    bgColor: 'bg-emerald-100', 
+    hoverBgColor: 'group-hover:bg-emerald-200', 
+    tabColor: 'bg-emerald-200', 
+    hoverTabColor: 'group-hover:bg-emerald-300', 
+    iconColor: 'text-emerald-600', 
+    textColor: 'text-emerald-800',
+    subcategories: [
+      {
+        name: 'All Items',
+        items: []
+      },
+      {
+        name: 'Resources',
+        items: []
+      },
+      {
+        name: 'Categories',
+        items: []
+      }
+    ]
+  },
+  { 
+    id: 5, 
     name: 'Office', 
     icon: ClockIcon, 
     bgColor: 'bg-purple-100', 
@@ -735,28 +877,7 @@ const categories = ref([
     ]
   },
   { 
-    id: 5, 
-    name: 'Session', 
-    icon: CalendarIcon, 
-    bgColor: 'bg-orange-100', 
-    hoverBgColor: 'group-hover:bg-orange-200', 
-    tabColor: 'bg-orange-200', 
-    hoverTabColor: 'group-hover:bg-orange-300', 
-    iconColor: 'text-orange-600', 
-    textColor: 'text-orange-800',
-    subcategories: [
-      {
-        name: 'Online',
-        items: []
-      },
-      {
-        name: 'Walk-in',
-        items: []
-      }
-    ]
-  },
-  { 
-    id: 6, 
+    id: 7, 
     name: 'Data Management', 
     icon: DatabaseIcon, 
     bgColor: 'bg-red-100', 
@@ -780,23 +901,6 @@ const categories = ref([
       },
       {
         name: 'Veterinarians',
-        items: []
-      }
-    ]
-  },
-  { 
-    id: 7, 
-    name: 'Chatbot Scripts', 
-    icon: MessageCircleIcon, 
-    bgColor: 'bg-indigo-100', 
-    hoverBgColor: 'group-hover:bg-indigo-200', 
-    tabColor: 'bg-indigo-200', 
-    hoverTabColor: 'group-hover:bg-indigo-300', 
-    iconColor: 'text-indigo-600', 
-    textColor: 'text-indigo-800',
-    subcategories: [
-      {
-        name: 'All Scripts',
         items: []
       }
     ]
@@ -844,6 +948,33 @@ const updateCategoriesWithRealData = () => {
     const categoriesSubcategory = servicesCategory.subcategories.find(sub => sub.name === 'Categories');
     if (categoriesSubcategory) {
       categoriesSubcategory.items = categoryItems;
+    }
+  }
+  
+  // Find the Educational Resources category
+  const educationalResourcesCategory = categories.value.find(cat => cat.name === 'Educational Resources');
+  if (educationalResourcesCategory) {
+    // Filter archived items for resources and resource categories
+    const resourceItems = archivedItems.value.filter(item => item.itemType === 'resource');
+    const resourceCategoryItems = archivedItems.value.filter(item => item.itemType === 'resourceCategory');
+    const allEducationalItems = [...resourceItems, ...resourceCategoryItems];
+    
+    // Update the "All Items" subcategory
+    const allItemsSubcategory = educationalResourcesCategory.subcategories.find(sub => sub.name === 'All Items');
+    if (allItemsSubcategory) {
+      allItemsSubcategory.items = allEducationalItems;
+    }
+    
+    // Update the "Resources" subcategory
+    const resourcesSubcategory = educationalResourcesCategory.subcategories.find(sub => sub.name === 'Resources');
+    if (resourcesSubcategory) {
+      resourcesSubcategory.items = resourceItems;
+    }
+    
+    // Update the "Categories" subcategory
+    const categoriesSubcategory = educationalResourcesCategory.subcategories.find(sub => sub.name === 'Categories');
+    if (categoriesSubcategory) {
+      categoriesSubcategory.items = resourceCategoryItems;
     }
   }
   
@@ -948,10 +1079,66 @@ const selectSubcategoryFromDropdown = (subcategory) => {
   showSubcategoryDropdown.value = false;
 };
 
-// Restore item
+// Restore resource
+const restoreResource = async (item) => {
+  try {
+    // Use ResourceStore's restore method
+    const success = await resourceStore.restoreResource(item.id);
+    
+    if (success) {
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('Error restoring resource:', err);
+    throw err;
+  }
+};
+
+// Restore resource category
+const restoreResourceCategory = async (item) => {
+  try {
+    // Use ResourceCategoryStore's restore method
+    const success = await resourceCategoryStore.restoreCategory(item.id);
+    return success;
+  } catch (err) {
+    console.error('Error restoring resource category:', err);
+    throw err;
+  }
+};
+
+// Restore item with category dependency check
 const restoreItem = async (item) => {
   if (isProcessing.value) return;
   
+  // Special handling for resources - check if category exists
+  if (item.itemType === 'resource' && item.categoryId) {
+    const categoryExists = await checkCategoryExists(item.categoryId);
+    
+    if (!categoryExists) {
+      // Check if category is archived
+      const archivedCategory = findArchivedCategory(item.categoryId);
+      
+      if (archivedCategory) {
+        // Show confirmation dialog
+        resourceToRestore.value = item;
+        archivedCategoryInfo.value = archivedCategory;
+        showResourceRestoreConfirmation.value = true;
+        return;
+      } else {
+        // Category doesn't exist at all
+        showStatus(`Cannot restore resource: Category "${item.categoryId}" not found in active or archived items.`, 'error');
+        return;
+      }
+    }
+  }
+  
+  // Proceed with normal restoration
+  await performItemRestore(item);
+};
+
+// Perform the actual item restoration
+const performItemRestore = async (item) => {
   isProcessing.value = true;
   error.value = null;
   
@@ -975,6 +1162,14 @@ const restoreItem = async (item) => {
       case 'user':
         // Use the new method to restore user and re-enable in Firebase Auth
         success = await restoreUser(item);
+        break;
+      case 'resource':
+        // Restore resource using ResourceStore
+        success = await restoreResource(item);
+        break;
+      case 'resourceCategory':
+        // Restore resource category using ResourceCategoryStore
+        success = await restoreResourceCategory(item);
         break;
       case 'officeHours':
         // Restore office hours using officeStore
@@ -1024,6 +1219,60 @@ const restoreItem = async (item) => {
   } finally {
     isProcessing.value = false;
   }
+};
+
+// Confirm resource restoration with category
+const confirmResourceRestore = async () => {
+  showResourceRestoreConfirmation.value = false;
+  
+  if (!resourceToRestore.value || !archivedCategoryInfo.value) return;
+  
+  isProcessing.value = true;
+  
+  try {
+    // First restore the category
+    console.log('Restoring category first:', archivedCategoryInfo.value);
+    const categorySuccess = await restoreResourceCategory(archivedCategoryInfo.value);
+    
+    if (!categorySuccess) {
+      throw new Error('Failed to restore category');
+    }
+    
+    // Then restore the resource
+    console.log('Restoring resource:', resourceToRestore.value);
+    const resourceSuccess = await restoreResource(resourceToRestore.value);
+    
+    if (!resourceSuccess) {
+      throw new Error('Failed to restore resource');
+    }
+    
+    showStatus(`Successfully restored category "${archivedCategoryInfo.value.name}" and resource "${getItemName(resourceToRestore.value)}"`, 'success');
+    
+    // Remove both items from the list
+    if (activeSubcategory.value) {
+      activeSubcategory.value.items = activeSubcategory.value.items.filter(i => 
+        i.id !== resourceToRestore.value.id && i.id !== archivedCategoryInfo.value.id
+      );
+    }
+    
+    // Refresh the archived items
+    await fetchArchivedItems();
+    
+  } catch (err) {
+    console.error('Error restoring resource and category:', err);
+    showStatus(`Failed to restore: ${err.message}`, 'error');
+  } finally {
+    isProcessing.value = false;
+    resourceToRestore.value = null;
+    archivedCategoryInfo.value = null;
+  }
+};
+
+// Cancel resource restoration
+const cancelResourceRestore = () => {
+  showResourceRestoreConfirmation.value = false;
+  resourceToRestore.value = null;
+  archivedCategoryInfo.value = null;
 };
 
 // Restore user - UPDATED to preserve ALL user data fields
@@ -1230,6 +1479,12 @@ const bulkRestore = async () => {
             case 'user':
               // Use the new method to restore user and re-enable in Firebase Auth
               success = await restoreUser(fullItem);
+              break;
+            case 'resource':
+              success = await restoreResource(fullItem);
+              break;
+            case 'resourceCategory':
+              success = await restoreResourceCategory(fullItem);
               break;
             case 'officeHours':
               success = await restoreOfficeHours(fullItem);

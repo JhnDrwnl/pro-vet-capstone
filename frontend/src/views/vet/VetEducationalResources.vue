@@ -208,9 +208,9 @@
                         </button>
                         <button 
                           @click="showDeleteConfirm(category.id, 'category')" 
-                          class="p-1 text-red-500 hover:text-red-600"
+                          class="p-1 text-orange-500 hover:text-orange-600"
                         >
-                          <Trash2 class="w-5 h-5" />
+                          <ArchiveIcon class="w-5 h-5" />
                         </button>
                       </div>
                     </td>
@@ -277,9 +277,9 @@
                         </button>
                         <button 
                           @click="showDeleteConfirm(resource.id, 'resource')" 
-                          class="p-1 text-red-500 hover:text-red-600"
+                          class="p-1 text-orange-500 hover:text-orange-600"
                         >
-                          <Trash2 class="w-5 h-5" />
+                          <ArchiveIcon class="w-5 h-5" />
                         </button>
                       </div>
                     </td>
@@ -603,15 +603,15 @@
     </div>
   </div>
   
-  <!-- Custom Confirmation Dialog - Responsive -->
+  <!-- Custom Confirmation Dialog - Updated for Archiving -->
   <div v-if="showConfirmDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-auto p-6">
-      <div class="flex items-center justify-center w-12 h-12 rounded-full bg-[#FFEEEE] mx-auto mb-4">
-        <AlertTriangleIcon class="h-6 w-6 text-red-600" />
+      <div class="flex items-center justify-center w-12 h-12 rounded-full bg-orange-50 mx-auto mb-4">
+        <ArchiveIcon class="h-6 w-6 text-orange-600" />
       </div>
-      <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Confirm Action</h3>
+      <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Archive Item</h3>
       <p class="text-sm text-gray-500 text-center mb-6">
-        Are you sure you want to delete this item? It will be moved to archives.
+        Are you sure you want to archive this item? It will be moved to archives and can be restored later.
       </p>
       <div class="flex justify-center gap-3">
         <button 
@@ -622,10 +622,10 @@
         </button>
         <button 
           @click="confirmDelete" 
-          class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+          class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-orange-600 hover:bg-orange-700"
           :disabled="isLoading"
         >
-          Confirm
+          Archive
         </button>
       </div>
     </div>
@@ -692,53 +692,45 @@ import {
   PlusCircle, 
   ImageIcon, 
   LucideEdit, 
-  Trash2, 
   XIcon, 
   UploadIcon, 
-  AlertTriangleIcon, 
   CheckCircleIcon, 
   XCircleIcon, 
   FileVideoIcon,
-  PackageIcon,
   PlayIcon,
   MaximizeIcon,
-  MinimizeIcon
+  MinimizeIcon,
+  ArchiveIcon
 } from 'lucide-vue-next';
 import { useResourceCategoryStore } from '@/stores/modules/ResourceCategoryStore';
+import { useResourceStore } from '@/stores/modules/ResourceStore';
 import { storeToRefs } from 'pinia';
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where,
-  orderBy,
-  serverTimestamp,
-  limit
-} from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '@shared/firebase';
 
-// Initialize the store
+// Initialize the stores
 const resourceCategoryStore = useResourceCategoryStore();
+const resourceStore = useResourceStore();
 
 // Use storeToRefs to maintain reactivity when destructuring store state
 const {
   resourceCategories, 
-  resources, 
-  loading: storeLoading, 
-  error: storeError 
+  loading: categoryLoading, 
+  error: categoryError 
 } = storeToRefs(resourceCategoryStore);
+
+const {
+  resources,
+  loading: resourceLoading,
+  error: resourceError
+} = storeToRefs(resourceStore);
+
+// Combined loading state
+const isLoading = computed(() => categoryLoading.value || resourceLoading.value);
+const storeError = computed(() => categoryError.value || resourceError.value);
 
 // UI state
 const activeTab = ref('categories');
 const showForm = ref(false);
 const initialLoading = ref(true);
-const isLoading = computed(() => storeLoading.value);
 const search = ref('');
 const sortKey = ref('name');
 const sortOrder = ref('asc');
@@ -820,57 +812,63 @@ const formTitle = computed(() => {
   return activeTab.value === 'categories' ? 'Add Category' : 'Add Resource';
 });
 
-// Fix: Create a local categories ref that maps to resourceCategories from the store
+// Use store's resourceCategories directly
 const categories = computed(() => {
   return resourceCategories.value || [];
 });
 
 const filteredItems = computed(() => {
-  let items = activeTab.value === 'categories' ? categories.value : resources.value || [];
+  let items;
   
-  // Apply search filter
-  if (search.value) {
-    const searchLower = search.value.toLowerCase();
-    items = items.filter(item => 
-      item.name.toLowerCase().includes(searchLower) || 
-      (item.description && item.description.toLowerCase().includes(searchLower))
-    );
+  if (activeTab.value === 'categories') {
+    items = categories.value || [];
+  } else {
+    // Use ResourceStore's search functionality if search term exists
+    if (search.value) {
+      items = resourceStore.searchResources(search.value);
+    } else {
+      items = resources.value || [];
+    }
   }
   
-  // Apply category filter for resources
-  if (activeTab.value === 'resources' && activeCategoryFilters.value.length > 0) {
+  // Apply category filter for resources (only if not already filtered by search)
+  if (activeTab.value === 'resources' && activeCategoryFilters.value.length > 0 && !search.value) {
+    items = items.filter(item => activeCategoryFilters.value.includes(item.categoryId));
+  } else if (activeTab.value === 'resources' && activeCategoryFilters.value.length > 0 && search.value) {
+    // If both search and category filter are active, apply category filter to search results
     items = items.filter(item => activeCategoryFilters.value.includes(item.categoryId));
   }
   
-  // Apply sorting
-  items = [...items].sort((a, b) => {
-    let valueA, valueB;
-    
-    if (sortKey.value === 'resourceCount' && activeTab.value === 'categories') {
-      valueA = getResourceCountForCategory(a.id);
-      valueB = getResourceCountForCategory(b.id);
-    } else if (sortKey.value === 'categoryId' && activeTab.value === 'resources') {
-      // Fix: Safely get category name with null checks
-      const categoryNameA = getCategoryName(a.categoryId) || '';
-      const categoryNameB = getCategoryName(b.categoryId) || '';
-      valueA = categoryNameA.toLowerCase();
-      valueB = categoryNameB.toLowerCase();
-    } else {
-      valueA = a[sortKey.value];
-      valueB = b[sortKey.value];
+  // Apply sorting only for categories or when not using ResourceStore search
+  if (activeTab.value === 'categories' || !search.value) {
+    items = [...items].sort((a, b) => {
+      let valueA, valueB;
       
-      if (typeof valueA === 'string') {
-        valueA = valueA.toLowerCase();
+      if (sortKey.value === 'resourceCount' && activeTab.value === 'categories') {
+        valueA = getResourceCountForCategory(a.id);
+        valueB = getResourceCountForCategory(b.id);
+      } else if (sortKey.value === 'categoryId' && activeTab.value === 'resources') {
+        const categoryNameA = getCategoryName(a.categoryId) || '';
+        const categoryNameB = getCategoryName(b.categoryId) || '';
+        valueA = categoryNameA.toLowerCase();
+        valueB = categoryNameB.toLowerCase();
+      } else {
+        valueA = a[sortKey.value];
+        valueB = b[sortKey.value];
+        
+        if (typeof valueA === 'string') {
+          valueA = valueA.toLowerCase();
+        }
+        if (typeof valueB === 'string') {
+          valueB = valueB.toLowerCase();
+        }
       }
-      if (typeof valueB === 'string') {
-        valueB = valueB.toLowerCase();
-      }
-    }
-    
-    if (valueA < valueB) return sortOrder.value === 'asc' ? -1 : 1;
-    if (valueA > valueB) return sortOrder.value === 'asc' ? 1 : -1;
-    return 0;
-  });
+      
+      if (valueA < valueB) return sortOrder.value === 'asc' ? -1 : 1;
+      if (valueA > valueB) return sortOrder.value === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
   
   return items;
 });
@@ -1006,7 +1004,7 @@ function handleFullscreenChange() {
   );
 }
 
-// Methods
+// Methods - Now using store methods
 async function switchTab(tab) {
   activeTab.value = tab;
   showForm.value = false;
@@ -1014,12 +1012,14 @@ async function switchTab(tab) {
   search.value = '';
   showCategoryFilter.value = false;
   
-  // Fetch data based on active tab
+  // Fetch data using store methods
   if (tab === 'categories') {
-    await fetchCategories();
+    await resourceCategoryStore.fetchResourceCategories();
   } else {
-    await fetchResources();
+    await resourceStore.fetchResources();
   }
+  
+  await refreshCurrentTabData();
 }
 
 function sortBy(key) {
@@ -1065,32 +1065,14 @@ function clearCategoryFilters() {
   activeCategoryFilters.value = [];
 }
 
-// Fix: Add null check to getCategoryName
+// Use store methods for helper functions
 function getCategoryName(categoryId) {
-  if (!categoryId) return 'Unknown';
-  
-  // Check if resourceCategoryStore has the method
-  if (resourceCategoryStore && typeof resourceCategoryStore.getCategoryName === 'function') {
-    return resourceCategoryStore.getCategoryName(categoryId) || 'Unknown';
-  }
-  
-  // Fallback: search in categories
-  const category = categories.value.find(c => c.id === categoryId);
-  return category ? category.name : 'Unknown';
+  return resourceCategoryStore.getCategoryName(categoryId);
 }
 
-// Fix: Add null check to getResourceCountForCategory
 function getResourceCountForCategory(categoryId) {
-  if (!categoryId) return 0;
-  
-  // Check if resourceCategoryStore has the method
-  if (resourceCategoryStore && typeof resourceCategoryStore.getResourceCountForCategory === 'function') {
-    return resourceCategoryStore.getResourceCountForCategory(categoryId) || 0;
-  }
-  
-  // Fallback: count resources with this categoryId
-  if (!resources.value) return 0;
-  return resources.value.filter(r => r.categoryId === categoryId).length;
+  // Use ResourceStore to get accurate count
+  return resourceStore.getResourcesByCategory(categoryId).length;
 }
 
 function formatTimestamp(timestamp) {
@@ -1121,7 +1103,6 @@ function addNew() {
     previewVideo.value = null;
     selectedFile.value = null;
   } else {
-    // Fix: Check if categories exist before setting default categoryId
     const defaultCategoryId = categories.value && categories.value.length > 0 ? categories.value[0].id : '';
     
     resourceForm.value = {
@@ -1185,7 +1166,6 @@ function closeForm() {
   selectedResourceFile.value = null;
 }
 
-// Fix: Add methods to trigger file inputs safely
 function triggerFileInput() {
   if (fileInput.value) {
     fileInput.value.click();
@@ -1255,7 +1235,6 @@ function handleResourceFileChange(event) {
   reader.readAsDataURL(file);
 }
 
-// Enhanced remove functions for video support
 function removeCoverPhoto() {
   categoryForm.value.coverPhoto = null;
   previewImage.value = null;
@@ -1300,41 +1279,45 @@ function cancelDelete() {
   itemTypeToDelete.value = null;
 }
 
+// Add this new method after the existing methods
+async function refreshCurrentTabData() {
+  if (activeTab.value === 'categories') {
+    await resourceCategoryStore.refreshResourceCategories?.() || await resourceCategoryStore.fetchResourceCategories();
+  } else {
+    await resourceStore.refreshResources();
+  }
+}
+
+// Add this method for potential future dashboard features
+function getResourceStatistics() {
+  return resourceStore.getResourceStatistics();
+}
+
+// Updated to use store's archive methods
 async function confirmDelete() {
   showConfirmDialog.value = false;
   
   try {
     if (itemTypeToDelete.value === 'category') {
-      const result = await deleteCategory(itemToDelete.value);
+      const result = await resourceCategoryStore.archiveCategory(itemToDelete.value);
       if (result) {
-        statusMessage.value = 'Category deleted successfully.';
+        statusMessage.value = 'Category archived successfully.';
         showSuccessModal.value = true;
       } else {
-        throw new Error(storeError.value || 'Failed to delete category');
+        throw new Error(categoryError.value || 'Failed to archive category');
       }
     } else {
-      // Fix: Implement direct resource deletion if store method is not available
-      try {
-        let result;
-        if (resourceCategoryStore && typeof resourceCategoryStore.deleteResource === 'function') {
-          result = await resourceCategoryStore.deleteResource(itemToDelete.value);
-        } else {
-          // Direct implementation if store method is not available
-          result = await deleteResource(itemToDelete.value);
-        }
-        
-        if (result) {
-          statusMessage.value = 'Resource deleted successfully.';
-          showSuccessModal.value = true;
-        } else {
-          throw new Error('Failed to delete resource');
-        }
-      } catch (error) {
-        throw new Error(error.message || 'Resource deletion failed');
+      // Use ResourceStore for resource archiving
+      const result = await resourceStore.archiveResource(itemToDelete.value);
+      if (result) {
+        statusMessage.value = 'Resource archived successfully.';
+        showSuccessModal.value = true;
+      } else {
+        throw new Error(resourceError.value || 'Failed to archive resource');
       }
     }
   } catch (error) {
-    statusMessage.value = error.message || 'An error occurred during deletion.';
+    statusMessage.value = error.message || 'An error occurred during archiving.';
     showErrorModal.value = true;
   } finally {
     itemToDelete.value = null;
@@ -1342,71 +1325,55 @@ async function confirmDelete() {
   }
 }
 
+// Updated to use store methods
 async function handleSubmit() {
   try {
     if (activeTab.value === 'categories') {
       if (editingItem.value) {
-        // Update existing category
-        const result = await updateCategory(editingItem.value.id, categoryForm.value);
+        // Update existing category using store method
+        const result = await resourceCategoryStore.updateCategory(editingItem.value.id, categoryForm.value);
         if (result) {
           statusMessage.value = 'Category updated successfully.';
           showSuccessModal.value = true;
           showForm.value = false;
           editingItem.value = null;
         } else {
-          throw new Error(storeError.value || 'Failed to update category');
+          throw new Error(categoryError.value || 'Failed to update category');
         }
       } else {
-        // Add new category
-        const newCategory = await createCategory(categoryForm.value);
+        // Add new category using store method
+        const newCategory = await resourceCategoryStore.createCategory(categoryForm.value);
         if (newCategory) {
           statusMessage.value = 'Category added successfully.';
           showSuccessModal.value = true;
           showForm.value = false;
         } else {
-          throw new Error(storeError.value || 'Failed to add category');
+          throw new Error(categoryError.value || 'Failed to add category');
         }
       }
     } else {
-      // Handle resource form submission
-      try {
-        let result;
-        if (editingItem.value) {
-          // Update existing resource
-          if (resourceCategoryStore && typeof resourceCategoryStore.updateResource === 'function') {
-            result = await resourceCategoryStore.updateResource(editingItem.value.id, resourceForm.value);
-          } else {
-            // Direct implementation if store method is not available
-            result = await updateResource(editingItem.value.id, resourceForm.value);
-          }
-          
-          if (result) {
-            statusMessage.value = 'Resource updated successfully.';
-            showSuccessModal.value = true;
-            showForm.value = false;
-            editingItem.value = null;
-          } else {
-            throw new Error('Failed to update resource');
-          }
+      // Handle resource form submission using ResourceStore methods
+      if (editingItem.value) {
+        // Update existing resource using ResourceStore method
+        const result = await resourceStore.updateResource(editingItem.value.id, resourceForm.value);
+        if (result) {
+          statusMessage.value = 'Resource updated successfully.';
+          showSuccessModal.value = true;
+          showForm.value = false;
+          editingItem.value = null;
         } else {
-          // Add new resource
-          if (resourceCategoryStore && typeof resourceCategoryStore.createResource === 'function') {
-            result = await resourceCategoryStore.createResource(resourceForm.value);
-          } else {
-            // Direct implementation if store method is not available
-            result = await createResource(resourceForm.value);
-          }
-          
-          if (result) {
-            statusMessage.value = 'Resource added successfully.';
-            showSuccessModal.value = true;
-            showForm.value = false;
-          } else {
-            throw new Error('Failed to add resource');
-          }
+          throw new Error(resourceError.value || 'Failed to update resource');
         }
-      } catch (error) {
-        throw new Error(error.message || 'Resource operation failed');
+      } else {
+        // Add new resource using ResourceStore method
+        const result = await resourceStore.createResource(resourceForm.value);
+        if (result) {
+          statusMessage.value = 'Resource added successfully.';
+          showSuccessModal.value = true;
+          showForm.value = false;
+        } else {
+          throw new Error(resourceError.value || 'Failed to add resource');
+        }
       }
     }
   } catch (error) {
@@ -1415,25 +1382,21 @@ async function handleSubmit() {
   }
 }
 
+// Updated to use store's export methods if available
 async function exportToCSV() {
   try {
     let csvContent;
     
-    // Fix: Implement direct CSV export if store method is not available
     if (activeTab.value === 'categories') {
-      if (resourceCategoryStore && typeof resourceCategoryStore.exportCategoriesToCSV === 'function') {
+      // Use ResourceCategoryStore method if available, otherwise fallback to local implementation
+      if (resourceCategoryStore.exportCategoriesToCSV) {
         csvContent = resourceCategoryStore.exportCategoriesToCSV();
       } else {
-        // Direct implementation
         csvContent = generateCategoriesCSV();
       }
     } else {
-      if (resourceCategoryStore && typeof resourceCategoryStore.exportResourcesToCSV === 'function') {
-        csvContent = resourceCategoryStore.exportResourcesToCSV();
-      } else {
-        // Direct implementation
-        csvContent = generateResourcesCSV();
-      }
+      // Use ResourceStore method
+      csvContent = resourceStore.exportResourcesToCSV();
     }
     
     if (csvContent) {
@@ -1459,7 +1422,7 @@ async function exportToCSV() {
   }
 }
 
-// Helper function to generate categories CSV
+// Helper function to generate categories CSV (fallback)
 function generateCategoriesCSV() {
   if (!categories.value || categories.value.length === 0) {
     return null;
@@ -1478,540 +1441,30 @@ function generateCategoriesCSV() {
   return [headers, ...rows].map(row => row.join(',')).join('\n');
 }
 
-// Helper function to generate resources CSV
-function generateResourcesCSV() {
-  if (!resources.value || resources.value.length === 0) {
-    return null;
+// Close category filter dropdown when clicking outside
+const handleClickOutside = (event) => {
+  if (showCategoryFilter.value && !event.target.closest('.filter-dropdown')) {
+    showCategoryFilter.value = false;
   }
-  
-  const headers = ['ID', 'Name', 'Category', 'Type', 'Status', 'Description', 'Created At', 'Updated At'];
-  const rows = resources.value.map(resource => [
-    resource.id,
-    resource.name,
-    getCategoryName(resource.categoryId),
-    resource.type || '',
-    resource.status || '',
-    resource.description || '',
-    formatTimestamp(resource.createdAt),
-    formatTimestamp(resource.updatedAt)
-  ]);
-  
-  return [headers, ...rows].map(row => row.join(',')).join('\n');
-}
+};
 
-// Fixed fetchCategories function to properly update the store's state
-async function fetchCategories() {
-  initialLoading.value = true;
-  storeLoading.value = true;
-  
-  try {
-    console.log('Fetching categories from resourceCategories collection');
-    // Query resourceCategories collection
-    const categoriesRef = collection(db, 'resourceCategories');
-    
-    // Build query with sorting by name
-    const queryRef = query(categoriesRef, orderBy('name'));
-    
-    const categoriesSnapshot = await getDocs(queryRef);
-    
-    if (!categoriesSnapshot.empty) {
-      const categoriesData = categoriesSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        // Convert Firestore timestamps to ISO strings for easier handling
-        createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt,
-        updatedAt: doc.data().updatedAt?.toDate?.() || doc.data().updatedAt
-      }));
-      
-      console.log('Fetched categories data:', categoriesData);
-      // Fix: Update the store's resourceCategories
-      resourceCategories.value = categoriesData;
-    } else {
-      console.log('No categories found');
-      resourceCategories.value = [];
-    }
-  } catch (error) {
-    console.error('Error fetching categories:', error);
-    storeError.value = error.message;
-    statusMessage.value = 'Failed to fetch categories: ' + error.message;
+// Add this watcher to handle store errors
+watch([categoryError, resourceError], ([catError, resError]) => {
+  const error = catError || resError;
+  if (error && !showErrorModal.value) {
+    statusMessage.value = error;
     showErrorModal.value = true;
-  } finally {
-    initialLoading.value = false;
-    storeLoading.value = false;
   }
-}
-
-// Add fetchResources function
-async function fetchResources() {
-  initialLoading.value = true;
-  storeLoading.value = true;
-  
-  try {
-    // Check if resourceCategoryStore has a fetchResources method
-    if (resourceCategoryStore && typeof resourceCategoryStore.fetchResources === 'function') {
-      await resourceCategoryStore.fetchResources();
-    } else {
-      // Fallback implementation
-      console.log('Fetching resources from resources collection');
-      const resourcesRef = collection(db, 'resources');
-      
-      // Build query with sorting by name
-      const queryRef = query(resourcesRef, orderBy('name'));
-      
-      const resourcesSnapshot = await getDocs(queryRef);
-      
-      if (!resourcesSnapshot.empty) {
-        const resourcesData = resourcesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          // Convert Firestore timestamps to ISO strings for easier handling
-          createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt,
-          updatedAt: doc.data().updatedAt?.toDate?.() || doc.data().updatedAt
-        }));
-        
-        console.log('Fetched resources data:', resourcesData);
-        resources.value = resourcesData;
-      } else {
-        console.log('No resources found');
-        resources.value = [];
-      }
-    }
-  } catch (error) {
-    console.error('Error fetching resources:', error);
-    storeError.value = error.message;
-    statusMessage.value = 'Failed to fetch resources: ' + error.message;
-    showErrorModal.value = true;
-  } finally {
-    initialLoading.value = false;
-    storeLoading.value = false;
-  }
-}
-
-async function createCategory(categoryData) {
-  storeLoading.value = true;
-  
-  try {
-    // Generate a document ID using the full first word of the name + random 4-digit number
-    const words = categoryData.name.toLowerCase().split(/\s+/);
-    let namePrefix = words[0]; // Get the first word (full word)
-    
-    // If the first word is too short, pad it
-    if (namePrefix.length < 3) {
-      namePrefix = namePrefix.padEnd(3, 'x');
-    }
-    
-    const randomId = Math.floor(1000 + Math.random() * 9000); // Always 4 digits
-    const docId = `${namePrefix}${randomId}`;
-    
-    console.log('Generated category ID:', docId);
-    
-    // Create a reference to the document with the dynamic ID
-    const categoryRef = doc(db, 'resourceCategories', docId);
-    
-    // Extract file from form data if it exists
-    const file = categoryData.file;
-    let coverPhotoURL = null;
-    
-    // Add timestamps and ID to the category data
-    const categoryWithMetadata = {
-      name: categoryData.name,
-      description: categoryData.description,
-      id: docId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      archived: false
-    };
-    
-    // Save to Firestore
-    await setDoc(categoryRef, categoryWithMetadata);
-    
-    // Handle cover photo/video upload if provided
-    if (file) {
-      coverPhotoURL = await uploadCategoryMedia(docId, file);
-      if (coverPhotoURL) {
-        await updateDoc(categoryRef, { coverPhoto: coverPhotoURL });
-        categoryWithMetadata.coverPhoto = coverPhotoURL;
-      }
-    }
-    
-    console.log('Category added successfully:', categoryWithMetadata);
-    
-    // Update local state
-    const newCategory = {
-      id: docId,
-      ...categoryWithMetadata,
-      // Convert Firestore timestamps to dates for the UI
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    // Fix: Ensure resourceCategories.value is an array before pushing
-    if (!resourceCategories.value) {
-      resourceCategories.value = [];
-    }
-    resourceCategories.value.push(newCategory);
-    return newCategory;
-  } catch (error) {
-    console.error('Error adding category:', error);
-    storeError.value = error.message;
-    return null;
-  } finally {
-    storeLoading.value = false;
-  }
-}
-
-async function updateCategory(categoryId, categoryData) {
-  storeLoading.value = true;
-  
-  try {
-    const categoryRef = doc(db, 'resourceCategories', categoryId);
-    
-    // Check if category exists
-    const categoryDoc = await getDoc(categoryRef);
-    if (!categoryDoc.exists()) {
-      throw new Error('Category not found');
-    }
-    
-    // Extract file from form data if it exists
-    const file = categoryData.file;
-    let updatedData = {
-      name: categoryData.name,
-      description: categoryData.description,
-      updatedAt: serverTimestamp()
-    };
-    
-    // Handle cover photo/video upload if provided
-    if (file) {
-      // Delete existing media if there is one
-      const existingData = categoryDoc.data();
-      if (existingData.coverPhoto) {
-        await deleteCategoryMedia(existingData.coverPhoto);
-      }
-      
-      // Upload new media
-      const coverPhotoURL = await uploadCategoryMedia(categoryId, file);
-      if (coverPhotoURL) {
-        updatedData.coverPhoto = coverPhotoURL;
-      }
-    } else if (categoryData.coverPhoto === null) {
-      // If coverPhoto is explicitly set to null, remove the existing media
-      const existingData = categoryDoc.data();
-      if (existingData.coverPhoto) {
-        await deleteCategoryMedia(existingData.coverPhoto);
-        updatedData.coverPhoto = null;
-      }
-    }
-    
-    // Update in Firestore
-    await updateDoc(categoryRef, updatedData);
-    
-    // Update local state
-    // Fix: Ensure resourceCategories.value is an array before updating
-    if (resourceCategories.value) {
-      const categoryIndex = resourceCategories.value.findIndex(c => c.id === categoryId);
-      if (categoryIndex !== -1) {
-        resourceCategories.value[categoryIndex] = {
-          ...resourceCategories.value[categoryIndex],
-          ...updatedData,
-          updatedAt: new Date() // Use current date for UI
-        };
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error updating category:', error);
-    storeError.value = error.message;
-    return false;
-  } finally {
-    storeLoading.value = false;
-  }
-}
-
-async function deleteCategory(categoryId) {
-  storeLoading.value = true;
-  
-  try {
-    const categoryRef = doc(db, 'resourceCategories', categoryId);
-    
-    // Check if category exists
-    const categoryDoc = await getDoc(categoryRef);
-    if (!categoryDoc.exists()) {
-      throw new Error('Category not found');
-    }
-    
-    // Delete the category's cover media if it exists
-    const categoryData = categoryDoc.data();
-    if (categoryData.coverPhoto) {
-      await deleteCategoryMedia(categoryData.coverPhoto);
-    }
-    
-    // Delete the category document
-    await deleteDoc(categoryRef);
-    
-    // Update local state
-    // Fix: Ensure resourceCategories.value is an array before filtering
-    if (resourceCategories.value) {
-      resourceCategories.value = resourceCategories.value.filter(c => c.id !== categoryId);
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error deleting category:', error);
-    storeError.value = error.message;
-    return false;
-  } finally {
-    storeLoading.value = false;
-  }
-}
-
-// Add direct resource CRUD methods as fallbacks
-async function createResource(resourceData) {
-  storeLoading.value = true;
-  
-  try {
-    // Generate a document ID
-    const words = resourceData.name.toLowerCase().split(/\s+/);
-    let namePrefix = words[0]; // Get the first word
-    
-    if (namePrefix.length < 3) {
-      namePrefix = namePrefix.padEnd(3, 'x');
-    }
-    
-    const randomId = Math.floor(1000 + Math.random() * 9000);
-    const docId = `res_${namePrefix}${randomId}`;
-    
-    // Create a reference to the document
-    const resourceRef = doc(db, 'resources', docId);
-    
-    // Extract file from form data if it exists
-    const file = resourceData.file;
-    let coverPhotoURL = null;
-    
-    // Add timestamps and ID to the resource data
-    const resourceWithMetadata = {
-      name: resourceData.name,
-      description: resourceData.description,
-      categoryId: resourceData.categoryId,
-      type: resourceData.type,
-      status: resourceData.status,
-      tags: resourceData.tags.filter(tag => tag.trim() !== ''),
-      id: docId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      archived: false
-    };
-    
-    // Save to Firestore
-    await setDoc(resourceRef, resourceWithMetadata);
-    
-    // Handle cover media upload if provided
-    if (file) {
-      coverPhotoURL = await uploadResourceMedia(docId, file);
-      if (coverPhotoURL) {
-        await updateDoc(resourceRef, { coverPhoto: coverPhotoURL });
-        resourceWithMetadata.coverPhoto = coverPhotoURL;
-      }
-    }
-    
-    // Update local state
-    const newResource = {
-      id: docId,
-      ...resourceWithMetadata,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    // Ensure resources.value is an array before pushing
-    if (!resources.value) {
-      resources.value = [];
-    }
-    resources.value.push(newResource);
-    return newResource;
-  } catch (error) {
-    console.error('Error adding resource:', error);
-    storeError.value = error.message;
-    return null;
-  } finally {
-    storeLoading.value = false;
-  }
-}
-
-async function updateResource(resourceId, resourceData) {
-  storeLoading.value = true;
-  
-  try {
-    const resourceRef = doc(db, 'resources', resourceId);
-    
-    // Check if resource exists
-    const resourceDoc = await getDoc(resourceRef);
-    if (!resourceDoc.exists()) {
-      throw new Error('Resource not found');
-    }
-    
-    // Extract file from form data if it exists
-    const file = resourceData.file;
-    let updatedData = {
-      name: resourceData.name,
-      description: resourceData.description,
-      categoryId: resourceData.categoryId,
-      type: resourceData.type,
-      status: resourceData.status,
-      tags: resourceData.tags.filter(tag => tag.trim() !== ''),
-      updatedAt: serverTimestamp()
-    };
-    
-    // Handle cover media upload if provided
-    if (file) {
-      // Delete existing media if there is one
-      const existingData = resourceDoc.data();
-      if (existingData.coverPhoto) {
-        await deleteResourceMedia(existingData.coverPhoto);
-      }
-      
-      // Upload new media
-      const coverPhotoURL = await uploadResourceMedia(resourceId, file);
-      if (coverPhotoURL) {
-        updatedData.coverPhoto = coverPhotoURL;
-      }
-    } else if (resourceData.coverPhoto === null) {
-      // If coverPhoto is explicitly set to null, remove the existing media
-      const existingData = resourceDoc.data();
-      if (existingData.coverPhoto) {
-        await deleteResourceMedia(existingData.coverPhoto);
-        updatedData.coverPhoto = null;
-      }
-    }
-    
-    // Update in Firestore
-    await updateDoc(resourceRef, updatedData);
-    
-    // Update local state
-    if (resources.value) {
-      const resourceIndex = resources.value.findIndex(r => r.id === resourceId);
-      if (resourceIndex !== -1) {
-        resources.value[resourceIndex] = {
-          ...resources.value[resourceIndex],
-          ...updatedData,
-          updatedAt: new Date() // Use current date for UI
-        };
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error updating resource:', error);
-    storeError.value = error.message;
-    return false;
-  } finally {
-    storeLoading.value = false;
-  }
-}
-
-async function deleteResource(resourceId) {
-  storeLoading.value = true;
-  
-  try {
-    const resourceRef = doc(db, 'resources', resourceId);
-    
-    // Check if resource exists
-    const resourceDoc = await getDoc(resourceRef);
-    if (!resourceDoc.exists()) {
-      throw new Error('Resource not found');
-    }
-    
-    // Delete the resource's cover media if it exists
-    const resourceData = resourceDoc.data();
-    if (resourceData.coverPhoto) {
-      await deleteResourceMedia(resourceData.coverPhoto);
-    }
-    
-    // Delete the resource document
-    await deleteDoc(resourceRef);
-    
-    // Update local state
-    if (resources.value) {
-      resources.value = resources.value.filter(r => r.id !== resourceId);
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error deleting resource:', error);
-    storeError.value = error.message;
-    return false;
-  } finally {
-    storeLoading.value = false;
-  }
-}
-
-// Enhanced helper functions to upload category media (images and videos)
-async function uploadCategoryMedia(categoryId, file) {
-  try {
-    const fileRef = storageRef(storage, `categories/${categoryId}/${file.name}`);
-    const snapshot = await uploadBytes(fileRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error) {
-    console.error('Error uploading category media:', error);
-    return null;
-  }
-}
-
-// Enhanced helper function to upload resource media (images and videos)
-async function uploadResourceMedia(resourceId, file) {
-  try {
-    const fileRef = storageRef(storage, `resources/${resourceId}/${file.name}`);
-    const snapshot = await uploadBytes(fileRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error) {
-    console.error('Error uploading resource media:', error);
-    return null;
-  }
-}
-
-// Enhanced helper function to delete category media
-async function deleteCategoryMedia(mediaURL) {
-  try {
-    // Extract the path from the URL
-    const urlObj = new URL(mediaURL);
-    const path = decodeURIComponent(urlObj.pathname.split('/o/')[1]);
-    
-    if (path) {
-      const fileRef = storageRef(storage, path);
-      await deleteObject(fileRef);
-      console.log('Category media deleted successfully');
-    }
-  } catch (error) {
-    console.error('Error deleting category media:', error);
-  }
-}
-
-// Enhanced helper function to delete resource media
-async function deleteResourceMedia(mediaURL) {
-  try {
-    // Extract the path from the URL
-    const urlObj = new URL(mediaURL);
-    const path = decodeURIComponent(urlObj.pathname.split('/o/')[1]);
-    
-    if (path) {
-      const fileRef = storageRef(storage, path);
-      await deleteObject(fileRef);
-      console.log('Resource media deleted successfully');
-    }
-  } catch (error) {
-    console.error('Error deleting resource media:', error);
-  }
-}
+});
 
 // Lifecycle hooks
 onMounted(async () => {
-  // Fetch initial data
-  await fetchCategories();
+  // Fetch initial data using store methods
+  await resourceCategoryStore.fetchResourceCategories();
   
   // If resources tab is active, fetch resources
   if (activeTab.value === 'resources') {
-    await fetchResources();
+    await resourceStore.fetchResources();
   }
   
   initialLoading.value = false;
@@ -2021,6 +1474,7 @@ onMounted(async () => {
   document.addEventListener('fullscreenchange', handleFullscreenChange);
   document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
   document.addEventListener('msfullscreenchange', handleFullscreenChange);
+  document.addEventListener('click', handleClickOutside);
 });
 
 // Watch for changes in search input to reset pagination
@@ -2031,18 +1485,6 @@ watch(search, () => {
 // Watch for changes in category filters to reset pagination
 watch(activeCategoryFilters, () => {
   currentPage.value = 1;
-});
-
-
-// Close category filter dropdown when clicking outside
-const handleClickOutside = (event) => {
-  if (showCategoryFilter.value && !event.target.closest('.filter-dropdown')) {
-    showCategoryFilter.value = false;
-  }
-};
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {

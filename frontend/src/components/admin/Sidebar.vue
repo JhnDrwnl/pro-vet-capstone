@@ -212,12 +212,12 @@ const navItems = [
     label: 'Dashboard', 
     iconProps: { icon: "mage:dashboard-bar-notification", width: 20, height: 20 } 
   },
-  { 
-    href: '/admin/analytics', 
-    icon: Icon, 
-    label: 'Analytics', 
-    iconProps: { icon: "lucide:chart-pie", width: 20, height: 20 } 
-  },
+  // { 
+  //   href: '/admin/analytics', 
+  //   icon: Icon, 
+  //   label: 'Analytics', 
+  //   iconProps: { icon: "lucide:chart-pie", width: 20, height: 20 } 
+  // },
   { 
     href: '/admin/usermanagement', 
     icon: Users, 
@@ -240,14 +240,14 @@ const navItems = [
       { href: '/admin/datamanagement/veterinarians', label: 'Veterinarians' }
     ]
   },
-  { 
-    icon: MessageCircleCode,
-    label: 'Chatbot',
-    subItems: [
-      { href: '/admin/chatbot/chatlogs', label: 'Chat Logs' },
-      { href: '/admin/chatbot/responses', label: 'Responses' }
-    ]
-  },
+  // { 
+  //   icon: MessageCircleCode,
+  //   label: 'Chatbot',
+  //   subItems: [
+  //     { href: '/admin/chatbot/chatlogs', label: 'Chat Logs' },
+  //     { href: '/admin/chatbot/responses', label: 'Responses' }
+  //   ]
+  // },
   { 
     icon: Building,
     label: 'Office',

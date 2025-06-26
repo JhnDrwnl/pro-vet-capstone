@@ -33,6 +33,8 @@
           @toggle-sidebar="toggleSidebar"
           :isSticky="headerTopPosition === 0"
           :isSmallScreen="isSmallScreen"
+          :currentRoute="currentRoute"
+          :navItems="navItems"
         />
       </div>
       
@@ -40,8 +42,6 @@
       <div class="flex-1 flex flex-col">
         <!-- Spacer to push content below fixed header -->
         <div class="h-[89px]"></div>
-        
-        <Breadcrumb class="py-4" :currentRoute="currentRoute" :navItems="navItems" />
         
         <main class="flex-1 py-4 overflow-y-auto">
           <div class="w-full">
@@ -123,12 +123,12 @@ const currentRoute = computed(() => route.path);
 
 const navItems = [
   { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/analytics', icon: BarChart, label: 'Analytics' },
+  // { href: '/admin/analytics', icon: BarChart, label: 'Analytics' },
   { href: '/admin/appointments', icon: Calendar, label: 'Appointments' },
   { href: '/admin/usermanagement', icon: Users, label: 'User Management' },
   { href: '/admin/datamanagement', icon: Database, label: 'Data Management' },
   { href: '/admin/telehealth', icon: Video, label: 'Telehealth' },
-  { href: '/admin/chatbot', icon: MessageSquare, label: 'Chatbot' },
+  // { href: '/admin/chatbot', icon: MessageSquare, label: 'Chatbot' },
   { href: '/admin/settings', icon: Settings, label: 'Settings' },
   { href: '/admin/profile', icon: UserCircle, label: 'Profile' },
 ];
