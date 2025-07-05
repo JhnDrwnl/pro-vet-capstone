@@ -16,7 +16,7 @@
     <!-- Main Content -->
     <div 
       class="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out px-6"
-      :style="{ marginLeft: isSmallScreen ? '0' : (isSidebarOpen ? '280px' : '96px') }"
+      :style="{ marginLeft: isSidebarOpen ? '280px' : '96px' }"
     >
       <!-- Header with scroll behavior -->
       <div 
@@ -32,6 +32,8 @@
           :isSidebarOpen="isSidebarOpen"
           @toggle-sidebar="toggleSidebar"
           :isSmallScreen="isSmallScreen"
+          :currentRoute="currentRoute"
+          :navItems="navItems"
         />
       </div>
       
@@ -39,8 +41,6 @@
       <div class="flex-1 flex flex-col">
         <!-- Spacer to push content below fixed header -->
         <div class="h-[89px]"></div>
-        
-        <Breadcrumb class="py-4" :currentRoute="currentRoute" :navItems="navItems" />
         
         <main class="flex-1 py-4 overflow-y-auto">
           <div class="w-full">
@@ -77,7 +77,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import VeterinarySidebar from '@/components/veterinary/Sidebar.vue';
 import Header from '@/components/veterinary/Header.vue';
-import Breadcrumb from '@/components/common/Breadcrumb.vue';
 import PushNotificationModal from '@/components/common/PushNotificationModal.vue';
 import {
   LayoutDashboard,

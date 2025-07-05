@@ -2,21 +2,29 @@
 <template>
   <header data-header class="w-full bg-white rounded-2xl shadow-sm border border-gray-200">
     <div class="flex items-center justify-between h-16 px-6">
-      <!-- Sidebar toggle button for small screens -->
-      <button
-        v-if="isSmallScreen"
-        @click="$emit('toggle-sidebar')"
-        class="text-gray-500 hover:text-gray-700 transition-colors duration-200"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
-        </svg>
-      </button>
+      <!-- LEFT SECTION: Sidebar toggle + Breadcrumb -->
+      <div class="flex items-center gap-4 overflow-x-auto">
+        <!-- Sidebar toggle button for small screens -->
+        <button
+          v-if="isSmallScreen"
+          @click="$emit('toggle-sidebar')"
+          class="text-gray-500 hover:text-gray-700 transition-colors duration-200 flex-shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+          </svg>
+        </button>
 
-      <!-- Spacer for larger screens -->
-      <div v-else class="w-6"></div>
+        <!-- Breadcrumb component -->
+        <Breadcrumb 
+          :currentRoute="currentRoute" 
+          :navItems="navItems" 
+          class="hidden md:flex min-w-0 flex-1" 
+        />
+      </div>
 
-      <div class="flex items-center gap-4 md:gap-6">
+      <!-- RIGHT SECTION: Notifications + Profile -->
+      <div class="flex items-center gap-4 md:gap-6 flex-shrink-0">
         <!-- Notifications Dropdown -->
         <div class="relative">
           <button
@@ -39,7 +47,6 @@
             </div>
           </div>
         </div>
-
 
         <!-- Profile Dropdown -->
         <div class="relative">
@@ -130,6 +137,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
+import Breadcrumb from '@/components/common/Breadcrumb.vue';
 import { 
   ChevronDownIcon,
   ChevronRightIcon,
@@ -145,6 +153,14 @@ const props = defineProps({
   },
   isSmallScreen: {
     type: Boolean,
+    required: true
+  },
+  currentRoute: {
+    type: String,
+    required: true
+  },
+  navItems: {
+    type: Array,
     required: true
   }
 });
@@ -203,6 +219,4 @@ const handleLogout = async () => {
     console.error('Logout failed:', error);
   }
 };
-
 </script>
-
