@@ -92,7 +92,7 @@
             </span>
           </button>
 
-          <!-- More Menu Modal - Increased z-index to 999 to ensure it's always on top -->
+          <!-- More Menu Modal -->
           <div 
             v-if="isMoreMenuOpen" 
             class="absolute bottom-full left-0 mb-2 w-[240px] bg-white rounded-xl shadow-xl z-[999]"
@@ -109,19 +109,12 @@
                 Settings
               </router-link>
             </div>
-            
+
             <!-- Divider -->
             <div class="h-[1px] bg-gray-200"></div>
-            
+
             <!-- Account options -->
             <div class="p-1">
-              <button 
-                @click="handleSwitchAccounts"
-                class="w-full flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
-              >
-                <UserPlusIcon class="w-5 h-5 mr-3" />
-                Switch accounts
-              </button>
               <button 
                 @click="handleLogout"
                 class="w-full flex items-center px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer"
@@ -132,6 +125,7 @@
               </button>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -197,7 +191,6 @@ import {
   Menu as MenuIcon,
   X as XIcon,
   LogOut as LogOutIcon,
-  UserPlus as UserPlusIcon,
   MessageCircle as MessageCircleIcon
 } from 'lucide-vue-next';
 import HistoryPanel from '../common/HistoryPanel.vue';
@@ -489,12 +482,6 @@ const handleLogout = async () => {
     console.error('Logout failed:', error);
     alert('Logout failed. Please try again.');
   }
-};
-
-const handleSwitchAccounts = () => {
-  console.log('Switch accounts clicked');
-  resetActiveStates();
-  // Implement account switching logic here
 };
 
 const handleSettingsClick = () => { 

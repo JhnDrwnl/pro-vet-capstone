@@ -420,8 +420,8 @@
 </template>
   
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch, defineExpose } from 'vue';
-import { 
+  import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+  import { 
   CameraIcon, 
   PlusIcon, 
   FileTextIcon, 

@@ -185,7 +185,6 @@
             
             <!-- Veterinarian list -->
             <div 
-              v-else
               v-for="doctor in veterinarians" 
               :key="doctor.userId || doctor.id" 
               class="flex flex-col p-3 md:p-4 border rounded-2xl cursor-pointer transition-all duration-200"
@@ -411,17 +410,18 @@
                 <button
                   v-for="timeSlot in availableTimeSlots"
                   :key="timeSlot.startTime"
-                  @click="selectTime(timeSlot.timeRange)"
+                  @click="timeSlot.isBooked ? null : selectTime(timeSlot.timeRange)"
                   :disabled="timeSlot.isBooked"
-                  class="p-2 md:p-3 rounded-lg text-center flex flex-col items-center"
+                  class="p-2 md:p-3 rounded-lg text-center flex flex-col items-center transition-all duration-200"
                   :class="[
-                    selectedTime === timeSlot.timeRange ? 'bg-blue-500 text-white' : 
-                    timeSlot.isBooked ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100 hover:bg-gray-200',
+                    selectedTime === timeSlot.timeRange ? 'bg-blue-500 text-white shadow-lg' : 
+                    timeSlot.isBooked ? 'bg-red-100 text-red-600 cursor-not-allowed border border-red-200' : 'bg-gray-100 hover:bg-gray-200 hover:shadow-md',
                     'focus:outline-none focus:ring-2 focus:ring-blue-500'
                   ]"
                 >
                   <span class="text-xs md:text-sm font-medium">{{ timeSlot.timeRange }}</span>
-                  <span v-if="timeSlot.isBooked" class="text-[10px] md:text-xs mt-1 text-red-400">Booked</span>
+                  <span v-if="timeSlot.isBooked" class="text-[10px] md:text-xs mt-1 font-medium">Booked</span>
+                  <span v-else-if="selectedTime === timeSlot.timeRange" class="text-[10px] md:text-xs mt-1">Selected</span>
                 </button>
               </div>
             </div>
@@ -1067,12 +1067,14 @@ import { useAuthStore } from "@/stores/modules/authStore"
 import { useProfileStore } from "@/stores/modules/profileStore"
 import { useOfficeStore } from "@/stores/modules/officeStore"
 import { useAppointmentStore } from "@/stores/modules/appointmentStore"
+import { useNotificationsStore } from "@/stores/modules/notifications"
 import LoadingSpinner from "@/components/common/LoadingSpinner.vue"
 import dogImage from "@/assets/media/images/appointment/Dog.png"
 import catImage from "@/assets/media/images/appointment/Cat.png"
 import birdImage from "@/assets/media/images/appointment/Bird.png"
 import reptilesImage from "@/assets/media/images/appointment/Reptiles.png"
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore"
+import notificationService from "@/services/notificationService"
 
 // Define props to accept isSidebarOpen from parent component
 const props = defineProps({
@@ -1090,6 +1092,7 @@ const authStore = useAuthStore()
 const profileStore = useProfileStore()
 const officeStore = useOfficeStore()
 const appointmentStore = useAppointmentStore()
+const notificationsStore = useNotificationsStore()
 
 // Google Maps API Key
 const mapApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""
@@ -2238,28 +2241,69 @@ const availableTimeSlots = computed(() => {
       const isBooked = bookedAppointments.value.some((appointment) => {
         // Only consider appointments for the selected doctor
         if (selectedDoctor.value && appointment.doctorId !== (selectedDoctor.value.userId || selectedDoctor.value.id)) {
+          console.log(`Skipping appointment for different doctor: ${appointment.doctorId} vs ${selectedDoctor.value.userId || selectedDoctor.value.id}`)
           return false
         }
         
         // Check if the appointment status should block the time slot
         const blockingStatuses = ['approved', 'processing', 'completed']
         if (!blockingStatuses.includes(appointment.status)) {
+          console.log(`Skipping appointment with non-blocking status: ${appointment.status}`)
           return false // Don't block for pending, cancelled, or ended appointments
         }
         
-        // Extract just the start time from the appointment time range
-        const appointmentTimeString = appointment.time.split(" - ")[0].trim()
+        try {
+          // Extract just the start time from the appointment time range
+          const appointmentTimeString = appointment.time.split(" - ")[0].trim()
 
-        // Parse the appointment start time
-        const appointmentStartTime = parse(appointmentTimeString, "h:mm a", new Date(selectedDate.value))
+          // Parse the appointment start time with more robust parsing
+          let appointmentStartTime
+          try {
+            appointmentStartTime = parse(appointmentTimeString, "h:mm a", new Date(selectedDate.value))
+          } catch (parseError) {
+            // Try alternative parsing if the first one fails
+            console.log('Trying alternative time parsing for:', appointmentTimeString)
+            // Try parsing with different format
+            const timeMatch = appointmentTimeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i)
+            if (timeMatch) {
+              let hours = parseInt(timeMatch[1])
+              const minutes = parseInt(timeMatch[2])
+              const period = timeMatch[3].toUpperCase()
+              
+              // Convert to 24-hour format
+              if (period === 'PM' && hours !== 12) hours += 12
+              if (period === 'AM' && hours === 12) hours = 0
+              
+              appointmentStartTime = new Date(selectedDate.value)
+              appointmentStartTime.setHours(hours, minutes, 0, 0)
+            } else {
+              throw new Error('Unable to parse time format')
+            }
+          }
 
-        // Calculate the appointment end time based on its duration
-        const appointmentEndTime = new Date(appointmentStartTime)
-        appointmentEndTime.setMinutes(appointmentStartTime.getMinutes() + (appointment.duration || 60))
+          // Calculate the appointment end time based on its duration
+          const appointmentEndTime = new Date(appointmentStartTime)
+          appointmentEndTime.setMinutes(appointmentStartTime.getMinutes() + (appointment.duration || 60))
 
-        // Check for overlap:
-        // If slot starts before appointment ends AND slot ends after appointment starts
-        return slotStartTime < appointmentEndTime && slotEndTime > appointmentStartTime
+          // Check for overlap:
+          // If slot starts before appointment ends AND slot ends after appointment starts
+          const hasOverlap = slotStartTime < appointmentEndTime && slotEndTime > appointmentStartTime
+          
+          // Also check if the exact time range is already taken
+          const isExactMatch = appointment.time === slot.timeRange
+          
+          if (hasOverlap || isExactMatch) {
+            console.log(`Time slot ${slot.timeRange} conflicts with appointment ${appointment.time} (${appointment.status})`)
+            console.log(`Slot: ${slotStartTime.toLocaleTimeString()} - ${slotEndTime.toLocaleTimeString()}`)
+            console.log(`Appointment: ${appointmentStartTime.toLocaleTimeString()} - ${appointmentEndTime.toLocaleTimeString()}`)
+            console.log(`Exact match: ${isExactMatch}, Overlap: ${hasOverlap}`)
+          }
+          
+          return hasOverlap || isExactMatch
+        } catch (error) {
+          console.error('Error parsing appointment time:', appointment.time, error)
+          return false
+        }
       })
 
       return {
@@ -2311,6 +2355,17 @@ const fetchBookedAppointments = async () => {
     
     console.log(`Fetched ${bookedAppointments.value.length} booked appointments for ${dateString}`)
     console.log("Booked appointments:", bookedAppointments.value)
+    
+    // Debug: Log each appointment with its details
+    bookedAppointments.value.forEach((appointment, index) => {
+      console.log(`Appointment ${index + 1}:`, {
+        id: appointment.id,
+        time: appointment.time,
+        doctorId: appointment.doctorId,
+        duration: appointment.duration,
+        status: appointment.status
+      })
+    })
   } catch (error) {
     console.error("Error fetching booked appointments:", error)
   } finally {
@@ -2418,19 +2473,29 @@ const currentMonthYear = computed(() => format(currentDate.value, "MMMM yyyy"))
 
 // Update canBook to handle both cases - regular services with pets and Veterinary Health Certificate
 const canBook = computed(() => {
+  // Check if the selected time slot is available (not booked)
+  const isTimeSlotAvailable = () => {
+    if (!selectedTime.value || !availableTimeSlots.value.length) return false
+    
+    const selectedSlot = availableTimeSlots.value.find(slot => slot.timeRange === selectedTime.value)
+    return selectedSlot && !selectedSlot.isBooked
+  }
+  
   if (isVeterinaryHealthCertificateCategory.value) {
     // For Veterinary Health Certificate, we don't need pet selection
     return selectedServices.value.length > 0 &&
            selectedDoctor.value &&
            selectedDate.value &&
-           selectedTime.value
+           selectedTime.value &&
+           isTimeSlotAvailable()
   } else {
     // For regular services, we need pet selection
     return selectedServices.value.length > 0 &&
            selectedPets.value.length > 0 &&
            selectedDoctor.value &&
            selectedDate.value &&
-           selectedTime.value
+           selectedTime.value &&
+           isTimeSlotAvailable()
   }
 })
 
@@ -2656,6 +2721,13 @@ const selectDate = (date) => {
 
 // Modified to handle time ranges
 const selectTime = (timeRange) => {
+  // Check if the time slot is booked
+  const selectedSlot = availableTimeSlots.value.find(slot => slot.timeRange === timeRange)
+  if (selectedSlot && selectedSlot.isBooked) {
+    console.log('Cannot select booked time slot:', timeRange)
+    return
+  }
+  
   // Toggle selection if clicking the same time
   if (selectedTime.value === timeRange) {
     selectedTime.value = null
@@ -2812,6 +2884,49 @@ const bookAppointment = async () => {
       duration: totalDurationMinutes.value,
     }
   
+    // Send notification to the user about the booking
+    try {
+      // Initialize notification service with the store
+      notificationService.setNotificationsStore(notificationsStore);
+      
+      // Set current user for notification service
+      if (authStore.user?.userId) {
+        window.currentUser = { userId: authStore.user.userId };
+      }
+      
+      const notificationTitle = "Appointment Booked Successfully!";
+      const notificationBody = isVeterinaryHealthCertificateCategory.value 
+        ? `Your Veterinary Health Certificate appointment on ${formatDate(selectedDate.value)} at ${selectedTime.value} has been booked. Please wait for veterinary approval.`
+        : `Your appointment for ${petNames.join(', ')} on ${formatDate(selectedDate.value)} at ${selectedTime.value} has been booked. Please wait for veterinary approval.`;
+      
+      // Send notification
+      await notificationService.showNotification(notificationTitle, notificationBody, {
+        type: 'appointment',
+        url: '/user/notifications',
+        userId: authStore.user?.userId,
+        appointmentId: result,
+        status: 'pending',
+        fromClient: true,
+        storeInFirestore: true,
+        skipDuplicateCheck: true
+      });
+      
+      // Also directly store the notification in Firestore as backup
+      await notificationService.storeNotificationInFirestore(notificationTitle, notificationBody, {
+        type: 'appointment',
+        url: '/user/notifications',
+        userId: authStore.user?.userId,
+        appointmentId: result,
+        status: 'pending',
+        fromClient: true,
+        skipDuplicateCheck: true
+      });
+      
+      console.log('Notification sent for appointment booking');
+    } catch (notificationError) {
+      console.error('Error sending notification:', notificationError);
+    }
+    
     // Show success modal
     showSuccessModal.value = true
   } catch (error) {

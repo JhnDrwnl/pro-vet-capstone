@@ -1,4 +1,3 @@
-<!-- views/auth/ForgotPassword.vue.vue -->
 <template>
   <div class="min-h-screen flex items-center justify-center bg-white px-4 py-8">
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col md:flex-row">
@@ -18,7 +17,7 @@
             <!-- Step 1 -->
             <div class="flex flex-col items-center">
               <div class="relative mb-2">
-                <div v-if="currentStep > 1" 
+                <div v-if="currentStep > 1"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -36,11 +35,11 @@
                 Email
               </p>
             </div>
-    
+            
             <!-- Step 2 -->
             <div class="flex flex-col items-center">
               <div class="relative mb-2">
-                <div v-if="currentStep > 2" 
+                <div v-if="currentStep > 2"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -58,11 +57,11 @@
                 Code
               </p>
             </div>
-    
+            
             <!-- Step 3 -->
             <div class="flex flex-col items-center">
               <div class="relative mb-2">
-                <div v-if="currentStep > 3" 
+                <div v-if="currentStep > 3"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -80,11 +79,11 @@
                 Password
               </p>
             </div>
-    
+            
             <!-- Step 4 -->
             <div class="flex flex-col items-center">
               <div class="relative mb-2">
-                <div v-if="currentStep > 4" 
+                <div v-if="currentStep > 4"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -104,7 +103,7 @@
             </div>
           </div>
         </div>
-    
+        
         <!-- Desktop Steps - Vertical -->
         <div class="hidden md:block relative">
           <!-- Vertical line -->
@@ -115,13 +114,13 @@
               :style="{ height: `${(currentStep - 1) * 33.33}%` }"
             ></div>
           </div>
-    
+          
           <!-- Steps -->
           <div class="space-y-8 relative">
             <!-- Step 1 -->
             <div class="flex items-start">
               <div class="relative">
-                <div v-if="currentStep > 1" 
+                <div v-if="currentStep > 1"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -141,11 +140,11 @@
                 </p>
               </div>
             </div>
-    
+            
             <!-- Step 2 -->
             <div class="flex items-start">
               <div class="relative">
-                <div v-if="currentStep > 2" 
+                <div v-if="currentStep > 2"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -165,11 +164,11 @@
                 </p>
               </div>
             </div>
-    
+            
             <!-- Step 3 -->
             <div class="flex items-start">
               <div class="relative">
-                <div v-if="currentStep > 3" 
+                <div v-if="currentStep > 3"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -189,11 +188,11 @@
                 </p>
               </div>
             </div>
-    
+            
             <!-- Step 4 -->
             <div class="flex items-start">
               <div class="relative">
-                <div v-if="currentStep > 4" 
+                <div v-if="currentStep > 4"
                      class="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
                   <CheckIcon class="w-5 h-5 text-white" />
                 </div>
@@ -215,7 +214,7 @@
             </div>
           </div>
         </div>
-    
+        
         <!-- Lottie Animation -->
         <div class="w-full mt-12 hidden md:block">
           <DotLottieVue
@@ -226,7 +225,7 @@
           />
         </div>
       </div>
-    
+      
       <!-- Right Side - Forms with Dog Image -->
       <div class="w-full md:w-3/5 bg-blue-50 p-8 flex flex-col items-center justify-center relative overflow-hidden">
         <!-- Form Container with Dog Image -->
@@ -239,7 +238,7 @@
               class="w-full h-auto object-contain"
             />
           </div>
-    
+          
           <!-- Forms - Each step gets a white background -->
           <!-- Step 1: Email Input -->
           <div v-if="currentStep === 1" class="space-y-6 bg-white p-6 pt-16 rounded-xl shadow-sm w-full relative z-0 mt-4">
@@ -247,7 +246,7 @@
               <h1 class="text-2xl font-semibold text-gray-900">Forgot password?</h1>
               <p class="mt-2 text-sm text-gray-600">No worries, we'll send you reset instructions.</p>
             </div>
-    
+            
             <form @submit.prevent="handleEmailSubmit" class="space-y-4">
               <div>
                 <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -272,7 +271,7 @@
                 {{ error }}
               </div>
             </form>
-    
+            
             <button 
               @click="$router.push('/auth/login')"
               class="w-full text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2"
@@ -280,19 +279,19 @@
               <span class="text-sm">← Back to log in</span>
             </button>
           </div>
-    
+          
           <!-- Step 2: Verification Code -->
           <div v-if="currentStep === 2" class="space-y-6 bg-white p-6 pt-16 rounded-xl shadow-sm w-full relative z-0 mt-4">
             <div class="text-center">
               <h1 class="text-2xl font-semibold text-gray-900">Password reset</h1>
               <p class="mt-2 text-sm text-gray-600">We sent a code to {{ email }}</p>
             </div>
-    
+            
             <!-- Responsive OTP Input Fields -->
             <div class="flex flex-wrap justify-center px-2">
               <div class="grid grid-cols-6 gap-1 sm:gap-2 w-full max-w-xs mx-auto">
                 <input 
-                  v-for="(_, index) in 6" 
+                  v-for="(_, index) in 6"
                   :key="index"
                   v-model="verificationCode[index]"
                   type="text"
@@ -307,11 +306,10 @@
                 >
               </div>
             </div>
-
             <div v-if="error" class="text-red-600 text-sm text-center">
               {{ error }}
             </div>
-    
+            
             <button 
               @click="handleVerificationSubmit"
               class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
@@ -319,18 +317,18 @@
             >
               {{ loading ? 'Verifying...' : 'Continue' }}
             </button>
-    
+            
             <div class="text-center text-sm">
               <p class="text-gray-600">Didn't receive the code?</p>
               <button 
-                class="text-blue-500 hover:text-blue-700" 
+                class="text-blue-500 hover:text-blue-700"
                 @click="resendCode"
                 :disabled="resendTimer > 0 || loading"
               >
                 {{ resendTimer > 0 ? `Resend code in ${formatTime(resendTimer)}` : 'Click to resend' }}
               </button>
             </div>
-    
+            
             <button 
               @click="currentStep = 1"
               class="w-full text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2"
@@ -338,14 +336,14 @@
               <span class="text-sm">← Back to previous step</span>
             </button>
           </div>
-    
+          
           <!-- Step 3: New Password -->
           <div v-if="currentStep === 3" class="space-y-6 bg-white p-6 pt-16 rounded-xl shadow-sm w-full relative z-0 mt-4">
             <div class="text-center">
               <h1 class="text-2xl font-semibold text-gray-900">Set new password</h1>
-              <p class="mt-2 text-sm text-gray-600">Must be at least 8 characters.</p>
+              <p class="mt-2 text-sm text-gray-600">Your password must meet the requirements below.</p>
             </div>
-    
+            
             <form @submit.prevent="handlePasswordSubmit" class="space-y-4">
               <div>
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
@@ -357,6 +355,7 @@
                     required
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none pr-10"
                     placeholder="Enter your password"
+                    @input="validatePasswordStrength"
                   >
                   <button 
                     type="button"
@@ -368,7 +367,63 @@
                     <EyeOffIcon v-else class="w-5 h-5" />
                   </button>
                 </div>
+                
+                <!-- Password Strength Indicator -->
+                <div v-if="password" class="mt-2">
+                  <div class="flex items-center space-x-2">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        class="h-2 rounded-full transition-all duration-300"
+                        :class="passwordStrengthColor"
+                        :style="{ width: passwordStrengthWidth }"
+                      ></div>
+                    </div>
+                    <span class="text-xs font-medium" :class="passwordStrengthTextColor">
+                      {{ passwordStrengthText }}
+                    </span>
+                  </div>
+                  
+                  <!-- Password Requirements -->
+                  <div class="mt-2 space-y-1">
+                    <div class="flex items-center space-x-2">
+                      <CheckIcon v-if="passwordRequirements.length" class="h-3 w-3 text-green-500" />
+                      <XIcon v-else class="h-3 w-3 text-red-500" />
+                      <span class="text-xs" :class="passwordRequirements.length ? 'text-green-600' : 'text-red-600'">
+                        At least 8 characters
+                      </span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <CheckIcon v-if="passwordRequirements.uppercase" class="h-3 w-3 text-green-500" />
+                      <XIcon v-else class="h-3 w-3 text-red-500" />
+                      <span class="text-xs" :class="passwordRequirements.uppercase ? 'text-green-600' : 'text-red-600'">
+                        One uppercase letter
+                      </span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <CheckIcon v-if="passwordRequirements.lowercase" class="h-3 w-3 text-green-500" />
+                      <XIcon v-else class="h-3 w-3 text-red-500" />
+                      <span class="text-xs" :class="passwordRequirements.lowercase ? 'text-green-600' : 'text-red-600'">
+                        One lowercase letter
+                      </span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <CheckIcon v-if="passwordRequirements.number" class="h-3 w-3 text-green-500" />
+                      <XIcon v-else class="h-3 w-3 text-red-500" />
+                      <span class="text-xs" :class="passwordRequirements.number ? 'text-green-600' : 'text-red-600'">
+                        One number
+                      </span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                      <CheckIcon v-if="passwordRequirements.special" class="h-3 w-3 text-green-500" />
+                      <XIcon v-else class="h-3 w-3 text-red-500" />
+                      <span class="text-xs" :class="passwordRequirements.special ? 'text-green-600' : 'text-red-600'">
+                        One special character
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
+              
               <div>
                 <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
                 <div class="relative">
@@ -378,6 +433,7 @@
                     :type="showConfirmPassword ? 'text' : 'password'"
                     required
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none pr-10"
+                    :class="{ 'border-red-300': confirmPassword && !passwordsMatch }"
                     placeholder="Confirm your password"
                   >
                   <button 
@@ -390,10 +446,14 @@
                     <EyeOffIcon v-else class="w-5 h-5" />
                   </button>
                 </div>
+                <p v-if="confirmPassword && !passwordsMatch" class="mt-1 text-xs text-red-600">
+                  Passwords do not match
+                </p>
               </div>
+              
               <button 
                 type="submit"
-                :disabled="loading"
+                :disabled="loading || !canResetPassword"
                 class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 {{ loading ? 'Resetting...' : 'Reset password' }}
@@ -403,7 +463,7 @@
                 {{ error }}
               </div>
             </form>
-    
+            
             <button 
               @click="currentStep = 2"
               class="w-full text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2"
@@ -411,7 +471,7 @@
               <span class="text-sm">← Back to previous step</span>
             </button>
           </div>
-    
+          
           <!-- Step 4: Success -->
           <div v-if="currentStep === 4" class="space-y-6 bg-white p-6 pt-16 rounded-xl shadow-sm w-full relative z-0 mt-4">
             <div class="text-center">
@@ -421,7 +481,7 @@
               <h1 class="text-2xl font-semibold text-gray-900">All done!</h1>
               <p class="mt-2 text-sm text-gray-600">Your password has been reset.</p>
             </div>
-    
+            
             <button 
               @click="redirectToLogin"
               class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
@@ -438,7 +498,7 @@
 <script setup>
 import { ref, computed, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CheckIcon, EyeIcon, EyeOffIcon } from 'lucide-vue-next'
+import { CheckIcon, EyeIcon, EyeOffIcon, X as XIcon } from 'lucide-vue-next'
 import { DotLottieVue } from '@lottiefiles/dotlottie-vue'
 import { useAuthStore } from '@/stores/modules/authStore'
 import emailService from '@/services/emailService'
@@ -465,18 +525,93 @@ const error = ref('')
 const verificationStatus = ref('')
 const resendTimer = ref(120) // 2 minutes cooldown for resend (matching VerifyEmail)
 const otpExpiryTime = ref(OTP_EXPIRY_SECONDS)
+
+// Password strength validation
+const passwordRequirements = ref({
+  length: false,
+  uppercase: false,
+  lowercase: false,
+  number: false,
+  special: false
+})
+
 let resendInterval = null
 let expiryInterval = null
 
-// Set email from route query on mount
-if (route.query.email) {
-  email.value = route.query.email
-}
+// Computed properties for password validation
+const passwordsMatch = computed(() => {
+  return password.value === confirmPassword.value
+})
+
+const passwordStrength = computed(() => {
+  const pwd = password.value
+  let score = 0
+  
+  if (pwd.length >= 8) score++
+  if (/[A-Z]/.test(pwd)) score++
+  if (/[a-z]/.test(pwd)) score++
+  if (/\d/.test(pwd)) score++
+  if (/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) score++
+  
+  return score
+})
+
+const passwordStrengthText = computed(() => {
+  const strength = passwordStrength.value
+  if (strength === 0) return 'Very Weak'
+  if (strength === 1) return 'Weak'
+  if (strength === 2) return 'Fair'
+  if (strength === 3) return 'Good'
+  if (strength === 4) return 'Strong'
+  return 'Very Strong'
+})
+
+const passwordStrengthColor = computed(() => {
+  const strength = passwordStrength.value
+  if (strength <= 1) return 'bg-red-500'
+  if (strength === 2) return 'bg-yellow-500'
+  if (strength === 3) return 'bg-blue-500'
+  if (strength >= 4) return 'bg-green-500'
+  return 'bg-gray-300'
+})
+
+const passwordStrengthTextColor = computed(() => {
+  const strength = passwordStrength.value
+  if (strength <= 1) return 'text-red-600'
+  if (strength === 2) return 'text-yellow-600'
+  if (strength === 3) return 'text-blue-600'
+  if (strength >= 4) return 'text-green-600'
+  return 'text-gray-600'
+})
+
+const passwordStrengthWidth = computed(() => {
+  return `${(passwordStrength.value / 5) * 100}%`
+})
+
+const canResetPassword = computed(() => {
+  return password.value &&
+         confirmPassword.value &&
+         passwordsMatch.value &&
+         passwordStrength.value >= 3
+})
 
 // Computed
 const isCodeComplete = computed(() => {
   return verificationCode.value.every(digit => digit !== '')
 })
+
+// Password validation method
+const validatePasswordStrength = () => {
+  const pwd = password.value
+  
+  passwordRequirements.value = {
+    length: pwd.length >= 8,
+    uppercase: /[A-Z]/.test(pwd),
+    lowercase: /[a-z]/.test(pwd),
+    number: /\d/.test(pwd),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(pwd)
+  }
+}
 
 // Methods
 const handleEmailSubmit = async () => {
@@ -716,13 +851,8 @@ const verifyOTPWithRetry = async (userEmail, code, maxRetries = 2) => {
 }
 
 const handlePasswordSubmit = async () => {
-  if (password.value.length < 8) {
-    error.value = 'Password must be at least 8 characters long'
-    return
-  }
-  
-  if (password.value !== confirmPassword.value) {
-    error.value = 'Passwords do not match!'
+  if (!canResetPassword.value) {
+    error.value = 'Please ensure your password meets all requirements and passwords match'
     return
   }
 
@@ -887,6 +1017,11 @@ onUnmounted(() => {
   if (resendInterval) clearInterval(resendInterval)
   if (expiryInterval) clearInterval(expiryInterval)
 })
+
+// Set email from route query on mount
+if (route.query.email) {
+  email.value = route.query.email
+}
 </script>
 
 <style scoped>
@@ -919,6 +1054,7 @@ input {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+  border-radius: 0.5rem;
 }
 
 button:disabled {
