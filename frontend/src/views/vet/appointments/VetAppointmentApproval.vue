@@ -80,6 +80,40 @@
       <DownloadIcon class="w-3 h-3 sm:w-4 sm:h-4" />
       Export CSV
     </button>
+
+    <!-- Refresh Button -->
+    <button
+      @click="handleRefresh"
+      :disabled="isLoading || initialLoading"
+      class="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+      title="Refresh"
+    >
+      <RefreshCwIcon class="w-4 h-4 text-gray-500" />
+    </button>
+  </div>
+</div>
+
+<!-- Status Category Bar -->
+<div class="mb-4">
+  <div class="flex flex-wrap gap-2">
+    <button
+      v-for="cat in statusCategories"
+      :key="cat.key === '' ? 'all' : cat.key"
+      @click="toggleStatusFilter(cat.key === '' ? 'All' : cat.key)"
+      class="px-3 py-1.5 rounded-full border text-xs sm:text-sm transition-colors"
+      :class="[
+        (filters.status === cat.key || (cat.key === '' && filters.status === ''))
+          ? 'bg-blue-600 text-white border-blue-600'
+          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+      ]"
+      :title="`Show ${cat.label} appointments`"
+    >
+      <span>{{ cat.label }}</span>
+      <span class="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px]"
+            :class="(filters.status === cat.key || (cat.key === '' && filters.status === '')) ? 'bg-white/20' : 'bg-gray-100 text-gray-700'">
+        {{ cat.count }}
+      </span>
+    </button>
   </div>
 </div>
 
@@ -136,6 +170,7 @@
   <!-- Appointment Cards -->
   <div class="grid gap-4">
     <div v-for="appointment in paginatedAppointments" :key="appointment.id" 
+         :id="`appt-${appointment.id}`"
          class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
       
       <!-- Card Header -->
@@ -173,7 +208,9 @@
               'bg-yellow-100 text-yellow-800': appointment.status === 'pending',
               'bg-green-100 text-green-800': appointment.status === 'approved',
               'bg-red-100 text-red-800': appointment.status === 'rejected',
-              'bg-gray-100 text-gray-800': appointment.status === 'completed',
+              'bg-blue-100 text-blue-800': appointment.status === 'completed',
+              'bg-gray-100 text-gray-800': appointment.status === 'cancelled',
+              'bg-slate-100 text-slate-800': appointment.status === 'ended',
               'bg-orange-100 text-orange-800': isExpired(appointment)
             }"
           >
@@ -257,7 +294,7 @@
           <div class="flex items-center gap-1">
             <button 
               v-if="appointment.status === 'pending'"
-              @click="approveAppointment(appointment.id)"
+              @click="openActionConfirm('approve', appointment.id)"
               class="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-full transition-colors duration-200"
               title="Approve"
             >
@@ -265,15 +302,24 @@
             </button>
             <button 
               v-if="appointment.status === 'pending'"
-              @click="rejectAppointment(appointment.id)"
+              @click="openActionConfirm('reject', appointment.id)"
               class="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-full transition-colors duration-200"
               title="Reject"
             >
               <XIcon class="w-4 h-4" />
             </button>
+            <!-- Mark as Completed Button for approved appointments -->
             <button 
               v-if="appointment.status === 'approved'"
-              @click="cancelApprovedAppointment(appointment.id)"
+              @click="openActionConfirm('complete', appointment.id)"
+              class="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-full transition-colors duration-200"
+              title="Mark as Completed"
+            >
+              <CheckCircleIcon class="w-4 h-4" />
+            </button>
+            <button 
+              v-if="appointment.status === 'approved'"
+              @click="openCancelModal(appointment)"
               class="p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-full transition-colors duration-200"
               title="Cancel Appointment"
             >
@@ -867,6 +913,40 @@
 <!-- Loading Spinner Overlay - Show for operations -->
 <LoadingSpinner v-if="isLoading || initialLoading" isOverlay :text="initialLoading ? 'Loading appointments...' : 'Processing...'" />
 
+<!-- Action Confirmation Modal -->
+<div v-if="showActionConfirmModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+    <div class="flex items-center gap-3 mb-3">
+      <div :class="[
+        'w-10 h-10 rounded-full flex items-center justify-center',
+        actionTypeToConfirm==='approve' ? 'bg-green-100' : actionTypeToConfirm==='complete' ? 'bg-emerald-100' : 'bg-red-100'
+      ]">
+        <component 
+          :is="actionTypeToConfirm==='approve' ? CheckIcon : actionTypeToConfirm==='complete' ? CheckCircleIcon : XIcon" 
+          :class="['w-5 h-5', actionTypeToConfirm==='approve' ? 'text-green-600' : actionTypeToConfirm==='complete' ? 'text-emerald-600' : 'text-red-600']" 
+        />
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900">
+        {{ actionTypeToConfirm==='approve' ? 'Approve Appointment' : actionTypeToConfirm==='complete' ? 'Mark as Completed' : 'Reject Appointment' }}
+      </h3>
+    </div>
+    <p class="text-sm text-gray-600 mb-5">
+      {{ actionTypeToConfirm==='approve' 
+        ? 'Are you sure you want to approve this appointment?' 
+        : actionTypeToConfirm==='complete' 
+          ? 'Mark this appointment as completed?' 
+          : 'Are you sure you want to reject this appointment?' }}
+    </p>
+    <div class="flex gap-2">
+      <button @click="closeActionConfirm" class="flex-1 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50" :disabled="actionLoading">Cancel</button>
+      <button @click="confirmAction" :disabled="actionLoading" class="flex-1 py-2 rounded-full text-white" :class="actionTypeToConfirm==='approve' ? 'bg-green-600 hover:bg-green-700' : actionTypeToConfirm==='complete' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'">
+        <span v-if="actionLoading">Processing...</span>
+        <span v-else>{{ actionTypeToConfirm==='approve' ? 'Approve' : actionTypeToConfirm==='complete' ? 'Complete' : 'Reject' }}</span>
+      </button>
+    </div>
+  </div>
+  </div>
+
 <!-- Confirmation Modal -->
 <div 
 v-if="showCancelModal" 
@@ -1435,7 +1515,9 @@ class="fixed inset-0 bg-black bg-opacity-30 z-50"
                       'bg-yellow-100 text-yellow-800': selectedAppointment.status === 'pending',
                       'bg-green-100 text-green-800': selectedAppointment.status === 'approved',
                       'bg-red-100 text-red-800': selectedAppointment.status === 'rejected',
-                      'bg-gray-100 text-gray-800': selectedAppointment.status === 'completed',
+                      'bg-blue-100 text-blue-800': selectedAppointment.status === 'completed',
+                      'bg-gray-100 text-gray-800': selectedAppointment.status === 'cancelled',
+                      'bg-slate-100 text-slate-800': selectedAppointment.status === 'ended',
                       'bg-orange-100 text-orange-800': isExpired(selectedAppointment)
                     }"
                   >
@@ -1610,7 +1692,8 @@ Stethoscope as StethoscopeIcon,
 CalendarDays as CalendarDaysIcon,
 Phone as PhoneIcon,
 MapPin as MapPinIcon,
-Clock as ClockIcon
+  Clock as ClockIcon,
+  CheckCircle as CheckCircleIcon
 } from 'lucide-vue-next';
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
 import { useAppointmentStore } from '@/stores/modules/appointmentStore';
@@ -1661,6 +1744,36 @@ const filters = ref({
 status: '',
 });
 
+// Status category definitions (dedup by ID to avoid over-counting)
+const statusCategories = computed(() => {
+  // Build a unique set of appointments by ID
+  const uniqueMap = new Map();
+  for (const appt of appointments.value) {
+    if (!appt || !appt.id) continue;
+    uniqueMap.set(appt.id, appt);
+  }
+  const unique = Array.from(uniqueMap.values());
+
+  // Count by effective status (expired is computed)
+  const counters = unique.reduce((acc, a) => {
+    const eff = isExpired(a) ? 'expired' : (a.status || '').toLowerCase();
+    const key = eff || 'pending';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const total = unique.length;
+  return [
+    { key: '', label: 'All', count: total },
+    { key: 'pending', label: 'Pending', count: counters['pending'] || 0 },
+    { key: 'approved', label: 'Approved', count: counters['approved'] || 0 },
+    { key: 'completed', label: 'Completed', count: counters['completed'] || 0 },
+    { key: 'rejected', label: 'Rejected', count: counters['rejected'] || 0 },
+    { key: 'cancelled', label: 'Cancelled', count: counters['cancelled'] || 0 },
+    { key: 'expired', label: 'Expired', count: counters['expired'] || 0 },
+  ];
+});
+
 // Loading states
 const isLoading = ref(false);
 const initialLoading = ref(true);
@@ -1676,6 +1789,44 @@ const cancelLoading = ref(false);
 const showSuccessModal = ref(false);
 const successTitle = ref('');
 const successMessage = ref('');
+
+// Single action confirmation modal
+const showActionConfirmModal = ref(false);
+const actionTypeToConfirm = ref(''); // 'approve' | 'reject' | 'complete'
+const actionTargetId = ref(null);
+const actionLoading = ref(false);
+
+const openActionConfirm = (type, appointmentId) => {
+  actionTypeToConfirm.value = type;
+  actionTargetId.value = appointmentId;
+  showActionConfirmModal.value = true;
+};
+
+const closeActionConfirm = () => {
+  if (actionLoading.value) return;
+  showActionConfirmModal.value = false;
+  actionTypeToConfirm.value = '';
+  actionTargetId.value = null;
+};
+
+const confirmAction = async () => {
+  if (!actionTypeToConfirm.value || !actionTargetId.value) return;
+  actionLoading.value = true;
+  try {
+    if (actionTypeToConfirm.value === 'approve') {
+      await approveAppointment(actionTargetId.value);
+    } else if (actionTypeToConfirm.value === 'reject') {
+      await rejectAppointment(actionTargetId.value);
+    } else if (actionTypeToConfirm.value === 'complete') {
+      await completeAppointment(actionTargetId.value);
+    }
+    showActionConfirmModal.value = false;
+  } finally {
+    actionLoading.value = false;
+    actionTypeToConfirm.value = '';
+    actionTargetId.value = null;
+  }
+};
 
 // Action type tracking
 const pendingAction = ref(null);
@@ -2113,7 +2264,21 @@ onMounted(() => {
   // Initialize notification service with the store
   notificationService.setNotificationsStore(notificationsStore);
   
-  fetchAppointments();
+  fetchAppointments().then(() => {
+    try {
+      const focusId = (router.currentRoute.value.query?.focus ?? null) ? String(router.currentRoute.value.query.focus) : null;
+      if (focusId) {
+        setTimeout(() => {
+          const el = document.getElementById(`appt-${focusId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el.classList.add('ring-2', 'ring-indigo-400');
+            setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-400'), 1500);
+          }
+        }, 400);
+      }
+    } catch (e) {}
+  });
 });
 
 // Clean up when component is unmounted
@@ -2166,6 +2331,17 @@ originalStatuses.value = {};
 // Toggle filters visibility
 const toggleFilters = () => {
 showFilters.value = !showFilters.value;
+};
+
+// Manual refresh handler
+const handleRefresh = async () => {
+  if (isLoading.value) return;
+  isLoading.value = true;
+  try {
+    await fetchAppointments();
+  } finally {
+    isLoading.value = false;
+  }
 };
 
 // Status filter functions
@@ -3176,6 +3352,14 @@ const openReschedulePanel = async (appointment) => {
   ]);
 };
 
+// Open cancel modal for an approved appointment directly from card
+const openCancelModal = (appointment) => {
+  selectedAppointment.value = { ...appointment };
+  cancellationReason.value = '';
+  reasonError.value = '';
+  showCancelModal.value = true;
+};
+
 const closeAutoReschedulePanel = () => {
   showAutoReschedulePanel.value = false;
   reschedulingAppointment.value = null;
@@ -3897,6 +4081,31 @@ const executeAutoReschedule = async () => {
         ...updateData
       };
     }
+
+    // Notify the appointment owner about the reschedule
+    try {
+      const readableDate = format(new Date(selectedAutoRescheduleDate.value), 'MMM dd, yyyy');
+      const title = 'Appointment Rescheduled';
+      const description = `Your appointment has been rescheduled to ${readableDate} at ${selectedAutoRescheduleTime.value}.`;
+      // Ensure notification service has the store
+      notificationService.setNotificationsStore(notificationsStore);
+      // Set current user context for service (for fallback flows)
+      if (reschedulingAppointment.value.userId) {
+        window.currentUser = { userId: reschedulingAppointment.value.userId };
+      }
+      await notificationService.storeNotificationInFirestore(title, description, {
+        type: 'appointment',
+        url: '/user/notifications',
+        userId: reschedulingAppointment.value.userId,
+        appointmentId: reschedulingAppointment.value.id,
+        status: 'rescheduled',
+        fromClient: true,
+        deleted: false,
+        forceFallback: true
+      });
+    } catch (notifyErr) {
+      // Silent fail for notifications
+    }
     
     // Close panel and show success
     closeAutoReschedulePanel();
@@ -3926,26 +4135,41 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
       return;
     }
 
+    // Build a robust subject (pet names or category) to avoid "null"
+    const petNamesJoined = Array.isArray(appointmentData.petNames) && appointmentData.petNames.length > 0
+      ? appointmentData.petNames.map((n) => (n || '').trim()).filter(Boolean).join(', ')
+      : (appointmentData.petName || '').trim();
+    const subject = appointmentData.isHealthCertificate
+      ? 'your Veterinary Health Certificate appointment'
+      : (petNamesJoined ? `your appointment for ${petNamesJoined}` : 'your appointment');
+
     // Create notification message based on action
     let title, description;
+    const dateStr = format(new Date(appointmentData.date), 'MMM dd, yyyy');
     switch (action) {
       case 'approve':
         title = 'Appointment Approved!';
-        description = `Your appointment for ${appointmentData.petName} on ${format(new Date(appointmentData.date), 'MMM dd, yyyy')} at ${appointmentData.time} has been approved.`;
+        description = `${subject} on ${dateStr} at ${appointmentData.time} has been approved.`;
         break;
       case 'reject':
         title = 'Appointment Rejected';
-        description = `Your appointment for ${appointmentData.petName} on ${format(new Date(appointmentData.date), 'MMM dd, yyyy')} at ${appointmentData.time} has been rejected.`;
+        description = `${subject} on ${dateStr} at ${appointmentData.time} has been rejected.`;
         break;
       case 'cancel':
         title = 'Appointment Cancelled';
-        description = `Your appointment for ${appointmentData.petName} on ${format(new Date(appointmentData.date), 'MMM dd, yyyy')} at ${appointmentData.time} has been cancelled.`;
+        description = `${subject} on ${dateStr} at ${appointmentData.time} has been cancelled.`;
         break;
-      default:
+      case 'complete':
+        title = 'Appointment Completed';
+        description = `${subject} on ${dateStr} at ${appointmentData.time} has been completed.`;
+        break;
+    default:
         title = 'Appointment Status Updated';
         description = `Your appointment status has been updated to ${status}.`;
     }
 
+    // Ensure notification service is wired and has a user context (for fallback flows)
+    notificationService.setNotificationsStore(notificationsStore);
     // Set the current user for the notification service
     if (appointmentData.userId) {
       window.currentUser = { userId: appointmentData.userId };
@@ -3956,7 +4180,7 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
       type: 'appointment',
       url: '/user/notifications',
       userId: appointmentData.userId,
-      appointmentId: appointmentId,
+      appointmentId: String(appointmentId),
       status: status,
       fromClient: true,
       storeInFirestore: true,
@@ -3969,9 +4193,11 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
         type: 'appointment',
         url: '/user/notifications',
         userId: appointmentData.userId,
-        appointmentId: appointmentId,
+        appointmentId: String(appointmentId),
         status: status,
         fromClient: true,
+        deleted: false,
+        forceFallback: true,
         skipDuplicateCheck: true
       });
     } catch (storeError) {
@@ -4092,6 +4318,41 @@ const cancelApprovedAppointment = async (appointmentId) => {
   } catch (error) {
     console.error('Error cancelling appointment:', error);
     errorMessage.value = 'Failed to cancel appointment. Please try again.';
+    showErrorModal.value = true;
+  }
+};
+
+const completeAppointment = async (appointmentId) => {
+  try {
+    // Update status to completed
+    await appointmentStore.updateAppointment(
+      appointmentId,
+      {
+        status: 'completed',
+        completedBy: 'vet',
+        completedAt: new Date(),
+      }
+    );
+
+    // Update local state
+    const index = appointments.value.findIndex(a => a.id === appointmentId);
+    if (index !== -1) {
+      appointments.value[index].status = 'completed';
+      appointments.value[index].completedBy = 'vet';
+      appointments.value[index].completedAt = new Date();
+      appointments.value[index].updatedAt = new Date();
+    }
+
+    // Notify user
+    await sendAppointmentNotification(appointmentId, 'complete', 'completed');
+
+    // Success modal
+    successTitle.value = 'Appointment Completed';
+    successMessage.value = 'The appointment has been marked as completed.';
+    showSuccessModal.value = true;
+  } catch (error) {
+    console.error('Error completing appointment:', error);
+    errorMessage.value = 'Failed to mark appointment as completed. Please try again.';
     showErrorModal.value = true;
   }
 };

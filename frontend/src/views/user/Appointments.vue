@@ -47,7 +47,7 @@
             >
               {{ step.label }}
             </span>
-          </div>
+          </div>  
         </div>
       </div>
     </div>
@@ -423,6 +423,260 @@
                   <span v-if="timeSlot.isBooked" class="text-[10px] md:text-xs mt-1 font-medium">Booked</span>
                   <span v-else-if="selectedTime === timeSlot.timeRange" class="text-[10px] md:text-xs mt-1">Selected</span>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feedback and Follow-up Step -->
+          <div v-if="currentStep.id === 'feedback'" class="space-y-4 md:space-y-6">
+            <!-- Appointment Confirmation Summary -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div class="flex items-center mb-3">
+                <Check class="w-5 h-5 text-green-600 mr-2" />
+                <h3 class="text-lg font-semibold text-green-800">Appointment Confirmed!</h3>
+              </div>
+              <div class="text-sm text-green-700 space-y-1">
+                <p><strong>Date:</strong> {{ formatDate(selectedDate) }}</p>
+                <p><strong>Time:</strong> {{ selectedTime }}</p>
+                <p><strong>Doctor:</strong> {{ selectedDoctor ? `${getDoctorTitle(selectedDoctor)} ${selectedDoctor.firstName} ${selectedDoctor.lastName}` : '' }}</p>
+                <p><strong>Services:</strong> {{ selectedServices.map(id => getServiceName(id)).join(', ') }}</p>
+                <p v-if="selectedPets.length > 0"><strong>Pets:</strong> {{ selectedPets.map(pet => pet.name).join(', ') }}</p>
+              </div>
+            </div>
+
+            <!-- Feedback Section -->
+            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <MessageSquare class="w-5 h-5 text-blue-600 mr-2" />
+                Share Your Experience
+              </h3>
+              
+              <!-- Rating System -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">How would you rate your booking experience?</label>
+                <div class="flex items-center space-x-2">
+                  <button
+                    v-for="star in 5"
+                    :key="star"
+                    @click="setRating(star)"
+                    class="text-2xl transition-colors duration-200"
+                    :class="star <= feedbackRating ? 'text-yellow-400' : 'text-gray-300'"
+                  >
+                    ★
+                  </button>
+                  <span class="ml-3 text-sm text-gray-600">{{ feedbackRating }}/5</span>
+                </div>
+              </div>
+
+              <!-- Feedback Comments -->
+              <div class="mb-6">
+                <label for="feedbackComments" class="block text-sm font-medium text-gray-700 mb-2">
+                  Additional comments or suggestions (optional)
+                </label>
+                <textarea
+                  id="feedbackComments"
+                  v-model="feedbackComments"
+                  rows="4"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  placeholder="Tell us about your experience or any special requests..."
+                ></textarea>
+              </div>
+
+              <!-- Service Quality Questions -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">How would you rate the following aspects?</label>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Ease of booking</span>
+                    <div class="flex items-center space-x-1">
+                      <button
+                        v-for="rating in 5"
+                        :key="rating"
+                        @click="setServiceRating('easeOfBooking', rating)"
+                        class="text-lg transition-colors duration-200"
+                        :class="rating <= serviceRatings.easeOfBooking ? 'text-blue-400' : 'text-gray-300'"
+                      >
+                        ★
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Service variety</span>
+                    <div class="flex items-center space-x-1">
+                      <button
+                        v-for="rating in 5"
+                        :key="rating"
+                        @click="setServiceRating('serviceVariety', rating)"
+                        class="text-lg transition-colors duration-200"
+                        :class="rating <= serviceRatings.serviceVariety ? 'text-blue-400' : 'text-gray-300'"
+                      >
+                        ★
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Website usability</span>
+                    <div class="flex items-center space-x-1">
+                      <button
+                        v-for="rating in 5"
+                        :key="rating"
+                        @click="setServiceRating('websiteUsability', rating)"
+                        class="text-lg transition-colors duration-200"
+                        :class="rating <= serviceRatings.websiteUsability ? 'text-blue-400' : 'text-gray-300'"
+                      >
+                        ★
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Follow-up Options -->
+            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Calendar class="w-5 h-5 text-green-600 mr-2" />
+                Follow-up Options
+              </h3>
+              
+              <!-- Follow-up Preferences -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Would you like to schedule a follow-up appointment?</label>
+                <div class="space-y-3">
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="followUpPreference"
+                      value="yes"
+                      class="mr-3 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Yes, I'd like to schedule a follow-up</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="followUpPreference"
+                      value="maybe"
+                      class="mr-3 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Maybe, I'll decide later</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="followUpPreference"
+                      value="no"
+                      class="mr-3 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">No, this was a one-time visit</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Follow-up Date Selection (if yes) -->
+              <div v-if="followUpPreference === 'yes'" class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Preferred follow-up timeframe</label>
+                <select
+                  v-model="followUpTimeframe"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select timeframe</option>
+                  <option value="1-week">1 week</option>
+                  <option value="2-weeks">2 weeks</option>
+                  <option value="1-month">1 month</option>
+                  <option value="3-months">3 months</option>
+                  <option value="6-months">6 months</option>
+                  <option value="1-year">1 year</option>
+                  <option value="custom">Custom date</option>
+                </select>
+              </div>
+
+              <!-- Custom Follow-up Date (if custom selected) -->
+              <div v-if="followUpTimeframe === 'custom'" class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Custom follow-up date</label>
+                <input
+                  type="date"
+                  v-model="customFollowUpDate"
+                  :min="getMinFollowUpDate()"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <!-- Additional Services Interest -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Are you interested in any of these additional services?</label>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="vaccination"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Vaccination</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="dental"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Dental Care</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="grooming"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Grooming</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="nutrition"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Nutrition Consultation</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Communication Preferences -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">How would you prefer to be contacted about follow-ups?</label>
+                <div class="space-y-2">
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="communicationPreferences"
+                      value="email"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Email notifications</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="communicationPreferences"
+                      value="sms"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">SMS reminders</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="communicationPreferences"
+                      value="app"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">In-app notifications</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -916,6 +1170,260 @@
               Please select a date and time to book your appointment
             </div>
           </div>
+
+          <!-- Feedback and Follow-up Step -->
+          <div v-if="currentStep.id === 'feedback'" class="space-y-4 md:space-y-6">
+            <!-- Appointment Confirmation Summary -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div class="flex items-center mb-3">
+                <Check class="w-5 h-5 text-green-600 mr-2" />
+                <h3 class="text-lg font-semibold text-green-800">Appointment Confirmed!</h3>
+              </div>
+              <div class="text-sm text-green-700 space-y-1">
+                <p><strong>Date:</strong> {{ formatDate(selectedDate) }}</p>
+                <p><strong>Time:</strong> {{ selectedTime }}</p>
+                <p><strong>Doctor:</strong> {{ selectedDoctor ? `${getDoctorTitle(selectedDoctor)} ${selectedDoctor.firstName} ${selectedDoctor.lastName}` : '' }}</p>
+                <p><strong>Services:</strong> {{ selectedServices.map(id => getServiceName(id)).join(', ') }}</p>
+                <p v-if="selectedPets.length > 0"><strong>Pets:</strong> {{ selectedPets.map(pet => pet.name).join(', ') }}</p>
+              </div>
+            </div>
+
+            <!-- Feedback Section -->
+            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <MessageSquare class="w-5 h-5 text-blue-600 mr-2" />
+                Share Your Experience
+              </h3>
+              
+              <!-- Rating System -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">How would you rate your booking experience?</label>
+                <div class="flex items-center space-x-2">
+                  <button
+                    v-for="star in 5"
+                    :key="star"
+                    @click="setRating(star)"
+                    class="text-2xl transition-colors duration-200"
+                    :class="star <= feedbackRating ? 'text-yellow-400' : 'text-gray-300'"
+                  >
+                    ★
+                  </button>
+                  <span class="ml-3 text-sm text-gray-600">{{ feedbackRating }}/5</span>
+                </div>
+              </div>
+
+              <!-- Feedback Comments -->
+              <div class="mb-6">
+                <label for="feedbackComments" class="block text-sm font-medium text-gray-700 mb-2">
+                  Additional comments or suggestions (optional)
+                </label>
+                <textarea
+                  id="feedbackComments"
+                  v-model="feedbackComments"
+                  rows="4"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                  placeholder="Tell us about your experience or any special requests..."
+                ></textarea>
+              </div>
+
+              <!-- Service Quality Questions -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">How would you rate the following aspects?</label>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Ease of booking</span>
+                    <div class="flex items-center space-x-1">
+                      <button
+                        v-for="rating in 5"
+                        :key="rating"
+                        @click="setServiceRating('easeOfBooking', rating)"
+                        class="text-lg transition-colors duration-200"
+                        :class="rating <= serviceRatings.easeOfBooking ? 'text-blue-400' : 'text-gray-300'"
+                      >
+                        ★
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Service variety</span>
+                    <div class="flex items-center space-x-1">
+                      <button
+                        v-for="rating in 5"
+                        :key="rating"
+                        @click="setServiceRating('serviceVariety', rating)"
+                        class="text-lg transition-colors duration-200"
+                        :class="rating <= serviceRatings.serviceVariety ? 'text-blue-400' : 'text-gray-300'"
+                      >
+                        ★
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Website usability</span>
+                    <div class="flex items-center space-x-1">
+                      <button
+                        v-for="rating in 5"
+                        :key="rating"
+                        @click="setServiceRating('websiteUsability', rating)"
+                        class="text-lg transition-colors duration-200"
+                        :class="rating <= serviceRatings.websiteUsability ? 'text-blue-400' : 'text-gray-300'"
+                      >
+                        ★
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Follow-up Options -->
+            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Calendar class="w-5 h-5 text-green-600 mr-2" />
+                Follow-up Options
+              </h3>
+              
+              <!-- Follow-up Preferences -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Would you like to schedule a follow-up appointment?</label>
+                <div class="space-y-3">
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="followUpPreference"
+                      value="yes"
+                      class="mr-3 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Yes, I'd like to schedule a follow-up</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="followUpPreference"
+                      value="maybe"
+                      class="mr-3 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Maybe, I'll decide later</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="radio"
+                      v-model="followUpPreference"
+                      value="no"
+                      class="mr-3 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">No, this was a one-time visit</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Follow-up Date Selection (if yes) -->
+              <div v-if="followUpPreference === 'yes'" class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Preferred follow-up timeframe</label>
+                <select
+                  v-model="followUpTimeframe"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select timeframe</option>
+                  <option value="1-week">1 week</option>
+                  <option value="2-weeks">2 weeks</option>
+                  <option value="1-month">1 month</option>
+                  <option value="3-months">3 months</option>
+                  <option value="6-months">6 months</option>
+                  <option value="1-year">1 year</option>
+                  <option value="custom">Custom date</option>
+                </select>
+              </div>
+
+              <!-- Custom Follow-up Date (if custom selected) -->
+              <div v-if="followUpTimeframe === 'custom'" class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Custom follow-up date</label>
+                <input
+                  type="date"
+                  v-model="customFollowUpDate"
+                  :min="getMinFollowUpDate()"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <!-- Additional Services Interest -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">Are you interested in any of these additional services?</label>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="vaccination"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Vaccination</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="dental"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Dental Care</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="grooming"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Grooming</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="additionalServicesInterest"
+                      value="nutrition"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Nutrition Consultation</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Communication Preferences -->
+              <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-3">How would you prefer to be contacted about follow-ups?</label>
+                <div class="space-y-2">
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="communicationPreferences"
+                      value="email"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">Email notifications</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="communicationPreferences"
+                      value="sms"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">SMS reminders</span>
+                  </label>
+                  <label class="flex items-center">
+                    <input
+                      type="checkbox"
+                      v-model="communicationPreferences"
+                      value="app"
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-sm text-gray-700">In-app notifications</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       
         <!-- Navigation Buttons - For desktop and mobile second column -->
@@ -1041,6 +1549,7 @@ import {
   MapPin,
   AlertTriangle,
   AlertCircle,
+  MessageSquare,
 } from "lucide-vue-next"
 import {
   startOfMonth,
@@ -1763,6 +2272,12 @@ const steps = [
     icon: CalendarDays,
     description: "Pick a convenient date and time",
   },
+  {
+    id: "feedback",
+    label: "Feedback",
+    icon: MessageSquare,
+    description: "Share your experience and schedule follow-ups",
+  },
 ]
 
 // Update the petSpecies array with imported images
@@ -1785,6 +2300,20 @@ const selectedDoctor = ref(null)
 const selectedDate = ref(null)
 const selectedTime = ref(null)
 const currentDate = ref(new Date())
+
+// Feedback and follow-up data
+const feedbackRating = ref(0)
+const feedbackComments = ref("")
+const serviceRatings = ref({
+  easeOfBooking: 0,
+  serviceVariety: 0,
+  websiteUsability: 0
+})
+const followUpPreference = ref("")
+const followUpTimeframe = ref("")
+const customFollowUpDate = ref("")
+const additionalServicesInterest = ref([])
+const communicationPreferences = ref([])
 
 // Add these new refs for the connector line positioning
 const stepsContainer = ref(null)
@@ -2886,12 +3415,20 @@ const bookAppointment = async () => {
   
     // Send notification to the user about the booking
     try {
+      // console.log('Starting notification process...');
+      // console.log('Current user:', authStore.user);
+      // console.log('User ID:', authStore.user?.userId);
+      
       // Initialize notification service with the store
       notificationService.setNotificationsStore(notificationsStore);
       
       // Set current user for notification service
       if (authStore.user?.userId) {
         window.currentUser = { userId: authStore.user.userId };
+        // console.log('Set window.currentUser:', window.currentUser);
+      } else {
+        // console.error('No user ID available for notification');
+        return;
       }
       
       const notificationTitle = "Appointment Booked Successfully!";
@@ -2899,8 +3436,15 @@ const bookAppointment = async () => {
         ? `Your Veterinary Health Certificate appointment on ${formatDate(selectedDate.value)} at ${selectedTime.value} has been booked. Please wait for veterinary approval.`
         : `Your appointment for ${petNames.join(', ')} on ${formatDate(selectedDate.value)} at ${selectedTime.value} has been booked. Please wait for veterinary approval.`;
       
+      // console.log('Notification data:', {
+      //   title: notificationTitle,
+      //   body: notificationBody,
+      //   userId: authStore.user?.userId,
+      //   appointmentId: result
+      // });
+      
       // Send notification
-      await notificationService.showNotification(notificationTitle, notificationBody, {
+      const notificationResult = await notificationService.showNotification(notificationTitle, notificationBody, {
         type: 'appointment',
         url: '/user/notifications',
         userId: authStore.user?.userId,
@@ -2911,20 +3455,108 @@ const bookAppointment = async () => {
         skipDuplicateCheck: true
       });
       
+      // console.log('Notification service result:', notificationResult);
+      
       // Also directly store the notification in Firestore as backup
-      await notificationService.storeNotificationInFirestore(notificationTitle, notificationBody, {
+      const storeResult = await notificationService.storeNotificationInFirestore(notificationTitle, notificationBody, {
         type: 'appointment',
         url: '/user/notifications',
         userId: authStore.user?.userId,
         appointmentId: result,
         status: 'pending',
         fromClient: true,
+        deleted: false,
         skipDuplicateCheck: true
       });
       
-      console.log('Notification sent for appointment booking');
+      // console.log('Direct store result:', storeResult);
+      
+      // Additional backup: Direct Firestore save (user)
+      try {
+        const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+        const { db } = await import('@shared/firebase');
+        
+        const notificationData = {
+          userId: authStore.user?.userId,
+          title: notificationTitle,
+          description: notificationBody,
+          type: 'appointment',
+          read: false,
+          url: '/user/notifications',
+          data: {
+            appointmentId: String(result),
+            status: 'pending',
+            fromClient: 'true'
+          },
+          deleted: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        
+        const notificationsRef = collection(db, 'notifications');
+        await addDoc(notificationsRef, notificationData);
+      } catch (directSaveError) {
+        // console.error('Direct Firestore save failed:', directSaveError)
+      }
+      
+      // Notify the veterinarian about the new booking
+      try {
+        const vetUserId = selectedDoctor.value?.userId || selectedDoctor.value?.id
+        if (vetUserId) {
+          const vetTitle = 'New Appointment Request'
+          const vetBody = isVeterinaryHealthCertificateCategory.value
+            ? `A new Veterinary Health Certificate appointment was requested for ${formatDate(selectedDate.value)} at ${selectedTime.value}.`
+            : `A new appointment was requested for ${petNames.join(', ')} on ${formatDate(selectedDate.value)} at ${selectedTime.value}.`
+
+          // Client notification + store
+          await notificationService.showNotification(vetTitle, vetBody, {
+            type: 'appointment',
+            url: '/vet/appointments/vetappointmentapproval',
+            userId: vetUserId,
+            appointmentId: String(result),
+            status: 'pending',
+            fromClient: true,
+            storeInFirestore: true,
+            skipDuplicateCheck: true
+          })
+
+          // Direct Firestore fallback store
+          try {
+            const { addDoc, collection, serverTimestamp } = await import('firebase/firestore')
+            const { db } = await import('@shared/firebase')
+            const vetNotificationData = {
+              userId: vetUserId,
+              title: vetTitle,
+              description: vetBody,
+              type: 'appointment',
+              read: false,
+              url: '/vet/appointments/vetappointmentapproval',
+              data: {
+                appointmentId: String(result),
+                status: 'pending',
+                fromClient: 'true'
+              },
+              deleted: false,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            }
+            const notificationsRef = collection(db, 'notifications')
+            await addDoc(notificationsRef, vetNotificationData)
+          } catch (vetStoreErr) {
+            console.error('Direct Firestore save for vet notification failed:', vetStoreErr)
+          }
+        } else {
+          console.warn('No veterinarian userId found to send booking notification')
+        }
+      } catch (vetNotifyErr) {
+        console.error('Error sending vet notification:', vetNotifyErr)
+      }
+      
+      // console.log('Notification sent for appointment booking');
     } catch (notificationError) {
-      console.error('Error sending notification:', notificationError);
+      // console.error('Error sending notification:', notificationError);
+      // console.error('Error details:', notificationError.message);
+      // console.error('Error stack:', notificationError.stack);
     }
     
     // Show success modal
@@ -3115,6 +3747,43 @@ const isCurrentDayScheduleClosed = computed(() => {
   return false
 })
 
+// Feedback and follow-up methods
+const setRating = (rating) => {
+  feedbackRating.value = rating
+}
+
+const setServiceRating = (aspect, rating) => {
+  serviceRatings.value[aspect] = rating
+}
+
+const getMinFollowUpDate = () => {
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow.toISOString().split('T')[0]
+}
+
+const submitFeedback = async () => {
+  try {
+    // Here you would typically send the feedback to your backend
+    console.log('Feedback submitted:', {
+      rating: feedbackRating.value,
+      comments: feedbackComments.value,
+      serviceRatings: serviceRatings.value,
+      followUpPreference: followUpPreference.value,
+      followUpTimeframe: followUpTimeframe.value,
+      customFollowUpDate: customFollowUpDate.value,
+      additionalServicesInterest: additionalServicesInterest.value,
+      communicationPreferences: communicationPreferences.value
+    })
+    
+    // Show success message or proceed to next step
+    // You can implement your own logic here
+  } catch (error) {
+    console.error('Error submitting feedback:', error)
+  }
+}
+
 // Initialize data on component mount
 onMounted(async () => {
   try {
@@ -3136,6 +3805,14 @@ onMounted(async () => {
     
     // Fetch veterinarians
     await fetchVeterinarians()
+    
+    // Initialize notification service
+    try {
+      notificationService.setNotificationsStore(notificationsStore);
+      console.log('Notification service initialized');
+    } catch (error) {
+      console.error('Error initializing notification service:', error);
+    }
     
     // Position the connector line
     positionConnectorLine()

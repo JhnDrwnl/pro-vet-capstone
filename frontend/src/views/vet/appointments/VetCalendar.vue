@@ -114,22 +114,39 @@
             >
                  <FilterIcon class="w-4 h-4 text-slate-500" />
             </button>
-               <div v-if="showFilters" class="absolute right-0 mt-2 w-48 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200/50 z-10">
-            <div class="py-1">
-              <button 
-                v-for="type in appointmentTypes" 
-                :key="type.value"
-                @click="setFilter(type.value)"
+               <div v-if="showFilters" class="absolute right-0 mt-2 w-56 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-slate-200/50 z-10">
+                 <div class="py-1">
+                   <div class="px-4 py-2 text-xs font-semibold text-slate-500">Type</div>
+                   <button 
+                     v-for="type in appointmentTypes" 
+                     :key="type.value"
+                     @click="setFilter(type.value)"
                      class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 w-full text-left transition-colors duration-200"
-              >
-                {{ type.label }}
-              </button>
-              <button 
-                @click="setFilter('')"
+                   >
+                     {{ type.label }}
+                   </button>
+                   <button 
+                     @click="setFilter('')"
                      class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 w-full text-left transition-colors duration-200"
-              >
-                All Types
-              </button>
+                   >
+                     All Types
+                   </button>
+                   <div class="my-1 border-t border-slate-200"></div>
+                   <div class="px-4 py-2 text-xs font-semibold text-slate-500">Status</div>
+                   <button 
+                     v-for="s in ['pending','approved','rejected','completed','cancelled']" 
+                     :key="s"
+                     @click="setStatusFilter(s)"
+                     class="block capitalize px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 w-full text-left transition-colors duration-200"
+                   >
+                     {{ s }}
+                   </button>
+                   <button 
+                     @click="setStatusFilter('')"
+                     class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 w-full text-left transition-colors duration-200"
+                   >
+                     All Statuses
+                   </button>
                  </div>
                </div>
              </div>
@@ -531,7 +548,7 @@ const router = useRouter();
   const showExportMenu = ref(false);
   const calendarRef = ref(null);
   const showFilters = ref(false);
-  const filters = ref({ type: '' });
+  const filters = ref({ type: '', status: '' });
 const loading = ref(false);
 const showViewFilter = ref(false);
 const viewFilter = ref('upcoming'); // 'upcoming' or 'all'
@@ -804,6 +821,9 @@ const fetchVetAppointments = async () => {
     if (filters.value.type) {
       filtered = filtered.filter(appt => appt.type === filters.value.type);
     }
+    if (filters.value.status) {
+      filtered = filtered.filter(appt => (appt.status || '').toLowerCase() === filters.value.status.toLowerCase());
+    }
   
     return filtered;
   });
@@ -938,6 +958,11 @@ const exportAsCSV = async () => {
 
   const setFilter = (type) => {
     filters.value.type = type;
+    showFilters.value = false;
+  };
+
+  const setStatusFilter = (status) => {
+    filters.value.status = status;
     showFilters.value = false;
   };
 

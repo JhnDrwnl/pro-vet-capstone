@@ -63,8 +63,8 @@
                     ? appointment.serviceNames[0] 
                     : 'Unnamed Service' }}
                 </div>
-                <span :class="getStatusClass(appointment.status)">
-                  {{ formatStatus(appointment.status) }}
+                <span :class="getStatusClass(appointment)">
+                  {{ isExpired(appointment) ? 'Expired' : formatStatus(appointment.status) }}
                 </span>
               </div>
               <div class="text-sm text-gray-700 mb-1">
@@ -83,13 +83,33 @@
                 Created: {{ formatDateTime(appointment.createdAt) }}
               </div>
               
-              <!-- Action buttons - Always show for pending appointments -->
-              <div v-if="appointment.status === 'pending'" class="mt-3 pt-2 border-t border-gray-100 flex justify-end">
+              <!-- Action buttons -->
+              <div class="mt-3 pt-2 border-t border-gray-100 flex justify-end space-x-2">
+                <!-- Cancel button for pending appointments -->
                 <button 
+                  v-if="appointment.status === 'pending'"
                   @click="confirmCancel(appointment)"
                   class="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-full transition-colors duration-200"
                 >
                   Cancel
+                </button>
+                
+                <!-- Feedback button for completed appointments -->
+                <button 
+                  v-if="appointment.status === 'completed'"
+                  @click="openFeedback(appointment)"
+                  class="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-full transition-colors duration-200"
+                >
+                  Leave Feedback
+                </button>
+                
+                <!-- Schedule Follow-up button for completed appointments -->
+                <button 
+                  v-if="appointment.status === 'completed'"
+                  @click="scheduleFollowUp(appointment)"
+                  class="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-full transition-colors duration-200"
+                >
+                  Schedule Follow-up
                 </button>
               </div>
             </div>
@@ -160,6 +180,101 @@
         </div>
       </div>
     </div>
+
+    <!-- Feedback Modal -->
+    <div 
+      v-if="showFeedbackModal" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+      <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900">Appointment Feedback</h2>
+            <button 
+              @click="closeFeedbackModal" 
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <XIcon class="w-6 h-6" />
+            </button>
+          </div>
+          <AppointmentFeedback 
+            :appointment="selectedAppointment" 
+            @close="closeFeedbackModal"
+            @feedback-submitted="onFeedbackSubmitted"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Follow-up Modal -->
+    <div 
+      v-if="showFollowUpModal" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+        <div class="flex flex-col items-center text-center">
+          <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <CalendarIcon class="w-6 h-6 text-green-600" />
+          </div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Schedule Follow-up</h2>
+          <p class="text-gray-600 mb-4">
+            Would you like to schedule a follow-up consultation for 
+            <span class="font-medium">{{ selectedAppointment ? selectedAppointment.petName : '' }}</span>?
+          </p>
+          
+          <!-- Follow-up timing selection -->
+          <div class="w-full mb-4">
+            <label for="follow-up-timing" class="block text-left text-sm font-medium text-gray-700 mb-2">
+              Preferred timing:
+            </label>
+            <select
+              id="follow-up-timing"
+              v-model="followUpTiming"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+            >
+              <option value="">Select timing</option>
+              <option value="1_week">1 week</option>
+              <option value="2_weeks">2 weeks</option>
+              <option value="1_month">1 month</option>
+              <option value="3_months">3 months</option>
+              <option value="6_months">6 months</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          
+          <!-- Additional notes -->
+          <div class="w-full mb-4">
+            <label for="follow-up-notes" class="block text-left text-sm font-medium text-gray-700 mb-2">
+              Additional notes (optional):
+            </label>
+            <textarea
+              id="follow-up-notes"
+              v-model="followUpNotes"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              placeholder="Any specific concerns or topics to discuss..."
+            ></textarea>
+          </div>
+          
+          <div class="flex space-x-3 w-full">
+            <button 
+              @click="closeFollowUpModal" 
+              class="flex-1 py-2 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button 
+              @click="submitFollowUpRequest" 
+              :disabled="followUpLoading || !followUpTiming"
+              class="flex-1 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span v-if="followUpLoading">Scheduling...</span>
+              <span v-else>Schedule Follow-up</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </template>
   
   <script setup>
@@ -172,7 +287,9 @@
   } from 'lucide-vue-next';
   import { useAppointmentStore } from '@/stores/modules/appointmentStore';
   import { useAuthStore } from '@/stores/modules/authStore';
-  import { parseISO, isAfter, format } from 'date-fns';
+  import { useNotificationsStore } from '@/stores/modules/notifications';
+  import { parseISO, format } from 'date-fns';
+  import AppointmentFeedback from '@/components/user/AppointmentFeedback.vue';
   
   const props = defineProps({
     isMobileView: {
@@ -192,15 +309,21 @@
   const error = ref(null);
   const appointments = ref([]);
   const showCancelModal = ref(false);
+  const showFeedbackModal = ref(false);
+  const showFollowUpModal = ref(false);
   const selectedAppointment = ref(null);
   const cancelLoading = ref(false);
   const cancellationReason = ref('');
   const reasonError = ref('');
+  const followUpLoading = ref(false);
+  const followUpTiming = ref('');
+  const followUpNotes = ref('');
   const isVisibleRef = ref(false);
   
   // Store instances
   const appointmentStore = useAppointmentStore();
   const authStore = useAuthStore();
+  const notificationStore = useNotificationsStore();
   
   // Computed property to determine if the panel is visible
   const panelVisibility = computed(() => props.isVisible);
@@ -253,17 +376,21 @@
   };
   
   // UPDATED: Status class function to use consistent colors with processing status
-  const getStatusClass = (status) => {
+  const getStatusClass = (appointment) => {
     const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
-    switch (status?.toLowerCase()) {
+    if (isExpired(appointment)) {
+      return `${baseClasses} bg-orange-100 text-orange-800`;
+    }
+    const status = appointment?.status?.toLowerCase();
+    switch (status) {
       case 'pending':
         return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'processing':
-        return `${baseClasses} bg-blue-100 text-blue-800`;
       case 'approved':
         return `${baseClasses} bg-green-100 text-green-800`;
       case 'completed':
-        return `${baseClasses} bg-purple-100 text-purple-800`;
+        return `${baseClasses} bg-blue-100 text-blue-800`;
+      case 'processing':
+        return `${baseClasses} bg-indigo-100 text-indigo-800`;
       case 'cancelled':
       case 'rejected':
         return `${baseClasses} bg-red-100 text-red-800`;
@@ -272,6 +399,34 @@
       default:
         return `${baseClasses} bg-gray-100 text-gray-800`;
     }
+  };
+
+  // Determine if appointment is expired (past scheduled time) and not final statuses
+  const isExpired = (appointment) => {
+    if (!appointment) return false;
+    const status = (appointment.status || '').toLowerCase();
+    if (['approved','completed','cancelled','rejected','ended'].includes(status)) return false;
+    if (!appointment.date || !appointment.time) return false;
+    const appointmentDate = new Date(appointment.date);
+    const timeStr = String(appointment.time);
+    // Parse end time from range "h:mm AM - h:mm PM"; fallback to first time if missing range
+    const matches = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)(?:\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM))?/i);
+    if (!matches) return false;
+    let endHour, endMinute, endPeriod;
+    if (matches[4]) {
+      endHour = parseInt(matches[4]);
+      endMinute = parseInt(matches[5]);
+      endPeriod = matches[6].toUpperCase();
+    } else {
+      endHour = parseInt(matches[1]);
+      endMinute = parseInt(matches[2]);
+      endPeriod = matches[3].toUpperCase();
+    }
+    if (endPeriod === 'PM' && endHour !== 12) endHour += 12;
+    if (endPeriod === 'AM' && endHour === 12) endHour = 0;
+    const endDateTime = new Date(appointmentDate);
+    endDateTime.setHours(endHour, endMinute, 0, 0);
+    return new Date() > endDateTime;
   };
   
   const fetchUserAppointments = async () => {
@@ -284,9 +439,9 @@
     error.value = null;
     
     try {
-      console.log('Fetching appointments for user:', authStore.user.userId);
+      // console.log('Fetching appointments for user:', authStore.user.userId);
       const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
-      console.log('Fetched appointments:', userAppointments);
+      // console.log('Fetched appointments:', userAppointments);
       appointments.value = userAppointments;
       
       // Sort appointments by date (newest first)
@@ -364,6 +519,77 @@
       cancelLoading.value = false;
     }
   };
+
+  // Feedback methods
+  const openFeedback = (appointment) => {
+    selectedAppointment.value = appointment;
+    showFeedbackModal.value = true;
+  };
+
+  const closeFeedbackModal = () => {
+    showFeedbackModal.value = false;
+    selectedAppointment.value = null;
+  };
+
+  const onFeedbackSubmitted = (feedbackData) => {
+    console.log('Feedback submitted:', feedbackData);
+    // You can add additional logic here if needed
+  };
+
+  // Follow-up methods
+  const scheduleFollowUp = (appointment) => {
+    selectedAppointment.value = appointment;
+    followUpTiming.value = '';
+    followUpNotes.value = '';
+    showFollowUpModal.value = true;
+  };
+
+  const closeFollowUpModal = () => {
+    showFollowUpModal.value = false;
+    selectedAppointment.value = null;
+    followUpTiming.value = '';
+    followUpNotes.value = '';
+  };
+
+  const submitFollowUpRequest = async () => {
+    if (!selectedAppointment.value || !followUpTiming.value) return;
+    
+    followUpLoading.value = true;
+    
+    try {
+      const notificationData = {
+        type: 'follow_up_request',
+        title: 'Follow-up Consultation Requested',
+        message: `Follow-up consultation requested for ${selectedAppointment.value.petName} in ${followUpTiming.value.replace('_', ' ')}`,
+        userId: selectedAppointment.value.userId,
+        doctorId: selectedAppointment.value.doctorId,
+        appointmentId: selectedAppointment.value.id,
+        data: {
+          followUpTiming: followUpTiming.value,
+          followUpNotes: followUpNotes.value,
+          petName: selectedAppointment.value.petName,
+          serviceName: selectedAppointment.value.serviceNames?.[0] || 'Veterinary Service',
+          originalAppointmentDate: selectedAppointment.value.date
+        },
+        status: 'pending',
+        createdAt: new Date()
+      };
+      
+      await notificationStore.createNotification(notificationData);
+      
+      // Close modal and show success message
+      closeFollowUpModal();
+      
+      // You can add a success toast or message here
+      console.log('Follow-up request submitted successfully');
+      
+    } catch (error) {
+      console.error('Error submitting follow-up request:', error);
+      error.value = 'Failed to submit follow-up request. Please try again.';
+    } finally {
+      followUpLoading.value = false;
+    }
+  };
   
   // Fetch appointments when component is mounted
   onMounted(() => {
@@ -374,7 +600,7 @@
   watch(() => props.isVisible, (newValue) => {
     isVisibleRef.value = newValue;
     if (isVisibleRef.value && authStore.user) {
-      console.log('Panel became visible, fetching appointments');
+      // console.log('Panel became visible, fetching appointments');
       fetchUserAppointments();
     }
   });

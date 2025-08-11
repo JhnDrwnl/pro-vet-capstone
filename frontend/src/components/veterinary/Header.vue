@@ -32,20 +32,21 @@
             class="text-gray-500 hover:text-gray-700 transition-colors duration-200 relative"
           >
             <BellIcon class="h-5 w-5" />
-            <span v-if="totalNotificationsCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-              {{ totalNotificationsCount }}
+            <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+              {{ unreadCount }}
             </span>
           </button>
-
-          <div
-            v-if="isNotificationsOpen"
-            class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
-          >
-            <div v-if="totalNotificationsCount === 0" class="px-4 py-2 text-sm text-gray-700">No new notifications</div>
-            <div v-else>
-              <!-- Notification content -->
-            </div>
-          </div>
+          <!-- Reuse common NotificationPanel -->
+          <NotificationPanel
+            :isMobileView="isSmallScreen"
+            :isVisible="isNotificationsOpen"
+            :isRightPanel="true"
+            topOffset="top-16"
+            heightClass="h-[calc(100vh-4rem)]"
+            :showActionButton="true"
+            :isVetContext="true"
+            @close="isNotificationsOpen = false"
+          />
         </div>
 
         <!-- Profile Dropdown -->
@@ -137,7 +138,9 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useProfileStore } from '@/stores/modules/profileStore';
+import { useNotificationsStore } from '@/stores/modules/notifications';
 import Breadcrumb from '@/components/common/Breadcrumb.vue';
+import NotificationPanel from '@/components/common/NotificationPanel.vue';
 import { 
   ChevronDownIcon,
   ChevronRightIcon,
@@ -173,22 +176,33 @@ const profileStore = useProfileStore();
 
 const isDropdownOpen = ref(false);
 const isNotificationsOpen = ref(false);
+const notificationsStore = useNotificationsStore();
+let unsubscribe = null;
 
 const userPhotoURL = computed(() => {
   return profileStore.profile?.photoURL || 'https://via.placeholder.com/40';
 });
 
-const totalNotificationsCount = ref(0);
+const vetUserId = computed(() => authStore.user?.userId || authStore.currentUser?.userId || null);
+const unreadCount = computed(() => notificationsStore.getUnreadCount || 0);
 
 onMounted(async () => {
-  if (authStore.user?.userId) {
-    await profileStore.fetchUserProfile(authStore.user.userId);
+  const id = vetUserId.value;
+  if (id) {
+    await profileStore.fetchUserProfile(id);
+    await notificationsStore.fetchNotifications(id);
+    if (!unsubscribe) {
+      unsubscribe = notificationsStore.subscribeToNotifications(id);
+    }
   }
 });
 
-watch(() => authStore.user, async (newUser) => {
-  if (newUser?.userId) {
+watch(() => authStore.user, async (newUser, oldUser) => {
+  if (newUser?.userId && newUser?.userId !== oldUser?.userId) {
     await profileStore.fetchUserProfile(newUser.userId);
+    await notificationsStore.fetchNotifications(newUser.userId);
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    unsubscribe = notificationsStore.subscribeToNotifications(newUser.userId);
   }
 }, { immediate: true });
 
@@ -213,6 +227,7 @@ const closeDropdown = () => {
 const handleLogout = async () => {
   try {
     await authStore.logoutUser();
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
     closeDropdown();
     router.push('/auth/login');
   } catch (error) {

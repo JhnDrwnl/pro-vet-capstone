@@ -671,6 +671,49 @@ export const useAppointmentStore = defineStore('appointment', {
       this.loading = false;
       this.lastVisible = null;
       this.hasMore = true;
+    },
+
+    /**
+     * Save appointment feedback
+     * @param {Object} feedbackData - The feedback data
+     * @returns {Object|null} - The saved feedback object or null if failed
+     */
+    async saveAppointmentFeedback(feedbackData) {
+      this.loading = true;
+      this.error = null;
+      
+      try {
+        const db = getFirestore();
+        const feedbackRef = collection(db, 'appointment_feedback');
+        
+        // Add server timestamp
+        const feedbackWithTimestamp = {
+          ...feedbackData,
+          createdAt: serverTimestamp()
+        };
+        
+        const docRef = await addDoc(feedbackRef, feedbackWithTimestamp);
+        
+        // Get the saved document
+        const savedFeedbackDoc = await getDoc(docRef);
+        const savedFeedbackData = savedFeedbackDoc.data();
+        
+        // Convert Firestore timestamps to JavaScript Date objects
+        const formattedFeedback = {
+          id: docRef.id,
+          ...savedFeedbackData,
+          submittedAt: savedFeedbackData.submittedAt instanceof Timestamp ? savedFeedbackData.submittedAt.toDate() : savedFeedbackData.submittedAt,
+          createdAt: savedFeedbackData.createdAt instanceof Timestamp ? savedFeedbackData.createdAt.toDate() : new Date()
+        };
+        
+        return formattedFeedback;
+      } catch (error) {
+        console.error('Error saving appointment feedback:', error);
+        this.error = error.message;
+        return null;
+      } finally {
+        this.loading = false;
+      }
     }
   }
 });

@@ -1,13 +1,13 @@
 <!-- components/common/NotificationPanel.vue -->
 <template>
-  <Transition name="slide-fade">
+  <Transition :name="isRightPanel ? 'slide-right' : 'slide-left'">
     <div 
       v-if="isVisible"
       class="bg-white overflow-hidden z-30 transition-all duration-300 ease-in-out flex flex-col fixed"
       :class="[
         isMobileView 
           ? 'inset-0 pt-14 pb-20' 
-          : 'left-20 top-4 h-[calc(100vh-2rem)] w-[400px] border border-gray-100 rounded-2xl shadow-sm'
+          : desktopPositionClass
       ]"
     >
       <!-- Notification Detail View -->
@@ -44,13 +44,36 @@
                 <p>{{ selectedNotification.content }}</p>
               </div>
               
-              <!-- Action buttons if needed -->
-              <div v-if="selectedNotification.actionUrl" class="mt-6">
+              <!-- Action button (vet side only) -->
+              <div v-if="showActionButton" class="mt-6">
                 <button 
                   @click="handleActionClick(selectedNotification)"
                   class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
                 >
                   View Details
+                </button>
+              </div>
+
+              <!-- Feedback and Follow-up options for completed appointments (user side only) -->
+              <div v-if="showFeedbackOptions" class="mt-6 space-y-3">
+                <h4 class="text-sm font-medium text-gray-700">What would you like to do next?</h4>
+                
+                <!-- Feedback button -->
+                <button 
+                  @click="openFeedback(selectedNotification)"
+                  class="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center"
+                >
+                  <MessageCircleIcon class="w-4 h-4 mr-2" />
+                  Leave Feedback
+                </button>
+                
+                <!-- Follow-up button -->
+                <button 
+                  @click="scheduleFollowUp(selectedNotification)"
+                  class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 flex items-center justify-center"
+                >
+                  <CalendarIcon class="w-4 h-4 mr-2" />
+                  Schedule Follow-up
                 </button>
               </div>
             </div>
@@ -63,13 +86,24 @@
         <!-- Notification Header -->
         <div class="p-6 flex justify-between items-center">
           <h2 class="text-xl font-semibold">Notifications</h2>
-          <button 
-            v-if="isMobileView"
-            @click="closeNotifications"
-            class="text-gray-400 hover:text-gray-600"
-          >
-            <XIcon class="w-6 h-6" />
-          </button>
+          <div class="flex items-center gap-2">
+            <button 
+              @click="markAllAsRead"
+              :disabled="loading || !hasUnreadNotifications"
+              class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Mark all as read"
+            >
+              <CheckCircleIcon class="w-4 h-4 text-blue-600" />
+              <span class="hidden sm:inline">Mark all as read</span>
+            </button>
+            <button 
+              v-if="isMobileView"
+              @click="closeNotifications"
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <XIcon class="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         <!-- Notification Filters -->
@@ -127,12 +161,21 @@
         <div class="px-6 overflow-y-auto flex-grow">
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-semibold">Recent Notifications</h3>
-            <span v-if="loading || isRefreshing" class="text-xs text-gray-500">
-              {{ isRefreshing ? 'Refreshing...' : 'Loading...' }}
-            </span>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="refreshNotifications"
+                class="text-xs text-blue-600 hover:text-blue-800 p-1"
+                title="Refresh notifications"
+              >
+                <RefreshCwIcon class="w-3 h-3" />
+              </button>
+              <span v-if="loading || isRefreshing" class="text-xs text-gray-500">
+                {{ isRefreshing ? 'Refreshing...' : 'Loading...' }}
+              </span>
+            </div>
           </div>
           
-          <div v-if="filteredNotifications.length > 0">
+          <div v-if="filteredNotifications && filteredNotifications.length > 0">
             <div 
               v-for="notification in filteredNotifications" 
               :key="notification.id"
@@ -142,15 +185,21 @@
               ]"
               @click="handleNotificationClick(notification)"
             >
-              <div 
-                :class="[
-                  'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
-                  'aspect-square',
-                  getNotificationColor(notification.type)
-                ]"
-                class="mr-5" 
-              >
-                <component :is="getNotificationIcon(notification.type)" class="w-5 h-5" />
+              <div class="mr-5 relative">
+                <div 
+                  :class="[
+                    'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
+                    'aspect-square',
+                    getNotificationColor(notification.type)
+                  ]"
+                >
+                  <component :is="getNotificationIcon(notification.type)" class="w-5 h-5" />
+                </div>
+                <!-- Status badge overlay for appointment notifications -->
+                <div v-if="notification.type==='appointment'" class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
+                     :class="getAppointmentStatusColor(notification)">
+                  <component :is="getAppointmentStatusIcon(notification)" class="w-3 h-3" />
+                </div>
               </div>
               <div class="flex-grow">
                 <div class="font-medium">{{ notification.title }}</div>
@@ -195,26 +244,44 @@ import {
   ArrowLeftIcon,
   RefreshCwIcon,
   LoaderIcon,
-  Trash as TrashIcon
+  Trash as TrashIcon,
+  Clock as ClockIcon,
+  XCircle as XCircleIcon,
+  Ban as BanIcon,
+  ArrowLeftRight as ArrowLeftRightIcon,
+  MessageCircle as MessageCircleIcon
 } from 'lucide-vue-next';
 import { useNotificationsStore } from '../../stores/modules/notifications';
-import { useRouter } from 'vue-router';
+import { useAuthStore } from '../../stores/modules/authStore';
+import { useRouter, useRoute } from 'vue-router';
 
 const props = defineProps({
-  isMobileView: {
-    type: Boolean,
-    default: false
-  },
-  isVisible: {
-    type: Boolean,
-    default: false
-  }
+  isMobileView: { type: Boolean, default: false },
+  isVisible: { type: Boolean, default: false },
+  // New: control side/offset for desktop
+  isRightPanel: { type: Boolean, default: false },
+  topOffset: { type: String, default: 'top-4' },
+  widthClass: { type: String, default: 'w-[400px]' },
+  leftOffset: { type: String, default: 'left-20' },
+  rightOffset: { type: String, default: 'right-4' },
+  heightClass: { type: String, default: 'h-[calc(100vh-2rem)]' },
+  // whether to show the "View Details" action button (vet side)
+  showActionButton: { type: Boolean, default: false },
+  // explicit vet context (overrides role check)
+  isVetContext: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['close']);
+// Desktop positioning class
+const desktopPositionClass = computed(() => {
+  const side = props.isRightPanel ? props.rightOffset : props.leftOffset;
+  return `${side} ${props.topOffset} ${props.heightClass} ${props.widthClass} border border-gray-100 rounded-2xl shadow-sm`;
+});
 
 const router = useRouter();
+const route = useRoute();
 const notificationsStore = useNotificationsStore();
+const authStore = useAuthStore();
 const filterQuery = ref('');
 const isFiltering = ref(false);
 const filterStatus = ref('');
@@ -226,7 +293,15 @@ const isRefreshing = ref(false);
 // Computed properties
 const loading = computed(() => notificationsStore.loading);
 const filteredNotifications = computed(() => {
-  return notificationsStore.getFilteredNotifications(filterType.value, filterQuery.value);
+  const filtered = notificationsStore.getFilteredNotifications(filterType.value, filterQuery.value);
+  // console.log('Filtered notifications computed:', {
+  //   filterType: filterType.value,
+  //   filterQuery: filterQuery.value,
+  //   totalNotifications: notificationsStore.notifications.length,
+  //   filteredCount: filtered.length,
+  //   filteredNotifications: filtered
+  // });
+  return filtered;
 });
 
 // Add this computed property to watch for changes in the notifications array
@@ -326,6 +401,50 @@ const getNotificationIcon = (type) => {
   }
 };
 
+// Derive appointment status color/icon
+const extractAppointmentStatus = (n) => {
+  return (n?.status || n?.data?.status || '').toString().toLowerCase();
+};
+
+const getAppointmentStatusColor = (n) => {
+  const s = extractAppointmentStatus(n);
+  switch (s) {
+    case 'approved':
+      return 'bg-green-500 text-white';
+    case 'pending':
+      return 'bg-yellow-500 text-white';
+    case 'rejected':
+      return 'bg-red-500 text-white';
+    case 'completed':
+      return 'bg-blue-500 text-white';
+    case 'cancelled':
+      return 'bg-gray-500 text-white';
+    case 'expired':
+      return 'bg-orange-500 text-white';
+    default:
+      return 'bg-slate-400 text-white';
+  }
+};
+
+const getAppointmentStatusIcon = (n) => {
+  const s = extractAppointmentStatus(n);
+  switch (s) {
+    case 'approved':
+    case 'completed':
+      return CheckCircleIcon;
+    case 'pending':
+      return ClockIcon;
+    case 'rejected':
+      return XCircleIcon;
+    case 'cancelled':
+      return BanIcon;
+    case 'expired':
+      return AlertCircleIcon;
+    default:
+      return BellIcon;
+  }
+};
+
 const handleNotificationClick = async (notification) => {
   // Mark as read in Firestore
   if (!notification.read) {
@@ -341,16 +460,50 @@ const closeNotificationDetail = () => {
 };
 
 const handleActionClick = (notification) => {
+  // If explicit URL provided, use it
   if (notification.url) {
+    const targetUrl = notification.url;
     closeNotifications();
-    router.push(notification.url);
+    setTimeout(() => router.push(targetUrl), 0);
+    return;
+  }
+
+  // Smart routing by type/status (appointment → user or vet side)
+  const type = (notification.type || notification.data?.type || '').toLowerCase();
+  const status = (notification.status || notification.data?.status || '').toLowerCase();
+  const appointmentId = notification.appointmentId || notification.data?.appointmentId || notification.data?.id;
+
+  if (type === 'appointment' || appointmentId) {
+    // If current user is a vet, go to vet approval; otherwise, user notifications page
+    const isVet = props.isVetContext || (authStore.user?.role || authStore.user?.userType || '').toLowerCase().includes('vet');
+    if (isVet) {
+      const targetByName = { name: 'vetappointmentapproval', query: appointmentId ? { focus: String(appointmentId) } : {} };
+      const targetByPath = { path: '/vet/appointments/vetappointmentapproval', query: appointmentId ? { focus: String(appointmentId) } : {} };
+      closeNotifications();
+      setTimeout(() => {
+        router.push(targetByName).catch(() => router.push(targetByPath)).catch(() => {});
+      }, 30);
+      // Attempt to scroll/focus after small delay
+      setTimeout(() => {
+        try {
+          const el = document.getElementById(`appt-${appointmentId}`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch (e) {}
+      }, 800);
+    } else {
+      closeNotifications();
+      setTimeout(() => {
+        router.push({ name: 'Notifications' }).catch(() => router.push('/user/notifications')).catch(() => {});
+      }, 30);
+    }
+    return;
   }
 };
 
 const markAllAsRead = async () => {
   if (!hasUnreadNotifications.value) return;
   
-  const user = window.currentUser || null;
+  const user = authStore.user || null;
   if (user && user.userId) {
     await notificationsStore.markAllAsRead(user.userId);
   }
@@ -360,7 +513,7 @@ const refreshNotifications = async () => {
   if (isRefreshing.value) return;
   
   isRefreshing.value = true;
-  const user = window.currentUser || null;
+  const user = authStore.user || null;
   
   if (user && user.userId) {
     try {
@@ -398,21 +551,23 @@ const deleteNotification = async (notificationId) => {
 
 // Lifecycle hooks
 onMounted(async () => {
-  const user = window.currentUser || null;
+  const user = authStore.user || null;
   
   if (user && user.userId) {
     // Set up a small delay to let the animation complete first
     setTimeout(async () => {
-      console.log('Attempting to fetch notifications for user:', user.userId);
+      // console.log('Attempting to fetch notifications for user:', user.userId);
       
       try {
         await notificationsStore.fetchNotifications(user.userId);
-        console.log('Notifications fetched successfully');
+        // console.log('Notifications fetched successfully');
+        // console.log('Current notifications in store:', notificationsStore.notifications);
+        // console.log('Filtered notifications:', filteredNotifications.value);
       } catch (error) {
-        console.error('Error fetching notifications:', error);
+        // console.error('Error fetching notifications:', error);
         
         if (error.message && error.message.includes('requires an index')) {
-          console.warn('Firestore index required. Please create the index using the link in the error message above.');
+          // console.warn('Firestore index required. Please create the index using the link in the error message above.');
         }
       }
       
@@ -420,11 +575,11 @@ onMounted(async () => {
       try {
         unsubscribe.value = notificationsStore.subscribeToNotifications(user.userId);
       } catch (error) {
-        console.error('Error setting up notifications subscription:', error);
+        // console.error('Error setting up notifications subscription:', error);
       }
     }, 300); // 300ms matches the transition duration
   } else {
-    console.warn('No user found or user ID missing. Cannot fetch notifications.');
+    // console.warn('No user found or user ID missing. Cannot fetch notifications.');
   }
 });
 
@@ -439,19 +594,26 @@ onUnmounted(() => {
 // Watch for visibility changes to refresh notifications
 watch(() => props.isVisible, (newValue) => {
   if (newValue) {
+    // console.log('Notification panel became visible, refreshing notifications...');
     // Reset selected notification when panel is opened
     selectedNotification.value = null;
     
     // Fetch notifications immediately when panel becomes visible
-    const user = window.currentUser || null;
+    const user = authStore.user || null;
     if (user && user.userId) {
+      // console.log('Fetching notifications for user:', user.userId);
       // Don't clear notifications here, just fetch new ones
-      notificationsStore.fetchNotifications(user.userId);
+      notificationsStore.fetchNotifications(user.userId).then(() => {
+        // console.log('Notifications refreshed when panel became visible');
+        // console.log('Current notifications:', notificationsStore.notifications);
+      });
       
       // Ensure we have an active subscription
       if (!unsubscribe.value) {
         unsubscribe.value = notificationsStore.subscribeToNotifications(user.userId);
       }
+    } else {
+      // console.warn('No user found when panel became visible');
     }
   } else {
     selectedNotification.value = null;
@@ -469,39 +631,35 @@ watch(notificationsCount, (newCount, oldCount) => {
 
 // Add this watch to refresh the UI when unread count changes
 watch(unreadCount, (newCount, oldCount) => {
-  console.log(`Unread count changed from ${oldCount} to ${newCount}`);
+  // console.log(`Unread count changed from ${oldCount} to ${newCount}`);
 });
+
+// Watch for auth store user changes
+watch(() => authStore.user, (newUser, oldUser) => {
+  if (newUser && newUser.userId && (!oldUser || oldUser.userId !== newUser.userId)) {
+    // console.log('User changed, fetching notifications for new user:', newUser.userId);
+    
+    // Clean up existing subscription
+    if (unsubscribe.value) {
+      unsubscribe.value();
+      unsubscribe.value = null;
+    }
+    
+    // Fetch notifications for new user
+    notificationsStore.fetchNotifications(newUser.userId).then(() => {
+      // console.log('Notifications fetched for new user');
+    });
+    
+    // Set up new subscription
+    unsubscribe.value = notificationsStore.subscribeToNotifications(newUser.userId);
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>
-.slide-fade-enter-active,
-.slide-fade-leave-active {
-  transition: all 0.3s ease;
-}
+.slide-right-enter-active, .slide-right-leave-active { transition: transform 0.25s ease, opacity 0.25s ease; }
+.slide-right-enter-from, .slide-right-leave-to { transform: translateX(24px); opacity: 0; }
 
-.slide-fade-enter-from,
-.slide-fade-leave-to {
-  transform: translateX(-20px);
-  opacity: 0;
-}
-
-/* Add slide-out animation */
-.v-leave-active {
-  transition: all 0.3s ease-in-out;
-}
-
-.v-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-/* Add slide-in animation */
-.v-enter-active {
-  transition: all 0.3s ease-in-out;
-}
-
-.v-enter-from {
-  opacity: 0;
-  transform: translateX(20px);
-}
+.slide-left-enter-active, .slide-left-leave-active { transition: transform 0.25s ease, opacity 0.25s ease; }
+.slide-left-enter-from, .slide-left-leave-to { transform: translateX(-24px); opacity: 0; }
 </style>

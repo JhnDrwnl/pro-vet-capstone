@@ -83,7 +83,6 @@ export const useNotificationsStore = defineStore("notifications", {
         const q = query(
           notificationsRef,
           where("userId", "==", userId),
-          where("deleted", "==", false),
           orderBy("createdAt", "desc"),
           limit(50),
         )
@@ -93,6 +92,11 @@ export const useNotificationsStore = defineStore("notifications", {
 
         querySnapshot.forEach((doc) => {
           const data = doc.data()
+
+          // Skip deleted notifications; default deleted to false when missing
+          if (data.deleted === true) {
+            return
+          }
 
           // Skip if already processed
           if (this.processedIds.has(doc.id)) {
@@ -114,12 +118,12 @@ export const useNotificationsStore = defineStore("notifications", {
             date: date,
             url: data.url || null,
             data: data.data || {},
-            deleted: data.deleted || false,
+            deleted: data.deleted === true ? true : false,
           })
         })
 
-        // Filter out deleted notifications
-        const validNotifications = notifications.filter((n) => !n.deleted)
+        // Filter out deleted notifications (treat missing deleted flag as false)
+        const validNotifications = notifications.filter((n) => n.deleted !== true)
 
         // Merge with existing notifications, avoiding duplicates
         const existingIds = new Set(this.notifications.map((n) => n.id))
@@ -135,7 +139,7 @@ export const useNotificationsStore = defineStore("notifications", {
         this.notifications = [...updatedNotifications, ...newNotifications]
 
         // Filter out any deleted notifications
-        this.notifications = this.notifications.filter((n) => !n.deleted)
+        this.notifications = this.notifications.filter((n) => n.deleted !== true)
 
         // Sort by date (newest first)
         this.notifications.sort((a, b) => {
@@ -176,7 +180,6 @@ export const useNotificationsStore = defineStore("notifications", {
       const q = query(
         notificationsRef,
         where("userId", "==", userId),
-        where("deleted", "==", false),
         orderBy("createdAt", "desc"),
         limit(50),
       )

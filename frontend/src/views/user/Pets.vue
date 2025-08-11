@@ -1,22 +1,21 @@
 <template>
-  <div class="space-y-6">
-    <!-- Show loading spinner during initial data load -->
+  <div class="min-h-screen flex flex-col bg-gray-50 -mt-4 md:mt-0">
+    <div class="flex flex-col flex-1 px-0 md:px-4 pb-20 pt-14 md:pt-0 md:pb-4">
     <LoadingSpinner v-if="isLoading" isOverlay text="Loading pets data..." />
 
-    <!-- Only show content when data is loaded -->
-    <div v-if="!isLoading">
-      <!-- Pet List View -->
+      <div v-if="!isLoading" class="grid grid-cols-1 gap-3 md:gap-4">
+        <!-- Left Column -->
+        <div class="flex flex-col gap-3 md:gap-4">
+          <!-- List view -->
       <div v-if="!selectedPetId">
-        <div class="flex flex-wrap gap-2 pb-4">
-          <!-- Only Add Pet button -->
+            <div class="flex items-center justify-between pb-4">
+              <h2 class="text-lg font-semibold text-gray-900">My Pets</h2>
           <button
             @click.prevent="addNewPet"
             :disabled="hasUnsavedNewPet"
             :class="[
               'px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center',
-              hasUnsavedNewPet 
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  hasUnsavedNewPet ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
             ]"
             type="button"
             :title="hasUnsavedNewPet ? 'Please save the current pet before adding a new one' : 'Add a new pet'"
@@ -26,177 +25,130 @@
           </button>
         </div>
         
-        <!-- Empty State -->
+            <!-- Empty -->
         <div v-if="localPets.length === 0" class="text-center py-12">
           <p class="text-gray-500">No pets added yet. Click the + button to add a pet.</p>
         </div>
         
-        <!-- Pet List -->
-        <div v-else class="space-y-3">
-          <div v-for="pet in localPets" :key="pet.id || pet.tempId" class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
-            <div class="flex items-center">
-              <div class="w-12 h-12 rounded-full overflow-hidden mr-3">
-                <img
-                  v-if="pet.photoURL && !pet.isNew"
-                  :src="pet.photoURL"
-                  :alt="pet.name"
-                  class="w-full h-full object-cover"
-                />
+            <!-- Bento Grid -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div
+                v-for="(pet, index) in localPets"
+                :key="pet.id || pet.tempId"
+                class="group relative overflow-hidden rounded-2xl border bg-white/90 backdrop-blur shadow-sm hover:shadow-lg transition-all"
+                :class="getBentoCardClasses(index)"
+              >
+                <!-- Accent stripe -->
+                <div class="absolute inset-x-0 top-0 h-1" :class="getCardStripe(index)"></div>
+
+                <!-- Header with avatar -->
+                <div class="p-5 pt-7">
+                  <div class="flex items-start gap-4">
+                    <div class="relative -mt-7 w-16 h-16 rounded-full overflow-hidden ring-2 ring-white shadow">
+                      <img v-if="pet.photoURL && !pet.isNew" :src="pet.photoURL" :alt="pet.name" class="w-full h-full object-cover" />
                 <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
-                  <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27%3E%3Cg fill=%27none%27 stroke=%27currentColor%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27%3E%3Ccircle cx=%2711%27 cy=%274%27 r=%272%27/%3E%3Ccircle cx=%2718%27 cy=%278%27 r=%272%27/%3E%3Ccircle cx=%2720%27 cy=%2716%27 r=%272%27/%3E%3Cpath d=%27M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z%27/%3E%3C/g%3E%3C/svg%3E" alt="Pet icon" class="w-8 h-8" />
-                </div>
-              </div>
-              <div>
-                <h3 class="font-medium text-gray-900">
-                  {{ pet.isNew ? 'New Pet' : pet.name }}
-                </h3>
-                <p class="text-sm text-gray-500">
-                  {{ !pet.isNew && pet.breed ? pet.breed : 'Breed not specified' }}
-                  {{ !pet.isNew && pet.breed && formatPetAge(pet) ? ' • ' : '' }}
-                  {{ !pet.isNew ? formatPetAge(pet) : '' }}
-                </p>
-              </div>
-            </div>
-            <div class="flex space-x-2">
-              <button 
-                @click="viewPet(pet)"
-                type="button"
-                class="p-2 text-blue-500 hover:text-blue-700"
-                title="View pet details"
-                v-if="!pet.isNew"
-              >
-                <EyeIcon class="w-5 h-5" />
-              </button>
-              <button 
-                @click="editPet(pet)"
-                type="button"
-                class="p-2 text-gray-500 hover:text-gray-700"
-                title="Edit pet"
-              >
-                <EditIcon class="w-5 h-5" />
-              </button>
-              <!-- Only show delete button for existing pets (not new ones) in the list view -->
-              <button 
-                v-if="!pet.isNew"
-                @click="confirmDeletePet(pet)"
-                type="button"
-                class="p-2 text-red-500 hover:text-red-600"
-                title="Delete pet"
-              >
-                <Trash2 class="w-5 h-5" />
-              </button>
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Ccircle cx='11' cy='4' r='2'/%3E%3Ccircle cx='18' cy='8' r='2'/%3E%3Ccircle cx='20' cy='16' r='2'/%3E%3Cpath d='M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z'/%3E%3C/g%3E%3C/svg%3E" alt="Pet icon" class="w-7 h-7" />
+                      </div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <h3 class="text-base font-semibold text-gray-900 truncate">{{ pet.isNew ? 'New Pet' : pet.name }}</h3>
+                        <span v-if="pet.isNew" class="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">New</span>
+                      </div>
+                      <div class="mt-1 text-xs text-gray-500 line-clamp-1">{{ pet.breed || 'No breed' }} • {{ formatPetAge(pet) }}</div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button v-if="!pet.isNew" @click.stop="viewPet(pet)" class="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100" title="View">
+                        <EyeIcon class="w-4 h-4" />
+                      </button>
+                      <button @click.stop="editPet(pet)" class="p-1.5 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100" title="Edit">
+                        <EditIcon class="w-4 h-4" />
+                      </button>
+                      <button v-if="!pet.isNew" @click.stop="confirmDeletePet(pet)" class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" title="Delete">
+                        <Trash2 class="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Info grid -->
+                  <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    <div class="rounded-lg border bg-white/70 p-2">
+                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Species</div>
+                      <div class="font-medium text-gray-800">{{ pet.species || '—' }}</div>
+                    </div>
+                    <div class="rounded-lg border bg-white/70 p-2">
+                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Gender</div>
+                      <div class="font-medium text-gray-800">{{ pet.gender ? formatGender(pet.gender) : '—' }}</div>
+                    </div>
+                    <div class="rounded-lg border bg-white/70 p-2">
+                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Weight</div>
+                      <div class="font-medium text-gray-800">{{ pet.weight ? pet.weight + ' kg' : '—' }}</div>
+                    </div>
+                    <div class="rounded-lg border bg-white/70 p-2">
+                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Records</div>
+                      <div class="font-medium text-gray-800">{{ (pet.medicalHistory?.length || 0) + (pet.vaccinations?.length || 0) }}</div>
+                    </div>
+                  </div>
+
+                  <!-- Footer -->
+                  <div class="mt-4 flex items-center justify-between">
+                    <div class="flex flex-wrap gap-1 text-[10px] text-gray-600">
+                      <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ pet.species || 'Species' }}</span>
+                      <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ pet.breed || 'Breed' }}</span>
+                    </div>
+                    <router-link to="/user/userappointments" class="px-3 py-1.5 rounded-full bg-indigo-600 text-white text-[11px] hover:bg-indigo-700">Book</router-link>
+                  </div>
             </div>
           </div>
         </div>
       </div>
   
-      <!-- Selected Pet Details -->
-      <div v-else-if="selectedLocalPet" class="space-y-6">
+          <!-- Details view -->
+          <div v-else class="space-y-6">
         <div class="flex items-center mb-4">
-          <button 
-            @click="backToList"
-            type="button"
-            class="mr-4 text-gray-500 hover:text-gray-700"
-          >
+              <button @click="backToList" type="button" class="mr-4 text-gray-500 hover:text-gray-700">
             <ArrowLeftIcon class="w-5 h-5" />
           </button>
           <div class="relative group mr-4">
-            <div v-if="selectedLocalPet.photoURL && !selectedLocalPet.isNew" class="w-20 h-20 rounded-full overflow-hidden">
-              <img
-                :src="selectedLocalPet.photoURL"
-                :alt="selectedLocalPet.name"
-                class="w-full h-full object-cover"
-              />
+                <div v-if="selectedLocalPet?.photoURL && !selectedLocalPet.isNew" class="w-20 h-20 rounded-full overflow-hidden">
+                  <img :src="selectedLocalPet.photoURL" :alt="selectedLocalPet.name" class="w-full h-full object-cover" />
             </div>
             <div v-else class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-              <img src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27%3E%3Cg fill=%27none%27 stroke=%27currentColor%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27%3E%3Ccircle cx=%2711%27 cy=%274%27 r=%272%27/%3E%3Ccircle cx=%2718%27 cy=%278%27 r=%272%27/%3E%3Ccircle cx=%2720%27 cy=%2716%27 r=%272%27/%3E%3Cpath d=%27M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z%27/%3E%3C/g%3E%3C/svg%3E" alt="Pet icon" class="w-16 h-16" />
+                  <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Ccircle cx='11' cy='4' r='2'/%3E%3Ccircle cx='18' cy='8' r='2'/%3E%3Ccircle cx='20' cy='16' r='2'/%3E%3Cpath d='M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z'/%3E%3C/g%3E%3C/svg%3E" alt="Pet icon" class="w-16 h-16" />
             </div>
-            <button
-              v-if="viewMode === 'edit'"
-              @click.prevent="triggerPetPhotoUpload"
-              type="button"
-              class="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md hover:bg-gray-100"
-            >
+                <button v-if="viewMode === 'edit'" @click.prevent="triggerPetPhotoUpload" type="button" class="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md hover:bg-gray-100">
               <CameraIcon class="w-4 h-4 text-gray-600" />
             </button>
           </div>
           <div class="flex-1">
-            <h2 class="text-2xl font-bold text-gray-900">
-              {{ selectedLocalPet.isNew ? 'New Pet' : getDisplayName() }}
-            </h2>
-            <p class="text-sm text-gray-500">
-              {{ selectedLocalPet.isNew ? 'Complete the form and save to view details' : getDisplayDetails() }}
-            </p>
+                <h2 class="text-2xl font-bold text-gray-900">{{ selectedLocalPet?.isNew ? 'New Pet' : getDisplayName() }}</h2>
+                <p class="text-sm text-gray-500">{{ selectedLocalPet?.isNew ? 'Complete the form and save to view details' : getDisplayDetails() }}</p>
           </div>
           <div class="flex space-x-2">
-            <button 
-              v-if="viewMode === 'view'"
-              @click="editPet(selectedLocalPet)"
-              type="button"
-              :class="[
-                'p-2 text-gray-500',
-                viewMode === 'view' ? 'hover:text-gray-700' : 'cursor-not-allowed opacity-50'
-              ]"
-              title="Edit pet"
-              :disabled="viewMode !== 'view'"
-            >
+                <button v-if="viewMode === 'view'" @click="editPet(selectedLocalPet)" type="button" class="p-2 text-gray-500 hover:text-gray-700" title="Edit pet">
               <EditIcon class="w-5 h-5" />
             </button>
           </div>
         </div>
         
-        <!-- Pet Info Tabs - Only show when viewing an existing pet -->
-        <div v-if="!selectedLocalPet.isNew && viewMode === 'view'" class="border-b border-gray-200">
-          <!-- Desktop tabs (hidden on small screens) -->
+            <!-- Tabs -->
+            <div v-if="!selectedLocalPet?.isNew && viewMode === 'view'" class="border-b border-gray-200">
           <nav class="hidden md:flex -mb-px space-x-8">
-            <button
-              v-for="tab in petTabs"
-              :key="tab.id"
-              @click.prevent="selectedPetTab = tab.id"
-              type="button"
-              :class="[
-                'py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center',
-                selectedPetTab === tab.id
-                  ? 'border-gray-900 text-gray-900'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              ]"
-            >
+                <button v-for="tab in petTabs" :key="tab.id" @click.prevent="selectedPetTab = tab.id" type="button" :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center', selectedPetTab === tab.id ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300']">
               <component :is="tab.icon" class="w-5 h-5 mr-2" />
               {{ tab.name }}
             </button>
           </nav>
-          
-          <!-- Mobile tabs (visible only on small screens) -->
           <div class="md:hidden relative">
-            <button 
-              @click.stop="toggleTabsDropdown"
-              type="button"
-              class="w-full flex items-center justify-between py-3 px-4 border rounded-md"
-            >
+                <button @click.stop="toggleTabsDropdown" type="button" class="w-full flex items-center justify-between py-3 px-4 border rounded-md">
               <div class="flex items-center">
                 <component :is="getCurrentTabIcon()" class="w-5 h-5 mr-2" />
                 <span>{{ getCurrentTabName() }}</span>
               </div>
               <ChevronDownIcon class="w-5 h-5" :class="{ 'transform rotate-180': tabsDropdownOpen }" />
             </button>
-            
-            <!-- Dropdown menu -->
-            <div 
-              v-show="tabsDropdownOpen" 
-              class="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg tabs-dropdown"
-            >
-              <button
-                v-for="tab in petTabs"
-                :key="tab.id"
-                @click.stop="selectTabAndCloseDropdown(tab.id)"
-                type="button"
-                :class="[
-                  'w-full text-left py-3 px-4 flex items-center',
-                  selectedPetTab === tab.id
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-700 hover:bg-gray-50'
-                ]"
-              >
+                <div v-show="tabsDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg tabs-dropdown">
+                  <button v-for="tab in petTabs" :key="tab.id" @click.stop="selectTabAndCloseDropdown(tab.id)" type="button" :class="['w-full text-left py-3 px-4 flex items-center', selectedPetTab === tab.id ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50']">
                 <component :is="tab.icon" class="w-5 h-5 mr-2" />
                 {{ tab.name }}
               </button>
@@ -206,159 +158,245 @@
   
         <!-- Tab Content -->
         <div>
-          <!-- Basic Details Form (Only shown when editing or when basic-details tab is selected) -->
+              <!-- Basic Details -->
           <div v-if="viewMode === 'edit' || (viewMode === 'view' && selectedPetTab === 'basic-details')" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
-              <input
-                v-model="editablePet.name"
-                type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                @input="updateLocalPet"
-                :disabled="viewMode === 'view'"
-              />
+                  <input v-model="editablePet.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Species <span class="text-red-500">*</span></label>
-              <input
-                v-model="editablePet.species"
-                type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                @input="updateLocalPet"
-                :disabled="viewMode === 'view'"
-              />
+                  <input v-model="editablePet.species" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Breed <span class="text-red-500">*</span></label>
-              <input
-                v-model="editablePet.breed"
-                type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                @input="updateLocalPet"
-                :disabled="viewMode === 'view'"
-              />
+                  <input v-model="editablePet.breed" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Age (Years, Months, Weeks)</label>
               <div class="grid grid-cols-3 gap-2">
-                <div>
-                  <input
-                    v-model.number="editablePet.ageYears"
-                    type="number"
-                    min="0"
-                    placeholder="Years"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                    @input="updateLocalPet"
-                    :disabled="viewMode === 'view'"
-                  />
+                    <input v-model.number="editablePet.ageYears" type="number" min="0" placeholder="Years" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+                    <input v-model.number="editablePet.ageMonths" type="number" min="0" max="11" placeholder="Months" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+                    <input v-model.number="editablePet.ageWeeks" type="number" min="0" max="3" placeholder="Weeks" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+                  </div>
                 </div>
                 <div>
-                  <input
-                    v-model.number="editablePet.ageMonths"
-                    type="number"
-                    min="0"
-                    max="11"
-                    placeholder="Months"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                    @input="updateLocalPet"
-                    :disabled="viewMode === 'view'"
-                  />
-                </div>
-                <div>
-                  <input
-                    v-model.number="editablePet.ageWeeks"
-                    type="number"
-                    min="0"
-                    max="3"
-                    placeholder="Weeks"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                    @input="updateLocalPet"
-                    :disabled="viewMode === 'view'"
-                  />
-                </div>
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Weight (kg)</label>
-              <input
-                v-model.number="editablePet.weight"
-                type="number"
-                step="0.1"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                @input="updateLocalPet"
-                :disabled="viewMode === 'view'"
-              />
+                  <label class="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                  <input v-model.number="editablePet.weight" type="number" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700">Gender <span class="text-red-500">*</span></label>
-              <!-- Custom Gender Dropdown -->
               <div v-if="viewMode !== 'view'" class="relative">
-                <div 
-                  @click="toggleGenderDropdown"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm cursor-pointer flex justify-between items-center gender-dropdown"
-                >
+                    <div @click="toggleGenderDropdown" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm cursor-pointer flex justify-between items-center gender-dropdown">
                   <span v-if="editablePet.gender">{{ formatGender(editablePet.gender) }}</span>
                   <span v-else class="text-gray-500">Select gender</span>
                   <ChevronDownIcon class="w-4 h-4 text-gray-500" :class="{ 'transform rotate-180': genderDropdownOpen }" />
                 </div>
-                
-                <!-- Gender Dropdown Options -->
-                <div 
-                  v-show="genderDropdownOpen"
-                  class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg gender-dropdown"
-                >
-                  <div 
-                    v-for="option in genderOptions" 
-                    :key="option.value"
-                    @click="selectGender(option.value)"
-                    class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm gender-dropdown"
-                  >
-                    {{ option.label }}
+                    <div v-show="genderDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg gender-dropdown">
+                      <div v-for="option in genderOptions" :key="option.value" @click="selectGender(option.value)" class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm gender-dropdown">{{ option.label }}</div>
+                    </div>
                   </div>
+                  <div v-else class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm">{{ editablePet.gender ? formatGender(editablePet.gender) : 'Not specified' }}</div>
                 </div>
               </div>
               
-              <!-- View Mode Display -->
-              <div v-else class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm">
-                {{ editablePet.gender ? formatGender(editablePet.gender) : 'Not specified' }}
+              <!-- Medical History -->
+              <div v-if="selectedPetTab === 'medical-history' && viewMode === 'view' && !selectedLocalPet?.isNew" class="space-y-6">
+                <!-- Header with Actions -->
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-xl font-semibold text-gray-900">Medical History</h3>
+                    <p class="text-sm text-gray-600 mt-1">Complete medical records, vaccinations, and appointment history</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm flex items-center gap-2">
+                      <PlusIcon class="w-4 h-4" />
+                      Add Record
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Enhanced Filter Buttons -->
+                <div class="flex flex-wrap gap-3">
+                  <button
+                    @click="setHistoryFilter('all')"
+                    :class="[
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                      historyFilter === 'all'
+                        ? 'bg-blue-500 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                    ]"
+                  >
+                    <ActivityIcon class="w-4 h-4" />
+                    All Records
+                  </button>
+                  <button
+                    @click="setHistoryFilter('vaccinations')"
+                    :class="[
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                      historyFilter === 'vaccinations'
+                        ? 'bg-green-500 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                    ]"
+                  >
+                    <SyringeIcon class="w-4 h-4" />
+                    Vaccinations
+                  </button>
+                  <button
+                    @click="setHistoryFilter('telehealth')"
+                    :class="[
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                      historyFilter === 'telehealth'
+                        ? 'bg-indigo-500 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                    ]"
+                  >
+                    <ActivityIcon class="w-4 h-4" />
+                    Telehealth
+                  </button>
+                  <button
+                    @click="setHistoryFilter('treatments')"
+                    :class="[
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                      historyFilter === 'treatments'
+                        ? 'bg-emerald-500 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                    ]"
+                  >
+                    <ActivityIcon class="w-4 h-4" />
+                    Medical Treatments
+                  </button>
+
+                  <!-- Clear Filter Button -->
+                  <button
+                    v-if="historyFilter !== 'all'"
+                    @click="setHistoryFilter('all')"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-sm flex items-center gap-2"
+                  >
+                    <XIcon class="w-4 h-4" />
+                    Clear Filter
+                  </button>
+                </div>
+
+                <!-- Record Counter and Stats -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-6">
+                      <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-900">{{ timelineEntries.length }}</div>
+                        <div class="text-xs text-gray-500">Total Records</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-lg font-semibold text-green-600">{{ (selectedLocalPet?.vaccinations || []).filter(v => v.completed).length }}</div>
+                        <div class="text-xs text-gray-500">Completed Vaccinations</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-lg font-semibold text-blue-600">{{ (selectedLocalPet?.medicalHistory || []).length }}</div>
+                        <div class="text-xs text-gray-500">Medical Treatments</div>
+                      </div>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                      <span v-if="historyFilter !== 'all'">Filtered by: {{ historyFilter === 'vaccinations' ? 'Vaccinations' : historyFilter === 'telehealth' ? 'Telehealth' : 'Medical Treatments' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Loading and Error States -->
+                <div v-if="historyLoading" class="py-12 text-center">
+                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p class="text-gray-500">Loading medical records...</p>
+                </div>
+                
+                <div v-else-if="historyError" class="bg-red-50 border border-red-200 text-red-600 p-6 rounded-lg text-center">
+                  <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <XIcon class="w-6 h-6 text-red-500" />
+                  </div>
+                  <p class="font-medium">{{ historyError }}</p>
+                  <button @click="fetchPetAppointments" class="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                    Try Again
+                  </button>
+                </div>
+
+                <!-- Records Timeline -->
+                <div v-else>
+                  <div v-if="timelineEntries.length === 0" class="text-center py-12">
+                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <component
+                        :is="historyFilter === 'vaccinations' ? SyringeIcon :
+                             historyFilter === 'telehealth' ? ActivityIcon :
+                             historyFilter === 'treatments' ? ActivityIcon : ActivityIcon"
+                        class="w-8 h-8 text-gray-400"
+                      />
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">
+                      {{ historyFilter === 'all' ? 'No medical records yet' :
+                         historyFilter === 'vaccinations' ? 'No vaccination records found' :
+                         historyFilter === 'telehealth' ? 'No telehealth appointments found' :
+                         'No medical treatment records found' }}
+                    </h3>
+                    <p class="text-gray-500 max-w-md mx-auto">
+                      {{ historyFilter === 'all' ? 'Medical records and past appointments will appear here once they are added to your pet\'s profile.' :
+                         historyFilter === 'vaccinations' ? 'Vaccination records will appear here once they are added by your veterinarian.' :
+                         historyFilter === 'telehealth' ? 'Telehealth appointments will appear here once they are scheduled and completed.' :
+                         'Medical treatment records will appear here once they are added by your veterinarian.' }}
+                    </p>
+                  </div>
+                  
+                  <!-- Enhanced Timeline -->
+                  <div v-else class="relative">
+                    <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                    <div class="space-y-6">
+                      <div v-for="(e, idx) in timelineEntries" :key="idx" class="relative pl-8">
+                        <!-- Timeline Dot -->
+                        <div class="absolute left-0 w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center" :class="{
+                          'bg-green-500': e.kind === 'Vaccination' && e.status === 'completed',
+                          'bg-yellow-500': e.kind === 'Vaccination' && e.status === 'pending',
+                          'bg-blue-500': e.kind === 'Telehealth',
+                          'bg-emerald-500': e.kind === 'Treatment',
+                          'bg-indigo-500': e.kind === 'Appointment'
+                        }">
+                          <component :is="e.icon" class="w-2.5 h-2.5 text-white" />
+                        </div>
+                        
+                        <!-- Timeline Content -->
+                        <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200">
+                          <div class="flex items-start justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                              <span class="text-xs font-medium px-2 py-1 rounded-full" :class="{
+                                'bg-green-100 text-green-700': e.kind === 'Vaccination' && e.status === 'completed',
+                                'bg-yellow-100 text-yellow-700': e.kind === 'Vaccination' && e.status === 'pending',
+                                'bg-blue-100 text-blue-700': e.kind === 'Telehealth',
+                                'bg-emerald-100 text-emerald-700': e.kind === 'Treatment',
+                                'bg-indigo-100 text-indigo-700': e.kind === 'Appointment'
+                              }">
+                                {{ e.kind }}
+                              </span>
+                              <span v-if="e.status" class="text-xs px-2 py-1 rounded-full" :class="{
+                                'bg-yellow-100 text-yellow-700': e.status === 'pending',
+                                'bg-green-100 text-green-700': e.status === 'completed',
+                                'bg-blue-100 text-blue-700': e.status === 'approved',
+                                'bg-red-100 text-red-700': e.status === 'rejected' || e.status === 'cancelled'
+                              }">
+                                {{ e.status.charAt(0).toUpperCase() + e.status.slice(1) }}
+                              </span>
+                            </div>
+                            <div class="text-xs text-gray-400">{{ formatDate(e.date, 'PPpp') }}</div>
+                          </div>
+                          
+                          <h4 class="font-medium text-gray-900 mb-1">{{ e.title }}</h4>
+                          <div v-if="e.subtitle" class="text-sm text-gray-600 mb-2">{{ e.subtitle }}</div>
+                          <div v-if="e.details" class="text-sm text-gray-500 bg-gray-50 rounded p-2">{{ e.details }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
     
-          <!-- Medical History Tab Content -->
-          <div v-if="selectedPetTab === 'medical-history' && viewMode === 'view' && !selectedLocalPet.isNew" class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-medium text-gray-900">Medical History</h3>
-              <button class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center">
-                <PlusIcon class="w-4 h-4 mr-1" />
-                Add Record
-              </button>
-            </div>
-            <div class="text-center py-8">
-              <ActivityIcon class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p class="text-gray-500">No medical history records yet.</p>
-              <p class="text-sm text-gray-400 mt-1">Medical records will appear here once added.</p>
-            </div>
-          </div>
+
     
-          <!-- Vaccinations Tab Content -->
-          <div v-if="selectedPetTab === 'vaccinations' && viewMode === 'view' && !selectedLocalPet.isNew" class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-medium text-gray-900">Vaccinations</h3>
-              <button class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center">
-                <PlusIcon class="w-4 h-4 mr-1" />
-                Add Vaccination
-              </button>
-            </div>
-            <div class="text-center py-8">
-              <SyringeIcon class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p class="text-gray-500">No vaccination records yet.</p>
-              <p class="text-sm text-gray-400 mt-1">Vaccination records will appear here once added.</p>
-            </div>
-          </div>
-    
-          <!-- Documents Tab Content -->
-          <div v-if="selectedPetTab === 'documents' && viewMode === 'view' && !selectedLocalPet.isNew" class="bg-white rounded-lg shadow p-6">
+              <!-- Documents -->
+              <div v-if="selectedPetTab === 'documents' && viewMode === 'view' && !selectedLocalPet?.isNew" class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-medium text-gray-900">Documents</h3>
               <button class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center">
@@ -373,112 +411,81 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    
-    <!-- Delete Confirmation Modal - Updated to match PetProfiles.vue style -->
-    <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full mx-auto p-6">
-        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-[#FFEEEE] mx-auto mb-4">
-          <AlertTriangleIcon class="h-6 w-6 text-red-600" />
-        </div>
-        <h3 class="text-lg font-medium text-center text-gray-900 mb-2">Confirm Action</h3>
-        <p class="text-sm text-gray-500 text-center mb-6">
-          Are you sure you want to delete this pet? It will be moved to archives.
-        </p>
-        <div class="flex justify-center gap-3">
-          <button 
-            @click.prevent="showDeleteModal = false" 
-            class="px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-full shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            :disabled="isDeleting"
-          >
-            Cancel
-          </button>
-          <button 
-            @click.prevent="deletePet"
-            class="px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-full shadow-sm text-xs sm:text-sm font-medium text-white bg-red-600 hover:bg-red-700"
-            :disabled="isDeleting"
-          >
-            Confirm
-          </button>
         </div>
       </div>
     </div>
     
     <!-- Hidden file input for pet photo -->
-    <input
-      type="file"
-      ref="photoInput"
-      @change="handlePetPhotoSelect"
-      accept="image/*"
-      class="hidden"
-    />
+      <input type="file" ref="photoInput" @change="handlePetPhotoSelect" accept="image/*" class="hidden" />
 
-    <!-- Loading Spinner Overlay - Show when saving or deleting -->
+      <!-- Overlay loader -->
     <LoadingSpinner v-if="isSavingChanges || isDeleting" isOverlay :text="loadingText" />
+    </div>
   </div>
 </template>
   
 <script setup>
   import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
   import { 
-  CameraIcon, 
-  PlusIcon, 
-  FileTextIcon, 
-  ActivityIcon, 
-  SyringeIcon, 
-  FolderIcon, 
+  Camera as CameraIcon,
+  Plus as PlusIcon,
+  FileText as FileTextIcon,
+  Activity as ActivityIcon,
+  Syringe as SyringeIcon,
+  Folder as FolderIcon,
   Trash2,
-  EyeIcon,
-  EditIcon,
-  ArrowLeftIcon,
-  ChevronDownIcon,
-  AlertTriangle as AlertTriangleIcon,
-  CheckCircle as CheckCircleIcon,
-  XCircle as XCircleIcon
+  Eye as EyeIcon,
+  Edit as EditIcon,
+  ArrowLeft as ArrowLeftIcon,
+  ChevronDown as ChevronDownIcon,
+  X as XIcon,
 } from 'lucide-vue-next';
 import { usePetsStore } from '@/stores/modules/petsStore';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { useArchivesStore } from '@/stores/modules/archivesStore';
+import { useAppointmentStore } from '@/stores/modules/appointmentStore';
+import { format } from 'date-fns';
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
 
 // Stores
 const petsStore = usePetsStore();
 const authStore = useAuthStore();
 const archivesStore = useArchivesStore();
+const appointmentStore = useAppointmentStore();
 
 // Emit events
 const emit = defineEmits(['pet-added', 'pet-updated', 'pet-deleted', 'pets-changed']);
 
-// State variables
+// State
 const selectedPetId = ref(null);
 const selectedPetTab = ref('basic-details');
 const photoInput = ref(null);
 const editablePet = ref({});
 const showDeleteModal = ref(false);
 const isLoading = ref(false);
-const initialLoading = ref(true); // Add initialLoading state
+const initialLoading = ref(true);
 const isSavingChanges = ref(false);
-const isDeleting = ref(false); // New state for delete operation
+const isDeleting = ref(false);
 const localPets = ref([]);
 const pendingChanges = ref(false);
 const deletedPetIds = ref([]);
 const petToDelete = ref(null);
-const viewMode = ref('edit'); // 'edit' or 'view'
-const originalPets = ref([]); // Store original pet data to revert changes
-const tabsDropdownOpen = ref(false); // For mobile tabs dropdown
-const dropdownRef = ref(null); // Reference to the dropdown element
-const genderDropdownOpen = ref(false); // For gender dropdown
+const viewMode = ref('edit');
+const originalPets = ref([]);
+const tabsDropdownOpen = ref(false);
+const genderDropdownOpen = ref(false);
 
-// Success/Error modals
-const showErrorModal = ref(false);
-const statusMessage = ref('');
+// History state
+const historyLoading = ref(false);
+const historyError = ref('');
+const petAppointments = ref([]);
+const historyFilter = ref('all');
 
-// Computed property for loading text
+// Loading text
 const loadingText = computed(() => {
-  if (isDeleting.value) return "Deleting pet...";
-  if (isSavingChanges.value) return "Saving changes...";
-  return "Loading pets data...";
+  if (isDeleting.value) return 'Deleting pet...';
+  if (isSavingChanges.value) return 'Saving changes...';
+  return 'Loading pets data...';
 });
 
 // Gender options
@@ -487,324 +494,73 @@ const genderOptions = [
   { value: 'female', label: 'Female' }
 ];
 
-// Pet tabs
+// Tabs
 const petTabs = [
   { id: 'basic-details', name: 'Basic Details', icon: FileTextIcon },
   { id: 'medical-history', name: 'Medical History', icon: ActivityIcon },
-  { id: 'vaccinations', name: 'Vaccinations', icon: SyringeIcon },
   { id: 'documents', name: 'Documents', icon: FolderIcon },
 ];
 
-// Helper methods for tabs
-const getCurrentTabName = () => {
-  const tab = petTabs.find(tab => tab.id === selectedPetTab.value);
-  return tab ? tab.name : 'Basic Details';
-};
+const getCurrentTabName = () => petTabs.find(t => t.id === selectedPetTab.value)?.name || 'Basic Details';
+const getCurrentTabIcon = () => petTabs.find(t => t.id === selectedPetTab.value)?.icon || FileTextIcon;
+const toggleTabsDropdown = () => { tabsDropdownOpen.value = !tabsDropdownOpen.value; };
+const selectTabAndCloseDropdown = (tabId) => { selectedPetTab.value = tabId; tabsDropdownOpen.value = false; };
 
-const getCurrentTabIcon = () => {
-  const tab = petTabs.find(tab => tab.id === selectedPetTab.value);
-  return tab ? tab.icon : FileTextIcon;
-};
-
-const toggleTabsDropdown = () => {
-  tabsDropdownOpen.value = !tabsDropdownOpen.value;
-};
-
-const selectTabAndCloseDropdown = (tabId) => {
-  selectedPetTab.value = tabId;
-  tabsDropdownOpen.value = false;
-};
-
-// Gender dropdown methods
-const toggleGenderDropdown = () => {
-  genderDropdownOpen.value = !genderDropdownOpen.value;
-};
-
-const selectGender = (value) => {
-  editablePet.value.gender = value;
-  genderDropdownOpen.value = false;
-  updateLocalPet();
-};
-
-const formatGender = (gender) => {
-  if (gender === 'male') return 'Male';
-  if (gender === 'female') return 'Female';
-  return gender;
-};
-
-// Computed properties
+// Computed
 const storedPets = computed(() => petsStore.getPets);
-
 const selectedLocalPet = computed(() => {
   if (!selectedPetId.value) return null;
-  return localPets.value.find(pet => (pet.id || pet.tempId) === selectedPetId.value);
+  return localPets.value.find(p => (p.id || p.tempId) === selectedPetId.value) || null;
 });
+const hasUnsavedNewPet = computed(() => localPets.value.some(p => p.isNew === true));
 
-// Check if there's an unsaved new pet
-const hasUnsavedNewPet = computed(() => {
-  return localPets.value.some(pet => pet.isNew === true);
-});
-
-// Methods
-// Modified fetchPets to only emit when there's an actual change
+// Fetch pets
 const fetchPets = async () => {
   if (authStore.user && authStore.user.userId) {
     isLoading.value = true;
     initialLoading.value = true;
     await petsStore.fetchUserPets(authStore.user.userId);
-    
-    // Get the current pets from the store
     const userPets = storedPets.value;
-    
-    // Only emit if there's an actual change in the pets array
     const petsChanged = JSON.stringify(userPets) !== JSON.stringify(localPets.value);
-    
-    // Initialize local pets from store
-    localPets.value = userPets.map(pet => ({ ...pet }));
-    
-    // Store original pets for reverting changes
+    localPets.value = userPets.map(p => ({ ...p }));
     originalPets.value = JSON.parse(JSON.stringify(localPets.value));
-    
     isLoading.value = false;
     initialLoading.value = false;
     pendingChanges.value = false;
     deletedPetIds.value = [];
-    
-    // Only emit the event if there was an actual change
-    if (petsChanged) {
-      emit('pets-changed', localPets.value);
-    }
+    if (petsChanged) emit('pets-changed', localPets.value);
   }
 };
 
-// Helper methods for displaying pet information
+// Helpers
+const formatGender = (gender) => (gender === 'male' ? 'Male' : gender === 'female' ? 'Female' : gender);
+const formatPetAge = (pet) => {
+  if (!pet.ageYears && !pet.ageMonths && !pet.ageWeeks) return 'Age not specified';
+  const parts = [];
+  if (pet.ageYears > 0) parts.push(`${pet.ageYears} ${pet.ageYears === 1 ? 'year' : 'years'}`);
+  if (pet.ageMonths > 0) parts.push(`${pet.ageMonths} ${pet.ageMonths === 1 ? 'month' : 'months'}`);
+  if (pet.ageWeeks > 0) parts.push(`${pet.ageWeeks} ${pet.ageWeeks === 1 ? 'week' : 'weeks'}`);
+  return parts.join(' ');
+};
+
 const getDisplayName = () => {
   if (!selectedLocalPet.value) return '';
-  
   if (viewMode.value === 'edit' && selectedLocalPet.value.id) {
-    // For existing pets in edit mode, show the original name
-    const originalPet = originalPets.value.find(p => p.id === selectedLocalPet.value.id);
-    return originalPet ? originalPet.name : selectedLocalPet.value.name;
-  } else {
-    // For new pets or view mode, show the current name
-    return selectedLocalPet.value.name;
+    const original = originalPets.value.find(p => p.id === selectedLocalPet.value.id);
+    return original ? original.name : selectedLocalPet.value.name;
   }
+  return selectedLocalPet.value.name;
 };
 
 const getDisplayDetails = () => {
   if (!selectedLocalPet.value) return '';
-  
   if (viewMode.value === 'edit' && selectedLocalPet.value.id) {
-    // For existing pets in edit mode, show the original details
-    const originalPet = originalPets.value.find(p => p.id === selectedLocalPet.value.id);
-    return formatPetDetails(originalPet || selectedLocalPet.value);
-  } else {
-    // For new pets or view mode, show the current details
-    return formatPetDetails(selectedLocalPet.value);
+    const original = originalPets.value.find(p => p.id === selectedLocalPet.value.id);
+    return formatPetDetails(original || selectedLocalPet.value);
   }
+  return formatPetDetails(selectedLocalPet.value);
 };
 
-const backToList = () => {
-  // If the current pet is new and unsaved, remove it from the list
-  if (selectedLocalPet.value && selectedLocalPet.value.isNew) {
-    localPets.value = localPets.value.filter(pet => 
-      (pet.id || pet.tempId) !== selectedLocalPet.value.tempId
-    );
-    pendingChanges.value = true;
-  } else if (selectedLocalPet.value && selectedLocalPet.value.changed) {
-    // If this is an existing pet with unsaved changes, revert to original
-    const originalPet = originalPets.value.find(pet => 
-      pet.id === selectedLocalPet.value.id
-    );
-    
-    if (originalPet) {
-      // Find the index of the pet in localPets
-      const index = localPets.value.findIndex(pet => 
-        pet.id === selectedLocalPet.value.id
-      );
-      
-      if (index !== -1) {
-        // Replace with original data
-        localPets.value[index] = { ...originalPet };
-        delete localPets.value[index].changed;
-      }
-    }
-  }
-
-  selectedPetId.value = null;
-  viewMode.value = 'edit';
-  tabsDropdownOpen.value = false; // Close dropdown when going back to list
-  genderDropdownOpen.value = false; // Close gender dropdown when going back to list
-};
-
-const viewPet = (pet) => {
-  selectedPetId.value = pet.id || pet.tempId;
-  selectedPetTab.value = 'basic-details';
-  viewMode.value = 'view';
-  tabsDropdownOpen.value = false; // Close dropdown when opening pet view
-  genderDropdownOpen.value = false; // Close gender dropdown when viewing pet
-
-  // Create a copy of the pet for editing
-  if (selectedLocalPet.value) {
-    editablePet.value = { ...selectedLocalPet.value };
-  }
-};
-
-const editPet = (pet) => {
-  selectedPetId.value = pet.id || pet.tempId;
-  viewMode.value = 'edit';
-  tabsDropdownOpen.value = false; // Close dropdown when editing pet
-  genderDropdownOpen.value = false; // Close gender dropdown when editing pet
-
-  // Create a copy of the pet for editing
-  if (selectedLocalPet.value) {
-    editablePet.value = { ...selectedLocalPet.value };
-  }
-};
-
-// This function adds a pet to local state, NOT to Firestore
-const addNewPet = () => {
-  // Don't allow adding a new pet if there's already an unsaved one
-  if (hasUnsavedNewPet.value) {
-    return;
-  }
-
-  // Create a temporary ID for the new pet
-  const tempId = `temp-${Date.now()}`;
-
-  // Create a new pet object with default values
-  const newPet = {
-    tempId,
-    name: 'New Pet',
-    species: '',
-    breed: '',
-    ageYears: 0,
-    ageMonths: 0,
-    ageWeeks: 0,
-    weight: 0,
-    gender: '',
-    photoURL: '',
-    isNew: true
-  };
-
-  // Add to local array only (not Firestore)
-  localPets.value.push(newPet);
-  pendingChanges.value = true;
-  selectedPetId.value = tempId;
-  editablePet.value = { ...newPet };
-  viewMode.value = 'edit';
-};
-
-const updateLocalPet = () => {
-  if (!selectedPetId.value) return;
-
-  const index = localPets.value.findIndex(pet => 
-    (pet.id || pet.tempId) === selectedPetId.value
-  );
-
-  if (index !== -1) {
-    // Update the pet in the local array
-    localPets.value[index] = { 
-      ...localPets.value[index], 
-      ...editablePet.value,
-      changed: true 
-    };
-    pendingChanges.value = true;
-  }
-};
-
-const confirmDeletePet = (pet) => {
-  petToDelete.value = pet;
-  showDeleteModal.value = true;
-};
-
-const deletePet = async () => {
-  if (!petToDelete.value) return;
-
-  try {
-    isDeleting.value = true; // Set loading state for deletion
-    
-    // If the pet has an ID (exists in Firestore), delete it using petsStore
-    if (petToDelete.value.id) {
-      // Let petsStore handle both archiving and deletion
-      await petsStore.deletePet(authStore.user.userId, petToDelete.value.id);
-    }
-
-    // Remove from local array
-    localPets.value = localPets.value.filter(pet => 
-      (pet.id || pet.tempId) !== (petToDelete.value.id || petToDelete.value.tempId)
-    );
-
-    pendingChanges.value = true;
-    showDeleteModal.value = false;
-
-    // If we're deleting the currently selected pet, go back to list
-    if (selectedPetId.value === (petToDelete.value.id || petToDelete.value.tempId)) {
-      selectedPetId.value = null;
-    }
-
-    petToDelete.value = null;
-    
-    // Refresh pets from Firestore to ensure UI is in sync with database
-    await fetchPets();
-    
-  } catch (error) {
-    console.error('Error deleting pet:', error);
-    statusMessage.value = 'Failed to delete pet. Please try again.';
-    showErrorModal.value = true;
-  } finally {
-    isDeleting.value = false; // Reset loading state after deletion
-  }
-};
-
-const triggerPetPhotoUpload = () => {
-  photoInput.value.click();
-};
-
-const handlePetPhotoSelect = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  try {
-    // Create a local preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (selectedLocalPet.value) {
-        // Store the file for later upload
-        editablePet.value.photoFile = file;
-        editablePet.value.photoURL = e.target.result; // Local preview
-        updateLocalPet();
-      }
-    };
-    reader.readAsDataURL(file);
-  } catch (error) {
-    console.error('Error handling pet photo selection:', error);
-  }
-};
-
-const formatPetAge = (pet) => {
-  const parts = [];
-
-  if (!pet.ageYears && !pet.ageMonths && !pet.ageWeeks) {
-    return 'Age not specified';
-  }
-
-  if (pet.ageYears > 0) {
-    parts.push(`${pet.ageYears} ${pet.ageYears === 1 ? 'year' : 'years'}`);
-  }
-
-  if (pet.ageMonths > 0) {
-    parts.push(`${pet.ageMonths} ${pet.ageMonths === 1 ? 'month' : 'months'}`);
-  }
-
-  if (pet.ageWeeks > 0) {
-    parts.push(`${pet.ageWeeks} ${pet.ageWeeks === 1 ? 'week' : 'weeks'}`);
-  }
-
-  return parts.join(' ');
-};
-
-// Format pet details for display
 const formatPetDetails = (pet) => {
   if (!pet) return '';
   const breed = pet.breed ? pet.breed : 'Breed not specified';
@@ -812,168 +568,310 @@ const formatPetDetails = (pet) => {
   return [breed, age].filter(Boolean).join(' • ');
 };
 
-// Check if a pet has the required fields filled - REMOVED VALIDATION
-const isPetValid = (pet) => {
-  // Always return true to bypass validation
-  return true;
+// Bento helpers
+const getBentoCardClasses = (index) => '';
+const getBentoAccent = (index) => {
+  const accents = [
+    'bg-gradient-to-br from-blue-50 to-cyan-50',
+    'bg-gradient-to-br from-purple-50 to-pink-50',
+    'bg-gradient-to-br from-emerald-50 to-teal-50',
+    'bg-gradient-to-br from-amber-50 to-orange-50',
+    'bg-gradient-to-br from-slate-50 to-gray-50'
+  ];
+  return accents[index % accents.length];
 };
 
-// Modified saveAllChanges to validate pets before saving
-const saveAllChanges = async () => {
-  if (!authStore.user || !authStore.user.userId) return false;
+const getCardStripe = (index) => {
+  const stripes = [
+    'bg-blue-500',
+    'bg-indigo-500',
+    'bg-emerald-500',
+    'bg-amber-500',
+    'bg-slate-500'
+  ];
+  return stripes[index % stripes.length];
+};
 
-  // If there are no pending changes, return success immediately
-  if (!pendingChanges.value && deletedPetIds.value.length === 0) {
-    console.log('No pet changes to save');
-    return true;
+// Gender dropdown
+const toggleGenderDropdown = () => { genderDropdownOpen.value = !genderDropdownOpen.value; };
+const selectGender = (value) => { editablePet.value.gender = value; genderDropdownOpen.value = false; updateLocalPet(); };
+
+// Local updates
+const updateLocalPet = () => {
+  if (!selectedPetId.value) return;
+  const idx = localPets.value.findIndex(p => (p.id || p.tempId) === selectedPetId.value);
+  if (idx !== -1) {
+    localPets.value[idx] = { ...localPets.value[idx], ...editablePet.value, changed: true };
+    pendingChanges.value = true;
+  }
+};
+
+// Actions
+const viewPet = (pet) => {
+  selectedPetId.value = pet.id || pet.tempId;
+  selectedPetTab.value = 'basic-details';
+  viewMode.value = 'view';
+  tabsDropdownOpen.value = false;
+  genderDropdownOpen.value = false;
+  if (selectedLocalPet.value) editablePet.value = { ...selectedLocalPet.value };
+};
+
+const editPet = (pet) => {
+  selectedPetId.value = pet.id || pet.tempId;
+  viewMode.value = 'edit';
+  tabsDropdownOpen.value = false;
+  genderDropdownOpen.value = false;
+  if (selectedLocalPet.value) editablePet.value = { ...selectedLocalPet.value };
+};
+
+const addNewPet = () => {
+  if (hasUnsavedNewPet.value) return;
+  const tempId = `temp-${Date.now()}`;
+  const newPet = { tempId, name: 'New Pet', species: '', breed: '', ageYears: 0, ageMonths: 0, ageWeeks: 0, weight: 0, gender: '', photoURL: '', isNew: true };
+  localPets.value.push(newPet);
+  pendingChanges.value = true;
+  selectedPetId.value = tempId;
+  editablePet.value = { ...newPet };
+  viewMode.value = 'edit';
+};
+
+const backToList = () => {
+  if (selectedLocalPet.value && selectedLocalPet.value.isNew) {
+    localPets.value = localPets.value.filter(p => (p.id || p.tempId) !== selectedLocalPet.value.tempId);
+    pendingChanges.value = true;
+  } else if (selectedLocalPet.value && selectedLocalPet.value.changed) {
+    const original = originalPets.value.find(p => p.id === selectedLocalPet.value.id);
+    if (original) {
+      const index = localPets.value.findIndex(p => p.id === selectedLocalPet.value.id);
+      if (index !== -1) {
+        localPets.value[index] = { ...original };
+        delete localPets.value[index].changed;
+      }
+    }
+  }
+  selectedPetId.value = null;
+  viewMode.value = 'edit';
+  tabsDropdownOpen.value = false;
+  genderDropdownOpen.value = false;
+};
+
+const confirmDeletePet = (pet) => { petToDelete.value = pet; showDeleteModal.value = true; };
+const deletePet = async () => {
+  if (!petToDelete.value) return;
+  try {
+    isDeleting.value = true;
+    if (petToDelete.value.id) await petsStore.deletePet(authStore.user.userId, petToDelete.value.id);
+    localPets.value = localPets.value.filter(p => (p.id || p.tempId) !== (petToDelete.value.id || petToDelete.value.tempId));
+    pendingChanges.value = true;
+    showDeleteModal.value = false;
+    if (selectedPetId.value === (petToDelete.value.id || petToDelete.value.tempId)) selectedPetId.value = null;
+    petToDelete.value = null;
+    await fetchPets();
+  } catch (e) {
+    console.error('Error deleting pet:', e);
+  } finally {
+    isDeleting.value = false;
+  }
+};
+
+const triggerPetPhotoUpload = () => { photoInput.value?.click(); };
+const handlePetPhotoSelect = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => { if (selectedLocalPet.value) { editablePet.value.photoFile = file; editablePet.value.photoURL = e.target.result; updateLocalPet(); } };
+  reader.readAsDataURL(file);
+};
+
+// History filter method
+const setHistoryFilter = (filter) => {
+  historyFilter.value = filter;
+};
+
+// Unified history: fetch pet appointments
+const fetchPetAppointments = async () => {
+  if (!selectedLocalPet.value || !authStore.user?.userId) return;
+  try {
+    historyLoading.value = true;
+    historyError.value = '';
+    const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+    const petId = selectedLocalPet.value.id;
+    petAppointments.value = (userAppointments || []).filter(a => a && ((a.petId && a.petId === petId) || (Array.isArray(a.petIds) && a.petIds.includes(petId))));
+  } catch (e) {
+    console.error('Failed fetching pet appointments:', e);
+    historyError.value = 'Failed to load pet appointment history.';
+  } finally {
+    historyLoading.value = false;
+  }
+};
+
+// Build timeline
+const timelineEntries = computed(() => {
+  if (!selectedLocalPet.value) return [];
+  const entries = [];
+  const toDateFromDateAndTime = (dateVal, timeRange) => {
+    try {
+      const base = new Date(dateVal);
+      if (!timeRange) return base;
+      const m = String(timeRange).match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!m) return base;
+      let hh = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      const ap = m[3].toUpperCase();
+      if (ap === 'PM' && hh !== 12) hh += 12;
+      if (ap === 'AM' && hh === 12) hh = 0;
+      const d = new Date(base);
+      d.setHours(hh, mm, 0, 0);
+      return d;
+    } catch {
+      return new Date(dateVal);
+    }
+  };
+
+  // Add appointments (including telehealth)
+  for (const a of petAppointments.value) {
+    const when = toDateFromDateAndTime(a.date, a.time);
+    const isTele = String(a.type || '').toLowerCase() === 'online' || a.isTelehealth === true;
+    
+    // Apply filter
+    if (historyFilter.value === 'telehealth' && !isTele) continue;
+    if (historyFilter.value === 'treatments' && isTele) continue;
+    if (historyFilter.value === 'vaccinations') continue;
+    
+    entries.push({
+      kind: isTele ? 'Telehealth' : 'Appointment',
+      date: when,
+      title: isTele ? 'Telehealth consultation' : (Array.isArray(a.serviceNames) && a.serviceNames.length ? a.serviceNames.join(', ') : 'Veterinary appointment'),
+      subtitle: a.doctorName || a.vetName || '',
+      status: (a.status || '').toLowerCase(),
+      details: a.notes || '',
+      icon: isTele ? ActivityIcon : FileTextIcon,
+      color: isTele ? 'text-indigo-600' : 'text-blue-600'
+    });
   }
 
-  // Validation removed - we'll save regardless of field values
-  
+  // Add medical history treatments - FIXED: Access from selectedLocalPet directly
+  if (historyFilter.value !== 'vaccinations') {
+    const mh = selectedLocalPet.value.medicalHistory || [];
+    console.log('Medical history data:', mh); // Debug log
+    for (const r of mh) {
+      // Apply filter
+      if (historyFilter.value === 'telehealth') continue;
+      
+      const when = r.date ? new Date(r.date) : new Date();
+      entries.push({ 
+        kind: 'Treatment', 
+        date: when, 
+        title: r.type || 'Treatment/Check-up', 
+        subtitle: r.vet || '', 
+        status: '', 
+        details: r.description || '', 
+        icon: ActivityIcon, 
+        color: 'text-emerald-600' 
+      });
+    }
+  }
+
+  // Add vaccinations - FIXED: Access from selectedLocalPet directly
+  if (historyFilter.value === 'all' || historyFilter.value === 'vaccinations') {
+    const vacs = selectedLocalPet.value.vaccinations || [];
+    console.log('Vaccinations data:', vacs); // Debug log
+    for (const v of vacs) {
+      const when = v.date ? new Date(v.date) : new Date();
+      entries.push({ 
+        kind: 'Vaccination', 
+        date: when, 
+        title: v.name || 'Vaccination', 
+        subtitle: v.completed ? 'Completed' : 'Scheduled', 
+        status: v.completed ? 'completed' : 'pending', 
+        details: '', 
+        icon: SyringeIcon, 
+        color: 'text-teal-600' 
+      });
+    }
+  }
+
+  // Debug log
+  console.log('Total timeline entries:', entries.length);
+  console.log('Selected pet data:', selectedLocalPet.value);
+
+  entries.sort((a, b) => a.date - b.date);
+  return entries;
+});
+
+// Watchers
+watch([selectedLocalPet, selectedPetTab, viewMode], ([pet, tab, mode]) => {
+  if (pet && tab === 'medical-history' && mode === 'view') {
+    historyFilter.value = 'all'; // Reset filter when switching pets or entering medical history tab
+    fetchPetAppointments();
+  }
+  // Redirect from old vaccinations tab to medical history
+  if (pet && tab === 'vaccinations' && mode === 'view') {
+    selectedPetTab.value = 'medical-history';
+    historyFilter.value = 'vaccinations'; // Set filter to vaccinations
+    fetchPetAppointments();
+  }
+});
+
+// Save operations (kept as original logic)
+const saveAllChanges = async () => {
+  if (!authStore.user || !authStore.user.userId) return false;
+  if (!pendingChanges.value && deletedPetIds.value.length === 0) return true;
   isLoading.value = true;
   isSavingChanges.value = true;
   const userId = authStore.user.userId;
   let success = true;
-
   try {
-    // Process deleted pets
     for (const petId of deletedPetIds.value) {
-      const deleteSuccess = await petsStore.deletePet(userId, petId);
-      if (!deleteSuccess) {
-        console.error(`Failed to delete pet with ID: ${petId}`);
-        success = false;
-      }
+      const ok = await petsStore.deletePet(userId, petId);
+      if (!ok) success = false;
     }
-    
-    // Process new and updated pets
     for (const pet of localPets.value) {
-      // Skip pets that haven't changed
       if (pet.id && !pet.changed && !pet.isNew) continue;
-      
-      // Prepare pet data (remove tempId and isNew flags)
       const petData = { ...pet };
-      delete petData.tempId;
-      delete petData.isNew;
-      delete petData.changed;
-      
-      // Remove photoFile property to avoid Firebase error
-      if (petData.photoFile) {
-        delete petData.photoFile;
-      }
-      
-      // Set default values for required fields if they're empty
-      if (!petData.name || petData.name.trim() === '') {
-        petData.name = 'Unnamed Pet';
-      }
-      if (!petData.species || petData.species.trim() === '') {
-        petData.species = 'Unspecified';
-      }
-      if (!petData.breed || petData.breed.trim() === '') {
-        petData.breed = 'Unspecified';
-      }
-      if (!petData.gender || petData.gender.trim() === '') {
-        petData.gender = 'Unspecified';
-      }
-      
+      delete petData.tempId; delete petData.isNew; delete petData.changed; if (petData.photoFile) delete petData.photoFile;
+      if (!petData.name || petData.name.trim() === '') petData.name = 'Unnamed Pet';
+      if (!petData.species || petData.species.trim() === '') petData.species = 'Unspecified';
+      if (!petData.breed || petData.breed.trim() === '') petData.breed = 'Unspecified';
+      if (!petData.gender || petData.gender.trim() === '') petData.gender = 'Unspecified';
       if (!pet.id) {
-        // Add new pet
-        const addedPet = await petsStore.addPet(userId, petData);
-        if (!addedPet) {
-          console.error('Failed to add new pet');
-          success = false;
-        }
+        const added = await petsStore.addPet(userId, petData); if (!added) success = false;
       } else if (pet.changed) {
-        // Update existing pet
-        const updateSuccess = await petsStore.updatePet(userId, pet.id, petData);
-        if (!updateSuccess) {
-          console.error(`Failed to update pet with ID: ${pet.id}`);
-          success = false;
-        }
+        const ok = await petsStore.updatePet(userId, pet.id, petData); if (!ok) success = false;
       }
     }
-    
-    // Refresh pets from Firestore
-    if (success) {
-      await fetchPets();
-      pendingChanges.value = false;
-      deletedPetIds.value = [];
-    }
-    
+    if (success) { await fetchPets(); pendingChanges.value = false; deletedPetIds.value = []; }
     return success;
-  } catch (error) {
-    console.error('Error saving pet changes:', error);
+  } catch (e) {
+    console.error('Error saving pet changes:', e);
     return false;
   } finally {
-    isLoading.value = false;
-    isSavingChanges.value = false;
+    isLoading.value = false; isSavingChanges.value = false;
   }
 };
 
-// Improved hasPendingChanges to check both local changes and deleted pets
-const hasPendingChanges = () => {
-  return pendingChanges.value || deletedPetIds.value.length > 0;
-};
+const hasPendingChanges = () => pendingChanges.value || deletedPetIds.value.length > 0;
 
-// Handle clicks outside the dropdown to close it
+// Lifecycle
+onMounted(() => { fetchPets(); document.addEventListener('click', handleClickOutside); });
+onBeforeUnmount(() => { document.removeEventListener('click', handleClickOutside); });
 const handleClickOutside = (event) => {
-  // Close tabs dropdown if open and click is outside
-  if (tabsDropdownOpen.value && !event.target.closest('.tabs-dropdown')) {
-    tabsDropdownOpen.value = false;
-  }
-  
-  // Close gender dropdown if open and click is outside
-  if (genderDropdownOpen.value && !event.target.closest('.gender-dropdown')) {
-    genderDropdownOpen.value = false;
-  }
+  if (tabsDropdownOpen.value && !event.target.closest('.tabs-dropdown')) tabsDropdownOpen.value = false;
+  if (genderDropdownOpen.value && !event.target.closest('.gender-dropdown')) genderDropdownOpen.value = false;
 };
 
-// Expose methods to parent component
-defineExpose({
-  saveAllChanges,
-  hasPendingChanges,
-  fetchPets
-});
+// Keep editablePet in sync
+watch(selectedLocalPet, (newPet) => { if (newPet) editablePet.value = { ...newPet }; });
 
-// Fetch pets on component mount and set up event listeners
-onMounted(() => {
-  fetchPets();
-  document.addEventListener('click', handleClickOutside);
-});
+// Expose
+defineExpose({ saveAllChanges, hasPendingChanges, fetchPets });
 
-// Clean up event listeners when component is unmounted
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
-
-// Watch for changes in the selected pet
-watch(selectedLocalPet, (newPet) => {
-  if (newPet) {
-    editablePet.value = { ...newPet };
-  }
-});
+// Make format function available to template
+const formatDate = (date, formatString) => format(date, formatString);
 </script>
 
 <style scoped>
-.pet-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  overflow: hidden;
-}
-
-.pet-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Hide scrollbar for pet selection */
-.overflow-x-auto {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.overflow-x-auto::-webkit-scrollbar {
-  display: none;
-}
+.overflow-x-auto { scrollbar-width: none; -ms-overflow-style: none; }
+.overflow-x-auto::-webkit-scrollbar { display: none; }
 </style>
+

@@ -8,13 +8,14 @@
     <CalendarIcon class="w-5 h-5 mr-2" />
     {{ monthNames[currentMonth] }} {{ currentYear }}
   </h2>
-  <div class="flex space-x-1">
+      <div class="flex space-x-1 items-center">
     <button @click="prevMonth" class="bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors">
       <ChevronLeftIcon class="h-4 w-4" />
     </button>
     <button @click="nextMonth" class="bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors">
       <ChevronRightIcon class="h-4 w-4" />
     </button>
+        <button @click="openLargeCalendar" class="ml-2 px-3 py-1.5 text-xs bg-white/20 hover:bg-white/30 rounded-full transition-colors">View Large</button>
   </div>
 </div>
 </div>
@@ -104,6 +105,43 @@
     <p class="text-xs text-gray-500">No appointments scheduled</p>
   </div>
 </div>
+  <!-- Large calendar modal -->
+  <div v-if="showLarge" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" @click="closeLargeCalendar">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden" @click.stop>
+      <!-- Header -->
+      <div class="p-4 border-b flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+        <div class="text-lg font-semibold">{{ largeMonthLabel }}</div>
+        <div class="flex items-center gap-2">
+          <button @click="largePrevMonth" class="p-2 border rounded-xl hover:bg-slate-50">
+            <ChevronLeftIcon class="w-4 h-4" />
+          </button>
+          <button @click="largeToday" class="px-3 py-1.5 text-sm border rounded-xl hover:bg-slate-50">Today</button>
+          <button @click="largeNextMonth" class="p-2 border rounded-xl hover:bg-slate-50">
+            <ChevronRightIcon class="w-4 h-4" />
+          </button>
+          <button @click="closeLargeCalendar" class="ml-2 px-3 py-1.5 text-sm border rounded-xl hover:bg-slate-50">Close</button>
+        </div>
+      </div>
+      <!-- Days of week -->
+      <div class="grid grid-cols-7 border-b bg-slate-50 text-xs text-slate-600">
+        <div class="p-2 text-center" v-for="d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="d">{{ d }}</div>
+      </div>
+      <!-- Grid -->
+      <div class="grid grid-cols-7">
+        <div v-for="(cell, idx) in buildLargeCalendarDays" :key="idx" class="min-h-[110px] border-r border-b last:border-r-0 p-2" :class="cell.isCurrentMonth ? 'bg-white' : 'bg-slate-50'">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs" :class="cell.isCurrentMonth ? 'text-slate-700' : 'text-slate-400'">{{ cell.date.getDate() }}</span>
+          </div>
+          <div class="space-y-1">
+            <div v-for="(appt, i) in getAppointmentsForLargeDay(cell.date)" :key="i" class="text-xs rounded-md p-1 bg-blue-50 border border-blue-100">
+              <div class="font-medium text-slate-800 truncate">{{ getAllServicesTitle(appt) }}</div>
+              <div class="text-slate-600">{{ appt.time }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 </div>
 </template>
@@ -563,4 +601,57 @@ getSelectedDateAppointments,
 getDateClass,
 fetchApprovedAppointments
 });
+
+// ==============================
+// Large calendar (Vet design-inspired)
+// ==============================
+const showLarge = ref(false);
+const largeCurrentDate = ref(new Date());
+const largeMonthLabel = computed(() => format(largeCurrentDate.value, 'MMMM yyyy'));
+
+const buildLargeCalendarDays = computed(() => {
+  const year = largeCurrentDate.value.getFullYear();
+  const month = largeCurrentDate.value.getMonth();
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  const firstDow = first.getDay(); // 0=Sun
+  const days = [];
+  // leading days from prev month
+  for (let i = 0; i < firstDow; i++) {
+    const d = new Date(year, month, -i);
+    days.unshift({ date: d, isCurrentMonth: false });
+  }
+  // current month days
+  for (let d = 1; d <= last.getDate(); d++) {
+    days.push({ date: new Date(year, month, d), isCurrentMonth: true });
+  }
+  // trailing to reach 42 cells
+  while (days.length < 42) {
+    const lastDate = days[days.length - 1].date;
+    const next = new Date(lastDate);
+    next.setDate(lastDate.getDate() + 1);
+    days.push({ date: next, isCurrentMonth: false });
+  }
+  return days;
+});
+
+const getAppointmentsForLargeDay = (d) => {
+  return approvedAppointments.value.filter(appt => {
+    return appt.day === d.getDate() && appt.month === d.getMonth() && appt.year === d.getFullYear();
+  });
+};
+
+const largePrevMonth = () => {
+  const d = new Date(largeCurrentDate.value);
+  d.setMonth(d.getMonth() - 1);
+  largeCurrentDate.value = d;
+};
+const largeNextMonth = () => {
+  const d = new Date(largeCurrentDate.value);
+  d.setMonth(d.getMonth() + 1);
+  largeCurrentDate.value = d;
+};
+const largeToday = () => { largeCurrentDate.value = new Date(); };
+const openLargeCalendar = () => { showLarge.value = true; };
+const closeLargeCalendar = () => { showLarge.value = false; };
 </script>

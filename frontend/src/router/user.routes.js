@@ -8,6 +8,7 @@ import UserTelehealth from '@/views/user/Telehealth.vue';
 import Profile from '@/views/user/Profile.vue';
 import Calendar from '@/views/user/dashboard/Calendar.vue';
 import EducationalResources from '@/views/user/dashboard/EducationalResources.vue';
+import UserPets from '@/views/user/Pets.vue';
 
 
 
@@ -47,6 +48,11 @@ export default [
           path: "usertelehealth",
           name: "UserTelehealth",
           component: UserTelehealth,
+        },
+        {
+          path: "pets",
+          name: "UserPets",
+          component: UserPets,
         },
         {
           path: "calendar",
