@@ -29,7 +29,7 @@
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-semibold">Recent Appointments</h3>
             <div class="text-xs text-gray-500">
-              {{ appointments.length }} appointments
+              {{ appointments.length }} appointment{{ appointments.length !== 1 ? 's' : '' }}
             </div>
           </div>
           
@@ -71,7 +71,7 @@
                 <span>{{ appointment.doctorName || 'Unknown Doctor' }}</span>
               </div>
               <div class="text-sm text-gray-700 mb-1">
-                <span>Pet: {{ appointment.petName || 'Unknown Pet' }}</span>
+                <span>Pet: {{ getPetDisplayName(appointment) }}</span>
               </div>
               <div class="text-sm text-gray-500 flex justify-between">
                 <span>{{ formatDate(appointment.date) }}</span>
@@ -82,6 +82,8 @@
               <div class="text-xs text-gray-400 mt-1">
                 Created: {{ formatDateTime(appointment.createdAt) }}
               </div>
+              
+
               
               <!-- Feedback status indicator -->
               <div v-if="appointment.status === 'completed'" class="text-xs mt-1">
@@ -112,7 +114,7 @@
                   <button 
                     @click="toggleActionMenu(appointment.id)"
                     class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors duration-200"
-                    :title="'Actions for ' + (appointment.petName || 'appointment')"
+                    :title="'Actions for ' + (getPetDisplayName(appointment) || 'appointment')"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
@@ -125,15 +127,27 @@
                     class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
                   >
                     <!-- Cancel option for pending appointments -->
-                <button 
-                  v-if="appointment.status === 'pending'"
-                  @click="confirmCancel(appointment)"
+                    <button 
+                      v-if="appointment.status === 'pending'"
+                      @click="confirmCancel(appointment)"
                       class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                       </svg>
                       Cancel Appointment
+                    </button>
+                    
+                    <!-- Create New Appointment option for reschedule requests -->
+                    <button 
+                      v-if="appointment.status === 'consider_rescheduling'"
+                      @click="createNewAppointment(appointment)"
+                      class="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      Create New Appointment
                     </button>
                     
                     <!-- View Notes option for completed appointments -->
@@ -161,16 +175,16 @@
                       {{ appointment.hasFeedback ? 'View Feedback' : 'Leave Feedback' }}
                 </button>
                 
-                                        <!-- Create New Appointment option for completed appointments -->
+                                        <!-- Schedule Follow-up option for completed appointments -->
                     <button 
                       v-if="appointment.status === 'completed'"
-                      @click="goToCreateAppointment(appointment)"
+                      @click="() => { console.log('Schedule Follow-up clicked for appointment:', appointment.id); scheduleFollowUp(appointment); }"
                       class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                       </svg>
-                      Create New Appointment
+                      Schedule Follow-up
                     </button>
                   </div>
                 </div>
@@ -182,7 +196,8 @@
           <div v-else class="flex flex-col items-center justify-center py-10">
             <CalendarIcon class="w-12 h-12 text-gray-300 mb-3" />
             <div class="text-gray-500 text-sm text-center">
-              No appointment history found.
+              <h3 class="text-lg font-medium text-gray-900 mb-2">No Appointments</h3>
+              <p>You haven't made any appointments yet. Your appointment history will appear here.</p>
             </div>
           </div>
         </div>
@@ -478,6 +493,22 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
     emit('close');
   };
   
+  // Helper function to get pet display name
+  const getPetDisplayName = (appointment) => {
+    // Check if we have petNames array (multiple pets)
+    if (appointment.petNames && Array.isArray(appointment.petNames) && appointment.petNames.length > 0) {
+      return appointment.petNames.join(', ');
+    }
+    
+    // Check if we have petName (single pet)
+    if (appointment.petName && appointment.petName.trim()) {
+      return appointment.petName.trim();
+    }
+    
+    // Fallback
+    return 'No pet info';
+  };
+  
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
@@ -542,8 +573,16 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
   const formatStatus = (status) => {
     if (!status) return 'Unknown';
     
-    // Capitalize first letter
-    return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    // Handle specific status cases for better readability
+    switch (status.toLowerCase()) {
+      case 'consider_rescheduling':
+        return 'Consider Rescheduling';
+      case 'partially_completed':
+        return 'Partially Completed';
+      default:
+        // Capitalize first letter and replace underscores with spaces
+        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, ' ');
+    }
   };
   
   // UPDATED: Status class function to use consistent colors with processing status
@@ -562,6 +601,8 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
         return `${baseClasses} bg-blue-100 text-blue-800`;
       case 'processing':
         return `${baseClasses} bg-indigo-100 text-indigo-800`;
+      case 'consider_rescheduling':
+        return `${baseClasses} bg-orange-100 text-orange-800`;
       case 'cancelled':
       case 'rejected':
         return `${baseClasses} bg-red-100 text-red-800`;
@@ -578,7 +619,7 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
     
     try {
       const status = (appointment.status || '').toLowerCase();
-      if (['approved','completed','cancelled','rejected','ended'].includes(status)) return false;
+      if (['approved','completed','cancelled','rejected','ended','consider_rescheduling'].includes(status)) return false;
       if (!appointment.date || !appointment.time) return false;
       
       let appointmentDate;
@@ -638,6 +679,8 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
     
     try {
       const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+      
+      // Show all appointments in history (not just completed ones)
       appointments.value = userAppointments;
       
       // Sort appointments by date (newest first)
@@ -873,42 +916,36 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
     selectedAppointment.value = null;
   };
 
-        // Create New Appointment - Simple redirect
-   const goToCreateAppointment = (appointment) => {
+        // Schedule Follow-up - Simple navigation to appointment creation
+   // Handle creating new appointment for reschedule requests
+  const createNewAppointment = (appointment) => {
+    console.log('Creating new appointment for reschedule request:', appointment.id);
+    // Navigate to appointment creation page
+    router.push('/user/userappointments');
+    // Close the history panel after navigation
+    closeHistory();
+  };
+
+  const scheduleFollowUp = (appointment) => {
+     console.log('scheduleFollowUp called with appointment:', appointment);
      if (!appointment) {
-       console.error('No appointment provided to goToCreateAppointment');
-       return;
-     }
-     
-     // Validate required appointment data
-     if (!appointment.id || !appointment.petName || !appointment.doctorId) {
-       console.error('Appointment missing required data:', appointment);
-       error.value = 'Cannot create new appointment: Missing appointment information';
+       console.error('No appointment provided to scheduleFollowUp');
        return;
      }
      
      try {
-       // Store appointment context for the appointments page
-       const newAppointmentData = {
-         type: 'new_appointment',
-         originalAppointmentId: appointment.id,
-         petName: appointment.petName,
-         doctorId: appointment.doctorId,
-         serviceNames: appointment.serviceNames || ['Veterinary Service'],
-         originalAppointmentDate: appointment.date
-       };
-       
-       // Store data in sessionStorage for the appointments page to use
-       sessionStorage.setItem('newAppointmentData', JSON.stringify(newAppointmentData));
-       
        // Close action menu
        closeActionMenu();
        
-       // Redirect to appointments page
+       console.log('Navigating to appointment creation page...');
+       // Navigate to appointment creation page
        router.push('/user/userappointments');
+       
+       // Close the history panel after navigation
+       closeHistory();
      } catch (error) {
-       console.error('Error in goToCreateAppointment:', error);
-       error.value = 'Failed to redirect to appointment creation. Please try again.';
+       console.error('Error in scheduleFollowUp:', error);
+       error.value = 'Failed to navigate to appointment creation. Please try again.';
      }
    };
   

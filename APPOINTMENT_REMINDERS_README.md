@@ -150,3 +150,5 @@ The system provides detailed logging:
 - Reminders only sent for approved appointments
 - User data is properly isolated by userId
 - No sensitive information exposed in notifications
+
+

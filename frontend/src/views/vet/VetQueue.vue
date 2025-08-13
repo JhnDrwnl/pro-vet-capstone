@@ -1,159 +1,438 @@
 <!-- views/vet/VetQueue.vue -->
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <div class="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <!-- Page Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-semibold text-gray-900">Queue Management</h1>
-        <p class="mt-2 text-gray-600">Manage today's patient consultations</p>
-      </div>
+  <div class="p-6 bg-white rounded-2xl">
+    <!-- Page Header -->
+    <div class="mb-8">
+      <h1 class="text-2xl font-semibold text-gray-900">Queue Management</h1>
+      <p class="text-gray-500 mt-1">Manage today's patient consultations</p>
+    </div>
 
-      <!-- Queue Stats -->
-      <div class="grid grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-lg p-4 border border-gray-200">
-          <div class="text-2xl font-semibold text-gray-900">{{ queueStats.total }}</div>
-          <div class="text-sm text-gray-500">Total</div>
-        </div>
-        <div class="bg-white rounded-lg p-4 border border-gray-200">
-          <div class="text-2xl font-semibold text-green-600">{{ queueStats.waiting }}</div>
-          <div class="text-sm text-gray-500">Waiting</div>
-        </div>
-        <div class="bg-white rounded-lg p-4 border border-gray-200">
-          <div class="text-2xl font-semibold text-blue-600">{{ queueStats.inProgress }}</div>
-          <div class="text-sm text-gray-500">In Progress</div>
-        </div>
-        <div class="bg-white rounded-lg p-4 border border-gray-200">
-          <div class="text-2xl font-semibold text-gray-600">{{ queueStats.completed }}</div>
-          <div class="text-sm text-gray-500">Completed</div>
-        </div>
+    <!-- Queue Stats -->
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="text-2xl font-semibold text-gray-900">{{ queueStats.total }}</div>
+        <div class="text-sm text-gray-500">Total</div>
       </div>
-
-      <!-- Current Patient -->
-      <div v-if="currentPatient" class="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-semibold text-gray-900">Currently Consulting</h2>
-          <span class="text-sm text-gray-500">Started: {{ formatTime(currentPatient.startTime) }}</span>
-        </div>
-        
-        <div class="bg-blue-50 rounded-lg p-4 mb-4">
-          <div class="text-lg font-medium text-gray-900 mb-1">{{ currentPatient.ownerName }}</div>
-          <div class="text-gray-600">{{ currentPatient.petName }} - {{ currentPatient.serviceName }}</div>
-        </div>
-        
-        <div class="flex gap-3">
-          <button 
-            @click="completeConsultation(currentPatient.id)"
-            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          >
-            Complete
-          </button>
-          <button 
-            @click="skipPatient(currentPatient.id)"
-            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          >
-            Skip
-          </button>
-        </div>
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="text-2xl font-semibold text-green-600">{{ queueStats.waiting }}</div>
+        <div class="text-sm text-gray-500">Waiting</div>
       </div>
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="text-2xl font-semibold text-blue-600">{{ queueStats.inProgress }}</div>
+        <div class="text-sm text-gray-500">In Progress</div>
+      </div>
+      <div class="bg-gray-50 rounded-lg p-4">
+        <div class="text-2xl font-semibold text-gray-600">{{ queueStats.completed }}</div>
+        <div class="text-sm text-gray-500">Completed</div>
+      </div>
+    </div>
 
-      <!-- Queue Controls -->
-      <div class="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Queue Controls</h2>
-          <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full" :class="queuePaused ? 'bg-red-500' : 'bg-green-500'"></div>
-            <span class="text-sm text-gray-600">{{ queuePaused ? 'Paused' : 'Active' }}</span>
-          </div>
-        </div>
-        
-        <div class="flex gap-3">
-          <button 
-            @click="callNext"
-            :disabled="!canCallNext"
-            class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          >
-            Call Next
-          </button>
-          <button 
-            @click="pauseQueue"
-            :disabled="!canPause"
-            class="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-          >
-            {{ queuePaused ? 'Resume' : 'Pause' }}
-          </button>
+    <!-- Current Patient -->
+    <div v-if="currentPatient" class="bg-blue-50 rounded-lg border border-blue-200 p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold text-gray-900">Currently Consulting</h2>
+        <span class="text-sm text-gray-500">Started: {{ formatTime(currentPatient.startTime) }}</span>
+      </div>
+      
+      <div class="mb-4">
+        <div class="text-lg font-medium text-gray-900 mb-1">{{ currentPatient.ownerName }}</div>
+        <div class="text-gray-600">{{ currentPatient.petName }} - {{ currentPatient.serviceName }}</div>
+      </div>
+      
+      <div class="flex gap-3">
+        <button 
+          @click="openCompletionForm(currentPatient)"
+          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          Mark as Done
+        </button>
+        <button 
+          @click="skipPatient(currentPatient.id)"
+          class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+
+    <!-- Queue Controls -->
+    <div class="bg-gray-50 rounded-lg p-6 mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900">Queue Controls</h2>
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full" :class="queuePaused ? 'bg-red-500' : 'bg-green-500'"></div>
+          <span class="text-sm text-gray-600">{{ queuePaused ? 'Paused' : 'Active' }}</span>
         </div>
       </div>
+      
+      <div class="flex gap-3">
+        <button 
+          @click="callNext"
+          :disabled="!canCallNext"
+          class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          Call Next
+        </button>
+        <button 
+          @click="pauseQueue"
+          :disabled="!canPause"
+          class="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          {{ queuePaused ? 'Resume' : 'Pause' }}
+        </button>
+      </div>
+    </div>
 
-      <!-- Loading State -->
-      <div v-if="isLoading" class="text-center py-12">
-        <div class="text-gray-400 mb-4">Loading...</div>
-        <p class="text-gray-500">Fetching today's appointments</p>
+    <!-- Loading State -->
+    <div v-if="isLoading" class="text-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <p class="text-gray-500">Fetching today's appointments</p>
+    </div>
+
+    <!-- Waiting Queue -->
+    <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Waiting Queue</h2>
+      </div>
+      
+      <div v-if="waitingQueue.length === 0" class="text-center py-12 text-gray-500">
+        <p class="text-lg">No patients waiting</p>
       </div>
 
-      <!-- Waiting Queue -->
-      <div v-else class="bg-white rounded-lg border border-gray-200">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-900">Waiting Queue</h2>
-        </div>
-        
-        <div v-if="waitingQueue.length === 0" class="text-center py-12 text-gray-500">
-          <p class="text-lg">No patients waiting</p>
-        </div>
-
-        <div v-else class="divide-y divide-gray-200">
-          <div v-for="(patient, index) in waitingQueue" :key="patient.id" 
-               class="p-6 hover:bg-gray-50 transition-colors">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-8 h-8 bg-gray-200 text-gray-700 rounded-full flex items-center justify-center text-sm font-medium">
-                  {{ index + 1 }}
-                </div>
-                <div>
-                  <div class="font-medium text-gray-900">{{ patient.ownerName }}</div>
-                  <div class="text-sm text-gray-600">{{ patient.petName }}</div>
-                  <div class="text-xs text-gray-500">{{ patient.serviceName }}</div>
-                  <div class="text-xs text-gray-400 mt-1">
-                    Scheduled: {{ formatDateTime(patient.date, patient.time) }}
-                  </div>
+      <div v-else class="divide-y divide-gray-200">
+        <div v-for="(patient, index) in waitingQueue" :key="patient.id" 
+             class="p-6 hover:bg-gray-50 transition-colors">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-8 h-8 bg-gray-200 text-gray-700 rounded-full flex items-center justify-center text-sm font-medium">
+                {{ index + 1 }}
+              </div>
+              <div>
+                <div class="font-medium text-gray-900">{{ patient.ownerName }}</div>
+                <div class="text-sm text-gray-600">{{ patient.petName }}</div>
+                <div class="text-xs text-gray-500">{{ patient.serviceName }}</div>
+                <div class="text-xs text-gray-400 mt-1">
+                  Scheduled: {{ formatDateTime(patient.date, patient.time) }}
                 </div>
               </div>
-              <div class="flex items-center gap-3">
-                <div class="text-right text-sm text-gray-500">
-                  <div>Position #{{ index + 1 }}</div>
-                  <div v-if="index === 0" class="text-blue-600 font-medium">Next in line</div>
-                  <div v-else>~{{ getEstimatedWaitTime(index + 1) }} min wait</div>
-                  <div class="text-xs text-gray-400">
-                    Est. start: {{ getEstimatedStartTime(index + 1) }}
-                  </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right text-sm text-gray-500">
+                <div>Position #{{ index + 1 }}</div>
+                <div v-if="index === 0" class="text-blue-600 font-medium">Next in line</div>
+                <div v-else>~{{ getEstimatedWaitTime(index + 1) }} min wait</div>
+                <div class="text-xs text-gray-400">
+                  Est. start: {{ getEstimatedStartTime(index + 1) }}
                 </div>
-                <div class="flex gap-2">
-                  <button 
-                    @click="transferPatient(patient.id, 'up')"
-                    :disabled="index === 0"
-                    class="p-1 text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed"
-                    title="Move up"
-                  >
-                    ↑
-                  </button>
-                  <button 
-                    @click="transferPatient(patient.id, 'down')"
-                    :disabled="index === waitingQueue.length - 1"
-                    class="p-1 text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed"
-                    title="Move down"
-                  >
-                    ↓
-                  </button>
-                </div>
+              </div>
+              <div class="flex gap-2">
                 <button 
-                  @click="startConsultation(patient.id)"
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  @click="transferPatient(patient.id, 'up')"
+                  :disabled="index === 0"
+                  class="p-1 text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed"
+                  title="Move up"
                 >
-                  Start
+                  ↑
                 </button>
+                <button 
+                  @click="transferPatient(patient.id, 'down')"
+                  :disabled="index === waitingQueue.length - 1"
+                  class="p-1 text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed"
+                  title="Move down"
+                >
+                  ↓
+                </button>
+              </div>
+              <button 
+                @click="startConsultation(patient.id)"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                Start
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completion Form Modal -->
+  <div v-if="showCompletionFormModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-6 border-b border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-900">Complete Appointment</h2>
+        <button @click="closeCompletionFormModal" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="p-6">
+        <!-- Appointment Summary -->
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+          <h3 class="text-lg font-medium text-gray-800 mb-3">Appointment Summary</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Owner</div>
+              <div class="font-medium text-gray-900">{{ selectedAppointment?.ownerName || 'Unknown' }}</div>
+            </div>
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Pet(s)</div>
+              <div class="font-medium text-gray-900">
+                {{ selectedAppointment?.petNames?.join(', ') || selectedAppointment?.petName || 'No pet info' }}
+              </div>
+            </div>
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Date & Time</div>
+              <div class="font-medium text-gray-900">
+                {{ formatDate(selectedAppointment?.date) }} at {{ selectedAppointment?.time }}
+              </div>
+            </div>
+            <div>
+              <div class="text-sm text-gray-500 mb-1">Services</div>
+              <div class="font-medium text-gray-900">
+                {{ selectedAppointment?.serviceNames?.join(', ') }}
               </div>
             </div>
           </div>
         </div>
+        
+        <!-- Completion Form -->
+        <form @submit.prevent="submitCompletionForm" class="space-y-6">
+          <!-- Service Summary Section -->
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+              Service Summary
+            </h3>
+            
+            <!-- Services with individual notes -->
+            <div class="space-y-4">
+              <div v-for="(service, index) in selectedAppointment?.serviceNames" :key="index" class="border border-gray-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-medium text-gray-900">{{ service }}</h4>
+                  <span class="text-sm text-gray-500">Service {{ index + 1 }}</span>
+                </div>
+                
+                <!-- Category Information -->
+                <div v-if="getServiceCategory(service)" class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div class="flex items-center gap-2 mb-2">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-blue-800">Category</span>
+                  </div>
+                  <div class="text-sm text-blue-700">
+                    <div class="font-medium">{{ getServiceCategory(service)?.name }}</div>
+                    <div class="text-blue-600">{{ getServiceCategory(service)?.description }}</div>
+                  </div>
+                </div>
+                
+                <!-- Service Details (if available) -->
+                <div v-if="getServiceById(service) || getServiceByName(service)" class="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div class="flex items-center gap-2 mb-2">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-green-800">Service Details</span>
+                  </div>
+                  <div class="text-sm text-green-700">
+                    <div v-if="getServiceByName(service)?.fees" class="mb-1">
+                      <span class="font-medium">Fees:</span> {{ getServiceByName(service)?.fees }}
+                    </div>
+                    <div v-if="getServiceByName(service)?.processingTime" class="mb-1">
+                      <span class="font-medium">Processing Time:</span> {{ getServiceByName(service)?.processingTime }}
+                    </div>
+                    <div v-if="getServiceByName(service)?.classification" class="mb-1">
+                      <span class="font-medium">Classification:</span> {{ getServiceByName(service)?.classification }}
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Service-specific fields -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select v-model="completionForm.services[index].status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="completed">Completed</option>
+                      <option value="partially_completed">Partially Completed</option>
+                      <option value="requires_followup">Requires Follow-up</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                    <input 
+                      v-model.number="completionForm.services[index].duration" 
+                      type="number" 
+                      min="0"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="30"
+                    />
+                  </div>
+                  
+                  <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Service Notes</label>
+                    <textarea 
+                      v-model="completionForm.services[index].notes" 
+                      rows="3"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Describe what was done, findings, recommendations..."
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Pet Health Assessment -->
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+              Pet Health Assessment
+            </h3>
+            
+            <div class="space-y-4">
+              <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 class="font-medium text-gray-900">{{ selectedAppointment?.petName || 'Pet' }}</h4>
+                    <p class="text-sm text-gray-500">Health Assessment</p>
+                  </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Overall Health</label>
+                    <select v-model="completionForm.pets[0].overallHealth" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="excellent">Excellent</option>
+                      <option value="good">Good</option>
+                      <option value="fair">Fair</option>
+                      <option value="poor">Poor</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                    <input 
+                      v-model.number="completionForm.pets[0].weight" 
+                      type="number" 
+                      step="0.1"
+                      min="0"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="5.2"
+                    />
+                  </div>
+                  
+                  <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Health Notes</label>
+                    <textarea 
+                      v-model="completionForm.pets[0].healthNotes" 
+                      rows="3"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Describe pet's condition, any issues found, recommendations..."
+                    ></textarea>
+                  </div>
+                  
+                  <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Required</label>
+                    <div class="space-y-2">
+                      <label class="flex items-center">
+                        <input 
+                          v-model="completionForm.pets[0].followUpRequired" 
+                          type="checkbox" 
+                          class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <span class="ml-2 text-sm text-gray-700">Schedule follow-up appointment</span>
+                      </label>
+                      
+                      <div v-if="completionForm.pets[0].followUpRequired" class="ml-6">
+                        <input 
+                          v-model="completionForm.pets[0].followUpNotes" 
+                          type="text"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Reason for follow-up, recommended timeline..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- General Notes -->
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+              General Notes & Recommendations
+            </h3>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Treatment Summary</label>
+                <textarea 
+                  v-model="completionForm.generalNotes.treatmentSummary" 
+                  rows="4"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Overall summary of treatments provided, procedures performed..."
+                ></textarea>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Owner Instructions</label>
+                <textarea 
+                  v-model="completionForm.generalNotes.ownerInstructions" 
+                  rows="4"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Instructions for pet owner, home care, medications, diet changes..."
+                ></textarea>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Next Steps</label>
+                <textarea 
+                  v-model="completionForm.generalNotes.nextSteps" 
+                  rows="3"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Recommended next steps, when to return, preventive care..."
+                ></textarea>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Form Actions -->
+          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <button 
+              type="button"
+              @click="closeCompletionFormModal" 
+              class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              :disabled="completionFormLoading"
+              class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+            >
+              <span v-if="completionFormLoading">Completing...</span>
+              <span v-else>Complete Appointment</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -175,13 +454,44 @@ const isLoading = ref(true)
 const queuePaused = ref(false)
 const currentTime = ref(new Date())
 
+// Completion form state
+const showCompletionFormModal = ref(false)
+const selectedAppointment = ref(null)
+const completionFormLoading = ref(false)
+const completionForm = ref({
+  services: [],
+  pets: [{
+    name: '',
+    overallHealth: 'good',
+    weight: '',
+    healthNotes: '',
+    followUpRequired: false,
+    followUpNotes: ''
+  }],
+  generalNotes: {
+    treatmentSummary: '',
+    ownerInstructions: '',
+    nextSteps: ''
+  }
+})
+
+// Service categories state
+const serviceCategories = ref({})
+const servicesData = ref({})
+const categoriesData = ref({})
+
 // Computed properties
 const queueStats = computed(() => ({
   total: waitingQueue.value.length + (currentPatient.value ? 1 : 0),
   waiting: waitingQueue.value.length,
   inProgress: currentPatient.value ? 1 : 0,
-  completed: 0 // You can track completed consultations if needed
+  completed: getCompletedAppointmentsCount()
 }))
+
+// Helper function to count completed appointments
+const getCompletedAppointmentsCount = () => {
+  return appointments.value.filter(appointment => appointment.status === 'completed').length
+}
 
 const canCallNext = computed(() => 
   !queuePaused.value && waitingQueue.value.length > 0 && !currentPatient.value
@@ -321,16 +631,180 @@ const startConsultation = (patientId) => {
   }
 }
 
-const completeConsultation = (patientId) => {
-  if (currentPatient.value?.id === patientId) {
-    // Update appointment status to 'completed'
-    updateAppointmentStatus(patientId, 'completed')
-    
-    currentPatient.value = null
-    
-    // Update Firestore queue
-    updateFirestoreQueue()
+// Completion form functions
+const openCompletionForm = (appointment) => {
+  selectedAppointment.value = appointment
+  
+  // Initialize completion form with appointment data
+  completionForm.value = {
+    services: appointment.serviceNames?.map(service => ({
+      name: service,
+      status: 'completed',
+      duration: 30,
+      notes: '',
+      category: getServiceCategory(service) // Add category information
+    })) || [],
+    pets: [{
+      name: appointment.petName || 'Pet',
+      overallHealth: 'good',
+      weight: '',
+      healthNotes: '',
+      followUpRequired: false,
+      followUpNotes: ''
+    }],
+    generalNotes: {
+      treatmentSummary: '',
+      ownerInstructions: '',
+      nextSteps: ''
+    }
   }
+  
+  showCompletionFormModal.value = true
+}
+
+const closeCompletionFormModal = () => {
+  showCompletionFormModal.value = false
+  selectedAppointment.value = null
+  completionForm.value = {
+    services: [],
+    pets: [{
+      name: '',
+      overallHealth: 'good',
+      weight: '',
+      healthNotes: '',
+      followUpRequired: false,
+      followUpNotes: ''
+    }],
+    generalNotes: {
+      treatmentSummary: '',
+      ownerInstructions: '',
+      nextSteps: ''
+    }
+  }
+}
+
+const submitCompletionForm = async () => {
+  if (!selectedAppointment.value) return
+  
+  completionFormLoading.value = true
+  try {
+    // Create completion data object
+    const completionData = {
+      appointmentId: selectedAppointment.value.id,
+      completedAt: new Date(),
+      completedBy: authStore.user?.userId,
+      services: completionForm.value.services,
+      pets: completionForm.value.pets,
+      generalNotes: completionForm.value.generalNotes,
+      status: 'completed'
+    }
+    
+    // Update appointment status and add completion data
+    await updateAppointmentStatus(selectedAppointment.value.id, 'completed')
+    
+    // Store completion data
+    await storeCompletionData(completionData)
+    
+    // Close modal and refresh data
+    closeCompletionFormModal()
+    await fetchAppointments()
+    
+    // Show success message (you can add a toast notification here)
+    console.log('Appointment completed successfully!')
+    
+  } catch (error) {
+    console.error('Error completing appointment:', error)
+    // Show error message (you can add a toast notification here)
+    console.error('Failed to complete appointment. Please try again.')
+  } finally {
+    completionFormLoading.value = false
+  }
+}
+
+const storeCompletionData = async (completionData) => {
+  try {
+    const appointmentRef = doc(db, 'appointments', completionData.appointmentId)
+    await updateDoc(appointmentRef, {
+      status: 'completed',
+      completedAt: completionData.completedAt,
+      completedBy: completionData.completedBy,
+      completionData: {
+        services: completionData.services,
+        pets: completionData.pets,
+        generalNotes: completionData.generalNotes
+      }
+    })
+  } catch (error) {
+    console.error('Error storing completion data:', error)
+    throw error
+  }
+}
+
+// Fetch service categories and services data
+const fetchServiceData = async () => {
+  try {
+    // Fetch categories
+    const categoriesRef = collection(db, 'categories')
+    const categoriesSnapshot = await getDocs(categoriesRef)
+    categoriesData.value = {}
+    
+    categoriesSnapshot.forEach(doc => {
+      const data = doc.data()
+      categoriesData.value[doc.id] = {
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        coverPhoto: data.coverPhoto,
+        archived: data.archived
+      }
+    })
+    
+    // Fetch services
+    const servicesRef = collection(db, 'services')
+    const servicesSnapshot = await getDocs(servicesRef)
+    servicesData.value = {}
+    
+    servicesSnapshot.forEach(doc => {
+      const data = doc.data()
+      servicesData.value[doc.id] = {
+        id: doc.id,
+        name: data.name,
+        categoryId: data.categoryId,
+        classification: data.classification,
+        fees: data.fees,
+        processingTime: data.processingTime,
+        transactionType: data.transactionType
+      }
+    })
+    
+    // Build service-category mapping by service ID for better accuracy
+    serviceCategories.value = {}
+    Object.values(servicesData.value).forEach(service => {
+      if (service.categoryId && categoriesData.value[service.categoryId]) {
+        serviceCategories.value[service.id] = categoriesData.value[service.categoryId]
+        // Also keep the name mapping for backward compatibility
+        serviceCategories.value[service.name] = categoriesData.value[service.categoryId]
+      }
+    })
+    
+  } catch (error) {
+    console.error('Error fetching service data:', error)
+  }
+}
+
+// Get service category by service name
+const getServiceCategory = (serviceName) => {
+  return serviceCategories.value[serviceName] || null
+}
+
+// Helper function to get service details by ID
+const getServiceById = (serviceId) => {
+  return servicesData.value[serviceId] || null
+}
+
+// Helper function to get service details by name
+const getServiceByName = (serviceName) => {
+  return Object.values(servicesData.value).find(service => service.name === serviceName) || null
 }
 
 const skipPatient = (patientId) => {
@@ -584,6 +1058,33 @@ const formatTime = (timestamp) => {
   }
 }
 
+const formatDate = (date) => {
+  if (!date) return 'N/A'
+  try {
+    let dateObj
+    
+    // Handle Firebase Timestamp
+    if (date && typeof date === 'object' && date.toDate) {
+      dateObj = date.toDate()
+    } else if (date && typeof date === 'object' && date.seconds) {
+      // Handle Firestore Timestamp object
+      dateObj = new Date(date.seconds * 1000)
+    } else {
+      dateObj = new Date(date)
+    }
+    
+    if (isNaN(dateObj.getTime())) {
+      console.error('Invalid date object:', date)
+      return 'Invalid Date'
+    }
+    
+    return dateObj.toLocaleDateString()
+  } catch (error) {
+    console.error('Error formatting date:', error, date)
+    return 'Invalid Date'
+  }
+}
+
 const formatDateTime = (date, time) => {
   if (!date) return 'N/A'
   try {
@@ -637,8 +1138,9 @@ const checkEndOfDay = () => {
 }
 
 // Check end of day every hour
-onMounted(() => {
-  fetchAppointments()
+onMounted(async () => {
+  await fetchServiceData() // Fetch service categories and services
+  await fetchAppointments()
   
   // Update current time every minute to refresh wait estimates
   const timer = setInterval(() => {

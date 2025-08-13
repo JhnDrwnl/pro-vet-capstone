@@ -21,6 +21,8 @@ export const NOTIFICATION_PRIORITIES = {
 // Service state
 let router = null
 let notificationsStore = null
+let lastDailyReminderDate = null // Prevent spam: track last date reminders were sent
+let isReminderProcessRunning = false // Prevent concurrent reminder processes
 
 /**
  * Set router instance for navigation
@@ -45,8 +47,8 @@ export const initialize = async () => {
   try {
     console.log('Initializing notification service...')
     
-    // Initialize the daily reminder system
-    initializeNotificationSystem()
+    // Note: Daily reminders are now handled by AppointmentReminder.vue component
+    // No need to initialize duplicate scheduler here
     
     console.log('Notification service initialized successfully')
     return true
@@ -352,12 +354,26 @@ export const sendDailyAppointmentReminders = async (testMode = false) => {
       return await createTestAppointmentReminder()
     }
     
+    // Prevent spam: only send reminders once per day
+    const today = new Date().toDateString()
+    if (lastDailyReminderDate === today) {
+      console.log('🕕 Daily reminders already sent today, skipping...')
+      return 0
+    }
+    
+    // Prevent concurrent reminder processes
+    if (isReminderProcessRunning) {
+      console.log('🕕 Reminder process already running, skipping...')
+      return 0
+    }
+    
+    isReminderProcessRunning = true
     console.log('Starting daily appointment reminder process...')
     
     // Get all users with appointments today
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+    const todayDate = new Date()
+    const startOfDay = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate())
+    const endOfDay = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate(), 23, 59, 59, 999)
     
     const appointmentsRef = collection(db, 'appointments')
     const q = query(
@@ -367,7 +383,7 @@ export const sendDailyAppointmentReminders = async (testMode = false) => {
       where('status', '==', 'approved')
     )
 
-      const querySnapshot = await getDocs(q)
+    const querySnapshot = await getDocs(q)
     const appointments = []
     
     // Collect all appointments
@@ -395,11 +411,16 @@ export const sendDailyAppointmentReminders = async (testMode = false) => {
       }
     }
     
-    console.log(`Successfully sent ${successCount} appointment reminders`)
+    // Mark that reminders were sent today
+    lastDailyReminderDate = today
+    console.log(`Successfully sent ${successCount} appointment reminders for ${today}`)
     return successCount
-    } catch (error) {
+  } catch (error) {
     console.error('Error sending daily appointment reminders:', error)
     return 0
+  } finally {
+    // Always reset the running flag
+    isReminderProcessRunning = false
   }
 }
 

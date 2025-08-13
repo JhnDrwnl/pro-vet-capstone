@@ -35,13 +35,13 @@
           All Statuses
         </button>
         <button 
-          v-for="status in ['pending', 'approved', 'completed', 'cancelled', 'ended', 'expired']" 
+          v-for="status in ['pending', 'approved', 'completed', 'cancelled', 'ended', 'expired', 'consider_rescheduling']" 
           :key="status"
           @click="toggleStatusFilter(status)"
           class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 capitalize"
           :class="{ 'text-[#0066FF]': filters.status === status }"
         >
-          {{ status }}
+          {{ status === 'consider_rescheduling' ? 'Consider Rescheduling' : status }}
         </button>
       </div>
     </div>
@@ -90,6 +90,8 @@
     >
       <RefreshCwIcon class="w-4 h-4 text-gray-500" />
     </button>
+    
+
   </div>
 </div>
 
@@ -117,17 +119,62 @@
   </div>
 </div>
 
-<!-- Active Filters Display - Status Only -->
-<div v-if="filters.status" class="mb-4 flex flex-wrap gap-2">
+<!-- Active Filters Display -->
+<div v-if="filters.status || categoryFilter !== 'all'" class="mb-4 flex flex-wrap gap-2">
   <div class="text-sm text-gray-500 py-1">Active filters:</div>
   
-  <div class="inline-flex items-center gap-1 px-3 py-1 bg-[#EBF5FF] text-[#0066FF] rounded-full text-xs capitalize">
+  <!-- Status Filter -->
+  <div v-if="filters.status" class="inline-flex items-center gap-1 px-3 py-1 bg-[#EBF5FF] text-[#0066FF] rounded-full text-xs capitalize">
     <span>{{ filters.status }}</span>
     <button @click="clearStatusFilter" class="text-[#0066FF] hover:text-blue-700">
       <XIcon class="w-3 h-3" />
     </button>
   </div>
+  
+  <!-- Category Filter -->
+  <div v-if="categoryFilter !== 'all'" class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">
+    <span>{{ getCategoryName(categoryFilter) }}</span>
+    <button @click="clearCategoryFilter" class="text-green-700 hover:text-green-800">
+      <XIcon class="w-3 h-3" />
+    </button>
+  </div>
+  
+  <!-- Clear All Filters Button -->
+  <div v-if="filters.status && categoryFilter !== 'all'" class="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs hover:bg-gray-200">
+    <button @click="clearAllFilters" class="flex items-center gap-1">
+      <span>Clear All</span>
+      <XIcon class="w-3 h-3" />
+    </button>
+  </div>
 </div>
+
+<!-- Category Filter -->
+<div class="mb-4 flex items-center gap-3">
+  <label class="text-sm font-medium text-gray-700">Filter by Category:</label>
+      <select 
+      v-model="categoryFilter" 
+      @change="setCategoryFilter"
+      class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+    >
+      <option value="all">All Categories</option>
+      <option 
+        v-for="category in availableCategories" 
+        :key="category.id" 
+        :value="category.id"
+      >
+        {{ category.name }}
+      </option>
+    </select>
+  <button
+    v-if="categoryFilter !== 'all'"
+    @click="clearCategoryFilter"
+    class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+  >
+    Clear
+  </button>
+</div>
+
+
 
 <!-- Appointment Cards -->
 <div v-if="!initialLoading && !showApprovalForm" class="space-y-4">
@@ -211,12 +258,16 @@
               'bg-blue-100 text-blue-800': appointment.status === 'completed',
               'bg-gray-100 text-gray-800': appointment.status === 'cancelled',
               'bg-slate-100 text-slate-800': appointment.status === 'ended',
-              'bg-orange-100 text-orange-800': isExpired(appointment)
+              'bg-orange-100 text-orange-800': appointment.status === 'consider_rescheduling',
+              'bg-red-50 text-red-700 border border-red-200': isExpired(appointment)
             }"
           >
             {{ isExpired(appointment) ? 'Expired' : formatStatus(appointment.status) }}
           </span>
           <span v-if="isExpired(appointment)" class="text-xs text-red-500">Past scheduled time</span>
+          <span v-if="appointment.rescheduleRequest" class="px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-200">
+            Reschedule Requested
+          </span>
         </div>
       </div>
       
@@ -235,7 +286,7 @@
           <div class="flex items-center gap-2">
             <PawPrintIcon class="w-4 h-4 text-gray-400" />
             <span class="text-sm text-gray-600">
-              {{ appointment.petName || 'No pet info' }}
+              {{ getPetDisplayName(appointment) }}
               <span v-if="appointment.petSpecies" class="text-gray-400">({{ appointment.petSpecies }})</span>
             </span>
           </div>
@@ -245,13 +296,23 @@
         <div>
           <div class="text-sm font-medium text-gray-700 mb-2">Services</div>
           <div class="flex flex-wrap gap-1">
-            <span 
-              v-for="(service, index) in appointment.serviceNames" 
+            <div 
+              v-for="(serviceId, index) in appointment.services" 
               :key="index"
-              class="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md"
+              class="flex flex-col items-start"
             >
-              {{ service }}
-            </span>
+              <span class="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md mb-1">
+                {{ getServiceDisplayName(serviceId) }}
+              </span>
+              <span 
+                v-if="getServiceCategory(serviceId)"
+                class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded text-center"
+                :title="getServiceCategory(serviceId)?.description"
+              >
+                {{ getServiceCategory(serviceId)?.name }}
+              </span>
+
+            </div>
           </div>
         </div>
       </div>
@@ -264,15 +325,15 @@
         
         <!-- Action Buttons -->
         <div class="flex items-center gap-2">
-          <!-- Reschedule button - for pending, approved, or expired appointments -->
+          <!-- Request Reschedule button - for pending, approved, expired, or consider_rescheduling appointments -->
           <button 
-            v-if="appointment.status === 'pending' || appointment.status === 'approved' || isExpired(appointment)"
-            @click="openReschedulePanel(appointment)"
-            class="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-full transition-colors duration-200"
-            :title="isExpired(appointment) ? 'Reschedule Expired Appointment' : 'Reschedule Appointment'"
+            v-if="appointment.status === 'pending' || appointment.status === 'approved' || appointment.status === 'consider_rescheduling' || isExpired(appointment)"
+            @click="openRescheduleRequestPanel(appointment)"
+            class="p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-full transition-colors duration-200"
+            :title="isExpired(appointment) ? 'Request Reschedule for Expired Appointment' : 'Request Reschedule'"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 0 002 2z"></path>
             </svg>
           </button>
           
@@ -401,14 +462,23 @@
             <!-- Services -->
             <div class="mt-4 pt-3 border-t border-gray-100">
               <div class="text-sm text-gray-500 mb-2">Services</div>
-              <div class="flex flex-wrap gap-1">
-                <span 
-                  v-for="(service, index) in appointment.serviceNames" 
+              <div class="flex flex-wrap gap-2">
+                <div 
+                  v-for="(serviceId, index) in appointment.services" 
                   :key="index"
-                  class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded font-medium"
+                  class="flex flex-col items-start"
                 >
-                  {{ service }}
-                </span>
+                  <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded font-medium mb-1">
+                    {{ getServiceDisplayName(serviceId) }}
+                  </span>
+                  <span 
+                    v-if="getServiceCategory(serviceId)"
+                    class="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded text-center"
+                    :title="getServiceCategory(serviceId)?.description"
+                  >
+                    {{ getServiceCategory(serviceId)?.name }}
+                  </span>
+                </div>
               </div>
             </div>
             
@@ -436,19 +506,19 @@
                 <img 
                   v-if="appointment.petPhotoURL"
                   :src="appointment.petPhotoURL" 
-                  :alt="appointment.petName"
+                  :alt="getPetDisplayName(appointment)"
                   class="w-full h-full object-cover" 
                   @error="onPetImageError"
                 />
                 <img 
                   v-else
                   :src="defaultPetPhotoURL" 
-                  :alt="appointment.petName"
+                  :alt="getPetDisplayName(appointment)"
                   class="w-full h-full object-cover" 
                 />
               </div>
               <div class="flex-1">
-                <div class="text-lg font-medium text-gray-900">{{ appointment.petName }}</div>
+                <div class="text-lg font-medium text-gray-900">{{ getPetDisplayName(appointment) }}</div>
                 <div class="text-sm text-gray-500">{{ appointment.petSpecies || 'Unknown Species' }}</div>
                 <div class="text-sm text-gray-500">{{ appointment.petBreed || 'Unknown Breed' }}</div>
               </div>
@@ -492,32 +562,59 @@
               
               <!-- Right Column - Timeline -->
               <div class="relative">
-                <!-- Timeline Line -->
-                <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+                <!-- Timeline Header -->
+                <div class="mb-4">
+                  <h4 class="text-sm font-medium text-gray-700 mb-2">Pet Medical History (Completed Appointments)</h4>
+                  <p class="text-xs text-gray-500">Showing only completed appointments for this pet</p>
+                </div>
                 
                 <!-- Timeline Items -->
                 <div class="space-y-4">
                   <div 
-                    v-for="(historyItem, index) in getPetHistory(appointment.petId || appointment.petName)" 
+                    v-for="(historyItem, index) in getPetHistory(appointment.petId || appointment.petNames?.[0] || appointment.petName)" 
                     :key="index"
-                    class="relative pl-12"
+                    class="relative pl-8"
                   >
-                    <!-- Timeline Dot -->
-                    <div class="absolute left-0 w-3 h-3 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
-                         :class="{
-                           'bg-green-500': historyItem.status === 'completed',
-                           'bg-yellow-500': historyItem.status === 'pending',
-                           'bg-blue-500': historyItem.status === 'approved',
-                           'bg-red-500': historyItem.status === 'rejected'
-                         }">
-                      <div class="w-1 h-1 rounded-full bg-white"></div>
+                    <!-- Timeline Dot with Connector -->
+                    <div class="absolute left-0 flex flex-col items-center">
+                      <!-- Main Dot -->
+                      <div class="w-3 h-3 rounded-full border-2 border-white shadow-sm flex items-center justify-center z-10"
+                           :class="{
+                             'bg-green-500': historyItem.status === 'completed',
+                             'bg-yellow-500': historyItem.status === 'pending',
+                             'bg-blue-500': historyItem.status === 'approved',
+                             'bg-red-500': historyItem.status === 'rejected'
+                           }">
+                        <div class="w-1 h-1 rounded-full bg-white"></div>
+                      </div>
+                      
+                      <!-- Connector Line (only if not the last item) -->
+                      <div v-if="index < getPetHistory(appointment.petId || appointment.petNames?.[0] || appointment.petName).length - 1" 
+                           class="w-0.5 h-8 bg-gray-200 mt-2"></div>
                     </div>
                     
                     <!-- Timeline Content -->
                     <div class="bg-gray-50 rounded-lg border border-gray-200 p-3 hover:shadow-md transition-shadow">
                       <div class="flex items-start justify-between mb-2">
                         <div>
-                          <h5 class="font-medium text-gray-900 text-sm">{{ historyItem.serviceNames?.join(', ') || 'Veterinary Service' }}</h5>
+                          <h5 class="font-medium text-gray-900 text-sm">
+                            <div class="flex flex-wrap gap-1">
+                              <div 
+                                v-for="(service, index) in historyItem.serviceNames" 
+                                :key="index"
+                                class="flex flex-col items-start"
+                              >
+                                <span class="text-sm">{{ getServiceDisplayName(service) }}</span>
+                                <span 
+                                  v-if="getServiceCategory(service)"
+                                  class="px-1 py-0.5 bg-gray-100 text-gray-600 text-xs rounded text-center"
+                                  :title="getServiceCategory(service)?.description"
+                                >
+                                  {{ getServiceCategory(service)?.name }}
+                                </span>
+                              </div>
+                            </div>
+                          </h5>
                           <p class="text-xs text-gray-500">{{ formatDate(historyItem.date) }}</p>
                         </div>
                         <div class="flex items-center gap-2">
@@ -563,10 +660,10 @@
                   </div>
                   
                   <!-- Empty State -->
-                  <div v-if="!getPetHistory(appointment.petId || appointment.petName)?.length" 
+                  <div v-if="!getPetHistory(appointment.petId || appointment.petNames?.[0] || appointment.petName)?.length" 
                        class="text-center py-6 text-gray-500">
                     <PawPrintIcon class="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p class="text-sm">No history found for this pet.</p>
+                    <p class="text-sm">No completed appointments found for this pet.</p>
                   </div>
                 </div>
               </div>
@@ -928,13 +1025,22 @@
             <div>
               <div class="text-sm text-gray-500 mb-3">Services</div>
               <div class="flex flex-wrap gap-2">
-                <span 
-                  v-for="(service, index) in selectedAppointment.serviceNames" 
+                <div 
+                  v-for="(serviceId, index) in selectedAppointment.services" 
                   :key="index"
-                  class="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg font-medium"
+                  class="flex flex-col items-start"
                 >
-                  {{ service }}
-                </span>
+                  <span class="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg font-medium mb-1">
+                    {{ getServiceDisplayName(serviceId) }}
+                  </span>
+                  <span 
+                    v-if="getServiceCategory(serviceId)"
+                    class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded text-center"
+                    :title="getServiceCategory(serviceId)?.description"
+                  >
+                    {{ getServiceCategory(serviceId)?.name }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1093,14 +1199,23 @@
                   </div>
                   <div class="text-base font-medium text-gray-700">Services</div>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                  <span 
-                    v-for="(service, index) in selectedAppointment.serviceNames" 
+                                <div class="flex flex-wrap gap-2">
+                  <div 
+                    v-for="(serviceId, index) in selectedAppointment.services" 
                     :key="index"
-                    class="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg font-medium"
+                    class="flex flex-col items-start"
                   >
-                    {{ service }}
-                  </span>
+                    <span class="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg font-medium mb-1">
+                      {{ getServiceDisplayName(serviceId) }}
+                    </span>
+                    <span 
+                      v-if="getServiceCategory(serviceId)"
+                      class="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded text-center"
+                      :title="getServiceCategory(serviceId)?.description"
+                    >
+                      {{ getServiceCategory(serviceId)?.name }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1246,7 +1361,22 @@
           <div>
             <div class="text-sm text-gray-500 mb-1">Services</div>
             <div class="font-medium text-gray-900">
-              {{ selectedAppointment?.serviceNames?.join(', ') }}
+              <div class="flex flex-wrap gap-1">
+                <div 
+                  v-for="(serviceId, index) in selectedAppointment?.services" 
+                  :key="index"
+                  class="flex flex-col items-start"
+                >
+                  <span class="text-sm">{{ getServiceDisplayName(serviceId) }}</span>
+                  <span 
+                    v-if="getServiceCategory(serviceId)"
+                    class="px-1 py-0.5 bg-gray-100 text-gray-600 text-xs rounded text-center"
+                    :title="getServiceCategory(serviceId)?.description"
+                  >
+                    {{ getServiceCategory(serviceId)?.name }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1263,10 +1393,47 @@
           
           <!-- Services with individual notes -->
           <div class="space-y-4">
-            <div v-for="(service, index) in selectedAppointment?.serviceNames" :key="index" class="border border-gray-200 rounded-lg p-4">
+            <div v-for="(serviceId, index) in selectedAppointment?.services" :key="index" class="border border-gray-200 rounded-lg p-4">
               <div class="flex items-center justify-between mb-3">
-                <h4 class="font-medium text-gray-900">{{ service }}</h4>
+                <h4 class="font-medium text-gray-900">{{ getServiceDisplayName(serviceId) }}</h4>
                 <span class="text-sm text-gray-500">Service {{ index + 1 }}</span>
+              </div>
+              
+              <!-- Category Information -->
+              <div v-if="getServiceCategory(serviceId)" class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                  </svg>
+                  <span class="text-sm font-medium text-blue-800">Category</span>
+                </div>
+                <div class="text-sm text-blue-700">
+                  <div class="font-medium">{{ getServiceCategory(service)?.name }}</div>
+                  <div class="text-blue-600">{{ getServiceCategory(service)?.description }}</div>
+                </div>
+              </div>
+              
+
+              
+              <!-- Service Details (if available) -->
+              <div v-if="getServiceById(serviceId)" class="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span class="text-sm font-medium text-green-800">Service Details</span>
+                </div>
+                <div class="text-sm text-green-700">
+                  <div v-if="getServiceById(serviceId)?.fees" class="mb-1">
+                    <span class="font-medium">Fees:</span> {{ getServiceById(serviceId)?.fees }}
+                  </div>
+                  <div v-if="getServiceById(serviceId)?.processingTime" class="mb-1">
+                    <span class="font-medium">Processing Time:</span> {{ getServiceById(serviceId)?.processingTime }}
+                  </div>
+                  <div v-if="getServiceById(serviceId)?.classification" class="mb-1">
+                    <span class="font-medium">Classification:</span> {{ getServiceById(serviceId)?.classification }}
+                  </div>
+                </div>
               </div>
               
               <!-- Service-specific fields -->
@@ -1605,154 +1772,165 @@ class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-5
 <!-- Reschedule Panel -->
 <div 
 v-if="showAutoReschedulePanel" 
-class="fixed inset-0 bg-black bg-opacity-30 z-50"
+class="fixed inset-0 bg-black bg-opacity-20 z-50"
 @click="closeAutoReschedulePanel"
 >
 <div 
-  class="absolute right-0 top-0 h-full w-[700px] bg-white shadow-xl transform transition-transform duration-300"
+  class="absolute right-0 top-0 h-full w-[500px] bg-white shadow-2xl transform transition-transform duration-300"
   @click.stop
 >
   <div class="h-full flex flex-col">
     <!-- Header -->
-    <div class="flex items-center justify-between p-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Reschedule Appointment</h2>
-      <button @click="closeAutoReschedulePanel" class="text-gray-400 hover:text-gray-600">
+    <div class="flex items-center justify-between p-6 border-b border-gray-100">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">Request Reschedule</h2>
+        <p class="text-sm text-gray-500 mt-1">Suggest a new time to the client</p>
+      </div>
+      <button @click="closeAutoReschedulePanel" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
         <XIcon class="w-5 h-5" />
       </button>
     </div>
     
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-4">
-      <div v-if="reschedulingAppointment" class="space-y-4">
-        <!-- Current Appointment -->
-        <div class="bg-gray-50 rounded-lg p-3">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Current Appointment</h3>
-          <div class="space-y-1 text-sm">
-            <div><span class="text-gray-500">Owner:</span> {{ reschedulingAppointment.ownerName }}</div>
-            <div><span class="text-gray-500">Date:</span> {{ formatDate(reschedulingAppointment.date) }}</div>
-            <div><span class="text-gray-500">Time:</span> {{ reschedulingAppointment.time }}</div>
-            <div><span class="text-gray-500">Services:</span> {{ reschedulingAppointment.serviceNames?.join(', ') }}</div>
+    <div class="flex-1 overflow-y-auto p-6">
+      <div v-if="reschedulingAppointment" class="space-y-6">
+        <!-- Current Appointment Summary -->
+        <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <CalendarIcon class="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 class="font-medium text-gray-900">Current Appointment</h3>
+              <p class="text-sm text-gray-600">{{ reschedulingAppointment.ownerName }}</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-gray-500">Date:</span>
+              <span class="ml-2 font-medium">{{ formatDate(reschedulingAppointment.date) }}</span>
+            </div>
+            <div>
+              <span class="text-gray-500">Time:</span>
+              <span class="ml-2 font-medium">{{ reschedulingAppointment.time }}</span>
+            </div>
+          </div>
+          <div class="mt-3 pt-3 border-t border-gray-200">
+            <span class="text-gray-500 text-sm">Status:</span>
+            <span :class="getStatusClass(reschedulingAppointment.status)" class="ml-2 text-xs">
+              {{ formatStatus(reschedulingAppointment.status) }}
+            </span>
+          </div>
+        </div>
+        
+        <!-- Reschedule Reason -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Reason for Reschedule *</label>
+          <textarea 
+            v-model="rescheduleReason"
+            rows="3"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none"
+            placeholder="Explain why you need to reschedule this appointment..."
+          ></textarea>
+          <div v-if="!rescheduleReason.trim()" class="text-xs text-orange-600 mt-2 flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            A reason is required
           </div>
         </div>
         
         <!-- Date Selection -->
-        <div class="bg-blue-50 rounded-lg p-3">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Select New Date</h3>
-          <div class="space-y-2">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Preferred Date</label>
+          <button 
+            @click="showDatePicker = true"
+            class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors"
+          >
             <div class="flex items-center gap-3">
-              <button 
-                @click="showDatePicker = true"
-                class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <CalendarIcon class="w-4 h-4 text-gray-500" />
-                <span class="text-sm text-gray-700">
-                  {{ selectedDate ? formatDate(selectedDate) : 'Choose a date' }}
-                </span>
-              </button>
-              <div v-if="selectedDate" class="text-xs text-gray-500">
-                Based on vet's working schedule
-              </div>
+              <CalendarIcon class="w-5 h-5 text-gray-500" />
+              <span class="text-gray-700">
+                {{ selectedDate ? formatDate(selectedDate) : 'Select a date' }}
+              </span>
             </div>
-          </div>
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
         </div>
         
-        <!-- Vet Schedule -->
-        <div class="bg-blue-50 rounded-lg p-3">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Vet Schedule</h3>
-          <div class="text-sm">
-            <div class="font-medium">Dr. {{ vetSchedule?.firstName }} {{ vetSchedule?.lastName }}</div>
-            <div class="text-gray-600">{{ vetSchedule?.schedule || 'Schedule not available' }}</div>
-          </div>
-        </div>
-        
-        <!-- Processing Times -->
-        <div class="bg-green-50 rounded-lg p-3">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Processing Times</h3>
-          <div class="space-y-1">
-            <div v-for="service in serviceDetails" :key="service.id" class="flex justify-between text-sm">
-              <span class="text-gray-700">{{ service.name }}</span>
-              <span class="text-gray-600">{{ service.processingTime || 'Time not specified' }}</span>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Time Options -->
-        <div v-if="selectedDate" class="space-y-3">
-          <h3 class="text-sm font-medium text-gray-700">Available Times for {{ formatDate(selectedDate) }}</h3>
+        <!-- Time Selection -->
+        <div v-if="selectedDate">
+          <label class="block text-sm font-medium text-gray-700 mb-3">Preferred Time</label>
           
           <!-- AM/PM Toggle -->
-          <div class="flex gap-2 mb-3">
+          <div class="flex gap-2 mb-4">
             <button 
               @click="selectedTimePeriod = 'AM'"
-              class="px-3 py-1 text-xs rounded-full transition-colors"
-              :class="selectedTimePeriod === 'AM' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
+              class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedTimePeriod === 'AM' ? 'bg-blue-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
             >
-              AM
+              Morning
             </button>
             <button 
               @click="selectedTimePeriod = 'PM'"
-              class="px-3 py-1 text-xs rounded-full transition-colors"
-              :class="selectedTimePeriod === 'PM' ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'"
+              class="flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+              :class="selectedTimePeriod === 'PM' ? 'bg-blue-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
             >
-              PM
+              Afternoon
             </button>
           </div>
           
-          <div class="grid grid-cols-4 gap-2">
+          <!-- Time Slots -->
+          <div class="grid grid-cols-3 gap-3">
             <button 
               v-for="option in filteredTimeOptions" 
               :key="option.value"
               @click="selectAutoRescheduleOption(option)"
-              class="p-2 text-center border rounded-lg transition-colors relative"
+              class="p-3 text-center border rounded-xl transition-all duration-200 hover:shadow-sm"
               :class="{ 
-                'border-green-500 bg-green-50': selectedAutoOption === option.value,
-                'border-gray-200 hover:bg-gray-50': selectedAutoOption !== option.value
+                'border-blue-500 bg-blue-50 shadow-sm': selectedAutoOption === option.value,
+                'border-gray-200 hover:border-gray-300': selectedAutoOption !== option.value
               }"
             >
-              <div class="font-medium text-sm text-gray-900">{{ option.displayTime }}</div>
+              <div class="font-medium text-gray-900">{{ option.displayTime }}</div>
               <div class="text-xs text-gray-500 mt-1">Available</div>
             </button>
           </div>
           
-          <div v-if="filteredTimeOptions.length === 0" class="text-center py-4">
-            <div class="text-red-500 text-sm font-medium mb-1">No Available Times</div>
-            <div class="text-gray-500 text-xs">
-              All time slots are either booked or conflict with existing appointments
+          <div v-if="filteredTimeOptions.length === 0" class="text-center py-6 text-gray-500">
+            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p class="text-sm font-medium">No available times</p>
+            <p class="text-xs">All slots are booked or conflict with existing appointments</p>
+          </div>
+        </div>
+        
+        <!-- Selected Time Preview -->
+        <div v-if="selectedAutoOption" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div>
+              <h4 class="font-medium text-blue-900">Suggested Time</h4>
+              <p class="text-sm text-blue-700">{{ selectedAutoRescheduleDate }} at {{ selectedAutoRescheduleTime }}</p>
             </div>
           </div>
         </div>
         
-        <!-- Selected Option Preview -->
-        <div v-if="selectedAutoOption" class="bg-blue-50 rounded-lg p-3">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Reschedule To</h3>
-          <div class="text-sm text-gray-900">
-            {{ selectedAutoRescheduleDate }} at {{ selectedAutoRescheduleTime }}
-          </div>
-        </div>
-        
-        <!-- Future Appointments -->
-        <div class="border-t pt-3">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">Upcoming Appointments</h3>
-          <div class="max-h-32 overflow-y-auto border border-gray-200 rounded-lg">
-            <div v-if="futureAppointments.length === 0" class="p-2 text-center text-gray-500 text-xs">
-              No upcoming appointments
-            </div>
-            <div v-else class="divide-y divide-gray-200">
-              <div 
-                v-for="appt in futureAppointments" 
-                :key="appt.id"
-                class="p-2 hover:bg-gray-50"
-              >
-                <div class="flex justify-between items-center">
-                  <div>
-                    <div class="text-xs font-medium text-gray-900">{{ appt.ownerName }}</div>
-                    <div class="text-xs text-gray-500">{{ appt.serviceNames?.join(', ') }}</div>
-                  </div>
-                  <div class="text-xs text-gray-600">
-                    {{ formatDate(appt.date) }} at {{ appt.time }}
-                  </div>
-                </div>
-              </div>
+        <!-- Info Note -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div class="flex items-start gap-3">
+            <svg class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div class="text-sm text-amber-800">
+              <p class="font-medium">Client will be notified</p>
+              <p class="text-amber-700 mt-1">They can accept, decline, or suggest an alternative time. The appointment won't be automatically changed.</p>
             </div>
           </div>
         </div>
@@ -1760,14 +1938,25 @@ class="fixed inset-0 bg-black bg-opacity-30 z-50"
     </div>
     
     <!-- Footer -->
-    <div class="p-4 border-t border-gray-200">
+    <div class="p-6 border-t border-gray-100 bg-gray-50">
       <button 
-        @click="executeAutoReschedule"
-        :disabled="autoRescheduleLoading || !selectedAutoOption || !selectedDate"
-        class="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        @click="executeRescheduleRequest"
+        :disabled="autoRescheduleLoading || !selectedAutoOption || !selectedDate || !rescheduleReason.trim()"
+        class="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-medium hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
       >
-        <span v-if="autoRescheduleLoading">Rescheduling...</span>
-        <span v-else>Confirm Reschedule</span>
+        <span v-if="autoRescheduleLoading" class="flex items-center justify-center gap-2">
+          <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Sending Request...
+        </span>
+        <span v-else class="flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+          </svg>
+          Send Reschedule Request
+        </span>
       </button>
     </div>
   </div>
@@ -2049,13 +2238,22 @@ class="fixed inset-0 bg-black bg-opacity-30 z-50"
             <div class="mt-4">
               <div class="text-sm text-gray-500 mb-2">Services</div>
               <div class="flex flex-wrap gap-2">
-                <span 
+                <div 
                   v-for="(service, index) in selectedAppointment.serviceNames" 
                   :key="index"
-                  class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                  class="flex flex-col items-start"
                 >
-                  {{ service }}
-                </span>
+                  <span class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full mb-1">
+                    {{ getServiceDisplayName(service) }}
+                  </span>
+                  <span 
+                    v-if="getServiceCategory(service)"
+                    class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded text-center"
+                    :title="getServiceCategory(service)?.description"
+                  >
+                    {{ getServiceCategory(service)?.name }}
+                  </span>
+                </div>
               </div>
             </div>
             
@@ -2188,7 +2386,7 @@ class="fixed inset-0 bg-black bg-opacity-30 z-50"
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onBeforeUnmount, onActivated, onDeactivated, nextTick } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount, onUnmounted, onActivated, onDeactivated, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { 
 Search as SearchIcon,
@@ -2256,13 +2454,23 @@ const itemsPerPage = 10;
 const showFilters = ref(false);
 const filters = ref({
 status: '',
+dateRange: '',
+serviceType: ''
 });
+
+// Category filter state
+const categoryFilter = ref('all');
+
+// Service categories state
+const serviceCategories = ref({});
+const servicesData = ref({});
+const categoriesData = ref({});
 
 // Status category definitions (dedup by ID to avoid over-counting)
 const statusCategories = computed(() => {
-  // Build a unique set of appointments by ID
+  // Build a unique set of appointments by ID from filtered appointments
   const uniqueMap = new Map();
-  for (const appt of appointments.value) {
+  for (const appt of filteredAppointments.value) {
     if (!appt || !appt.id) continue;
     uniqueMap.set(appt.id, appt);
   }
@@ -2285,7 +2493,41 @@ const statusCategories = computed(() => {
     { key: 'rejected', label: 'Rejected', count: counters['rejected'] || 0 },
     { key: 'cancelled', label: 'Cancelled', count: counters['cancelled'] || 0 },
     { key: 'expired', label: 'Expired', count: counters['expired'] || 0 },
+    { key: 'consider_rescheduling', label: 'Consider Rescheduling', count: counters['consider_rescheduling'] || 0 },
   ];
+});
+
+// Available categories for filtering
+const availableCategories = computed(() => {
+  return Object.values(categoriesData.value).filter(category => !category.archived);
+});
+
+// Filtered appointments based on status and category
+const filteredAppointments = computed(() => {
+  let filtered = appointments.value;
+  
+  // Apply status filter
+  if (filters.value.status) {
+    filtered = filtered.filter(appointment => {
+      const effectiveStatus = isExpired(appointment) ? 'expired' : appointment.status;
+      return effectiveStatus === filters.value.status;
+    });
+  }
+  
+  // Apply category filter
+  if (categoryFilter.value !== 'all') {
+    filtered = filtered.filter(appointment => {
+      if (!appointment.services || appointment.services.length === 0) return false;
+      
+      // Check if any service in this appointment belongs to the selected category
+      return appointment.services.some(serviceId => {
+        const service = servicesData.value[serviceId];
+        return service && service.categoryId === categoryFilter.value;
+      });
+    });
+  }
+  
+  return filtered;
 });
 
 // Loading states
@@ -2370,6 +2612,12 @@ const openCompletionForm = async (appointmentId) => {
   const appointment = appointments.value.find(a => a.id === appointmentId);
   if (!appointment) return;
   
+  console.log('Opening completion form for appointment:', appointment);
+  console.log('Appointment serviceNames:', appointment.serviceNames);
+  console.log('Available service data:', servicesData.value);
+  console.log('Available category data:', categoriesData.value);
+  console.log('Service categories mapping:', serviceCategories.value);
+  
   selectedAppointment.value = appointment;
   
   // Initialize completion form with appointment data
@@ -2378,7 +2626,8 @@ const openCompletionForm = async (appointmentId) => {
       name: service,
       status: 'completed',
       duration: 30,
-      notes: ''
+      notes: '',
+      category: getServiceCategory(service) // Add category information
     })) || [],
     pets: getPetsArray(appointment).map(pet => ({
       name: pet.name,
@@ -2579,6 +2828,7 @@ const selectedAutoRescheduleTime = ref('');
 const selectedTimePeriod = ref('AM');
 const selectedDate = ref('');
 const showDatePicker = ref(false);
+const rescheduleReason = ref('');
 const currentMonth = ref(new Date());
 const tempSelectedDate = ref('');
 const showAppointmentDetailsModal = ref(false);
@@ -2947,31 +3197,44 @@ try {
 };
 
 // Initialize component
-onMounted(() => {
-  // Initialize notification service with the store
-  notificationService.setNotificationsStore(notificationsStore);
-  
-  fetchAppointments().then(() => {
+onMounted(async () => {
+  try {
+    await fetchServiceData(); // Fetch service categories and services
+    await fetchAppointments();
+  } catch (error) {
+    console.error('Error during initialization:', error);
+    // Still try to fetch appointments even if service data fails
     try {
-      const focusId = (router.currentRoute.value.query?.focus ?? null) ? String(router.currentRoute.value.query.focus) : null;
-      if (focusId) {
-        setTimeout(() => {
-          const el = document.getElementById(`appt-${focusId}`);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            el.classList.add('ring-2', 'ring-indigo-400');
-            setTimeout(() => el.classList.remove('ring-2', 'ring-indigo-400'), 1500);
-          }
-        }, 400);
-      }
-    } catch (e) {}
-  });
+      await fetchAppointments();
+    } catch (appointmentError) {
+      console.error('Failed to fetch appointments:', appointmentError);
+    }
+  }
+  
+  // Add click outside handler for action menus
+  const handleClickOutside = (event) => {
+    if (!event.target.closest('.action-menu-container')) {
+      closeActionMenu();
+    }
+  };
+  
+  document.addEventListener('click', handleClickOutside);
+  
+  // Cleanup function
+  return () => {
+    document.removeEventListener('click', handleClickOutside);
+  };
 });
 
 // Clean up when component is unmounted
 onBeforeUnmount(() => {
 // Reset any processing states when leaving the page
 resetProcessingStates();
+});
+
+// Clean up when component is unmounted
+onUnmounted(() => {
+// Clean up any event listeners or resources
 });
 
 // Handle Vue keep-alive activation/deactivation
@@ -3031,6 +3294,8 @@ const handleRefresh = async () => {
   }
 };
 
+
+
 // Status filter functions
 const toggleStatusFilter = (status) => {
 if (status === 'All') {
@@ -3040,12 +3305,46 @@ if (status === 'All') {
 }
 showFilters.value = false;
 currentPage.value = 1;
+// Reset category filter when status changes
+categoryFilter.value = 'all';
 };
 
 const clearStatusFilter = () => {
 filters.value.status = '';
 currentPage.value = 1;
+// Reset category filter when status changes
+categoryFilter.value = 'all';
 };
+
+// Category filter functions
+const setCategoryFilter = () => {
+  currentPage.value = 1;
+  // Reset status filter when category changes
+  filters.value.status = '';
+};
+
+const clearCategoryFilter = () => {
+  categoryFilter.value = 'all';
+  currentPage.value = 1;
+  // Reset status filter when category changes
+  filters.value.status = '';
+};
+
+// Helper function to get category name by ID
+const getCategoryName = (categoryId) => {
+  if (categoryId === 'all') return 'All Categories';
+  const category = categoriesData.value[categoryId];
+  return category ? category.name : 'Unknown Category';
+};
+
+// Clear all filters function
+const clearAllFilters = () => {
+  filters.value.status = '';
+  categoryFilter.value = 'all';
+  currentPage.value = 1;
+};
+
+
 
 // Modified formatPetDetails function to only show breed and year
 const formatPetDetails = (appointment) => {
@@ -3125,13 +3424,18 @@ return format(date, 'MMM d, yyyy h:mm a');
 const formatStatus = (status) => {
 if (!status) return 'Unknown';
 
+// Handle special status formatting
+if (status === 'consider_rescheduling') {
+  return 'Consider Rescheduling';
+}
+
 // Capitalize first letter
 return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 };
 
 // Check if appointment is expired (past scheduled time and not approved)
 const isExpired = (appointment) => {
-  if (appointment.status === 'approved' || appointment.status === 'completed' || appointment.status === 'cancelled') {
+  if (appointment.status === 'approved' || appointment.status === 'completed' || appointment.status === 'cancelled' || appointment.status === 'consider_rescheduling') {
     return false;
   }
   
@@ -3230,9 +3534,9 @@ const filteredAndSortedAppointments = computed(() => {
 // Create a Map to store unique appointments by ID
 const uniqueAppointments = new Map();
 
-// Process each appointment
-appointments.value.forEach(appointment => {
-  // Check if it matches the search and filter criteria
+// Process each appointment from the filtered appointments
+filteredAppointments.value.forEach(appointment => {
+  // Check if it matches the search criteria
   const matchesSearch =
     (appointment.ownerName?.toLowerCase() || '').includes(search.value.toLowerCase()) ||
     (appointment.ownerEmail?.toLowerCase() || '').includes(search.value.toLowerCase()) ||
@@ -3240,12 +3544,8 @@ appointments.value.forEach(appointment => {
     (appointment.petSpecies?.toLowerCase() || '').includes(search.value.toLowerCase()) ||
     (appointment.contactInformation?.toLowerCase() || '').includes(search.value.toLowerCase());
 
-  // Handle expired appointments for filtering
-  const effectiveStatus = isExpired(appointment) ? 'expired' : appointment.status;
-  const matchesStatus = filters.value.status === '' || effectiveStatus === filters.value.status;
-
-  // Only add to the map if it matches criteria and isn't already there
-  if (matchesSearch && matchesStatus) {
+  // Only add to the map if it matches search criteria and isn't already there
+  if (matchesSearch) {
     uniqueAppointments.set(appointment.id, appointment);
   }
 });
@@ -3325,26 +3625,28 @@ if (currentPage.value < totalPages.value) {
 };
 
 const getStatusClass = (status) => {
-const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
-switch (status?.toLowerCase()) {
-  case 'pending':
-    return `${baseClasses} bg-yellow-100 text-yellow-800`;
-  case 'processing':
-    return `${baseClasses} bg-blue-100 text-blue-800`;
-  case 'approved':
-    return `${baseClasses} bg-green-100 text-green-800`;
-  case 'completed':
-    return `${baseClasses} bg-purple-100 text-purple-800`;
-  case 'cancelled':
-  case 'rejected':
-    return `${baseClasses} bg-red-100 text-red-800`;
-  case 'expired':
-    return `${baseClasses} bg-red-50 text-red-700 border border-red-200`;
-  case 'ended':
-    return `${baseClasses} bg-slate-200 text-slate-700`;
-  default:
-    return `${baseClasses} bg-gray-100 text-gray-800`;
-}
+  const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
+  switch (status?.toLowerCase()) {
+    case 'pending':
+      return `${baseClasses} bg-yellow-100 text-yellow-800`;
+    case 'processing':
+      return `${baseClasses} bg-blue-100 text-blue-800`;
+    case 'approved':
+      return `${baseClasses} bg-green-100 text-green-800`;
+    case 'completed':
+      return `${baseClasses} bg-purple-100 text-purple-800`;
+    case 'cancelled':
+    case 'rejected':
+      return `${baseClasses} bg-red-100 text-red-800`;
+    case 'expired':
+      return `${baseClasses} bg-red-50 text-red-700 border border-red-200`;
+    case 'ended':
+      return `${baseClasses} bg-slate-200 text-slate-700`;
+    case 'consider_rescheduling':
+      return `${baseClasses} bg-orange-100 text-orange-800`;
+    default:
+      return `${baseClasses} bg-gray-100 text-gray-800`;
+  }
 };
 
 // Improved approval process to ensure complete data loading
@@ -4035,7 +4337,7 @@ setTimeout(() => {
         formatPetDetails(appointment),
         formatDate(appointment.date),
         appointment.time,
-        appointment.serviceNames?.join('; ') || '',
+        appointment.services?.map(serviceId => getServiceDisplayName(serviceId)).join('; ') || '',
         appointment.status,
         appointment.cancellationReason || '',
         appointment.cancelledBy || '',
@@ -4059,8 +4361,8 @@ setTimeout(() => {
 const currentRoute = useRoute();
 const vueRouter = useRouter();
 
-// Reschedule functions
-const openReschedulePanel = async (appointment) => {
+// Reschedule request functions
+const openRescheduleRequestPanel = async (appointment) => {
   reschedulingAppointment.value = { ...appointment };
   showAutoReschedulePanel.value = true;
   
@@ -4072,6 +4374,7 @@ const openReschedulePanel = async (appointment) => {
   selectedDate.value = '';
   tempSelectedDate.value = '';
   currentMonth.value = new Date();
+  rescheduleReason.value = '';
   
   // Fetch required data
   await Promise.all([
@@ -4103,6 +4406,7 @@ const closeAutoReschedulePanel = () => {
   showDatePicker.value = false;
   tempSelectedDate.value = '';
   currentMonth.value = new Date();
+  rescheduleReason.value = '';
 };
 
 
@@ -4179,6 +4483,25 @@ const toggleTimeline = (appointmentId) => {
 };
 
 // ========================================
+// PET NAME HELPER FUNCTIONS
+// ========================================
+
+const getPetDisplayName = (appointment) => {
+  // Check if we have petNames array (multiple pets)
+  if (appointment.petNames && Array.isArray(appointment.petNames) && appointment.petNames.length > 0) {
+    return appointment.petNames.join(', ');
+  }
+  
+  // Check if we have petName (single pet)
+  if (appointment.petName && appointment.petName.trim()) {
+    return appointment.petName.trim();
+  }
+  
+  // Fallback
+  return 'No pet info';
+};
+
+// ========================================
 // PET HISTORY FUNCTIONS
 // ========================================
 
@@ -4194,6 +4517,9 @@ const getPetHistory = (petIdOrName) => {
     // Skip if we've already included this appointment
     if (uniqueAppointmentIds.has(appointment.id)) return false;
     
+    // Only include completed appointments for history
+    if (appointment.status !== 'completed') return false;
+    
     // Check if this appointment involves the pet
     let isPetInvolved = false;
     
@@ -4208,6 +4534,12 @@ const getPetHistory = (petIdOrName) => {
     // Check by petIds array
     else if (appointment.petIds && appointment.petIds.includes(petIdOrName)) {
       isPetInvolved = true;
+    }
+    // Check by petNames array (for multiple pets)
+    else if (appointment.petNames && Array.isArray(appointment.petNames)) {
+      if (appointment.petNames.some(name => name === petIdOrName)) {
+        isPetInvolved = true;
+      }
     }
     
     // If pet is involved, add to unique set and include in results
@@ -4833,21 +5165,9 @@ const validateRescheduleTime = (targetDate, targetTime, appointmentId) => {
   return { isValid: true, conflict: null };
 };
 
-const executeAutoReschedule = async () => {
-  if (!selectedAutoOption.value || !reschedulingAppointment.value) {
-    console.warn('Missing required data for rescheduling');
-    return;
-  }
-  
-  // Validate the selected time before proceeding
-  const validation = validateRescheduleTime(
-    selectedAutoRescheduleDate.value, 
-    selectedAutoRescheduleTime.value, 
-    reschedulingAppointment.value.id
-  );
-  
-  if (!validation.isValid) {
-    errorMessage.value = validation.conflict;
+const executeRescheduleRequest = async () => {
+  if (!selectedAutoOption.value || !reschedulingAppointment.value || !rescheduleReason.value.trim()) {
+    errorMessage.value = 'Please provide a reason for the reschedule request and select a preferred time.';
     showErrorModal.value = true;
     return;
   }
@@ -4855,58 +5175,92 @@ const executeAutoReschedule = async () => {
   autoRescheduleLoading.value = true;
   
   try {
-    const updateData = {
-      date: selectedAutoRescheduleDate.value,
-      time: selectedAutoRescheduleTime.value,
-      updatedAt: new Date()
+    // Create reschedule request data
+    const rescheduleRequestData = {
+      suggestedDate: selectedAutoRescheduleDate.value,
+      suggestedTime: selectedAutoRescheduleTime.value,
+      reason: rescheduleReason.value.trim(),
+      requestedBy: authStore.user?.userId || 'vet',
+      requestedAt: new Date(),
+      status: 'reschedule_requested'
     };
     
-    // Update in Firestore
-    await appointmentStore.updateAppointment(reschedulingAppointment.value.id, updateData);
+    // Update appointment with reschedule request and status change
+    await appointmentStore.updateAppointment(reschedulingAppointment.value.id, {
+      rescheduleRequest: rescheduleRequestData,
+      status: 'consider_rescheduling',
+      updatedAt: new Date()
+    });
     
     // Update local state
     const index = appointments.value.findIndex(a => a.id === reschedulingAppointment.value.id);
     if (index !== -1) {
       appointments.value[index] = {
         ...appointments.value[index],
-        ...updateData
+        rescheduleRequest: rescheduleRequestData,
+        status: 'consider_rescheduling',
+        updatedAt: new Date()
       };
     }
 
-    // Notify the appointment owner about the reschedule
+    // Notify the appointment owner about the reschedule request
     try {
       const readableDate = format(new Date(selectedAutoRescheduleDate.value), 'MMM dd, yyyy');
-      const title = 'Appointment Rescheduled';
-      const description = `Your appointment has been rescheduled to ${readableDate} at ${selectedAutoRescheduleTime.value}.`;
+      const title = 'Reschedule Request';
+      const description = `Your vet has requested to reschedule your appointment to ${readableDate} at ${selectedAutoRescheduleTime.value}. Reason: ${rescheduleReason.value.trim()}. Please review and respond.`;
+      
       // Ensure notification service has the store
       notificationService.setNotificationsStore(notificationsStore);
       // Set current user context for service (for fallback flows)
       if (reschedulingAppointment.value.userId) {
         window.currentUser = { userId: reschedulingAppointment.value.userId };
       }
+      
       await notificationService.storeNotificationInFirestore(title, description, {
         type: 'appointment',
         url: '/user/notifications',
         userId: reschedulingAppointment.value.userId,
         appointmentId: reschedulingAppointment.value.id,
-        status: 'rescheduled',
+        status: 'reschedule_requested',
         fromClient: true,
         deleted: false,
         forceFallback: true
       });
     } catch (notifyErr) {
-      // Silent fail for notifications
+      console.error('Failed to send notification:', notifyErr);
+    }
+    
+    // Notify the vet about the reschedule request sent
+    try {
+      const vetTitle = 'Reschedule Request Sent';
+      const vetDescription = `You have sent a reschedule request for appointment with ${reschedulingAppointment.value.ownerName} (${reschedulingAppointment.value.petNames?.join(', ') || 'pet'}). Suggested time: ${selectedAutoRescheduleDate.value} at ${selectedAutoRescheduleTime.value}. The client will be notified to review your request.`;
+      
+      // Send notification to the current vet
+      if (authStore.user?.userId) {
+        await notificationService.storeNotificationInFirestore(vetTitle, vetDescription, {
+          type: 'appointment',
+          url: '/vet/appointments',
+          userId: authStore.user.userId,
+          appointmentId: reschedulingAppointment.value.id,
+          status: 'reschedule_request_sent',
+          fromClient: false,
+          deleted: false,
+          forceFallback: true
+        });
+      }
+    } catch (vetNotifyErr) {
+      console.error('Failed to send vet notification:', vetNotifyErr);
     }
     
     // Close panel and show success
     closeAutoReschedulePanel();
-    successTitle.value = 'Appointment Rescheduled';
-    successMessage.value = `Appointment has been rescheduled to ${selectedAutoRescheduleDate.value} ${selectedAutoRescheduleTime.value}.`;
+    successTitle.value = 'Reschedule Request Sent';
+    successMessage.value = `Your reschedule request has been sent to the client. They will be notified to review your suggested time (${selectedAutoRescheduleDate.value} at ${selectedAutoRescheduleTime.value}) and can choose to accept, decline, or suggest an alternative.`;
     showSuccessModal.value = true;
     
   } catch (error) {
-    console.error('Error rescheduling appointment:', error);
-    errorMessage.value = 'Failed to reschedule appointment. Please try again.';
+    console.error('Error sending reschedule request:', error);
+    errorMessage.value = 'Failed to send reschedule request. Please try again.';
     showErrorModal.value = true;
   } finally {
     autoRescheduleLoading.value = false;
@@ -5254,6 +5608,135 @@ const completeAppointment = async (appointmentId) => {
     showErrorModal.value = true;
   }
 };
+
+
+
+// Fetch service categories and services data
+const fetchServiceData = async () => {
+  try {
+    // Import Firebase functions
+    const { collection, getDocs } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+    
+    // Fetch categories
+    const categoriesRef = collection(db, 'categories');
+    const categoriesSnapshot = await getDocs(categoriesRef);
+    categoriesData.value = {};
+    
+    categoriesSnapshot.forEach(doc => {
+      const data = doc.data();
+      categoriesData.value[doc.id] = {
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        coverPhoto: data.coverPhoto,
+        archived: data.archived
+      };
+    });
+    
+    // Fetch services
+    const servicesRef = collection(db, 'services');
+    const servicesSnapshot = await getDocs(servicesRef);
+    servicesData.value = {};
+    
+    servicesSnapshot.forEach(doc => {
+      const data = doc.data();
+      servicesData.value[doc.id] = {
+        id: doc.id,
+        name: data.name,
+        categoryId: data.categoryId,
+        classification: data.classification,
+        fees: data.fees,
+        processingTime: data.processingTime,
+        transactionType: data.transactionType
+      };
+    });
+    
+    // Build service-category mapping by service ID for better accuracy
+    serviceCategories.value = {};
+    
+    Object.values(servicesData.value).forEach(service => {
+      if (service.categoryId && categoriesData.value[service.categoryId]) {
+        serviceCategories.value[service.id] = categoriesData.value[service.categoryId];
+        // Also keep the name mapping for backward compatibility
+        serviceCategories.value[service.name] = categoriesData.value[service.categoryId];
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching service data:', error);
+    // Re-throw the error so the calling function knows it failed
+    throw error;
+  }
+};
+
+// Updated getServiceCategory function - works with both service ID and name
+const getServiceCategory = (serviceIdentifier) => {
+  if (!serviceIdentifier) {
+    return null;
+  }
+  
+  // First try to find by service ID in servicesData (this is the main case for appointments)
+  if (servicesData.value && servicesData.value[serviceIdentifier]) {
+    const service = servicesData.value[serviceIdentifier];
+    if (service && service.categoryId && categoriesData.value[service.categoryId]) {
+      return categoriesData.value[service.categoryId];
+    }
+  }
+  
+  // Then try the pre-built mapping
+  const result = serviceCategories.value[serviceIdentifier] || null;
+  
+  // If still not found, try to find by service name in servicesData
+  if (!result && servicesData.value) {
+    const service = Object.values(servicesData.value).find(s => s.name === serviceIdentifier);
+    if (service && service.categoryId && categoriesData.value[service.categoryId]) {
+      return categoriesData.value[service.categoryId];
+    }
+  }
+  
+  return result;
+};
+
+// Helper function to get service details by ID
+const getServiceById = (serviceId) => {
+  return servicesData.value[serviceId] || null;
+};
+
+// Helper function to get service details by name
+const getServiceByName = (serviceName) => {
+  return Object.values(servicesData.value).find(service => service.name === serviceName) || null;
+};
+
+// Helper function to get service name by ID
+const getServiceNameById = (serviceId) => {
+  if (servicesData.value && servicesData.value[serviceId]) {
+    return servicesData.value[serviceId].name;
+  }
+  return serviceId; // Return the ID if no name found
+};
+
+// Helper function to get display name for service (handles both ID and name)
+const getServiceDisplayName = (serviceIdentifier) => {
+  if (!serviceIdentifier) return 'Unknown Service';
+  
+  // If it's an ID, convert to name (this is the main case for appointments)
+  if (servicesData.value && servicesData.value[serviceIdentifier]) {
+    return servicesData.value[serviceIdentifier].name;
+  }
+  
+  // If it's already a name, return it (fallback case)
+  if (servicesData.value) {
+    const serviceByName = Object.values(servicesData.value).find(s => s.name === serviceIdentifier);
+    if (serviceByName) return serviceIdentifier; // It's already a name
+  }
+  
+  // Fallback - return the identifier as is
+  return serviceIdentifier;
+};
+
+
+
 </script>
 
 <style scoped>

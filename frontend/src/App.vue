@@ -3,19 +3,20 @@
   <div id="app">
     <router-view />
     <!-- Global appointment reminder system -->
-    <AppointmentReminder />
+    <AppointmentReminder ref="appointmentReminderRef" />
     <!-- Reminder tester for development/testing -->
-    <ReminderTester />
+    <ReminderTester :appointment-reminder-ref="appointmentReminderRef" />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/modules/authStore'
 import AppointmentReminder from '@/components/common/AppointmentReminder.vue'
 import ReminderTester from '@/components/common/ReminderTester.vue'
 
 const authStore = useAuthStore()
+const appointmentReminderRef = ref(null)
 
 onMounted(() => {
   authStore.initializeAuth()

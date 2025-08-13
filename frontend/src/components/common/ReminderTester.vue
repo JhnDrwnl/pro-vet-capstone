@@ -42,6 +42,14 @@
         </button>
         
         <button 
+          @click="resetReminderSystem"
+          :disabled="testing"
+          class="w-full bg-red-500 text-white px-3 py-2 rounded text-sm font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Reset Reminder System
+        </button>
+        
+        <button 
           @click="checkCurrentTime"
           class="w-full bg-blue-500 text-white px-3 py-2 rounded text-sm font-medium hover:bg-blue-400"
         >
@@ -76,6 +84,14 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { sendDailyAppointmentReminders, createTestAppointmentReminder } from '@/services/notificationService'
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
 import { db } from '@shared/firebase'
+
+// Props
+const props = defineProps({
+  appointmentReminderRef: {
+    type: Object,
+    default: null
+  }
+})
 
 const showTester = ref(false)
 const testing = ref(false)
@@ -177,6 +193,28 @@ const debugNotificationData = async () => {
   } catch (error) {
     console.error('❌ Debug failed:', error)
     lastResult.value = `❌ Debug failed: ${error.message}`
+  } finally {
+    testing.value = false
+  }
+}
+
+const resetReminderSystem = async () => {
+  testing.value = true
+  try {
+    console.log('🔄 Resetting reminder system...')
+    
+    // Try to access the AppointmentReminder component and reset it
+    if (props.appointmentReminderRef && props.appointmentReminderRef.manualResetSystem) {
+      props.appointmentReminderRef.manualResetSystem()
+      lastResult.value = '✅ Reminder system reset successfully'
+      console.log('✅ Reminder system reset successfully')
+    } else {
+      lastResult.value = '⚠️ AppointmentReminder component not accessible'
+      console.log('⚠️ AppointmentReminder component not accessible')
+    }
+  } catch (error) {
+    lastResult.value = `❌ Error resetting: ${error.message}`
+    console.error('❌ Error resetting:', error)
   } finally {
     testing.value = false
   }
