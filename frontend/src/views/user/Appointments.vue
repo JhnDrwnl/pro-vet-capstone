@@ -3415,148 +3415,50 @@ const bookAppointment = async () => {
   
     // Send notification to the user about the booking
     try {
-      // console.log('Starting notification process...');
-      // console.log('Current user:', authStore.user);
-      // console.log('User ID:', authStore.user?.userId);
-      
       // Initialize notification service with the store
       notificationService.setNotificationsStore(notificationsStore);
-      
-      // Set current user for notification service
-      if (authStore.user?.userId) {
-        window.currentUser = { userId: authStore.user.userId };
-        // console.log('Set window.currentUser:', window.currentUser);
-      } else {
-        // console.error('No user ID available for notification');
-        return;
-      }
       
       const notificationTitle = "Appointment Booked Successfully!";
       const notificationBody = isVeterinaryHealthCertificateCategory.value 
         ? `Your Veterinary Health Certificate appointment on ${formatDate(selectedDate.value)} at ${selectedTime.value} has been booked. Please wait for veterinary approval.`
         : `Your appointment for ${petNames.join(', ')} on ${formatDate(selectedDate.value)} at ${selectedTime.value} has been booked. Please wait for veterinary approval.`;
       
-      // console.log('Notification data:', {
-      //   title: notificationTitle,
-      //   body: notificationBody,
-      //   userId: authStore.user?.userId,
-      //   appointmentId: result
-      // });
-      
-      // Send notification
-      const notificationResult = await notificationService.showNotification(notificationTitle, notificationBody, {
+      // Send ONE notification to the user (this will handle both UI display and Firestore storage)
+      await notificationService.showNotification(notificationTitle, notificationBody, {
         type: 'appointment',
         url: '/user/notifications',
         userId: authStore.user?.userId,
         appointmentId: result,
         status: 'pending',
         fromClient: true,
-        storeInFirestore: true,
-        skipDuplicateCheck: true
+        storeInFirestore: true
       });
-      
-      // console.log('Notification service result:', notificationResult);
-      
-      // Also directly store the notification in Firestore as backup
-      const storeResult = await notificationService.storeNotificationInFirestore(notificationTitle, notificationBody, {
-        type: 'appointment',
-        url: '/user/notifications',
-        userId: authStore.user?.userId,
-        appointmentId: result,
-        status: 'pending',
-        fromClient: true,
-        deleted: false,
-        skipDuplicateCheck: true
-      });
-      
-      // console.log('Direct store result:', storeResult);
-      
-      // Additional backup: Direct Firestore save (user)
-      try {
-        const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
-        const { db } = await import('@shared/firebase');
-        
-        const notificationData = {
-          userId: authStore.user?.userId,
-          title: notificationTitle,
-          description: notificationBody,
-          type: 'appointment',
-          read: false,
-          url: '/user/notifications',
-          data: {
-            appointmentId: String(result),
-            status: 'pending',
-            fromClient: 'true'
-          },
-          deleted: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        };
-        
-        const notificationsRef = collection(db, 'notifications');
-        await addDoc(notificationsRef, notificationData);
-      } catch (directSaveError) {
-        // console.error('Direct Firestore save failed:', directSaveError)
-      }
       
       // Notify the veterinarian about the new booking
-      try {
-        const vetUserId = selectedDoctor.value?.userId || selectedDoctor.value?.id
-        if (vetUserId) {
-          const vetTitle = 'New Appointment Request'
-          const vetBody = isVeterinaryHealthCertificateCategory.value
-            ? `A new Veterinary Health Certificate appointment was requested for ${formatDate(selectedDate.value)} at ${selectedTime.value}.`
-            : `A new appointment was requested for ${petNames.join(', ')} on ${formatDate(selectedDate.value)} at ${selectedTime.value}.`
+      const vetUserId = selectedDoctor.value?.userId || selectedDoctor.value?.id
+      if (vetUserId) {
+        const vetTitle = 'New Appointment Request'
+        const vetBody = isVeterinaryHealthCertificateCategory.value
+          ? `A new Veterinary Health Certificate appointment was requested for ${formatDate(selectedDate.value)} at ${selectedTime.value}.`
+          : `A new appointment was requested for ${petNames.join(', ')} on ${formatDate(selectedDate.value)} at ${selectedTime.value}.`
 
-          // Client notification + store
-          await notificationService.showNotification(vetTitle, vetBody, {
-            type: 'appointment',
-            url: '/vet/appointments/vetappointmentapproval',
-            userId: vetUserId,
-            appointmentId: String(result),
-            status: 'pending',
-            fromClient: true,
-            storeInFirestore: true,
-            skipDuplicateCheck: true
-          })
-
-          // Direct Firestore fallback store
-          try {
-            const { addDoc, collection, serverTimestamp } = await import('firebase/firestore')
-            const { db } = await import('@shared/firebase')
-            const vetNotificationData = {
-              userId: vetUserId,
-              title: vetTitle,
-              description: vetBody,
-              type: 'appointment',
-              read: false,
-              url: '/vet/appointments/vetappointmentapproval',
-              data: {
-                appointmentId: String(result),
-                status: 'pending',
-                fromClient: 'true'
-              },
-              deleted: false,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            }
-            const notificationsRef = collection(db, 'notifications')
-            await addDoc(notificationsRef, vetNotificationData)
-          } catch (vetStoreErr) {
-            console.error('Direct Firestore save for vet notification failed:', vetStoreErr)
-          }
-        } else {
-          console.warn('No veterinarian userId found to send booking notification')
-        }
-      } catch (vetNotifyErr) {
-        console.error('Error sending vet notification:', vetNotifyErr)
+        // Send ONE notification to the vet
+        await notificationService.showNotification(vetTitle, vetBody, {
+          type: 'appointment',
+          url: '/vet/appointments/vetappointmentapproval',
+          userId: vetUserId,
+          appointmentId: String(result),
+          status: 'pending',
+          fromClient: true,
+          storeInFirestore: true
+        });
+      } else {
+        console.warn('No veterinarian userId found to send booking notification')
       }
       
-      // console.log('Notification sent for appointment booking');
+      console.log('Notifications sent for appointment booking');
     } catch (notificationError) {
-      // console.error('Error sending notification:', notificationError);
-      // console.error('Error details:', notificationError.message);
-      // console.error('Error stack:', notificationError.stack);
+      console.error('Error sending notifications:', notificationError);
     }
     
     // Show success modal
@@ -3806,13 +3708,7 @@ onMounted(async () => {
     // Fetch veterinarians
     await fetchVeterinarians()
     
-    // Initialize notification service
-    try {
-      notificationService.setNotificationsStore(notificationsStore);
-      console.log('Notification service initialized');
-    } catch (error) {
-      console.error('Error initializing notification service:', error);
-    }
+    // Notification service is initialized when needed during appointment booking
     
     // Position the connector line
     positionConnectorLine()

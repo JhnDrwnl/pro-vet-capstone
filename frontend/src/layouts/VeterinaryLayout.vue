@@ -5,8 +5,10 @@
     <VeterinarySidebar 
       :isOpen="isSidebarOpen" 
       @toggle="toggleSidebar"
-      :isSmallScreen="isSmallScreen"
       @item-click="handleSidebarItemClick"
+      :isSmallScreen="isSmallScreen"
+      :currentRoute="currentRoute"
+      :navItems="navItems"
       :class="[
         'transition-all duration-300 ease-in-out fixed inset-y-0 left-0 z-[70]',
         { 'translate-x-0': isSidebarOpen || !isSmallScreen, '-translate-x-full': !isSidebarOpen && isSmallScreen }
@@ -62,7 +64,7 @@
         @skipped="handleNotificationsSkipped"
       />
     </div>
-  
+
     <!-- Overlay for mobile -->
     <div 
       v-if="isSidebarOpen && isSmallScreen" 
@@ -115,18 +117,33 @@ const toggleSidebar = () => {
   }
 };
 
+const handleSidebarItemClick = () => {
+  // Handle sidebar item clicks if needed
+  console.log('Sidebar item clicked');
+};
+
 const route = useRoute();
 const currentRoute = computed(() => route.path);
 
+// Navigation items for the sidebar
 const navItems = [
-  { href: '/veterinary/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/veterinary/appointments', icon: Calendar, label: 'Appointments' },
-  { href: '/veterinary/patients', icon: Users, label: 'Patients' },
-  { href: '/veterinary/consultations', icon: Stethoscope, label: 'Consultations' },
-  { href: '/veterinary/medical-records', icon: FileText, label: 'Medical Records' },
-  { href: '/veterinary/messages', icon: MessageSquare, label: 'Messages' },
-  { href: '/veterinary/settings', icon: Settings, label: 'Settings' },
-  { href: '/veterinary/profile', icon: UserCircle, label: 'Profile' },
+  { href: '/vet/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/vet/vetclientpets', icon: Users, label: 'Clients & Pets' },
+  { 
+    icon: Calendar,
+    label: 'Appointments',
+    subItems: [
+      { href: '/vet/appointments/vetappointmentapproval', icon: Calendar, label: 'Appointments' },
+      { href: '/vet/appointments/vetcalendar', icon: Calendar, label: 'Calendar' },
+    ]
+  },
+  { href: '/vet/queue', icon: Stethoscope, label: 'Queue' },
+  { href: '/vet/vetfeedback', icon: MessageSquare, label: 'Feedback' },
+  { href: '/vet/vettelehealth', icon: Stethoscope, label: 'Telehealth' },
+  { href: '/vet/medicalrecords', icon: FileText, label: 'Medical Records' },
+  { href: '/vet/vethealthriskassessment', icon: Stethoscope, label: 'Health Risk Assessment' },
+  { href: '/vet/veteducationalresources', icon: FileText, label: 'Educational Resources'},
+  { href: '/vet/settings', icon: Settings, label: 'Settings' },
 ];
 
 // Notification modal methods
@@ -188,13 +205,6 @@ const handleResize = () => {
 };
 
 const closeSidebarOnMobile = () => {
-  if (isSmallScreen.value) {
-    isSidebarOpen.value = false;
-    toggleBodyScroll(false);
-  }
-};
-
-const handleSidebarItemClick = () => {
   if (isSmallScreen.value) {
     isSidebarOpen.value = false;
     toggleBodyScroll(false);

@@ -133,7 +133,8 @@ import {
   Settings,
   Check,
   ChevronDown,
-  BookOpen
+  BookOpen,
+  List
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -201,6 +202,12 @@ const handleItemClick = (item) => {
   emit('item-click');
   if (!item.subItems) {
     closeOpenSubmenu();
+    
+    // Special handling for queue navigation
+    if (item.href === '/vet/queue') {
+      // No toggle-queue event, just navigate
+      return;
+    }
   }
 };
 
@@ -215,6 +222,7 @@ const navItems = [
       { href: '/vet/appointments/vetcalendar', icon: Calendar, label: 'Calendar' },
     ]
   },
+  { href: '/vet/queue', icon: List, label: 'Queue' },
   { href: '/vet/vetfeedback', icon: MessageCircle, label: 'Feedback' },
   { href: '/vet/vettelehealth', icon: Video, label: 'Telehealth' },
   { href: '/vet/medicalrecords', icon: ClipboardList, label: 'Medical Records' },

@@ -10,8 +10,6 @@ import Calendar from '@/views/user/dashboard/Calendar.vue';
 import EducationalResources from '@/views/user/dashboard/EducationalResources.vue';
 import UserPets from '@/views/user/Pets.vue';
 
-
-
 export default [
     {
       path: "/user",

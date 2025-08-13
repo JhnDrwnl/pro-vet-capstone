@@ -276,15 +276,16 @@
             </svg>
           </button>
           
-          <!-- View Details Button -->
+          <!-- Toggle Details Button -->
           <button 
-            @click="openAppointmentDetails(appointment)"
+            @click="toggleAppointmentDetails(appointment.id)"
             class="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors duration-200"
-            title="View Details"
+            :title="expandedAppointment === appointment.id ? 'Hide Details' : 'View Details'"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            <svg class="w-4 h-4 transition-transform duration-200" 
+                 :class="{ 'rotate-180': expandedAppointment === appointment.id }"
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
           
@@ -327,6 +328,249 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
             </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Expanded Details Section -->
+      <div v-if="expandedAppointment === appointment.id" class="mt-4 pt-4 border-t border-gray-200">
+        <!-- First Row - Appointment Details -->
+        <div class="mb-6">
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <h4 class="text-base font-medium text-gray-900">Appointment Details</h4>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Left Column - Owner Information -->
+              <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Owner Name</span>
+                  <span class="text-sm font-medium text-gray-900">{{ appointment.ownerName || 'Not provided' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Email</span>
+                  <span class="text-sm font-medium text-gray-900">{{ appointment.ownerEmail || 'Not provided' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Phone</span>
+                  <span class="text-sm font-medium text-gray-900">{{ appointment.contactInformation || 'Not provided' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                  <span class="text-sm text-gray-500">Gender</span>
+                  <span class="text-sm font-medium text-gray-900 capitalize">{{ appointment.gender || 'Not provided' }}</span>
+                </div>
+              </div>
+              
+              <!-- Right Column - Appointment Information -->
+              <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Date</span>
+                  <span class="text-sm font-medium text-gray-900">{{ formatDate(appointment.date) }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Time</span>
+                  <span class="text-sm font-medium text-gray-900">{{ appointment.time || 'Not set' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Status</span>
+                  <span class="text-sm font-medium text-gray-900">
+                    <span 
+                      class="px-2 py-1 text-xs font-medium rounded-full"
+                      :class="{
+                        'bg-yellow-100 text-yellow-800': appointment.status === 'pending',
+                        'bg-green-100 text-green-800': appointment.status === 'approved',
+                        'bg-red-100 text-red-800': appointment.status === 'rejected',
+                        'bg-blue-100 text-blue-800': appointment.status === 'completed',
+                        'bg-gray-100 text-gray-800': appointment.status === 'cancelled',
+                        'bg-slate-100 text-slate-800': appointment.status === 'ended',
+                        'bg-orange-100 text-orange-800': isExpired(appointment)
+                      }"
+                    >
+                      {{ isExpired(appointment) ? 'Expired' : formatStatus(appointment.status) }}
+                    </span>
+                  </span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                  <span class="text-sm text-gray-500">Created</span>
+                  <span class="text-sm font-medium text-gray-900">{{ formatDateTime(appointment.createdAt) }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Services -->
+            <div class="mt-4 pt-3 border-t border-gray-100">
+              <div class="text-sm text-gray-500 mb-2">Services</div>
+              <div class="flex flex-wrap gap-1">
+                <span 
+                  v-for="(service, index) in appointment.serviceNames" 
+                  :key="index"
+                  class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded font-medium"
+                >
+                  {{ service }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- Notes -->
+            <div v-if="appointment.notes" class="mt-3 pt-3 border-t border-gray-100">
+              <div class="text-sm text-gray-500 mb-2">Notes</div>
+              <div class="text-sm text-gray-700 bg-gray-50 p-2 rounded text-xs">
+                {{ appointment.notes }}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Second Row - Pets Card -->
+        <div class="mb-6" v-if="hasPet(appointment)">
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+              <h4 class="text-base font-medium text-gray-900">Pet</h4>
+            </div>
+            
+            <!-- Pet Card -->
+            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+              <div class="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                <img 
+                  v-if="appointment.petPhotoURL"
+                  :src="appointment.petPhotoURL" 
+                  :alt="appointment.petName"
+                  class="w-full h-full object-cover" 
+                  @error="onPetImageError"
+                />
+                <img 
+                  v-else
+                  :src="defaultPetPhotoURL" 
+                  :alt="appointment.petName"
+                  class="w-full h-full object-cover" 
+                />
+              </div>
+              <div class="flex-1">
+                <div class="text-lg font-medium text-gray-900">{{ appointment.petName }}</div>
+                <div class="text-sm text-gray-500">{{ appointment.petSpecies || 'Unknown Species' }}</div>
+                <div class="text-sm text-gray-500">{{ appointment.petBreed || 'Unknown Breed' }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm text-gray-500">Age</div>
+                <div class="text-sm font-medium text-gray-900">{{ formatPetAge(appointment) || 'Unknown' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Third Row - Pet Information with Timeline -->
+        <div class="mb-6" v-if="hasPet(appointment)">
+          <div class="bg-white border border-gray-200 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-2 h-2 bg-indigo-500 rounded-full"></div>
+              <h4 class="text-base font-medium text-gray-900">Pet Information & History</h4>
+            </div>
+            
+            <!-- Pet Information -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <!-- Left Column - Pet Details -->
+              <div class="space-y-3">
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Breed</span>
+                  <span class="text-sm font-medium text-gray-900">{{ appointment.petBreed || 'Not provided' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Gender</span>
+                  <span class="text-sm font-medium text-gray-900 capitalize">{{ formatGender(appointment.petGender) || 'Not provided' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span class="text-sm text-gray-500">Age</span>
+                  <span class="text-sm font-medium text-gray-900">{{ formatPetAge(appointment) || 'Not provided' }}</span>
+                </div>
+                <div class="flex justify-between items-center py-2">
+                  <span class="text-sm text-gray-500">Weight</span>
+                  <span class="text-sm font-medium text-gray-900">{{ appointment.petWeight ? `${appointment.petWeight} kg` : 'Not provided' }}</span>
+                </div>
+              </div>
+              
+              <!-- Right Column - Timeline -->
+              <div class="relative">
+                <!-- Timeline Line -->
+                <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+                
+                <!-- Timeline Items -->
+                <div class="space-y-4">
+                  <div 
+                    v-for="(historyItem, index) in getPetHistory(appointment.petId || appointment.petName)" 
+                    :key="index"
+                    class="relative pl-12"
+                  >
+                    <!-- Timeline Dot -->
+                    <div class="absolute left-0 w-3 h-3 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
+                         :class="{
+                           'bg-green-500': historyItem.status === 'completed',
+                           'bg-yellow-500': historyItem.status === 'pending',
+                           'bg-blue-500': historyItem.status === 'approved',
+                           'bg-red-500': historyItem.status === 'rejected'
+                         }">
+                      <div class="w-1 h-1 rounded-full bg-white"></div>
+                    </div>
+                    
+                    <!-- Timeline Content -->
+                    <div class="bg-gray-50 rounded-lg border border-gray-200 p-3 hover:shadow-md transition-shadow">
+                      <div class="flex items-start justify-between mb-2">
+                        <div>
+                          <h5 class="font-medium text-gray-900 text-sm">{{ historyItem.serviceNames?.join(', ') || 'Veterinary Service' }}</h5>
+                          <p class="text-xs text-gray-500">{{ formatDate(historyItem.date) }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="px-2 py-1 text-xs font-medium rounded-full" 
+                                :class="{
+                                  'bg-green-100 text-green-700': historyItem.status === 'completed',
+                                  'bg-yellow-100 text-yellow-700': historyItem.status === 'pending',
+                                  'bg-blue-100 text-blue-700': historyItem.status === 'approved',
+                                  'bg-red-100 text-red-700': historyItem.status === 'rejected'
+                                }">
+                            {{ historyItem.status }}
+                          </span>
+                          
+                          <!-- View Summary Button for Completed Appointments -->
+                          <button 
+                            v-if="historyItem.status === 'completed' && historyItem.completionData"
+                            @click="viewAppointmentSummary(historyItem)"
+                            class="p-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors"
+                            title="View Completion Summary"
+                          >
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Completion Summary Preview -->
+                      <div v-if="historyItem.status === 'completed' && historyItem.completionData" class="mt-2 pt-2 border-t border-gray-100">
+                        <div class="text-xs text-gray-500 mb-1">Completion Summary Available</div>
+                        <div class="bg-blue-50 rounded p-2 text-xs">
+                          <div class="font-medium text-blue-800 mb-1">Services:</div>
+                          <div class="text-blue-700">
+                            {{ historyItem.completionData.services?.length || 0 }} service(s) completed
+                          </div>
+                          <div class="font-medium text-blue-800 mt-1 mb-1">Health Assessment:</div>
+                          <div class="text-blue-700">
+                            {{ historyItem.completionData.pets?.length || 0 }} pet(s) assessed
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Empty State -->
+                  <div v-if="!getPetHistory(appointment.petId || appointment.petName)?.length" 
+                       class="text-center py-6 text-gray-500">
+                    <PawPrintIcon class="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    <p class="text-sm">No history found for this pet.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -415,85 +659,81 @@
         <p class="text-sm text-gray-600 mb-4">{{ currentApprovalStep.description }}</p>
     
         <!-- Owner Information Step -->
-        <div v-if="currentApprovalStep.id === 'owner'" class="space-y-4">
-          <div class="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 class="text-lg font-medium text-gray-800 mb-3">Owner Information</h3>
-            
+        <div v-if="currentApprovalStep.id === 'owner'" class="space-y-6">
             <!-- Personal Information Section -->
-            <div class="mb-6">
-              <div class="flex items-center mb-2">
-                <div class="bg-blue-100 rounded-full p-1.5 mr-2">
-                  <UserIcon class="w-4 h-4 text-blue-500" />
+          <div class="bg-white rounded-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="bg-blue-100 rounded-full p-2">
+                <UserIcon class="w-5 h-5 text-blue-600" />
                 </div>
-                <h4 class="text-sm font-medium text-gray-700">Personal Information</h4>
+              <h4 class="text-lg font-medium text-gray-900">Personal Information</h4>
               </div>
               
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- First Name & Last Name -->
                 <div>
-                  <div class="text-xs text-gray-500 mb-1">First Name</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedAppointment.firstName || (selectedAppointment.ownerName ? selectedAppointment.ownerName.split(' ')[0] : 'Not provided') }}</div>
+                <div class="text-sm text-gray-500 mb-2">First Name</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.firstName || (selectedAppointment.ownerName ? selectedAppointment.ownerName.split(' ')[0] : 'Not provided') }}</div>
                 </div>
                 <div>
-                  <div class="text-xs text-gray-500 mb-1">Last Name</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedAppointment.lastName || (selectedAppointment.ownerName ? selectedAppointment.ownerName.split(' ').slice(1).join(' ') : 'Not provided') }}</div>
+                <div class="text-sm text-gray-500 mb-2">Last Name</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.lastName || (selectedAppointment.ownerName ? selectedAppointment.ownerName.split(' ').slice(1).join(' ') : 'Not provided') }}</div>
                 </div>
                 
                 <!-- Date of Birth & Age -->
                 <div>
-                  <div class="text-xs text-gray-500 mb-1">Date of Birth</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedAppointment.dateOfBirth ? formatDate(selectedAppointment.dateOfBirth) : 'Not provided' }}</div>
+                <div class="text-sm text-gray-500 mb-2">Date of Birth</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.dateOfBirth ? formatDate(selectedAppointment.dateOfBirth) : 'Not provided' }}</div>
                 </div>
                 <div>
-                  <div class="text-xs text-gray-500 mb-1">Age</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedAppointment.age || calculateAge(selectedAppointment.dateOfBirth) || 'Not provided' }}</div>
+                <div class="text-sm text-gray-500 mb-2">Age</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.age || calculateAge(selectedAppointment.dateOfBirth) || 'Not provided' }}</div>
                 </div>
                 
                 <!-- Gender -->
                 <div>
-                  <div class="text-xs text-gray-500 mb-1">Gender</div>
-                  <div class="text-sm font-medium text-gray-900 capitalize">{{ selectedAppointment.gender || 'Not provided' }}</div>
+                <div class="text-sm text-gray-500 mb-2">Gender</div>
+                <div class="text-base font-medium text-gray-900 capitalize">{{ selectedAppointment.gender || 'Not provided' }}</div>
                 </div>
               </div>
             </div>
             
             <!-- Contact Information Section -->
-            <div class="mb-6">
-              <div class="flex items-center mb-2">
-                <div class="bg-green-100 rounded-full p-1.5 mr-2">
-                  <PhoneIcon class="w-4 h-4 text-green-500" />
+          <div class="bg-white rounded-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="bg-green-100 rounded-full p-2">
+                <PhoneIcon class="w-5 h-5 text-green-600" />
                 </div>
-                <h4 class="text-sm font-medium text-gray-700">Contact Information</h4>
+              <h4 class="text-lg font-medium text-gray-900">Contact Information</h4>
               </div>
               
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Email -->
                 <div>
-                  <div class="text-xs text-gray-500 mb-1">Email</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedAppointment.ownerEmail || 'Not provided' }}</div>
+                <div class="text-sm text-gray-500 mb-2">Email</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.ownerEmail || 'Not provided' }}</div>
                 </div>
                 
                 <!-- Phone -->
                 <div>
-                  <div class="text-xs text-gray-500 mb-1">Phone</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedAppointment.contactInformation || 'Not provided' }}</div>
+                <div class="text-sm text-gray-500 mb-2">Phone</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.contactInformation || 'Not provided' }}</div>
                 </div>
               </div>
             </div>
             
             <!-- Address Section -->
-            <div>
-              <div class="flex items-center mb-2">
-                <div class="bg-red-100 rounded-full p-1.5 mr-2">
-                  <MapPinIcon class="w-4 h-4 text-red-500" />
+          <div class="bg-white rounded-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="bg-red-100 rounded-full p-2">
+                <MapPinIcon class="w-5 h-5 text-red-600" />
                 </div>
-                <h4 class="text-sm font-medium text-gray-700">Address</h4>
+              <h4 class="text-lg font-medium text-gray-900">Address</h4>
               </div>
               
-              <div class="mt-3">
-                <div class="text-xs text-gray-500 mb-1">Street Address</div>
-                <div class="text-sm font-medium text-gray-900">{{ selectedAppointment.streetAddress || 'Not provided' }}</div>
-              </div>
+            <div>
+              <div class="text-sm text-gray-500 mb-2">Street Address</div>
+              <div class="text-base font-medium text-gray-900">{{ selectedAppointment.streetAddress || 'Not provided' }}</div>
             </div>
           </div>
         </div>
@@ -664,29 +904,34 @@
         </div>
         
         <!-- Schedule Information Step -->
-        <div v-if="currentApprovalStep.id === 'schedule'" class="space-y-4">
-          <div class="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 class="text-lg font-medium text-gray-800 mb-3">Appointment Details</h3>
+        <div v-if="currentApprovalStep.id === 'schedule'" class="space-y-6">
+          <div class="bg-white rounded-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="bg-purple-100 rounded-full p-2">
+                <CalendarIcon class="w-5 h-5 text-purple-600" />
+              </div>
+              <h3 class="text-lg font-medium text-gray-900">Appointment Details</h3>
+            </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
-                <div class="text-sm text-gray-500 mb-1">Date</div>
-                <div class="text-base text-gray-900">{{ selectedAppointment.date ? formatDate(selectedAppointment.date) : 'N/A' }}</div>
+                <div class="text-sm text-gray-500 mb-2">Date</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.date ? formatDate(selectedAppointment.date) : 'N/A' }}</div>
               </div>
               <div>
-                <div class="text-sm text-gray-500 mb-1">Time</div>
-                <div class="text-base text-gray-900">{{ selectedAppointment.time || 'N/A' }}</div>
+                <div class="text-sm text-gray-500 mb-2">Time</div>
+                <div class="text-base font-medium text-gray-900">{{ selectedAppointment.time || 'N/A' }}</div>
               </div>
             </div>
             
             <!-- Services -->
-            <div class="mt-4">
-              <div class="text-sm text-gray-500 mb-2">Services</div>
+            <div>
+              <div class="text-sm text-gray-500 mb-3">Services</div>
               <div class="flex flex-wrap gap-2">
                 <span 
                   v-for="(service, index) in selectedAppointment.serviceNames" 
                   :key="index"
-                  class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                  class="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg font-medium"
                 >
                   {{ service }}
                 </span>
@@ -696,35 +941,45 @@
         </div>
         
         <!-- Confirmation Step - Updated for multiple pets -->
-        <div v-if="currentApprovalStep.id === 'confirm'" class="space-y-4">
-          <div class="bg-white rounded-lg p-4 border border-gray-200">
-            <h3 class="text-lg font-medium text-gray-800 mb-3">Appointment Summary</h3>
+        <div v-if="currentApprovalStep.id === 'confirm'" class="space-y-6">
+          <div class="bg-white rounded-lg border border-gray-200 p-6">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="bg-indigo-100 rounded-full p-2">
+                <CheckCircleIcon class="w-5 h-5 text-indigo-600" />
+              </div>
+              <h3 class="text-lg font-medium text-gray-900">Appointment Summary</h3>
+            </div>
             
-            <div class="space-y-4">
+            <div class="space-y-6">
               <!-- Owner Summary - Enhanced with all details -->
-              <div class="bg-gray-50 p-4 rounded-lg">
-                <div class="text-sm font-medium text-gray-500 mb-2">Owner</div>
-                <div class="text-lg font-medium text-gray-900">{{ selectedAppointment.ownerName || 'Unknown Owner' }}</div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 mt-2">
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="bg-blue-100 rounded-full p-2">
+                    <UserIcon class="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div class="text-base font-medium text-gray-700">Owner Information</div>
+                </div>
+                <div class="text-lg font-medium text-gray-900 mb-4">{{ selectedAppointment.ownerName || 'Unknown Owner' }}</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <div class="text-xs text-gray-500">Email</div>
-                    <div class="text-sm text-gray-700">{{ selectedAppointment.ownerEmail || 'No email' }}</div>
+                    <div class="text-sm text-gray-500 mb-2">Email</div>
+                    <div class="text-base font-medium text-gray-700">{{ selectedAppointment.ownerEmail || 'No email' }}</div>
                   </div>
                   <div>
-                    <div class="text-xs text-gray-500">Phone</div>
-                    <div class="text-sm text-gray-700">{{ selectedAppointment.contactInformation || 'No contact info' }}</div>
+                    <div class="text-sm text-gray-500 mb-2">Phone</div>
+                    <div class="text-base font-medium text-gray-700">{{ selectedAppointment.contactInformation || 'No contact info' }}</div>
                   </div>
                   <div>
-                    <div class="text-xs text-gray-500">Gender</div>
-                    <div class="text-sm text-gray-700 capitalize">{{ selectedAppointment.gender || 'Not provided' }}</div>
+                    <div class="text-sm text-gray-500 mb-2">Gender</div>
+                    <div class="text-base font-medium text-gray-700 capitalize">{{ selectedAppointment.gender || 'Not provided' }}</div>
                   </div>
                   <div>
-                    <div class="text-xs text-gray-500">Age</div>
-                    <div class="text-sm text-gray-700">{{ selectedAppointment.age || calculateAge(selectedAppointment.dateOfBirth) || 'Not provided' }}</div>
+                    <div class="text-sm text-gray-500 mb-2">Age</div>
+                    <div class="text-base font-medium text-gray-700">{{ selectedAppointment.age || calculateAge(selectedAppointment.dateOfBirth) || 'Not provided' }}</div>
                   </div>
-                  <div class="col-span-1 md:col-span-2">
-                    <div class="text-xs text-gray-500">Address</div>
-                    <div class="text-sm text-gray-700">{{ selectedAppointment.streetAddress || 'Not provided' }}</div>
+                  <div class="md:col-span-2">
+                    <div class="text-sm text-gray-500 mb-2">Address</div>
+                    <div class="text-base font-medium text-gray-700">{{ selectedAppointment.streetAddress || 'Not provided' }}</div>
                   </div>
                 </div>
               </div>
@@ -818,21 +1073,31 @@
               </div>
               
               <!-- Schedule Summary -->
-              <div class="bg-gray-50 p-4 rounded-lg">
-                <div class="text-sm font-medium text-gray-500 mb-2">Schedule</div>
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="bg-purple-100 rounded-full p-2">
+                    <CalendarIcon class="w-4 h-4 text-purple-600" />
+                  </div>
+                  <div class="text-base font-medium text-gray-700">Schedule</div>
+                </div>
                 <div class="text-lg font-medium text-gray-900">
                   {{ selectedAppointment.date ? formatDate(selectedAppointment.date) : 'N/A' }} at {{ selectedAppointment.time || 'N/A' }}
                 </div>
               </div>
               
               <!-- Services Summary -->
-              <div class="bg-gray-50 p-4 rounded-lg">
-                <div class="text-sm font-medium text-gray-500 mb-2">Services</div>
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="bg-blue-100 rounded-full p-2">
+                    <StethoscopeIcon class="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div class="text-base font-medium text-gray-700">Services</div>
+                </div>
                 <div class="flex flex-wrap gap-2">
                   <span 
                     v-for="(service, index) in selectedAppointment.serviceNames" 
                     :key="index"
-                    class="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                    class="px-3 py-2 bg-blue-100 text-blue-800 text-sm rounded-lg font-medium"
                   >
                     {{ service }}
                   </span>
@@ -923,7 +1188,7 @@
       ]">
         <component 
           :is="actionTypeToConfirm==='approve' ? CheckIcon : actionTypeToConfirm==='complete' ? CheckCircleIcon : XIcon" 
-          :class="['w-5 h-5', actionTypeToConfirm==='approve' ? 'text-green-600' : actionTypeToConfirm==='complete' ? 'text-emerald-600' : 'text-red-600']" 
+          :class="['w-5 h-5', actionTypeToConfirm==='approve' ? 'text-green-600' : actionTypeToConfirm==='complete' ? 'text-emerald-600' : 'bg-red-600']" 
         />
       </div>
       <h3 class="text-lg font-semibold text-gray-900">
@@ -943,6 +1208,255 @@
         <span v-if="actionLoading">Processing...</span>
         <span v-else>{{ actionTypeToConfirm==='approve' ? 'Approve' : actionTypeToConfirm==='complete' ? 'Complete' : 'Reject' }}</span>
       </button>
+    </div>
+  </div>
+  </div>
+
+<!-- Completion Form Modal -->
+<div v-if="showCompletionFormModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Complete Appointment</h2>
+      <button @click="closeCompletionFormModal" class="text-gray-400 hover:text-gray-600">
+        <XIcon class="w-5 h-5" />
+      </button>
+    </div>
+    
+    <div class="p-6">
+      <!-- Appointment Summary -->
+      <div class="bg-gray-50 rounded-lg p-4 mb-6">
+        <h3 class="text-lg font-medium text-gray-800 mb-3">Appointment Summary</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div class="text-sm text-gray-500 mb-1">Owner</div>
+            <div class="font-medium text-gray-900">{{ selectedAppointment?.ownerName || 'Unknown' }}</div>
+          </div>
+          <div>
+            <div class="text-sm text-gray-500 mb-1">Pet(s)</div>
+            <div class="font-medium text-gray-900">
+              {{ selectedAppointment?.petNames?.join(', ') || selectedAppointment?.petName || 'No pet info' }}
+            </div>
+          </div>
+          <div>
+            <div class="text-sm text-gray-500 mb-1">Date & Time</div>
+            <div class="font-medium text-gray-900">
+              {{ formatDate(selectedAppointment?.date) }} at {{ selectedAppointment?.time }}
+            </div>
+          </div>
+          <div>
+            <div class="text-sm text-gray-500 mb-1">Services</div>
+            <div class="font-medium text-gray-900">
+              {{ selectedAppointment?.serviceNames?.join(', ') }}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Completion Form -->
+      <form @submit.prevent="submitCompletionForm" class="space-y-6">
+        <!-- Service Summary Section -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
+            <StethoscopeIcon class="w-5 h-5 text-blue-500" />
+            Service Summary
+          </h3>
+          
+          <!-- Services with individual notes -->
+          <div class="space-y-4">
+            <div v-for="(service, index) in selectedAppointment?.serviceNames" :key="index" class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="font-medium text-gray-900">{{ service }}</h4>
+                <span class="text-sm text-gray-500">Service {{ index + 1 }}</span>
+              </div>
+              
+              <!-- Service-specific fields -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select v-model="completionForm.services[index].status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="completed">Completed</option>
+                    <option value="partially_completed">Partially Completed</option>
+                    <option value="requires_followup">Requires Follow-up</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                  <input 
+                    v-model.number="completionForm.services[index].duration" 
+                    type="number" 
+                    min="0"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="30"
+                  />
+                </div>
+                
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Service Notes</label>
+                  <textarea 
+                    v-model="completionForm.services[index].notes" 
+                    rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Describe what was done, findings, recommendations..."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Pet Health Assessment -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
+            <PawPrintIcon class="w-5 h-5 text-green-500" />
+            Pet Health Assessment
+          </h3>
+          
+          <div class="space-y-4">
+            <div v-for="(pet, petIndex) in getPetsArray(selectedAppointment)" :key="petIndex" class="border border-gray-200 rounded-lg p-4">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <img 
+                    v-if="pet.photo"
+                    :src="pet.photo" 
+                    :alt="pet.name"
+                    class="w-full h-full object-cover" 
+                  />
+                  <img 
+                    v-else
+                    :src="defaultPetPhotoURL" 
+                    :alt="pet.name"
+                    class="w-full h-full object-cover" 
+                  />
+                </div>
+                <div>
+                  <h4 class="font-medium text-gray-900">{{ pet.name }}</h4>
+                  <p class="text-sm text-gray-500">{{ pet.species }} • {{ pet.breed || 'Unknown breed' }}</p>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Overall Health</label>
+                  <select v-model="completionForm.pets[petIndex].overallHealth" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="excellent">Excellent</option>
+                    <option value="good">Good</option>
+                    <option value="fair">Fair</option>
+                    <option value="poor">Poor</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                  <input 
+                    v-model.number="completionForm.pets[petIndex].weight" 
+                    type="number" 
+                    step="0.1"
+                    min="0"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="5.2"
+                  />
+                </div>
+                
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Health Notes</label>
+                  <textarea 
+                    v-model="completionForm.pets[petIndex].healthNotes" 
+                    rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Describe pet's condition, any issues found, recommendations..."
+                  ></textarea>
+                </div>
+                
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Required</label>
+                  <div class="space-y-2">
+                    <label class="flex items-center">
+                      <input 
+                        v-model="completionForm.pets[petIndex].followUpRequired" 
+                        type="checkbox" 
+                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span class="ml-2 text-sm text-gray-700">Schedule follow-up appointment</span>
+                    </label>
+                    
+                    <div v-if="completionForm.pets[petIndex].followUpRequired" class="ml-6">
+                      <input 
+                        v-model="completionForm.pets[petIndex].followUpNotes" 
+                        type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Reason for follow-up, recommended timeline..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- General Notes -->
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            General Notes & Recommendations
+          </h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Treatment Summary</label>
+              <textarea 
+                v-model="completionForm.generalNotes.treatmentSummary" 
+                rows="4"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Overall summary of treatments provided, procedures performed..."
+              ></textarea>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Owner Instructions</label>
+              <textarea 
+                v-model="completionForm.generalNotes.ownerInstructions" 
+                rows="4"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Instructions for pet owner, home care, medications, diet changes..."
+              ></textarea>
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Next Steps</label>
+              <textarea 
+                v-model="completionForm.generalNotes.nextSteps" 
+                rows="3"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Recommended next steps, when to return, preventive care..."
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <button 
+            type="button"
+            @click="closeCompletionFormModal" 
+            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            :disabled="completionFormLoading"
+            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <span v-if="completionFormLoading">Completing...</span>
+            <span v-else>Complete Appointment</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
   </div>
@@ -1796,6 +2310,28 @@ const actionTypeToConfirm = ref(''); // 'approve' | 'reject' | 'complete'
 const actionTargetId = ref(null);
 const actionLoading = ref(false);
 
+// Completion form modal state
+const showCompletionFormModal = ref(false);
+const completionFormLoading = ref(false);
+
+// Expanded appointment state
+const expandedAppointment = ref(null);
+
+// Pet selection for history state
+const selectedPetForHistory = ref({});
+
+// Timeline visibility state
+const showTimeline = ref({});
+const completionForm = ref({
+  services: [],
+  pets: [],
+  generalNotes: {
+    treatmentSummary: '',
+    ownerInstructions: '',
+    nextSteps: ''
+  }
+});
+
 const openActionConfirm = (type, appointmentId) => {
   actionTypeToConfirm.value = type;
   actionTargetId.value = appointmentId;
@@ -1818,7 +2354,8 @@ const confirmAction = async () => {
     } else if (actionTypeToConfirm.value === 'reject') {
       await rejectAppointment(actionTargetId.value);
     } else if (actionTypeToConfirm.value === 'complete') {
-      await completeAppointment(actionTargetId.value);
+      // Open completion form instead of directly completing
+      await openCompletionForm(actionTargetId.value);
     }
     showActionConfirmModal.value = false;
   } finally {
@@ -1827,6 +2364,156 @@ const confirmAction = async () => {
     actionTargetId.value = null;
   }
 };
+
+// Open completion form for an appointment
+const openCompletionForm = async (appointmentId) => {
+  const appointment = appointments.value.find(a => a.id === appointmentId);
+  if (!appointment) return;
+  
+  selectedAppointment.value = appointment;
+  
+  // Initialize completion form with appointment data
+  completionForm.value = {
+    services: appointment.serviceNames?.map(service => ({
+      name: service,
+      status: 'completed',
+      duration: 30,
+      notes: ''
+    })) || [],
+    pets: getPetsArray(appointment).map(pet => ({
+      name: pet.name,
+      overallHealth: 'good',
+      weight: pet.weight || '',
+      healthNotes: '',
+      followUpRequired: false,
+      followUpNotes: ''
+    })),
+    generalNotes: {
+      treatmentSummary: '',
+      ownerInstructions: '',
+      nextSteps: ''
+    }
+  };
+  
+  showCompletionFormModal.value = true;
+};
+
+// Close completion form modal
+const closeCompletionFormModal = () => {
+  showCompletionFormModal.value = false;
+  selectedAppointment.value = null;
+  completionForm.value = {
+    services: [],
+    pets: [],
+    generalNotes: {
+      treatmentSummary: '',
+      ownerInstructions: '',
+      nextSteps: ''
+    }
+  };
+};
+
+// Submit completion form
+const submitCompletionForm = async () => {
+  if (!selectedAppointment.value) return;
+  
+  completionFormLoading.value = true;
+  try {
+    // Create completion data object
+    const completionData = {
+      appointmentId: selectedAppointment.value.id,
+      completedAt: new Date(),
+      completedBy: authStore.user?.uid,
+      services: completionForm.value.services,
+      pets: completionForm.value.pets,
+      generalNotes: completionForm.value.generalNotes,
+      status: 'completed'
+    };
+    
+    // Update appointment status and add completion data
+    await appointmentStore.updateAppointmentStatus(selectedAppointment.value.id, 'completed');
+    
+    // Store completion data in a separate collection or as part of the appointment
+    await storeCompletionData(completionData);
+    
+    // Send notification to the user about appointment completion
+    try {
+      await sendAppointmentNotification(selectedAppointment.value.id, 'complete', 'completed');
+      
+      // Send notification to the vet about their action
+      await sendVetNotification(selectedAppointment.value.id, 'complete', 'completed');
+      
+      // Send additional detailed completion notification with summary
+      await sendDetailedCompletionNotification(selectedAppointment.value.id, completionData);
+    } catch (notificationError) {
+      console.error('Error sending completion notification:', notificationError);
+      // Don't fail the completion if notification fails
+    }
+    
+    // Show success message
+    successTitle.value = 'Appointment Completed';
+    successMessage.value = 'The appointment has been marked as completed with detailed notes.';
+    showSuccessModal.value = true;
+    
+    // Close modal and refresh data
+    closeCompletionFormModal();
+    await fetchAppointments();
+    
+  } catch (error) {
+    console.error('Error completing appointment:', error);
+    // Show error message
+    successTitle.value = 'Error';
+    successMessage.value = 'Failed to complete appointment. Please try again.';
+    showSuccessModal.value = true;
+  } finally {
+    completionFormLoading.value = false;
+  }
+};
+
+// Store completion data (you can modify this to store in your preferred location)
+const storeCompletionData = async (completionData) => {
+  try {
+    // For now, we'll store this in the appointment document itself
+    // You might want to create a separate 'appointment_completions' collection
+    const { doc, updateDoc } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+    
+    const appointmentRef = doc(db, 'appointments', completionData.appointmentId);
+    await updateDoc(appointmentRef, {
+      status: 'completed',
+      completedAt: completionData.completedAt,
+      completedBy: completionData.completedBy,
+      completionData: {
+        services: completionData.services,
+        pets: completionData.pets,
+        generalNotes: completionData.generalNotes
+      }
+    });
+  } catch (error) {
+    console.error('Error storing completion data:', error);
+    throw error;
+  }
+};
+
+// Legacy completeAppointment function (for backward compatibility)
+// const completeAppointment = async (appointmentId) => {
+//   try {
+//     await appointmentStore.updateAppointmentStatus(appointmentId, 'completed');
+    
+//     // Show success message
+//     successTitle.value = 'Appointment Completed';
+//     successMessage.value = 'The appointment has been marked as completed.';
+//     showSuccessModal.value = true;
+    
+//     // Refresh appointments
+//     await fetchAppointments();
+//   } catch (error) {
+//     console.error('Error completing appointment:', error);
+//     successTitle.value = 'Error';
+//     successMessage.value = 'Failed to complete appointment. Please try again.';
+//     showSuccessModal.value = true;
+//   }
+// };
 
 // Action type tracking
 const pendingAction = ref(null);
@@ -2451,13 +3138,43 @@ const isExpired = (appointment) => {
   const appointmentDate = new Date(appointment.date);
   const appointmentTime = appointment.time;
   
-  // Parse appointment time (e.g., "10:10 AM - 11:20 AM")
-  const timeMatch = appointmentTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (!timeMatch) return false;
+  // Parse appointment time range (e.g., "10:10 AM - 11:20 AM")
+  const timeRangeMatch = appointmentTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   
-  let hour = parseInt(timeMatch[1]);
-  const minute = parseInt(timeMatch[2]);
-  const period = timeMatch[3].toUpperCase();
+  if (timeRangeMatch) {
+    // Parse start time
+    let startHour = parseInt(timeRangeMatch[1]);
+    const startMinute = parseInt(timeRangeMatch[2]);
+    const startPeriod = timeRangeMatch[3].toUpperCase();
+    
+    // Parse end time
+    let endHour = parseInt(timeRangeMatch[4]);
+    const endMinute = parseInt(timeRangeMatch[5]);
+    const endPeriod = timeRangeMatch[6].toUpperCase();
+    
+    // Convert start time to 24-hour format
+    if (startPeriod === 'PM' && startHour !== 12) startHour += 12;
+    if (startPeriod === 'AM' && startHour === 12) startHour = 0;
+    
+    // Convert end time to 24-hour format
+    if (endPeriod === 'PM' && endHour !== 12) endHour += 12;
+    if (endPeriod === 'AM' && endHour === 12) endHour = 0;
+    
+    // Set appointment end time (use end time to determine if expired)
+    const appointmentEndDate = new Date(appointmentDate);
+    appointmentEndDate.setHours(endHour, endMinute, 0, 0);
+    
+    // Check if appointment end time has passed
+    const now = new Date();
+    return appointmentEndDate < now;
+  }
+  
+  // Fallback for single time format (e.g., "10:10 AM")
+  const singleTimeMatch = appointmentTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (singleTimeMatch) {
+    let hour = parseInt(singleTimeMatch[1]);
+    const minute = parseInt(singleTimeMatch[2]);
+    const period = singleTimeMatch[3].toUpperCase();
   
   // Convert to 24-hour format
   if (period === 'PM' && hour !== 12) hour += 12;
@@ -2469,6 +3186,9 @@ const isExpired = (appointment) => {
   // Check if appointment time has passed
   const now = new Date();
   return appointmentDate < now;
+  }
+  
+  return false;
 };
 
 const sortBy = (key) => {
@@ -3017,6 +3737,9 @@ try {
   
   // Send notification to the user
   await sendAppointmentNotification(selectedAppointment.value.id, 'cancel', 'cancelled');
+    
+    // Send notification to the vet about their action
+    await sendVetNotification(selectedAppointment.value.id, 'cancel', 'cancelled');
   
   // Close the modal
   showCancelModal.value = false;
@@ -3085,6 +3808,9 @@ try {
   
   // Send notification to the user
   await sendAppointmentNotification(selectedAppointment.value.id, 'approve', 'approved');
+  
+  // Send notification to the vet about their action
+  await sendVetNotification(selectedAppointment.value.id, 'approve', 'approved');
   
   // Close the approval form
   showApprovalForm.value = false;
@@ -3204,7 +3930,10 @@ try {
   const notificationPromises = selectedIds.map(appointmentId => {
     const action = bulkActionType.value === 'approve' ? 'approve' : 'reject';
     const status = bulkActionType.value === 'approve' ? 'approved' : 'rejected';
-    return sendAppointmentNotification(appointmentId, action, status);
+    return Promise.all([
+      sendAppointmentNotification(appointmentId, action, status),
+      sendVetNotification(appointmentId, action, status)
+    ]);
   });
   
   // Wait for all notifications to be sent
@@ -3430,17 +4159,79 @@ const confirmDateSelection = () => {
 };
 
 // ========================================
-// APPOINTMENT DETAILS MODAL FUNCTIONS
+// EXPANDABLE APPOINTMENT DETAILS FUNCTIONS
 // ========================================
 
-const openAppointmentDetails = (appointment) => {
-  selectedAppointment.value = { ...appointment };
-  showAppointmentDetailsModal.value = true;
+const toggleAppointmentDetails = (appointmentId) => {
+  if (expandedAppointment.value === appointmentId) {
+    expandedAppointment.value = null;
+  } else {
+    expandedAppointment.value = appointmentId;
+  }
 };
 
-const closeAppointmentDetailsModal = () => {
-  showAppointmentDetailsModal.value = false;
-  selectedAppointment.value = null;
+const selectPetForHistory = (appointmentId, petIdOrName) => {
+  selectedPetForHistory.value[appointmentId] = petIdOrName;
+};
+
+const toggleTimeline = (appointmentId) => {
+  showTimeline.value[appointmentId] = !showTimeline.value[appointmentId];
+};
+
+// ========================================
+// PET HISTORY FUNCTIONS
+// ========================================
+
+const getPetHistory = (petIdOrName) => {
+  // This function should fetch pet history from appointments
+  // For now, we'll return a filtered list of appointments for this pet
+  if (!petIdOrName) return [];
+  
+  // Use a Set to track unique appointment IDs to prevent duplicates
+  const uniqueAppointmentIds = new Set();
+  
+  const filteredAppointments = appointments.value.filter(appointment => {
+    // Skip if we've already included this appointment
+    if (uniqueAppointmentIds.has(appointment.id)) return false;
+    
+    // Check if this appointment involves the pet
+    let isPetInvolved = false;
+    
+    // Check by petId
+    if (appointment.petId === petIdOrName) {
+      isPetInvolved = true;
+    }
+    // Check by petName
+    else if (appointment.petName === petIdOrName) {
+      isPetInvolved = true;
+    }
+    // Check by petIds array
+    else if (appointment.petIds && appointment.petIds.includes(petIdOrName)) {
+      isPetInvolved = true;
+    }
+    
+    // If pet is involved, add to unique set and include in results
+    if (isPetInvolved) {
+      uniqueAppointmentIds.add(appointment.id);
+      return true;
+    }
+    
+    return false;
+  });
+  
+  // Sort by date, newest first
+  return filteredAppointments.sort((a, b) => {
+    const dateA = a.date?.toDate?.() || new Date(a.date);
+    const dateB = b.date?.toDate?.() || new Date(b.date);
+    return dateB - dateA;
+  });
+};
+
+const viewAppointmentSummary = (appointment) => {
+  // This function can be used to view appointment completion details
+  // For now, we'll just log it - you can expand this later
+  console.log('Viewing appointment summary:', appointment);
+  // You could open a modal or navigate to a details page here
 };
 
 // ========================================
@@ -4170,43 +4961,138 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
 
     // Ensure notification service is wired and has a user context (for fallback flows)
     notificationService.setNotificationsStore(notificationsStore);
-    // Set the current user for the notification service
+
+    // Send notification to the USER (not the vet)
+    await notificationService.showNotification(title, description, {
+      type: 'appointment',
+      url: '/user/notifications',
+      userId: appointmentData.userId, // This is the USER's ID
+      appointmentId: String(appointmentId),
+      status: status,
+      fromClient: false, // This is from the vet, not the client
+      storeInFirestore: true
+    });
+
+    console.log(`User notification sent for appointment ${appointmentId}: ${action}`);
+  } catch (error) {
+    console.error('Error sending user notification:', error);
+  }
+};
+
+// Send notification TO the vet about their action
+const sendVetNotification = async (appointmentId, action, status) => {
+  try {
+    // Get the appointment details
+    const appointmentData = appointments.value.find(a => a.id === appointmentId);
+    if (!appointmentData) {
+      console.error('Appointment not found for vet notification');
+      return;
+    }
+
+    // Get current vet's user ID
+    const currentVetId = authStore.user?.userId;
+    if (!currentVetId) {
+      console.error('No vet user ID available for notification');
+      return;
+    }
+
+    // Build pet names for the notification
+    const petNamesJoined = Array.isArray(appointmentData.petNames) && appointmentData.petNames.length > 0
+      ? appointmentData.petNames.map((n) => (n || '').trim()).filter(Boolean).join(', ')
+      : (appointmentData.petName || '').trim();
+
+    // Create vet-specific notification message
+    let title, description;
+    const dateStr = format(new Date(appointmentData.date), 'MMM dd, yyyy');
+    switch (action) {
+      case 'approve':
+        title = 'Appointment Approved';
+        description = `You approved an appointment for ${petNamesJoined || 'pet'} on ${dateStr} at ${appointmentData.time}`;
+        break;
+      case 'reject':
+        title = 'Appointment Rejected';
+        description = `You rejected an appointment for ${petNamesJoined || 'pet'} on ${dateStr} at ${appointmentData.time}`;
+        break;
+      case 'cancel':
+        title = 'Appointment Cancelled';
+        description = `You cancelled an appointment for ${petNamesJoined || 'pet'} on ${dateStr} at ${appointmentData.time}`;
+        break;
+      case 'complete':
+        title = 'Appointment Completed';
+        description = `You completed an appointment for ${petNamesJoined || 'pet'} on ${dateStr} at ${appointmentData.time}`;
+        break;
+      default:
+        title = 'Appointment Action Completed';
+        description = `You updated appointment status to ${status}`;
+    }
+
+    // Ensure notification service is wired
+    notificationService.setNotificationsStore(notificationsStore);
+    
+    // Send notification TO the VET
+    await notificationService.showNotification(title, description, {
+      type: 'vet_action',
+      url: '/vet/appointments/vetappointmentapproval',
+      userId: currentVetId, // This is the VET's ID
+      appointmentId: String(appointmentId),
+      status: status,
+      fromClient: false,
+      storeInFirestore: true
+    });
+
+    console.log(`Vet notification sent for appointment ${appointmentId}: ${action}`);
+  } catch (error) {
+    console.error('Error sending vet notification:', error);
+  }
+};
+
+// Send detailed completion notification with service summary and recommendations
+const sendDetailedCompletionNotification = async (appointmentId, completionData) => {
+  try {
+    // Get the appointment details
+    const appointmentData = appointments.value.find(a => a.id === appointmentId);
+    if (!appointmentData) {
+      console.error('Appointment not found for detailed notification');
+      return;
+    }
+
+    // Build pet names for the notification
+    const petNamesJoined = Array.isArray(appointmentData.petNames) && appointmentData.petNames.length > 0
+      ? appointmentData.petNames.map((n) => (n || '').trim()).filter(Boolean).join(', ')
+      : (appointmentData.petName || '').trim();
+
+    // Create detailed completion notification
+    const title = 'Appointment Completed - Summary Available';
+    const description = `Your appointment for ${petNamesJoined || 'your pet'} has been completed. View the detailed service summary, health assessment, and care instructions in your notifications.`;
+
+    // Ensure notification service is wired
+    notificationService.setNotificationsStore(notificationsStore);
     if (appointmentData.userId) {
       window.currentUser = { userId: appointmentData.userId };
     }
 
-    // Send notification to the user
-    await notificationService.showNotification(title, description, {
-      type: 'appointment',
-      url: '/user/notifications',
-      userId: appointmentData.userId,
-      appointmentId: String(appointmentId),
-      status: status,
-      fromClient: true,
-      storeInFirestore: true,
-      skipDuplicateCheck: true
-    });
-
-    // Also directly store the notification in Firestore as backup
-    try {
+    // Store detailed completion notification
       await notificationService.storeNotificationInFirestore(title, description, {
-        type: 'appointment',
+      type: 'appointment_completion',
         url: '/user/notifications',
         userId: appointmentData.userId,
         appointmentId: String(appointmentId),
-        status: status,
+      status: 'completed',
         fromClient: true,
         deleted: false,
         forceFallback: true,
-        skipDuplicateCheck: true
-      });
-    } catch (storeError) {
-      console.error('Error storing notification in Firestore:', storeError);
-    }
+      skipDuplicateCheck: true,
+      // Include completion data for reference
+      completionData: {
+        services: completionData.services,
+        pets: completionData.pets,
+        generalNotes: completionData.generalNotes
+      }
+    });
 
-    console.log(`Notification sent for appointment ${appointmentId}: ${action}`);
+    console.log(`Detailed completion notification sent for appointment ${appointmentId}`);
   } catch (error) {
-    console.error('Error sending notification:', error);
+    console.error('Error sending detailed completion notification:', error);
   }
 };
 
@@ -4237,6 +5123,9 @@ const approveAppointment = async (appointmentId) => {
     
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'approve', 'approved');
+    
+    // Send notification to the vet about their action
+    await sendVetNotification(appointmentId, 'approve', 'approved');
     
     // Show success message
     successTitle.value = 'Appointment Approved';
@@ -4274,6 +5163,9 @@ const rejectAppointment = async (appointmentId) => {
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'reject', 'rejected');
     
+    // Send notification to the vet about their action
+    await sendVetNotification(appointmentId, 'reject', 'rejected');
+    
     // Show success message
     successTitle.value = 'Appointment Rejected';
     successMessage.value = 'The appointment has been rejected successfully.';
@@ -4310,6 +5202,9 @@ const cancelApprovedAppointment = async (appointmentId) => {
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'cancel', 'cancelled');
     
+    // Send notification to the vet about their action
+    await sendVetNotification(appointmentId, 'cancel', 'cancelled');
+    
     // Show success message
     successTitle.value = 'Appointment Cancelled';
     successMessage.value = 'The appointment has been cancelled successfully.';
@@ -4345,6 +5240,9 @@ const completeAppointment = async (appointmentId) => {
 
     // Notify user
     await sendAppointmentNotification(appointmentId, 'complete', 'completed');
+    
+    // Notify vet about their action
+    await sendVetNotification(appointmentId, 'complete', 'completed');
 
     // Success modal
     successTitle.value = 'Appointment Completed';

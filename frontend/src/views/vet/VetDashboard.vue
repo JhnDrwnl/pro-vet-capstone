@@ -112,7 +112,28 @@
       <!-- Today's Appointments -->
       <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden">
         <div class="p-6 border-b border-slate-100">
-          <h3 class="text-xl font-bold text-slate-800">Today's Schedule</h3>
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold text-slate-800">Today's Schedule</h3>
+            <button 
+              @click="startQueue"
+              :disabled="filteredTodaysAppointments.length === 0"
+              class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              Start Queue
+              <span v-if="filteredTodaysAppointments.length > 0" class="bg-white/20 px-2 py-1 rounded-full text-xs">
+                {{ filteredTodaysAppointments.length }}
+              </span>
+            </button>
+          </div>
+          <div v-if="filteredTodaysAppointments.length === 0" class="text-xs text-gray-500 mt-2">
+            No appointments today - queue will be empty
+          </div>
+          <div v-else class="text-xs text-blue-600 mt-2">
+            Click to manage today's patient queue
+          </div>
         </div>
         <div class="p-6">
           <div v-if="loading" class="space-y-4">
@@ -415,6 +436,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import { 
   Calendar,
   ArrowUp,
@@ -439,6 +461,7 @@ Chart.register(...registerables)
 // Initialize stores
 const appointmentStore = useAppointmentStore()
 const authStore = useAuthStore()
+const router = useRouter()
 
 // References for chart canvases
 const appointmentsChart = ref(null)
@@ -835,6 +858,11 @@ watch([filteredAppointments, filteredSegments], () => {
 const updateVetDashboard = async () => {
   await fetchVetDashboardData()
   updateCharts()
+}
+
+const startQueue = () => {
+  // Redirect to VetQueue page
+  router.push('/vet/queue')
 }
 
 onMounted(async () => {

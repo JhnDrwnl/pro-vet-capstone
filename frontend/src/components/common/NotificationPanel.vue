@@ -39,6 +39,8 @@
             <div class="prose max-w-none">
               <p>{{ selectedNotification.description }}</p>
               
+
+              
               <!-- Additional content if available -->
               <div v-if="selectedNotification.content" class="mt-4">
                 <p>{{ selectedNotification.content }}</p>
@@ -204,6 +206,17 @@
               <div class="flex-grow">
                 <div class="font-medium">{{ notification.title }}</div>
                 <div class="text-sm text-gray-500">{{ notification.description }}</div>
+                
+                <!-- Additional details for appointment reminders -->
+                <div v-if="notification.type === 'appointment_reminder'" class="text-xs text-blue-600 mt-1">
+                  <span v-if="notification.appointmentTime || notification.time">
+                    🕒 {{ notification.appointmentTime || notification.time }}
+                  </span>
+                  <span v-if="notification.petNames || notification.petName" class="ml-2">
+                    🐾 {{ notification.petNames?.join(', ') || notification.petName }}
+                  </span>
+                </div>
+                
                 <div class="text-xs text-gray-400 mt-1">{{ formatDate(notification.date) }}</div>
               </div>
               <button 
@@ -369,6 +382,8 @@ const getNotificationColor = (type) => {
   switch (type) {
     case 'appointment':
       return 'bg-blue-100 text-blue-500';
+    case 'appointment_reminder':
+      return 'bg-orange-100 text-orange-500';
     case 'telehealth':
       return 'bg-green-100 text-green-500';
     case 'reminder':
@@ -388,6 +403,8 @@ const getNotificationIcon = (type) => {
   switch (type) {
     case 'appointment':
       return CalendarIcon;
+    case 'appointment_reminder':
+      return ClockIcon;
     case 'telehealth':
       return CheckCircleIcon;
     case 'reminder':

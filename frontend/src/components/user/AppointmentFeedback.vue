@@ -3,8 +3,12 @@
   <div class="bg-white rounded-lg shadow-lg p-6 max-w-md mx-auto">
     <!-- Header -->
     <div class="text-center mb-6">
-      <h3 class="text-lg font-semibold text-gray-900 mb-2">Appointment Feedback</h3>
-      <p class="text-sm text-gray-600">Help us improve our services</p>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">
+        {{ isViewingExisting ? 'Your Feedback' : 'Appointment Feedback' }}
+      </h3>
+      <p class="text-sm text-gray-600">
+        {{ isViewingExisting ? 'Here\'s the feedback you provided' : 'Help us improve our services' }}
+      </p>
     </div>
 
     <!-- Appointment Info -->
@@ -17,14 +21,158 @@
         <span class="text-sm font-medium text-gray-700">Doctor:</span>
         <span class="text-sm text-gray-900">{{ appointment.doctorName }}</span>
       </div>
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-gray-700">Pet:</span>
+        <span class="text-sm text-gray-900">{{ appointment.petName }}</span>
+      </div>
       <div class="flex items-center justify-between">
         <span class="text-sm font-medium text-gray-700">Date:</span>
         <span class="text-sm text-gray-900">{{ formatDate(appointment.date) }}</span>
       </div>
     </div>
 
-    <!-- Rating -->
-    <div class="mb-6">
+    <!-- Existing Feedback Display -->
+    <div v-if="isViewingExisting" class="mb-6">
+      <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <CheckCircleIcon class="w-5 h-5 text-green-600" />
+          <h4 class="text-lg font-semibold text-green-800">Feedback Submitted</h4>
+        </div>
+        
+        <!-- Overall Rating -->
+        <div class="mb-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-sm font-medium text-green-700">Overall Experience:</span>
+            <div class="flex">
+              <span 
+                v-for="star in 5" 
+                :key="star"
+                class="text-lg"
+                :class="star <= appointment.existingFeedback.overallRating ? 'text-yellow-400' : 'text-gray-300'"
+              >
+                ★
+              </span>
+            </div>
+            <span class="text-sm text-green-600 ml-2">
+              {{ getRatingText(appointment.existingFeedback.overallRating) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Service Ratings -->
+        <div v-if="appointment.existingFeedback.serviceRatings" class="mb-4">
+          <h5 class="text-sm font-medium text-green-700 mb-2">Service Ratings:</h5>
+          <div class="space-y-2">
+            <div 
+              v-for="(rating, service) in appointment.existingFeedback.serviceRatings" 
+              :key="service"
+              class="flex items-center justify-between text-sm"
+            >
+              <span class="text-green-700">{{ service }}:</span>
+              <div class="flex items-center gap-1">
+                <span 
+                  v-for="star in 5" 
+                  :key="star"
+                  class="text-sm"
+                  :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'"
+                >
+                  ★
+                </span>
+                <span class="text-green-600 ml-1">{{ getRatingText(rating) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Positive Aspects -->
+        <div v-if="appointment.existingFeedback.positiveAspects && appointment.existingFeedback.positiveAspects.length > 0" class="mb-4">
+          <h5 class="text-sm font-medium text-green-700 mb-2">What went well:</h5>
+          <div class="flex flex-wrap gap-2">
+            <span 
+              v-for="aspect in appointment.existingFeedback.positiveAspects" 
+              :key="aspect"
+              class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"
+            >
+              {{ getCategoryLabel(aspect, positiveCategories) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Areas for Improvement -->
+        <div v-if="appointment.existingFeedback.areasForImprovement && appointment.existingFeedback.areasForImprovement.length > 0" class="mb-4">
+          <h5 class="text-sm font-medium text-green-700 mb-2">Areas for improvement:</h5>
+          <div class="flex flex-wrap gap-2">
+            <span 
+              v-for="aspect in appointment.existingFeedback.areasForImprovement" 
+              :key="aspect"
+              class="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full"
+            >
+              {{ getCategoryLabel(aspect, improvementCategories) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Comments -->
+        <div v-if="appointment.existingFeedback.comments" class="mb-4">
+          <h5 class="text-sm font-medium text-green-700 mb-2">Additional Comments:</h5>
+          <p class="text-green-700 text-sm bg-white rounded p-3 border border-green-200">
+            {{ appointment.existingFeedback.comments }}
+          </p>
+        </div>
+
+        <!-- Follow-up Preference -->
+        <div v-if="appointment.existingFeedback.followUpPreference && appointment.existingFeedback.followUpPreference !== 'none'" class="mb-4">
+          <h5 class="text-sm font-medium text-green-700 mb-2">Follow-up Preference:</h5>
+          <div class="text-green-700 text-sm">
+            <span v-if="appointment.existingFeedback.followUpPreference === 'schedule'">
+              Schedule follow-up consultation
+              <span v-if="appointment.existingFeedback.followUpTiming" class="text-green-600">
+                ({{ appointment.existingFeedback.followUpTiming.replace('_', ' ') }})
+              </span>
+            </span>
+            <span v-else-if="appointment.existingFeedback.followUpPreference === 'contact'">
+              Contact me to discuss
+            </span>
+          </div>
+        </div>
+
+        <!-- Submission Date -->
+        <div class="text-xs text-green-600 pt-2 border-t border-green-200">
+          Submitted on {{ formatDate(appointment.existingFeedback.submittedAt) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Service-Specific Feedback -->
+    <div v-if="!isViewingExisting" class="mb-6">
+      <label class="block text-sm font-medium text-gray-700 mb-3">Service Quality Rating</label>
+      <div class="space-y-3">
+        <div v-for="service in appointment.serviceNames || ['Veterinary Service']" :key="service" class="border border-gray-200 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700">{{ service }}</span>
+            <div class="flex space-x-1">
+              <button
+                v-for="star in 5"
+                :key="star"
+                @click="serviceRatings[service] = star"
+                class="text-lg transition-colors duration-200"
+                :class="star <= (serviceRatings[service] || 0) ? 'text-yellow-400' : 'text-gray-300'"
+              >
+                ★
+              </button>
+            </div>
+          </div>
+          <div class="text-center">
+            <span class="text-xs text-gray-500">
+              {{ getRatingText(serviceRatings[service] || 0) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall Rating -->
+    <div v-if="!isViewingExisting" class="mb-6">
       <label class="block text-sm font-medium text-gray-700 mb-3">Overall Experience</label>
       <div class="flex justify-center space-x-2">
         <button
@@ -45,7 +193,7 @@
     </div>
 
     <!-- Feedback Categories -->
-    <div class="mb-6">
+    <div v-if="!isViewingExisting" class="mb-6">
       <label class="block text-sm font-medium text-gray-700 mb-3">What went well?</label>
       <div class="grid grid-cols-2 gap-2">
         <label 
@@ -66,7 +214,7 @@
     </div>
 
     <!-- Areas for Improvement -->
-    <div class="mb-6">
+    <div v-if="!isViewingExisting" class="mb-6">
       <label class="block text-sm font-medium text-gray-700 mb-3">Areas for improvement</label>
       <div class="grid grid-cols-2 gap-2">
         <label 
@@ -87,7 +235,7 @@
     </div>
 
     <!-- Additional Comments -->
-    <div class="mb-6">
+    <div v-if="!isViewingExisting" class="mb-6">
       <label class="block text-sm font-medium text-gray-700 mb-2">Additional Comments</label>
       <textarea
         v-model="comments"
@@ -98,7 +246,7 @@
     </div>
 
     <!-- Follow-up Consultation -->
-    <div class="mb-6">
+    <div v-if="!isViewingExisting" class="mb-6">
       <div class="flex items-center justify-between mb-3">
         <label class="text-sm font-medium text-gray-700">Schedule Follow-up?</label>
         <button
@@ -168,9 +316,10 @@
         @click="$emit('close')"
         class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
       >
-        Cancel
+        {{ isViewingExisting ? 'Close' : 'Cancel' }}
       </button>
       <button
+        v-if="!isViewingExisting"
         @click="submitFeedback"
         :disabled="!rating || loading"
         class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
@@ -198,12 +347,18 @@ import { ref, computed, onMounted } from 'vue';
 import { CheckCircle as CheckCircleIcon } from 'lucide-vue-next';
 import { useAppointmentStore } from '@/stores/modules/appointmentStore';
 import { useNotificationsStore } from '@/stores/modules/notifications';
+import { saveFeedback } from '@/services/feedbackService';
 
 const props = defineProps({
   appointment: {
     type: Object,
     required: true
   }
+});
+
+// Check if this is viewing existing feedback
+const isViewingExisting = computed(() => {
+  return props.appointment.hasFeedback && props.appointment.existingFeedback;
 });
 
 const emit = defineEmits(['close', 'feedback-submitted']);
@@ -213,6 +368,7 @@ const notificationStore = useNotificationsStore();
 
 // Form data
 const rating = ref(0);
+const serviceRatings = ref({}); // Store ratings for each service
 const selectedPositive = ref([]);
 const selectedImprovements = ref([]);
 const comments = ref('');
@@ -249,6 +405,20 @@ const ratingText = computed(() => {
   return texts[rating.value] || '';
 });
 
+// Helper function for service rating text
+const getRatingText = (rating) => {
+  const texts = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+  return texts[rating] || '';
+};
+
+// Helper function to get category label from value
+const getCategoryLabel = (value, categories) => {
+  const category = categories.find(cat => cat.value === value);
+  return category ? category.label : value;
+};
+
+
+
 // Methods
 const formatDate = (date) => {
   if (!date) return '';
@@ -261,7 +431,38 @@ const formatDate = (date) => {
 };
 
 const submitFeedback = async () => {
-  if (!rating.value) return;
+  if (!rating.value) {
+    alert('Please provide an overall rating');
+    return;
+  }
+  
+  // Check if all services have ratings
+  const services = props.appointment.serviceNames || ['Veterinary Service'];
+  const missingServiceRatings = services.filter(service => !serviceRatings.value[service]);
+  
+  if (missingServiceRatings.length > 0) {
+    alert(`Please rate all services: ${missingServiceRatings.join(', ')}`);
+    return;
+  }
+  
+  // Validate required appointment data
+  if (!props.appointment.petName) {
+    alert('Pet name is missing. Please contact support.');
+    console.error('Missing petName in appointment:', props.appointment);
+    return;
+  }
+  
+  if (!props.appointment.userId) {
+    alert('User ID is missing. Please contact support.');
+    console.error('Missing userId in appointment:', props.appointment);
+    return;
+  }
+  
+  if (!props.appointment.doctorId) {
+    alert('Doctor ID is missing. Please contact support.');
+    console.error('Missing doctorId in appointment:', props.appointment);
+    return;
+  }
   
   loading.value = true;
   
@@ -270,7 +471,10 @@ const submitFeedback = async () => {
       appointmentId: props.appointment.id,
       userId: props.appointment.userId,
       doctorId: props.appointment.doctorId,
-      rating: rating.value,
+      petName: props.appointment.petName,
+      serviceNames: props.appointment.serviceNames || ['Veterinary Service'],
+      overallRating: rating.value,
+      serviceRatings: serviceRatings.value,
       positiveAspects: selectedPositive.value,
       areasForImprovement: selectedImprovements.value,
       comments: comments.value,
@@ -280,8 +484,8 @@ const submitFeedback = async () => {
       status: 'submitted'
     };
 
-    // Save feedback to Firestore
-    await appointmentStore.saveAppointmentFeedback(feedbackData);
+    // Save feedback to Firebase
+    await saveFeedback(feedbackData);
     
     // Create notification for follow-up if requested
     if (followUpPreference.value === 'schedule' && followUpTiming.value) {
@@ -301,7 +505,7 @@ const submitFeedback = async () => {
     
   } catch (error) {
     console.error('Error submitting feedback:', error);
-    // Handle error (show error message)
+    alert('Failed to submit feedback. Please try again.');
   } finally {
     loading.value = false;
   }
@@ -333,8 +537,31 @@ const createFollowUpNotification = async () => {
 
 // Initialize with default values
 onMounted(() => {
-  // Set default rating to 5 (excellent)
-  rating.value = 5;
+  // If viewing existing feedback, populate the form with existing data
+  if (isViewingExisting.value && props.appointment.existingFeedback) {
+    const feedback = props.appointment.existingFeedback;
+    
+    // Populate form fields with existing feedback
+    rating.value = feedback.overallRating || 5;
+    serviceRatings.value = feedback.serviceRatings || {};
+    selectedPositive.value = feedback.positiveAspects || [];
+    selectedImprovements.value = feedback.areasForImprovement || [];
+    comments.value = feedback.comments || '';
+    followUpPreference.value = feedback.followUpPreference || 'none';
+    followUpTiming.value = feedback.followUpTiming || '';
+  } else {
+    // Set default rating to 5 (excellent)
+    rating.value = 5;
+    
+    // Initialize service ratings with default values
+    if (props.appointment.serviceNames && props.appointment.serviceNames.length > 0) {
+      props.appointment.serviceNames.forEach(service => {
+        serviceRatings.value[service] = 5; // Default to excellent
+      });
+    } else {
+      serviceRatings.value['Veterinary Service'] = 5; // Default service
+    }
+  }
 });
 </script>
 

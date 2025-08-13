@@ -12,6 +12,7 @@ import VetAppointmentApproval from '@/views/vet/appointments/VetAppointmentAppro
 import VetCalendar from '@/views/vet/appointments/VetCalendar.vue';
 import VetEducationalResources from '@/views/vet/VetEducationalResources.vue';
 import Profile from '@/components/common/Profile.vue';
+import VetQueue from '@/views/vet/VetQueue.vue';
 
 export default [
   {
@@ -83,6 +84,11 @@ export default [
         path: 'vetprofile',
         name: 'vetProfile',
         component: Profile,
+      },
+      {
+        path: 'queue',
+        name: 'queue',
+        component: VetQueue,
       },
     ],
   }

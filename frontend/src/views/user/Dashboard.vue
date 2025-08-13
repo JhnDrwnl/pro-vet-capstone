@@ -386,7 +386,7 @@ const pets = ref([
   },
   {
     name: "Luna",
-    image: "/placeholder.svg?height=128&width=128",
+    image: "/placeholder.svg?width=128&height=128",
     breed: "Siamese Cat",
     age: "2 years",
     status: "Vaccination Due",
@@ -395,7 +395,7 @@ const pets = ref([
   },
   {
     name: "Charlie",
-    image: "/placeholder.svg?height=128&width=128",
+    image: "/placeholder.svg?width=128&height=128",
     breed: "Beagle",
     age: "5 years",
     status: "Medication",

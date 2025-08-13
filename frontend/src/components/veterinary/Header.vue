@@ -23,19 +23,21 @@
         />
       </div>
 
-      <!-- RIGHT SECTION: Notifications + Profile -->
+      <!-- RIGHT SECTION: Queue + Notifications + Profile -->
       <div class="flex items-center gap-4 md:gap-6 flex-shrink-0">
         <!-- Notifications Dropdown -->
         <div class="relative">
           <button
             @click="toggleNotifications"
-            class="text-gray-500 hover:text-gray-700 transition-colors duration-200 relative"
+            class="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors relative"
           >
-            <BellIcon class="h-5 w-5" />
-            <span v-if="unreadCount > 0" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-              {{ unreadCount }}
-            </span>
+            <BellIcon class="w-5 h-5" />
+            <!-- Notification indicator -->
+            <div v-if="unreadCount > 0" class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+              {{ unreadCount > 9 ? '9+' : unreadCount }}
+            </div>
           </button>
+          
           <!-- Reuse common NotificationPanel -->
           <NotificationPanel
             :isMobileView="isSmallScreen"
@@ -165,7 +167,7 @@ const props = defineProps({
   navItems: {
     type: Array,
     required: true
-  }
+  },
 });
 
 const emit = defineEmits(['toggle-sidebar']);
@@ -189,10 +191,14 @@ const unreadCount = computed(() => notificationsStore.getUnreadCount || 0);
 onMounted(async () => {
   const id = vetUserId.value;
   if (id) {
-    await profileStore.fetchUserProfile(id);
-    await notificationsStore.fetchNotifications(id);
-    if (!unsubscribe) {
-      unsubscribe = notificationsStore.subscribeToNotifications(id);
+    try {
+      await profileStore.fetchUserProfile(id);
+      await notificationsStore.fetchNotifications(id);
+      if (!unsubscribe) {
+        unsubscribe = notificationsStore.subscribeToNotifications(id);
+      }
+    } catch (error) {
+      console.error('Error initializing header:', error);
     }
   }
 });

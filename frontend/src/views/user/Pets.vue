@@ -208,12 +208,6 @@
                     <h3 class="text-xl font-semibold text-gray-900">Medical History</h3>
                     <p class="text-sm text-gray-600 mt-1">Complete medical records, vaccinations, and appointment history</p>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <button class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm flex items-center gap-2">
-                      <PlusIcon class="w-4 h-4" />
-                      Add Record
-                    </button>
-                  </div>
                 </div>
 
                 <!-- Enhanced Filter Buttons -->
@@ -230,41 +224,47 @@
                     <ActivityIcon class="w-4 h-4" />
                     All Records
                   </button>
+                  <!-- Service Category Filters -->
+                  <div class="w-full border-t border-gray-200 pt-3 mt-2">
+                    <div class="text-xs font-medium text-gray-600 mb-2">Service Categories:</div>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        v-for="category in categories"
+                        :key="category.id"
+                        @click="setHistoryFilter(category.id)"
+                        :class="[
+                          'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                          historyFilter === category.id
+                            ? 'bg-purple-500 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                        ]"
+                        :title="category.description"
+                      >
+                        <div class="w-3 h-3 rounded-full" :class="{
+                          'bg-blue-500': category.id === 'telehealth5192',
+                          'bg-green-500': category.id === 'elective3401',
+                          'bg-orange-500': category.id === 'veterinary8515',
+                          'bg-red-500': category.id === 'walk-in8438',
+                          'bg-purple-500': !['telehealth5192', 'elective3401', 'veterinary8515', 'walk-in8438'].includes(category.id)
+                        }"></div>
+                        {{ category.name }}
+                      </button>
+                    </div>
+                  </div>
+                  
                   <button
-                    @click="setHistoryFilter('vaccinations')"
+                    @click="setHistoryFilter('completed')"
                     :class="[
                       'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
-                      historyFilter === 'vaccinations'
+                      historyFilter === 'completed'
                         ? 'bg-green-500 text-white shadow-md'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
                     ]"
                   >
-                    <SyringeIcon class="w-4 h-4" />
-                    Vaccinations
-                  </button>
-                  <button
-                    @click="setHistoryFilter('telehealth')"
-                    :class="[
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
-                      historyFilter === 'telehealth'
-                        ? 'bg-indigo-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
-                    ]"
-                  >
-                    <ActivityIcon class="w-4 h-4" />
-                    Telehealth
-                  </button>
-                  <button
-                    @click="setHistoryFilter('treatments')"
-                    :class="[
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
-                      historyFilter === 'treatments'
-                        ? 'bg-emerald-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
-                    ]"
-                  >
-                    <ActivityIcon class="w-4 h-4" />
-                    Medical Treatments
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Completed Appointments
                   </button>
 
                   <!-- Clear Filter Button -->
@@ -287,16 +287,23 @@
                         <div class="text-xs text-gray-500">Total Records</div>
                       </div>
                       <div class="text-center">
-                        <div class="text-lg font-semibold text-green-600">{{ (selectedLocalPet?.vaccinations || []).filter(v => v.completed).length }}</div>
-                        <div class="text-xs text-gray-500">Completed Vaccinations</div>
+                        <div class="text-lg font-semibold text-blue-600">{{ petAppointments.length }}</div>
+                        <div class="text-xs text-gray-500">Total Appointments</div>
                       </div>
                       <div class="text-center">
-                        <div class="text-lg font-semibold text-blue-600">{{ (selectedLocalPet?.medicalHistory || []).length }}</div>
-                        <div class="text-xs text-gray-500">Medical Treatments</div>
+                        <div class="text-lg font-semibold text-green-600">{{ petAppointments.filter(a => a.status === 'completed').length }}</div>
+                        <div class="text-xs text-gray-500">Completed Appointments</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-lg font-semibold text-purple-600">{{ categories.length }}</div>
+                        <div class="text-xs text-gray-500">Service Categories</div>
                       </div>
                     </div>
                     <div class="text-sm text-gray-600">
-                      <span v-if="historyFilter !== 'all'">Filtered by: {{ historyFilter === 'vaccinations' ? 'Vaccinations' : historyFilter === 'telehealth' ? 'Telehealth' : 'Medical Treatments' }}</span>
+                      <span v-if="historyFilter !== 'all'">Filtered by: {{ 
+                        historyFilter === 'completed' ? 'Completed Appointments' :
+                        categories.find(cat => cat.id === historyFilter)?.name || 'Unknown Category'
+                      }}</span>
                     </div>
                   </div>
                 </div>
@@ -329,16 +336,16 @@
                       />
                     </div>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">
-                      {{ historyFilter === 'all' ? 'No medical records yet' :
-                         historyFilter === 'vaccinations' ? 'No vaccination records found' :
-                         historyFilter === 'telehealth' ? 'No telehealth appointments found' :
-                         'No medical treatment records found' }}
+                      {{ historyFilter === 'all' ? 'No appointments yet' :
+                         historyFilter === 'completed' ? 'No completed appointments found' :
+                         categories.find(cat => cat.id === historyFilter) ? `No ${categories.find(cat => cat.id === historyFilter).name} appointments found` :
+                         'No appointments found' }}
                     </h3>
                     <p class="text-gray-500 max-w-md mx-auto">
-                      {{ historyFilter === 'all' ? 'Medical records and past appointments will appear here once they are added to your pet\'s profile.' :
-                         historyFilter === 'vaccinations' ? 'Vaccination records will appear here once they are added by your veterinarian.' :
-                         historyFilter === 'telehealth' ? 'Telehealth appointments will appear here once they are scheduled and completed.' :
-                         'Medical treatment records will appear here once they are added by your veterinarian.' }}
+                      {{ historyFilter === 'all' ? 'Appointments will appear here once they are scheduled and completed.' :
+                         historyFilter === 'completed' ? 'Completed appointments with detailed notes will appear here once your veterinarian completes them.' :
+                         categories.find(cat => cat.id === historyFilter) ? `${categories.find(cat => cat.id === historyFilter).name} appointments will appear here once they are scheduled and completed.` :
+                         'Appointments will appear here once they are scheduled.' }}
                     </p>
                   </div>
                   
@@ -379,6 +386,10 @@
                               }">
                                 {{ e.status.charAt(0).toUpperCase() + e.status.slice(1) }}
                               </span>
+                              <!-- Completion Notes Indicator -->
+                              <span v-if="e.status === 'completed' && e.completionData" class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                📝 Notes
+                              </span>
                             </div>
                             <div class="text-xs text-gray-400">{{ formatDate(e.date, 'PPpp') }}</div>
                           </div>
@@ -386,6 +397,75 @@
                           <h4 class="font-medium text-gray-900 mb-1">{{ e.title }}</h4>
                           <div v-if="e.subtitle" class="text-sm text-gray-600 mb-2">{{ e.subtitle }}</div>
                           <div v-if="e.details" class="text-sm text-gray-500 bg-gray-50 rounded p-2">{{ e.details }}</div>
+                          
+                          <!-- Completion Summary for Completed Appointments -->
+                          <div v-if="e.status === 'completed' && e.completionData" class="mt-3 pt-3 border-t border-gray-100">
+                            <div class="flex items-center gap-2 mb-3">
+                              <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                              <span class="text-sm font-medium text-gray-700">Completion Summary</span>
+                            </div>
+                            
+                            <!-- Services Summary -->
+                            <div v-if="e.completionData.services && e.completionData.services.length > 0" class="mb-3">
+                              <div class="text-xs font-medium text-gray-600 mb-2">Services Completed:</div>
+                              <div class="space-y-2">
+                                <div v-for="(service, index) in e.completionData.services" :key="index" class="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                                  <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-blue-800">{{ service.name || `Service ${index + 1}` }}</span>
+                                    <span class="text-xs text-blue-600 capitalize">{{ service.status?.replace('_', ' ') || 'completed' }}</span>
+                                  </div>
+                                  <div v-if="service.duration" class="text-xs text-blue-600 mb-1">Duration: {{ service.duration }} minutes</div>
+                                  <div v-if="service.notes" class="text-sm text-blue-700 bg-white rounded p-2 border border-blue-200">
+                                    {{ service.notes }}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <!-- Pet Health Assessment -->
+                            <div v-if="e.completionData.pets && e.completionData.pets.length > 0" class="mb-3">
+                              <div class="text-xs font-medium text-gray-600 mb-2">Health Assessment:</div>
+                              <div class="space-y-2">
+                                <div v-for="(pet, index) in e.completionData.pets" :key="index" class="bg-green-50 rounded-lg p-3 border border-green-100">
+                                  <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-medium text-green-800">{{ pet.name || `Pet ${index + 1}` }}</span>
+                                    <span class="text-xs text-green-600 capitalize">{{ pet.overallHealth || 'assessed' }}</span>
+                                  </div>
+                                  <div v-if="pet.weight" class="text-xs text-green-600 mb-1">Weight: {{ pet.weight }} kg</div>
+                                  <div v-if="pet.healthNotes" class="text-sm text-green-700 bg-white rounded p-2 border border-green-200">
+                                    {{ pet.healthNotes }}
+                                  </div>
+                                  <div v-if="pet.followUpRequired" class="mt-2">
+                                    <div class="flex items-center gap-2">
+                                      <span class="text-xs font-medium text-orange-600">Follow-up Required:</span>
+                                      <span class="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">Yes</span>
+                                    </div>
+                                    <div v-if="pet.followUpNotes" class="text-sm text-orange-700 bg-orange-50 rounded p-2 mt-1 border border-orange-200">
+                                      {{ pet.followUpNotes }}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <!-- General Notes -->
+                            <div v-if="e.completionData.generalNotes" class="space-y-3">
+                              <div v-if="e.completionData.generalNotes.treatmentSummary" class="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                                <div class="text-xs font-medium text-purple-800 mb-1">Treatment Summary:</div>
+                                <div class="text-sm text-purple-700">{{ e.completionData.generalNotes.treatmentSummary }}</div>
+                              </div>
+                              
+                              <div v-if="e.completionData.generalNotes.ownerInstructions" class="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
+                                <div class="text-xs font-medium text-indigo-800 mb-1">Owner Instructions:</div>
+                                <div class="text-sm text-indigo-700">{{ e.completionData.generalNotes.ownerInstructions }}</div>
+                              </div>
+                              
+                              <div v-if="e.completionData.generalNotes.nextSteps" class="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                                <div class="text-xs font-medium text-amber-800 mb-1">Next Steps:</div>
+                                <div class="text-sm text-amber-700">{{ e.completionData.generalNotes.nextSteps }}</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -480,6 +560,9 @@ const historyLoading = ref(false);
 const historyError = ref('');
 const petAppointments = ref([]);
 const historyFilter = ref('all');
+const servicesCache = ref(new Map()); // Cache for service details
+const categories = ref([]); // Available categories from categories collection
+const categoryServiceIds = ref(new Map()); // Map of categoryId to service IDs
 
 // Loading text
 const loadingText = computed(() => {
@@ -688,6 +771,102 @@ const setHistoryFilter = (filter) => {
   historyFilter.value = filter;
 };
 
+// Function to populate categories and their services from the collections
+const populateCategoriesAndServices = async () => {
+  try {
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+    
+    // First, fetch all categories
+    const categoriesQuery = query(
+      collection(db, 'categories'),
+      where('archived', '==', false) // Only non-archived categories
+    );
+    
+    const categoriesSnapshot = await getDocs(categoriesQuery);
+    const categoriesData = [];
+    
+    // For each category, fetch its services
+    for (const categoryDoc of categoriesSnapshot.docs) {
+      const categoryData = categoryDoc.data();
+      const categoryId = categoryDoc.id;
+      
+      // Fetch services for this category
+      const servicesQuery = query(
+        collection(db, 'services'),
+        where('categoryId', '==', categoryId)
+      );
+      
+      const servicesSnapshot = await getDocs(servicesQuery);
+      const serviceIds = [];
+      
+      servicesSnapshot.forEach((serviceDoc) => {
+        const serviceData = serviceDoc.data();
+        serviceIds.push(serviceDoc.id);
+        // Cache the service data
+        servicesCache.value.set(serviceDoc.id, serviceData);
+      });
+      
+      // Store category and its services
+      categoriesData.push({
+        id: categoryId,
+        name: categoryData.name,
+        description: categoryData.description,
+        coverPhoto: categoryData.coverPhoto,
+        serviceIds: serviceIds
+      });
+      
+      // Map category to service IDs
+      categoryServiceIds.value.set(categoryId, serviceIds);
+    }
+    
+    // Update the reactive categories
+    categories.value = categoriesData;
+    
+    console.log('Populated categories and services:', categoriesData);
+    console.log('Category service mapping:', Object.fromEntries(categoryServiceIds.value));
+    
+  } catch (error) {
+    console.error('Error fetching categories and services:', error);
+    // Fallback to basic categories
+    categories.value = [
+      { id: 'telehealth5192', name: 'Telehealth', description: 'Remote consultations and services', serviceIds: ['video9437'] },
+      { id: 'elective3401', name: 'Elective Veterinary Services', description: 'Preventive Care Planned procedures and care', serviceIds: [] },
+      { id: 'veterinary8515', name: 'Veterinary Services', description: 'General veterinary care', serviceIds: [] },
+      { id: 'walk-in8438', name: 'Walk-in Services', description: 'Immediate care services', serviceIds: [] }
+    ];
+  }
+};
+
+// Helper function to check if a service is telehealth based on categoryId
+const isServiceTelehealth = async (serviceId) => {
+  if (!serviceId) return false;
+  
+  // Check cache first
+  if (servicesCache.value.has(serviceId)) {
+    const service = servicesCache.value.get(serviceId);
+    return service.categoryId === 'telehealth5192';
+  }
+  
+  try {
+    // Fetch service details from Firestore
+    const { doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+    
+    const serviceDoc = await getDoc(doc(db, 'services', serviceId));
+    if (serviceDoc.exists()) {
+      const serviceData = serviceDoc.data();
+      // Cache the service data
+      servicesCache.value.set(serviceId, serviceData);
+      return serviceData.categoryId === 'telehealth5192';
+    }
+  } catch (error) {
+    console.error('Error fetching service details:', error);
+  }
+  
+  return false;
+};
+
 // Unified history: fetch pet appointments
 const fetchPetAppointments = async () => {
   if (!selectedLocalPet.value || !authStore.user?.userId) return;
@@ -731,33 +910,67 @@ const timelineEntries = computed(() => {
   // Add appointments (including telehealth)
   for (const a of petAppointments.value) {
     const when = toDateFromDateAndTime(a.date, a.time);
-    const isTele = String(a.type || '').toLowerCase() === 'online' || a.isTelehealth === true;
     
-    // Apply filter
-    if (historyFilter.value === 'telehealth' && !isTele) continue;
-    if (historyFilter.value === 'treatments' && isTele) continue;
-    if (historyFilter.value === 'vaccinations') continue;
+    // Check if this appointment belongs to a specific category based on its services
+    // We'll determine the category by checking which services the appointment uses
+    let appointmentCategory = null;
+    
+    if (a.services && Array.isArray(a.services) && a.services.length > 0) {
+      // Find which category this appointment's services belong to
+      for (const [categoryId, serviceIds] of categoryServiceIds.value.entries()) {
+        if (a.services.some(serviceId => serviceIds.includes(serviceId))) {
+          appointmentCategory = categoryId;
+          break;
+        }
+      }
+    }
+    
+    // For backward compatibility, also check traditional telehealth indicators
+    const isTele = (
+      String(a.type || '').toLowerCase() === 'online' || 
+      a.isTelehealth === true ||
+      appointmentCategory === 'telehealth5192' ||
+      // Check service names for telehealth indicators
+      (a.serviceNames && Array.isArray(a.serviceNames) && 
+       a.serviceNames.some(name => name.toLowerCase().includes('video') || name.toLowerCase().includes('telehealth')))
+    );
+    
+    // Apply filter based on category
+    if (historyFilter.value !== 'all' && historyFilter.value !== 'vaccinations' && historyFilter.value !== 'completed') {
+      // Category-based filtering
+      if (historyFilter.value !== appointmentCategory) continue;
+    }
+    
+    // Special filters
+    if (historyFilter.value === 'vaccinations') continue; // Vaccinations are handled separately
+    if (historyFilter.value === 'completed' && a.status !== 'completed') continue;
+    
+    // Get category name for display
+    const categoryName = appointmentCategory ? 
+      categories.value.find(cat => cat.id === appointmentCategory)?.name || 'Appointment' : 
+      (isTele ? 'Telehealth' : 'Appointment');
     
     entries.push({
-      kind: isTele ? 'Telehealth' : 'Appointment',
+      kind: categoryName,
       date: when,
-      title: isTele ? 'Telehealth consultation' : (Array.isArray(a.serviceNames) && a.serviceNames.length ? a.serviceNames.join(', ') : 'Veterinary appointment'),
+      title: (Array.isArray(a.serviceNames) && a.serviceNames.length ? a.serviceNames.join(', ') : 'Veterinary appointment'),
       subtitle: a.doctorName || a.vetName || '',
       status: (a.status || '').toLowerCase(),
       details: a.notes || '',
       icon: isTele ? ActivityIcon : FileTextIcon,
-      color: isTele ? 'text-indigo-600' : 'text-blue-600'
+      color: isTele ? 'text-indigo-600' : 'text-blue-600',
+      completionData: a.completionData || null, // Include completion data
+      serviceIds: a.services || [], // Include service IDs for better categorization
+      categoryId: appointmentCategory, // Store the category ID
+      isTelehealth: isTele // Store the telehealth flag
     });
   }
 
-  // Add medical history treatments - FIXED: Access from selectedLocalPet directly
-  if (historyFilter.value !== 'vaccinations') {
+  // Add medical history treatments if viewing all records
+  if (historyFilter.value === 'all') {
     const mh = selectedLocalPet.value.medicalHistory || [];
     console.log('Medical history data:', mh); // Debug log
     for (const r of mh) {
-      // Apply filter
-      if (historyFilter.value === 'telehealth') continue;
-      
       const when = r.date ? new Date(r.date) : new Date();
       entries.push({ 
         kind: 'Treatment', 
@@ -770,10 +983,8 @@ const timelineEntries = computed(() => {
         color: 'text-emerald-600' 
       });
     }
-  }
-
-  // Add vaccinations - FIXED: Access from selectedLocalPet directly
-  if (historyFilter.value === 'all' || historyFilter.value === 'vaccinations') {
+    
+    // Add vaccinations if viewing all records
     const vacs = selectedLocalPet.value.vaccinations || [];
     console.log('Vaccinations data:', vacs); // Debug log
     for (const v of vacs) {
@@ -853,7 +1064,11 @@ const saveAllChanges = async () => {
 const hasPendingChanges = () => pendingChanges.value || deletedPetIds.value.length > 0;
 
 // Lifecycle
-onMounted(() => { fetchPets(); document.addEventListener('click', handleClickOutside); });
+onMounted(() => { 
+  fetchPets(); 
+  populateCategoriesAndServices(); // Populate categories and services
+  document.addEventListener('click', handleClickOutside); 
+});
 onBeforeUnmount(() => { document.removeEventListener('click', handleClickOutside); });
 const handleClickOutside = (event) => {
   if (tabsDropdownOpen.value && !event.target.closest('.tabs-dropdown')) tabsDropdownOpen.value = false;
