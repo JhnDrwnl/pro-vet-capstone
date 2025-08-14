@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const mailer = require('./utils/mailer');
 const { initScheduler } = require('./scheduler');
+const whatsappService = require('./services/whatsappService');
 
 // Load environment variables
 dotenv.config();
@@ -44,6 +45,195 @@ app.use('/api/archives', archiveRoutes);
 // Add profile routes
 const profileRoutes = require('./routes/profileRoutes');
 app.use('/api/profile', profileRoutes);
+
+// WhatsApp Integration Routes
+app.get('/api/whatsapp/status', (req, res) => {
+  const status = whatsappService.getStatus();
+  res.json(status);
+});
+
+app.post('/api/whatsapp/test', async (req, res) => {
+  try {
+    const { phoneNumber, message } = req.body;
+    
+    if (!phoneNumber || !message) {
+      return res.status(400).json({ 
+        error: 'Phone number and message are required' 
+      });
+    }
+    
+    const result = await whatsappService.sendTestMessage(phoneNumber, message);
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'Test message sent successfully'
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to send test message',
+      details: error.message 
+    });
+  }
+});
+
+app.post('/api/whatsapp/send-reschedule', async (req, res) => {
+  try {
+    const { phoneNumber, appointment, rescheduleData } = req.body;
+    
+    if (!phoneNumber || !appointment || !rescheduleData) {
+      return res.status(400).json({ 
+        error: 'Missing required data: phoneNumber, appointment, or rescheduleData' 
+      });
+    }
+    
+    const result = await whatsappService.sendRescheduleNotification(
+      phoneNumber,
+      appointment,
+      rescheduleData
+    );
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'WhatsApp reschedule notification sent successfully'
+    });
+    
+  } catch (error) {
+    console.error('WhatsApp notification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send WhatsApp notification',
+      details: error.message 
+    });
+  }
+});
+
+// Send appointment approval notification
+app.post('/api/whatsapp/send-approval', async (req, res) => {
+  try {
+    const { phoneNumber, appointment } = req.body;
+    
+    if (!phoneNumber || !appointment) {
+      return res.status(400).json({ 
+        error: 'Missing required data: phoneNumber or appointment' 
+      });
+    }
+    
+    const result = await whatsappService.sendAppointmentApproval(
+      phoneNumber,
+      appointment
+    );
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'WhatsApp approval notification sent successfully'
+    });
+    
+  } catch (error) {
+    console.error('WhatsApp approval notification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send WhatsApp approval notification',
+      details: error.message 
+    });
+  }
+});
+
+// Send appointment rejection notification
+app.post('/api/whatsapp/send-rejection', async (req, res) => {
+  try {
+    const { phoneNumber, appointment, reason } = req.body;
+    
+    if (!phoneNumber || !appointment) {
+      return res.status(400).json({ 
+        error: 'Missing required data: phoneNumber or appointment' 
+      });
+    }
+    
+    const result = await whatsappService.sendAppointmentRejection(
+      phoneNumber,
+      appointment,
+      reason
+    );
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'WhatsApp rejection notification sent successfully'
+    });
+    
+  } catch (error) {
+    console.error('WhatsApp rejection notification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send WhatsApp rejection notification',
+      details: error.message 
+    });
+  }
+});
+
+// Send appointment cancellation notification
+app.post('/api/whatsapp/send-cancellation', async (req, res) => {
+  try {
+    const { phoneNumber, appointment, reason } = req.body;
+    
+    if (!phoneNumber || !appointment) {
+      return res.status(400).json({ 
+        error: 'Missing required data: phoneNumber or appointment' 
+      });
+    }
+    
+    const result = await whatsappService.sendAppointmentCancellation(
+      phoneNumber,
+      appointment,
+      reason
+    );
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'WhatsApp cancellation notification sent successfully'
+    });
+    
+  } catch (error) {
+    console.error('WhatsApp cancellation notification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send WhatsApp cancellation notification',
+      details: error.message 
+    });
+  }
+});
+
+// Send appointment completion notification
+app.post('/api/whatsapp/send-completion', async (req, res) => {
+  try {
+    const { phoneNumber, appointment } = req.body;
+    
+    if (!phoneNumber || !appointment) {
+      return res.status(400).json({ 
+        error: 'Missing required data: phoneNumber or appointment' 
+      });
+    }
+    
+    const result = await whatsappService.sendAppointmentCompletion(
+      phoneNumber,
+      appointment
+    );
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'WhatsApp completion notification sent successfully'
+    });
+    
+  } catch (error) {
+    console.error('WhatsApp completion notification error:', error);
+    res.status(500).json({ 
+      error: 'Failed to send WhatsApp completion notification',
+      details: error.message 
+    });
+  }
+});
 
 // Initialize the scheduler
 initScheduler();

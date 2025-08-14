@@ -137,7 +137,7 @@
     <button @click="clearCategoryFilter" class="text-green-700 hover:text-green-800">
       <XIcon class="w-3 h-3" />
     </button>
-  </div>
+</div>
   
   <!-- Clear All Filters Button -->
   <div v-if="filters.status && categoryFilter !== 'all'" class="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs hover:bg-gray-200">
@@ -303,7 +303,7 @@
             >
               <span class="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md mb-1">
                 {{ getServiceDisplayName(serviceId) }}
-              </span>
+            </span>
               <span 
                 v-if="getServiceCategory(serviceId)"
                 class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded text-center"
@@ -477,7 +477,7 @@
                     :title="getServiceCategory(serviceId)?.description"
                   >
                     {{ getServiceCategory(serviceId)?.name }}
-                  </span>
+                </span>
                 </div>
               </div>
             </div>
@@ -579,13 +579,13 @@
                     <div class="absolute left-0 flex flex-col items-center">
                       <!-- Main Dot -->
                       <div class="w-3 h-3 rounded-full border-2 border-white shadow-sm flex items-center justify-center z-10"
-                           :class="{
-                             'bg-green-500': historyItem.status === 'completed',
-                             'bg-yellow-500': historyItem.status === 'pending',
-                             'bg-blue-500': historyItem.status === 'approved',
-                             'bg-red-500': historyItem.status === 'rejected'
-                           }">
-                        <div class="w-1 h-1 rounded-full bg-white"></div>
+                         :class="{
+                           'bg-green-500': historyItem.status === 'completed',
+                           'bg-yellow-500': historyItem.status === 'pending',
+                           'bg-blue-500': historyItem.status === 'approved',
+                           'bg-red-500': historyItem.status === 'rejected'
+                         }">
+                      <div class="w-1 h-1 rounded-full bg-white"></div>
                       </div>
                       
                       <!-- Connector Line (only if not the last item) -->
@@ -1039,7 +1039,7 @@
                     :title="getServiceCategory(serviceId)?.description"
                   >
                     {{ getServiceCategory(serviceId)?.name }}
-                  </span>
+                </span>
                 </div>
               </div>
             </div>
@@ -1199,7 +1199,7 @@
                   </div>
                   <div class="text-base font-medium text-gray-700">Services</div>
                 </div>
-                                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2">
                   <div 
                     v-for="(serviceId, index) in selectedAppointment.services" 
                     :key="index"
@@ -1214,7 +1214,7 @@
                       :title="getServiceCategory(serviceId)?.description"
                     >
                       {{ getServiceCategory(serviceId)?.name }}
-                    </span>
+                  </span>
                   </div>
                 </div>
               </div>
@@ -1799,12 +1799,12 @@ class="fixed inset-0 bg-black bg-opacity-20 z-50"
           <div class="flex items-center gap-3 mb-3">
             <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <CalendarIcon class="w-5 h-5 text-blue-600" />
-            </div>
+          </div>
             <div>
               <h3 class="font-medium text-gray-900">Current Appointment</h3>
               <p class="text-sm text-gray-600">{{ reschedulingAppointment.ownerName }}</p>
-            </div>
-          </div>
+        </div>
+              </div>
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span class="text-gray-500">Date:</span>
@@ -1813,8 +1813,8 @@ class="fixed inset-0 bg-black bg-opacity-20 z-50"
             <div>
               <span class="text-gray-500">Time:</span>
               <span class="ml-2 font-medium">{{ reschedulingAppointment.time }}</span>
-            </div>
           </div>
+        </div>
           <div class="mt-3 pt-3 border-t border-gray-200">
             <span class="text-gray-500 text-sm">Status:</span>
             <span :class="getStatusClass(reschedulingAppointment.status)" class="ml-2 text-xs">
@@ -1837,8 +1837,8 @@ class="fixed inset-0 bg-black bg-opacity-20 z-50"
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
             </svg>
             A reason is required
+            </div>
           </div>
-        </div>
         
         <!-- Date Selection -->
         <div>
@@ -1914,13 +1914,13 @@ class="fixed inset-0 bg-black bg-opacity-20 z-50"
               <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-            </div>
-            <div>
+          </div>
+                  <div>
               <h4 class="font-medium text-blue-900">Suggested Time</h4>
               <p class="text-sm text-blue-700">{{ selectedAutoRescheduleDate }} at {{ selectedAutoRescheduleTime }}</p>
-            </div>
-          </div>
-        </div>
+                  </div>
+                  </div>
+                </div>
         
         <!-- Info Note -->
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -2252,7 +2252,7 @@ class="fixed inset-0 bg-black bg-opacity-20 z-50"
                     :title="getServiceCategory(service)?.description"
                   >
                     {{ getServiceCategory(service)?.name }}
-                  </span>
+                </span>
                 </div>
               </div>
             </div>
@@ -2694,6 +2694,9 @@ const submitCompletionForm = async () => {
       
       // Send additional detailed completion notification with summary
       await sendDetailedCompletionNotification(selectedAppointment.value.id, completionData);
+      
+      // Send WhatsApp notification to the user about completion
+      await sendWhatsAppNotification(selectedAppointment.value.id, 'completion');
     } catch (notificationError) {
       console.error('Error sending completion notification:', notificationError);
       // Don't fail the completion if notification fails
@@ -3199,8 +3202,8 @@ try {
 // Initialize component
 onMounted(async () => {
   try {
-    await fetchServiceData(); // Fetch service categories and services
-    await fetchAppointments();
+  await fetchServiceData(); // Fetch service categories and services
+  await fetchAppointments();
   } catch (error) {
     console.error('Error during initialization:', error);
     // Still try to fetch appointments even if service data fails
@@ -3625,28 +3628,28 @@ if (currentPage.value < totalPages.value) {
 };
 
 const getStatusClass = (status) => {
-  const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
-  switch (status?.toLowerCase()) {
-    case 'pending':
-      return `${baseClasses} bg-yellow-100 text-yellow-800`;
-    case 'processing':
-      return `${baseClasses} bg-blue-100 text-blue-800`;
-    case 'approved':
-      return `${baseClasses} bg-green-100 text-green-800`;
-    case 'completed':
-      return `${baseClasses} bg-purple-100 text-purple-800`;
-    case 'cancelled':
-    case 'rejected':
-      return `${baseClasses} bg-red-100 text-red-800`;
-    case 'expired':
-      return `${baseClasses} bg-red-50 text-red-700 border border-red-200`;
-    case 'ended':
-      return `${baseClasses} bg-slate-200 text-slate-700`;
+const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
+switch (status?.toLowerCase()) {
+  case 'pending':
+    return `${baseClasses} bg-yellow-100 text-yellow-800`;
+  case 'processing':
+    return `${baseClasses} bg-blue-100 text-blue-800`;
+  case 'approved':
+    return `${baseClasses} bg-green-100 text-green-800`;
+  case 'completed':
+    return `${baseClasses} bg-purple-100 text-purple-800`;
+  case 'cancelled':
+  case 'rejected':
+    return `${baseClasses} bg-red-100 text-red-800`;
+  case 'expired':
+    return `${baseClasses} bg-red-50 text-red-700 border border-red-200`;
+  case 'ended':
+    return `${baseClasses} bg-slate-200 text-slate-700`;
     case 'consider_rescheduling':
       return `${baseClasses} bg-orange-100 text-orange-800`;
-    default:
-      return `${baseClasses} bg-gray-100 text-gray-800`;
-  }
+  default:
+    return `${baseClasses} bg-gray-100 text-gray-800`;
+}
 };
 
 // Improved approval process to ensure complete data loading
@@ -5252,6 +5255,57 @@ const executeRescheduleRequest = async () => {
       console.error('Failed to send vet notification:', vetNotifyErr);
     }
     
+    // Send WhatsApp notification if user has WhatsApp number
+    try {
+      if (reschedulingAppointment.value.userId) {
+        // Get user's WhatsApp number from users collection
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('@shared/firebase');
+        
+        const userRef = doc(db, 'users', reschedulingAppointment.value.userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists() && userDoc.data().whatsapp) {
+          const whatsappNumber = userDoc.data().whatsapp;
+          
+          const rescheduleData = {
+            reason: rescheduleReason.value.trim(),
+            suggestedDate: selectedAutoRescheduleDate.value,
+            suggestedTime: selectedAutoRescheduleTime.value
+          };
+          
+          console.log('📱 Sending WhatsApp notification...');
+          
+          const response = await fetch('http://localhost:3000/api/whatsapp/send-reschedule', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              phoneNumber: whatsappNumber,
+              appointment: reschedulingAppointment.value,
+              rescheduleData: rescheduleData
+            })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('✅ WhatsApp notification sent successfully:', result.messageId);
+          } else {
+            const error = await response.json();
+            console.log('⚠️ WhatsApp notification failed:', error.error);
+          }
+        } else {
+          console.log('ℹ️ No WhatsApp number found for user');
+        }
+      } else {
+        console.log('ℹ️ No user ID available for WhatsApp notification');
+      }
+    } catch (whatsappErr) {
+      console.error('❌ WhatsApp notification error:', whatsappErr);
+      // Don't fail the entire reschedule process if WhatsApp fails
+    }
+    
     // Close panel and show success
     closeAutoReschedulePanel();
     successTitle.value = 'Reschedule Request Sent';
@@ -5451,6 +5505,117 @@ const sendDetailedCompletionNotification = async (appointmentId, completionData)
 };
 
 // ========================================
+// WHATSAPP NOTIFICATION FUNCTIONS
+// ========================================
+
+const sendWhatsAppNotification = async (appointmentId, actionType) => {
+  try {
+    const appointment = appointments.value.find(a => a.id === appointmentId);
+    if (!appointment || !appointment.userId) {
+      console.log('ℹ️ No user ID available for WhatsApp notification');
+      return;
+    }
+
+    // Get user's WhatsApp number from users collection
+    const { doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+    
+    const userRef = doc(db, 'users', appointment.userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.log('ℹ️ User document not found for WhatsApp notification');
+      return;
+    }
+    
+    const userData = userDoc.data();
+    const whatsappNumber = userData.whatsapp;
+    
+    if (!whatsappNumber) {
+      console.log('ℹ️ No WhatsApp number found for user, skipping WhatsApp notification');
+      return;
+    }
+
+    // Check if WhatsApp number is valid
+    const isPhoneNumber = /^[\+]?[0-9\s\-\(\)]{10,}$/.test(whatsappNumber);
+    
+    if (!isPhoneNumber) {
+      console.log(`ℹ️ WhatsApp number is not valid (${whatsappNumber}), skipping WhatsApp notification`);
+      return;
+    }
+
+    console.log(`📱 Sending WhatsApp ${actionType} notification...`);
+    
+    let endpoint = '';
+    let requestBody = {};
+    
+    switch (actionType) {
+      case 'approval':
+        endpoint = '/api/whatsapp/send-approval';
+        requestBody = {
+          phoneNumber: whatsappNumber,
+          appointment: appointment
+        };
+        break;
+        
+      case 'rejection':
+        endpoint = '/api/whatsapp/send-rejection';
+        requestBody = {
+          phoneNumber: whatsappNumber,
+          appointment: appointment,
+          reason: 'Schedule conflict or unavailability'
+        };
+        break;
+        
+      case 'cancellation':
+        endpoint = '/api/whatsapp/send-cancellation';
+        requestBody = {
+          phoneNumber: whatsappNumber,
+          appointment: appointment,
+          reason: 'Cancelled by veterinary staff'
+        };
+        break;
+        
+      case 'completion':
+        endpoint = '/api/whatsapp/send-completion';
+        requestBody = {
+          phoneNumber: whatsappNumber,
+          appointment: appointment
+        };
+        break;
+        
+      case 'reschedule':
+        // This is already handled in executeRescheduleRequest
+        return;
+        
+      default:
+        console.log(`⚠️ Unknown action type for WhatsApp: ${actionType}`);
+        return;
+    }
+    
+    const response = await fetch(`http://localhost:3000${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`✅ WhatsApp ${actionType} notification sent successfully:`, result.messageId);
+    } else {
+      const error = await response.json();
+      console.log(`⚠️ WhatsApp ${actionType} notification failed:`, error.error);
+    }
+    
+  } catch (error) {
+    console.error(`❌ WhatsApp ${actionType} notification error:`, error);
+    // Don't fail the appointment action if WhatsApp fails
+  }
+};
+
+// ========================================
 // APPOINTMENT ACTION FUNCTIONS
 // ========================================
 
@@ -5477,6 +5642,9 @@ const approveAppointment = async (appointmentId) => {
     
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'approve', 'approved');
+    
+    // Send WhatsApp notification to the user
+    await sendWhatsAppNotification(appointmentId, 'approval');
     
     // Send notification to the vet about their action
     await sendVetNotification(appointmentId, 'approve', 'approved');
@@ -5517,6 +5685,9 @@ const rejectAppointment = async (appointmentId) => {
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'reject', 'rejected');
     
+    // Send WhatsApp notification to the user
+    await sendWhatsAppNotification(appointmentId, 'rejection');
+    
     // Send notification to the vet about their action
     await sendVetNotification(appointmentId, 'reject', 'rejected');
     
@@ -5556,6 +5727,9 @@ const cancelApprovedAppointment = async (appointmentId) => {
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'cancel', 'cancelled');
     
+    // Send WhatsApp notification to the user
+    await sendWhatsAppNotification(appointmentId, 'cancellation');
+    
     // Send notification to the vet about their action
     await sendVetNotification(appointmentId, 'cancel', 'cancelled');
     
@@ -5594,6 +5768,9 @@ const completeAppointment = async (appointmentId) => {
 
     // Notify user
     await sendAppointmentNotification(appointmentId, 'complete', 'completed');
+    
+    // Send WhatsApp notification to the user about completion
+    await sendWhatsAppNotification(appointmentId, 'completion');
     
     // Notify vet about their action
     await sendVetNotification(appointmentId, 'complete', 'completed');
