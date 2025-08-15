@@ -33,6 +33,7 @@ mailer.verifyConnection().catch(err => {
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
@@ -46,13 +47,71 @@ app.use('/api/archives', archiveRoutes);
 const profileRoutes = require('./routes/profileRoutes');
 app.use('/api/profile', profileRoutes);
 
+// Add SMS routes
+const smsRoutes = require('./routes/smsRoutes');
+app.use('/api/sms', smsRoutes);
+
 // WhatsApp Integration Routes
 app.get('/api/whatsapp/status', (req, res) => {
   const status = whatsappService.getStatus();
   res.json(status);
 });
 
+// Add the missing send-otp route that frontend expects
+app.post('/api/whatsapp/send-otp', async (req, res) => {
+  try {
+    const { phoneNumber, message } = req.body;
+    
+    if (!phoneNumber || !message) {
+      return res.status(400).json({ 
+        error: 'Phone number and message are required' 
+      });
+    }
+    
+    const result = await whatsappService.sendOTP(phoneNumber, message);
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'WhatsApp OTP sent successfully'
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to send WhatsApp OTP',
+      details: error.message 
+    });
+  }
+});
+
 app.post('/api/whatsapp/test', async (req, res) => {
+  try {
+    const { phoneNumber, message } = req.body;
+    
+    if (!phoneNumber || !message) {
+      return res.status(400).json({ 
+        error: 'Phone number and message are required' 
+      });
+    }
+    
+    const result = await whatsappService.sendTestMessage(phoneNumber, message);
+    
+    res.json({ 
+      success: true, 
+      messageId: result.id._serialized,
+      message: 'Test message sent successfully'
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to send test message',
+      details: error.message 
+    });
+  }
+});
+
+// Add the send-test route that frontend expects
+app.post('/api/whatsapp/send-test', async (req, res) => {
   try {
     const { phoneNumber, message } = req.body;
     

@@ -1,2 +1,3 @@
-2025/08/14-09:18:42.392 8f0 Creating DB C:\pro-vet\node-backend\.wwebjs_auth\session\Default\shared_proto_db\metadata since it was missing.
-2025/08/14-09:18:42.395 8f0 Reusing MANIFEST C:\pro-vet\node-backend\.wwebjs_auth\session\Default\shared_proto_db\metadata/MANIFEST-000001
+2025/08/15-09:18:40.359 c24 Reusing MANIFEST C:\pro-vet\node-backend\.wwebjs_auth\session\Default\shared_proto_db\metadata/MANIFEST-000001
+2025/08/15-09:18:40.369 c24 Recovering log #3
+2025/08/15-09:18:40.370 c24 Reusing old log C:\pro-vet\node-backend\.wwebjs_auth\session\Default\shared_proto_db\metadata/000003.log 

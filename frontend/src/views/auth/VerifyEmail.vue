@@ -220,7 +220,7 @@ const startExpiryTimer = () => {
     clearInterval(expiryInterval)
   }
 
-  otpExpiryTime.value = 300 // 5 minutes (changed from 120)
+  otpExpiryTime.value = 300 // 5 minutes
   expiryInterval = setInterval(() => {
     if (otpExpiryTime.value > 0) {
       otpExpiryTime.value--
@@ -251,10 +251,45 @@ const verifyOTP = async () => {
     const result = await authStore.completeRegistration(otp)
     
     if (result) {
-      // Pass the email as a query parameter when redirecting to login
+      // Automatically enable notifications for new users
+      try {
+        // Request notification permission first
+        const permissionGranted = await requestNotificationPermission();
+        
+        // Update user document
+        const user = authStore.currentUser;
+        if (user && user.userId) {
+          const { doc, setDoc, getDoc } = await import('firebase/firestore');
+          const { db } = await import('@shared/firebase');
+          
+          const userRef = doc(db, "users", user.userId);
+          await setDoc(userRef, {
+            notificationsEnabled: permissionGranted,
+            notificationsConfigured: true,
+            notificationsPrompted: true,
+            updatedAt: new Date()
+          }, { merge: true });
+          
+          // Create welcome notification document in Firestore
+          await createWelcomeNotification(user.userId);
+          
+          console.log('Notifications automatically enabled for new user');
+        }
+      } catch (notificationError) {
+        console.error('Error auto-enabling notifications:', notificationError);
+        // Continue with registration even if notifications fail
+      }
+      
+      // Get verification data to access phone number
+      const verificationData = authStore.getVerificationData()
+      
+      // Redirect to phone verification after successful email verification
       router.push({
-        path: '/auth/login',
-        query: { email: email.value, verified: 'true' }
+        name: 'verify-phone',
+        query: { 
+          email: email.value, 
+          phone: route.query.phone || verificationData?.phone || '' 
+        }
       })
     } else {
       error.value = 'Invalid verification code. Please try again.'
@@ -280,6 +315,76 @@ const verifyOTP = async () => {
     verifying.value = false
   }
 }
+
+// Function to create welcome notification document
+const createWelcomeNotification = async (userId) => {
+  try {
+    const { collection, addDoc, doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+    
+    const notificationsRef = collection(db, "notifications");
+    
+    // Get user data for personalization
+    const userRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userRef);
+    const userData = userDoc.exists() ? userDoc.data() : {};
+    const firstName = userData.firstName || "there";
+    
+    const notificationData = {
+      userId: userId,
+      title: "Welcome to Provincial Veterinary!",
+      description: `Hi ${firstName}, thanks for joining us! You'll now receive updates about your pet's health.`,
+      type: "welcome",
+      read: false,
+      createdAt: new Date(),
+      data: {
+        type: "welcome",
+        url: "/user/notifications",
+        fromRegistration: true
+      },
+      // Add any other fields your notification system expects
+      sent: true,
+      deleted: false
+    };
+    
+    await addDoc(notificationsRef, notificationData);
+    console.log('Welcome notification document created successfully');
+    
+  } catch (error) {
+    console.error('Error creating welcome notification document:', error);
+  }
+};
+
+// Function to request notification permission
+const requestNotificationPermission = async () => {
+  try {
+    // Check if notifications are supported
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      return false;
+    }
+    
+    // Check current permission
+    if (Notification.permission === 'granted') {
+      console.log('Notification permission already granted');
+      return true;
+    }
+    
+    if (Notification.permission === 'denied') {
+      console.log('Notification permission denied');
+      return false;
+    }
+    
+    // Request permission
+    const permission = await Notification.requestPermission();
+    console.log('Notification permission result:', permission);
+    
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
+};
 
 const resendCode = async () => {
   try {
@@ -383,6 +488,24 @@ input[type="password"] {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 </style>

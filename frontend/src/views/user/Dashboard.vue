@@ -462,3 +462,4 @@ const pets = ref([
   color: #111827;
 }
 </style>
+</style>

@@ -81,6 +81,11 @@ class WhatsAppService {
     const currentTime = appointment.time || 'Time not specified';
     const ownerName = appointment.ownerName || 'Valued Client';
     
+    // Get service names from serviceNames array if available, otherwise use services array
+    const serviceNames = appointment.serviceNames?.join(', ') || 
+                        appointment.services?.map(s => this.getServiceDisplayName(s)).join(', ') || 
+                        'Not specified';
+    
     return `🏥 *ProVet Calapan - Appointment Reschedule Request*
 
 Dear ${ownerName},
@@ -90,6 +95,7 @@ Your appointment for *${petName}* has a reschedule request from your veterinaria
 📅 *Current Appointment:*
    Date: ${currentDate}
    Time: ${currentTime}
+   Services: ${serviceNames}
 
 🔄 *Reschedule Request:*
    Reason: ${rescheduleData.reason}
@@ -101,15 +107,10 @@ Your appointment for *${petName}* has a reschedule request from your veterinaria
    • Propose an alternative time
    • Discuss any concerns
 
-🏥 *Clinic Contact:*
-   Phone: [Your Clinic Phone]
-   Address: [Your Clinic Address]
-
 Thank you for your understanding.
 
 ---
-*This is an automated message from ProVet Calapan*
-Reply with "STOP" to unsubscribe from notifications.`;
+*This is an automated message from ProVet Calapan*`;
   }
   
   formatDate(date) {
@@ -149,6 +150,28 @@ Reply with "STOP" to unsubscribe from notifications.`;
       
     } catch (error) {
       console.error('❌ Test message failed:', error);
+      throw error;
+    }
+  }
+
+  // Send OTP method for verification
+  async sendOTP(phoneNumber, message) {
+    if (!this.isReady) {
+      throw new Error('WhatsApp client is not ready yet. Please scan the QR code first.');
+    }
+    
+    try {
+      const formattedNumber = this.formatPhoneNumber(phoneNumber);
+      
+      console.log(`📱 Sending WhatsApp OTP to: ${formattedNumber}`);
+      
+      const result = await this.client.sendMessage(`${formattedNumber}@c.us`, message);
+      
+      console.log('✅ WhatsApp OTP sent successfully:', result.id._serialized);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ WhatsApp OTP failed:', error);
       throw error;
     }
   }
@@ -259,6 +282,11 @@ Reply with "STOP" to unsubscribe from notifications.`;
     const appointmentTime = appointment.time || 'Time not specified';
     const ownerName = appointment.ownerName || 'Valued Client';
     
+    // Get service names from serviceNames array if available, otherwise use services array
+    const serviceNames = appointment.serviceNames?.join(', ') || 
+                        appointment.services?.map(s => this.getServiceDisplayName(s)).join(', ') || 
+                        'Not specified';
+    
     return `✅ *ProVet Calapan - Appointment Approved!*
 
 Dear ${ownerName},
@@ -269,7 +297,7 @@ Great news! Your appointment has been approved by our veterinary team.
    Pet: ${petName}
    Date: ${appointmentDate}
    Time: ${appointmentTime}
-   Services: ${appointment.services?.map(s => this.getServiceDisplayName(s)).join(', ') || 'Not specified'}
+   Services: ${serviceNames}
 
 🏥 *Important Reminders:*
    • Please arrive 10-15 minutes early
@@ -277,15 +305,10 @@ Great news! Your appointment has been approved by our veterinary team.
    • Have your pet on a leash or in a carrier
    • Bring any current medications
 
-📞 *Contact Information:*
-   Phone: [Your Clinic Phone]
-   Address: [Your Clinic Address]
-
 We look forward to seeing you and ${petName}!
 
 ---
-*This is an automated message from ProVet Calapan*
-Reply with "STOP" to unsubscribe from notifications.`;
+*This is an automated message from ProVet Calapan*`;
   }
 
   // Create rejection message
@@ -294,6 +317,11 @@ Reply with "STOP" to unsubscribe from notifications.`;
     const appointmentDate = this.formatDate(appointment.date) || 'Date not specified';
     const appointmentTime = appointment.time || 'Time not specified';
     const ownerName = appointment.ownerName || 'Valued Client';
+    
+    // Get service names from serviceNames array if available, otherwise use services array
+    const serviceNames = appointment.serviceNames?.join(', ') || 
+                        appointment.services?.map(s => this.getServiceDisplayName(s)).join(', ') || 
+                        'Not specified';
     
     return `❌ *ProVet Calapan - Appointment Not Available*
 
@@ -305,6 +333,7 @@ We regret to inform you that we cannot accommodate your appointment request.
    Pet: ${petName}
    Date: ${appointmentDate}
    Time: ${appointmentTime}
+   Services: ${serviceNames}
 
 📋 *Reason:*
    ${reason || 'Schedule conflict or unavailability'}
@@ -314,15 +343,10 @@ We regret to inform you that we cannot accommodate your appointment request.
    • We can suggest alternative dates and times
    • We apologize for any inconvenience
 
-📞 *Contact Information:*
-   Phone: [Your Clinic Phone]
-   Address: [Your Clinic Address]
-
 Thank you for understanding.
 
 ---
-*This is an automated message from ProVet Calapan*
-Reply with "STOP" to unsubscribe from notifications.`;
+*This is an automated message from ProVet Calapan*`;
   }
 
   // Create cancellation message
@@ -331,6 +355,11 @@ Reply with "STOP" to unsubscribe from notifications.`;
     const appointmentDate = this.formatDate(appointment.date) || 'Date not specified';
     const appointmentTime = appointment.time || 'Time not specified';
     const ownerName = appointment.ownerName || 'Valued Client';
+    
+    // Get service names from serviceNames array if available, otherwise use services array
+    const serviceNames = appointment.serviceNames?.join(', ') || 
+                        appointment.services?.map(s => this.getServiceDisplayName(s)).join(', ') || 
+                        'Not specified';
     
     return `🚫 *ProVet Calapan - Appointment Cancelled*
 
@@ -342,6 +371,7 @@ Your appointment has been cancelled as requested.
    Pet: ${petName}
    Date: ${appointmentDate}
    Time: ${appointmentTime}
+   Services: ${serviceNames}
 
 📋 *Reason for Cancellation:*
    ${reason || 'Cancelled by request'}
@@ -351,21 +381,21 @@ Your appointment has been cancelled as requested.
    • We're happy to accommodate your schedule
    • No cancellation fees apply
 
-📞 *Contact Information:*
-   Phone: [Your Clinic Phone]
-   Address: [Your Clinic Address]
-
 We hope to see you and ${petName} soon!
 
 ---
-*This is an automated message from ProVet Calapan*
-Reply with "STOP" to unsubscribe from notifications.`;
+*This is an automated message from ProVet Calapan*`;
   }
 
   // Create completion message
   createCompletionMessage(appointment) {
     const petName = appointment.petNames?.join(', ') || appointment.petName;
     const appointmentDate = this.formatDate(appointment.date);
+    
+    // Get service names from serviceNames array if available, otherwise use services array
+    const serviceNames = appointment.serviceNames?.join(', ') || 
+                        appointment.services?.map(s => this.getServiceDisplayName(s)).join(', ') || 
+                        'Not specified';
     
     return `🎉 *ProVet Calapan - Appointment Completed!*
 
@@ -376,6 +406,7 @@ Thank you for choosing ProVet Calapan! Your appointment has been completed succe
 📅 *Completed Appointment:*
    Pet: ${petName}
    Date: ${appointmentDate}
+   Services: ${serviceNames}
 
 💊 *Follow-up Instructions:*
    • Follow any medication instructions provided
@@ -386,15 +417,10 @@ Thank you for choosing ProVet Calapan! Your appointment has been completed succe
 ⭐ *We'd love your feedback!*
    Your experience helps us improve our services.
 
-📞 *Contact Information:*
-   Phone: [Your Clinic Phone]
-   Address: [Your Clinic Address]
-
 Thank you for trusting us with ${petName}'s care!
 
 ---
-*This is an automated message from ProVet Calapan*
-Reply with "STOP" to unsubscribe from notifications.`;
+*This is an automated message from ProVet Calapan*`;
   }
 
   // Helper method to get service display name

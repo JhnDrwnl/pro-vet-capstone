@@ -63,6 +63,8 @@ export const initialize = async () => {
  */
 export const createNotification = async (notificationData) => {
   try {
+    console.log('🔧 createNotification called with data:', notificationData);
+    
     const notificationsRef = collection(db, 'notifications')
     
     const notification = {
@@ -72,11 +74,18 @@ export const createNotification = async (notificationData) => {
       id: Date.now().toString() // Simple ID for now
     }
     
-    await addDoc(notificationsRef, notification)
-    console.log('Notification created successfully')
-    return true
-        } catch (error) {
-    console.error('Error creating notification:', error)
+    console.log('📝 Prepared notification data:', notification);
+    
+    const docRef = await addDoc(notificationsRef, notification)
+    console.log('✅ Notification created successfully with ID:', docRef.id)
+    return docRef.id
+  } catch (error) {
+    console.error('❌ Error creating notification:', error)
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    })
     return false
   }
 }
@@ -104,7 +113,7 @@ export const getUserNotifications = async (userId, limit = 50) => {
     })
     
     return notifications.slice(0, limit)
-        } catch (error) {
+  } catch (error) {
     console.error('Error fetching user notifications:', error)
     return []
   }
@@ -119,7 +128,7 @@ export const markNotificationAsRead = async (notificationId) => {
     // In a real implementation, you'd update the 'read' field to true
     console.log(`Notification ${notificationId} marked as read`)
     return true
-    } catch (error) {
+  } catch (error) {
     console.error('Error marking notification as read:', error)
     return false
   }
@@ -161,8 +170,8 @@ export const showNotification = async (title, body, options = {}) => {
           console.log('⚠️ Store failed, falling back to direct Firestore storage')
           // If store failed, fallback to direct Firestore storage
           if (options.storeInFirestore !== false) {
-            await createNotification(notificationData)
-            return { success: true, message: 'Notification stored directly in Firestore' }
+            const notificationId = await createNotification(notificationData)
+            return { success: true, message: 'Notification stored directly in Firestore', id: notificationId }
           }
         }
       }
@@ -187,12 +196,12 @@ export const showNotification = async (title, body, options = {}) => {
         createdAt: new Date()
       }
       
-      await createNotification(notificationData)
-      return { success: true, message: 'Notification stored directly in Firestore' }
+      const notificationId = await createNotification(notificationData)
+      return { success: true, message: 'Notification stored directly in Firestore', id: notificationId }
     }
     
     return { success: true, message: 'Notification shown' }
-          } catch (error) {
+  } catch (error) {
     console.error('❌ Error showing notification:', error)
     return { success: false, error: error.message }
   }
@@ -220,8 +229,12 @@ export const storeNotificationInFirestore = async (title, body, options = {}) =>
     }
     
     const result = await createNotification(notificationData)
-    return { success: result, message: 'Notification stored in Firestore' }
-    } catch (error) {
+    if (result) {
+      return { success: true, message: 'Notification stored in Firestore', id: result }
+    } else {
+      return { success: false, message: 'Failed to store notification in Firestore' }
+    }
+  } catch (error) {
     console.error('Error storing notification in Firestore:', error)
     return { success: false, error: error.message }
   }
@@ -270,12 +283,19 @@ export const createAppointmentReminder = async (appointment) => {
     
     console.log('Notification data created:', notificationData)
     
-    return await createNotification(notificationData)
-    } catch (error) {
-    console.error('Error creating appointment reminder:', error)
+    const notificationId = await createNotification(notificationData)
+    if (notificationId) {
+      console.log('✅ Appointment reminder notification created with ID:', notificationId)
+      return notificationId
+    } else {
+      console.log('❌ Failed to create appointment reminder notification')
       return false
     }
+  } catch (error) {
+    console.error('Error creating appointment reminder:', error)
+    return false
   }
+}
 
 /**
  * Get today's appointments for a specific user
@@ -330,17 +350,50 @@ export const createTestAppointmentReminder = async (userId = 'test_user') => {
     
     console.log('Creating test appointment reminder with data:', testAppointment)
     
-    const success = await createAppointmentReminder(testAppointment)
-    if (success) {
-      console.log('Test appointment reminder created successfully')
-      return 1
+    const notificationId = await createAppointmentReminder(testAppointment)
+    if (notificationId) {
+      console.log('✅ Test appointment reminder created successfully with ID:', notificationId)
+      return notificationId
     } else {
-      console.log('Failed to create test appointment reminder')
-      return 0
+      console.log('❌ Failed to create test appointment reminder')
+      return false
     }
   } catch (error) {
     console.error('Error creating test appointment reminder:', error)
-    return 0
+    return false
+  }
+}
+
+/**
+ * Create a simple test notification (for debugging)
+ */
+export const createTestNotification = async (userId = 'test_user') => {
+  try {
+    console.log('🧪 Creating test notification for user:', userId)
+    
+    const testNotification = {
+      userId: userId,
+      title: 'Test Notification',
+      description: 'This is a test notification to verify the system is working',
+      type: 'test',
+      priority: NOTIFICATION_PRIORITIES.MEDIUM,
+      data: {
+        type: 'test',
+        message: 'Test notification created successfully'
+      }
+    }
+    
+    const notificationId = await createNotification(testNotification)
+    if (notificationId) {
+      console.log('✅ Test notification created successfully with ID:', notificationId)
+      return notificationId
+    } else {
+      console.log('❌ Failed to create test notification')
+      return false
+    }
+  } catch (error) {
+    console.error('❌ Error creating test notification:', error)
+    return false
   }
 }
 
@@ -402,10 +455,10 @@ export const sendDailyAppointmentReminders = async (testMode = false) => {
     // Create reminder notifications for EACH appointment (not per user)
     let successCount = 0
     for (const appointment of appointments) {
-      const success = await createAppointmentReminder(appointment)
-      if (success) {
+      const notificationId = await createAppointmentReminder(appointment)
+      if (notificationId) {
         successCount++
-        console.log(`✅ Reminder sent for appointment: ${appointment.id} - ${appointment.time} for ${appointment.petNames?.join(', ') || 'pet'}`)
+        console.log(`✅ Reminder sent for appointment: ${appointment.id} - ${appointment.time} for ${appointment.petNames?.join(', ') || 'pet'} (Notification ID: ${notificationId})`)
       } else {
         console.log(`❌ Failed to send reminder for appointment: ${appointment.id}`)
       }
@@ -465,6 +518,7 @@ export default {
   storeNotificationInFirestore,
   createAppointmentReminder,
   createTestAppointmentReminder,
+  createTestNotification,
   getTodaysAppointments,
   sendDailyAppointmentReminders,
   setupDailyReminders,

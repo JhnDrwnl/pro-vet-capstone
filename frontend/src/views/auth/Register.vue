@@ -25,6 +25,7 @@
         <div class="p-4 sm:p-6 lg:p-8 flex flex-col items-center">
           <h1 class="text-xl font-semibold text-gray-800 mb-4 sm:mb-6 mt-4">Register</h1>
 
+          <!-- Registration Form -->
           <form @submit.prevent="handleRegister" class="space-y-4 w-full max-w-md">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -61,6 +62,24 @@
                 class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none"
                 required
               />
+            </div>
+            
+            <div>
+              <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <input 
+                id="phone"
+                type="tel" 
+                v-model="form.phone"
+                placeholder="+63 912 345 6789"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                @input="formatPhoneNumber"
+                @blur="validatePhoneNumber"
+                required
+              />
+              <p class="text-xs text-gray-500 mt-1">Philippine mobile number format</p>
+              <div v-if="phoneError" class="text-red-500 text-sm mt-1">
+                {{ phoneError }}
+              </div>
             </div>
             
             <div>
@@ -234,7 +253,7 @@ import { useRouter } from 'vue-router';
 import { DotLottieVue } from '@lottiefiles/dotlottie-vue';
 import Policies from '@/components/common/Policies.vue';
 import { useAuthStore } from '@/stores/modules/authStore';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/firebase';
 
 const router = useRouter();
@@ -253,10 +272,14 @@ const form = reactive({
   firstName: '',
   lastName: '',
   email: '',
+  phone: '',
   password: '',
   confirmPassword: '',
   acceptTerms: false
 });
+
+// Phone number validation state
+const phoneError = ref('');
 
 // Lottie options
 const lottieOptions = {
@@ -299,6 +322,73 @@ const togglePassword = (field) => {
   }
 };
 
+// Phone number formatting and validation
+const formatPhoneNumber = (event) => {
+  let value = event.target.value.replace(/\D/g, ''); // Remove all non-digits
+  
+  // If it starts with 0, replace with +63
+  if (value.startsWith('0')) {
+    value = '63' + value.substring(1);
+  }
+  
+  // If it doesn't start with 63, add it
+  if (!value.startsWith('63')) {
+    value = '63' + value;
+  }
+  
+  // Limit to 12 digits (63 + 9 digits)
+  if (value.length > 12) {
+    value = value.substring(0, 12);
+  }
+  
+  // Format the number
+  if (value.length >= 3) {
+    const countryCode = value.substring(0, 2);
+    const areaCode = value.substring(2, 5);
+    const firstPart = value.substring(5, 8);
+    const secondPart = value.substring(8, 10);
+    const thirdPart = value.substring(10, 12);
+    
+    let formatted = `+${countryCode}`;
+    if (areaCode) formatted += ` ${areaCode}`;
+    if (firstPart) formatted += ` ${firstPart}`;
+    if (secondPart) formatted += ` ${secondPart}`;
+    if (thirdPart) formatted += ` ${thirdPart}`;
+    
+    form.phone = formatted;
+  } else {
+    form.phone = value;
+  }
+  
+  // Clear error when user types
+  phoneError.value = '';
+};
+
+const validatePhoneNumber = () => {
+  const cleanNumber = form.phone.replace(/\D/g, '');
+  
+  // Check if it's a valid Philippine mobile number
+  if (cleanNumber.length < 11) {
+    phoneError.value = 'Phone number must be at least 11 digits';
+    return false;
+  }
+  
+  if (!cleanNumber.startsWith('63')) {
+    phoneError.value = 'Phone number must start with +63';
+    return false;
+  }
+  
+  // Check if the area code is valid (9xx format)
+  const areaCode = cleanNumber.substring(2, 5);
+  if (!areaCode.startsWith('9')) {
+    phoneError.value = 'Invalid Philippine mobile number format';
+    return false;
+  }
+  
+  phoneError.value = '';
+  return true;
+};
+
 const handleRegister = async () => {
   if (!form.acceptTerms) {
     error.value = "Please accept the Terms and Conditions";
@@ -309,6 +399,11 @@ const handleRegister = async () => {
     error.value = "Passwords do not match";
     return;
   }
+
+  if (!validatePhoneNumber()) {
+    error.value = phoneError.value;
+    return;
+  }
   
   try {
     emailLoading.value = true;
@@ -316,11 +411,13 @@ const handleRegister = async () => {
     
     await authStore.initiateRegistration({
       email: form.email,
+      phone: form.phone,
       password: form.password,
       firstName: form.firstName,
       lastName: form.lastName
     });
     
+    // Redirect to verify email page with the email
     router.push({ 
       name: 'verify-email',
       query: { email: form.email }
@@ -334,40 +431,159 @@ const handleRegister = async () => {
   }
 };
 
+
+
 const registerWithGoogle = async () => {
   try {
     googleLoading.value = true;
     error.value = null;
     
+    console.log('🚀 Starting Google OAuth registration...');
+    
     // Call the signInWithGoogle method with isRegistration flag
     await authStore.signInWithGoogle({
       isRegistration: true,
-      onNewUser: () => {
-        console.log('New user registered with Google');
-        // Set flag to show notification modal for new Google users
-        localStorage.setItem('showNotificationModal', 'true');
+      onNewUser: async () => {
+        console.log('✅ New user registered with Google');
+        console.log('👤 Current user object:', authStore.currentUser);
         
-        // If you have access to the user document, update it to track that we've prompted for notifications
+        // Automatically enable notifications for new Google users
         if (authStore.currentUser && authStore.currentUser.userId) {
           const userId = authStore.currentUser.userId;
+          console.log('🆔 User ID found:', userId);
+          
           const userRef = doc(db, "users", userId);
           
-          setDoc(userRef, {
-            notificationsPrompted: true,
-            updatedAt: new Date()
-          }, { merge: true }).catch(err => {
-            console.error('Error updating user document:', err);
-          });
+          try {
+            console.log('🔔 Starting notification setup...');
+            
+            // Request notification permission first
+            const permissionGranted = await requestNotificationPermission();
+            console.log('📱 Notification permission result:', permissionGranted);
+            
+            // Create welcome notification document in Firestore
+            console.log('📝 Creating welcome notification...');
+            await createWelcomeNotification(userId);
+            
+            // Update user document with notification preferences
+            console.log('💾 Updating user document...');
+            await setDoc(userRef, {
+              notificationsEnabled: permissionGranted,
+              notificationsConfigured: true,
+              notificationsPrompted: true,
+              updatedAt: new Date()
+            }, { merge: true });
+            
+            console.log('✅ Notifications automatically enabled for new user');
+            
+          } catch (notificationError) {
+            console.error('❌ Error auto-enabling notifications:', notificationError);
+            // Continue with registration even if notifications fail
+          }
+        } else {
+          console.warn('⚠️ No current user or userId found after Google registration');
+          console.log('👤 Auth store state:', authStore.currentUser);
         }
       }
     });
     
+    console.log('🎯 Redirecting to dashboard...');
     router.push('/user/dashboard');
   } catch (err) {
-    console.error('Google sign-in failed:', err);
+    console.error('❌ Google sign-in failed:', err);
     error.value = "Google sign-in failed. Please try again.";
   } finally {
     googleLoading.value = false;
+  }
+};
+
+// Function to create welcome notification document
+const createWelcomeNotification = async (userId) => {
+  try {
+    console.log('🔧 createWelcomeNotification called with userId:', userId);
+    
+    const { collection, addDoc, doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+    
+    console.log('📚 Firebase imports successful');
+    
+    const notificationsRef = collection(db, "notifications");
+    console.log('📂 Notifications collection reference created');
+    
+    // Get user data for personalization
+    const userRef = doc(db, "users", userId);
+    console.log('👤 User document reference created');
+    
+    const userDoc = await getDoc(userRef);
+    console.log('📖 User document fetched, exists:', userDoc.exists());
+    
+    const userData = userDoc.exists() ? userDoc.data() : {};
+    const firstName = userData.firstName || "there";
+    console.log('👋 User first name:', firstName);
+    
+    const notificationData = {
+      userId: userId,
+      title: "Welcome to Provincial Veterinary!",
+      description: `Hi ${firstName}, thanks for joining us! You'll now receive updates about your pet's health.`,
+      type: "welcome",
+      read: false,
+      createdAt: new Date(),
+      data: {
+        type: "welcome",
+        url: "/user/notifications",
+        fromRegistration: true
+      },
+      // Add any other fields your notification system expects
+      sent: true,
+      deleted: false
+    };
+    
+    console.log('📝 Notification data prepared:', notificationData);
+    
+    const docRef = await addDoc(notificationsRef, notificationData);
+    console.log('✅ Welcome notification document created successfully with ID:', docRef.id);
+    
+    return docRef.id;
+    
+  } catch (error) {
+    console.error('❌ Error creating welcome notification document:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    throw error; // Re-throw to be caught by caller
+  }
+};
+
+// Function to request notification permission
+const requestNotificationPermission = async () => {
+  try {
+    // Check if notifications are supported
+    if (!('Notification' in window)) {
+      console.log('This browser does not support notifications');
+      return false;
+    }
+    
+    // Check current permission
+    if (Notification.permission === 'granted') {
+      console.log('Notification permission already granted');
+      return true;
+    }
+    
+    if (Notification.permission === 'denied') {
+      console.log('Notification permission denied');
+      return false;
+    }
+    
+    // Request permission
+    const permission = await Notification.requestPermission();
+    console.log('Notification permission result:', permission);
+    
+    return permission === 'granted';
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
   }
 };
 

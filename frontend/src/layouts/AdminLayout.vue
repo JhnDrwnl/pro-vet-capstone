@@ -216,20 +216,6 @@ onMounted(() => {
   window.addEventListener('resize', handleResize);
   handleResize(); // Initial check
   
-  // Initialize notification service
-  try {
-    notificationService.initialize().catch(err => {
-      console.error('Error initializing notification service:', err);
-    });
-    
-    // Store current user in window object for access by notification service
-    if (authStore.currentUser) {
-      window.currentUser = authStore.currentUser;
-    }
-  } catch (error) {
-    console.error('Failed to initialize notification service:', error);
-  }
-  
   // Check if we should show the notification modal
   const shouldShowModal = localStorage.getItem('showNotificationModal') === 'true';
   if (shouldShowModal) {
@@ -242,9 +228,7 @@ onMounted(() => {
 
 // Watch for auth store changes
 watch(() => authStore.currentUser, (newUser) => {
-  if (newUser) {
-    window.currentUser = newUser;
-  }
+  // User change handling if needed
 });
 
 onUnmounted(() => {

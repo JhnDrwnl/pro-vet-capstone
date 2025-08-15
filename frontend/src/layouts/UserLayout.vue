@@ -166,23 +166,9 @@ onMounted(() => {
   checkMobile();
   window.addEventListener('resize', checkMobile);
   
-  // Initialize notification service
-  try {
-    notificationService.initialize().catch(err => {
-      console.error('Error initializing notification service:', err);
-    });
-    
-    // Store current user in window object for access by notification service
-    if (authStore.currentUser) {
-      window.currentUser = authStore.currentUser;
-    }
-    
-    // Check if we're on the notifications route
-    if (route.path === '/user/notifications') {
-      toggleNotifications(true);
-    }
-  } catch (error) {
-    console.error('Failed to initialize notification service:', error);
+  // Check if we're on the notifications route
+  if (route.path === '/user/notifications') {
+    toggleNotifications(true);
   }
   
   // Check if we should show the notification modal
@@ -197,9 +183,7 @@ onMounted(() => {
 
 // Watch for auth store changes
 watch(() => authStore.currentUser, (newUser) => {
-  if (newUser) {
-    window.currentUser = newUser;
-  }
+  // User change handling if needed
 });
 
 onUnmounted(() => {

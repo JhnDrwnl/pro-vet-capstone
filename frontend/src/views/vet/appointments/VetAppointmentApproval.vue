@@ -24,7 +24,7 @@
       >
         <FilterIcon class="w-5 h-5 text-gray-500" />
       </button>
-      <!-- Filter Dropdown - Status Only (added completed) -->
+      <!-- Filter Dropdown - Status Only (works together with category filter) -->
       <div v-if="showFilters" class="absolute top-full mt-2 right-0 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-10">
         <div class="px-4 py-2 text-sm font-medium text-gray-700">Filter by Status:</div>
         <button 
@@ -121,12 +121,12 @@
 
 <!-- Active Filters Display -->
 <div v-if="filters.status || categoryFilter !== 'all'" class="mb-4 flex flex-wrap gap-2">
-  <div class="text-sm text-gray-500 py-1">Active filters:</div>
+  <div class="text-sm text-gray-500 py-1">Active filters (combined):</div>
   
   <!-- Status Filter -->
   <div v-if="filters.status" class="inline-flex items-center gap-1 px-3 py-1 bg-[#EBF5FF] text-[#0066FF] rounded-full text-xs capitalize">
     <span>{{ filters.status }}</span>
-    <button @click="clearStatusFilter" class="text-[#0066FF] hover:text-blue-700">
+    <button @click="clearStatusFilterOnly" class="text-[#0066FF] hover:text-blue-700">
       <XIcon class="w-3 h-3" />
     </button>
   </div>
@@ -134,10 +134,10 @@
   <!-- Category Filter -->
   <div v-if="categoryFilter !== 'all'" class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">
     <span>{{ getCategoryName(categoryFilter) }}</span>
-    <button @click="clearCategoryFilter" class="text-green-700 hover:text-green-800">
+    <button @click="clearCategoryFilterOnly" class="text-green-700 hover:text-blue-800">
       <XIcon class="w-3 h-3" />
     </button>
-</div>
+  </div>
   
   <!-- Clear All Filters Button -->
   <div v-if="filters.status && categoryFilter !== 'all'" class="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs hover:bg-gray-200">
@@ -148,7 +148,7 @@
   </div>
 </div>
 
-<!-- Category Filter -->
+<!-- Category Filter - Works together with status filter -->
 <div class="mb-4 flex items-center gap-3">
   <label class="text-sm font-medium text-gray-700">Filter by Category:</label>
       <select 
@@ -167,7 +167,7 @@
     </select>
   <button
     v-if="categoryFilter !== 'all'"
-    @click="clearCategoryFilter"
+    @click="clearCategoryFilterOnly"
     class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
   >
     Clear
@@ -2502,7 +2502,7 @@ const availableCategories = computed(() => {
   return Object.values(categoriesData.value).filter(category => !category.archived);
 });
 
-// Filtered appointments based on status and category
+// Filtered appointments based on status AND category (both filters work together)
 const filteredAppointments = computed(() => {
   let filtered = appointments.value;
   
@@ -2514,7 +2514,7 @@ const filteredAppointments = computed(() => {
     });
   }
   
-  // Apply category filter
+  // Apply category filter (this will further filter the already status-filtered results)
   if (categoryFilter.value !== 'all') {
     filtered = filtered.filter(appointment => {
       if (!appointment.services || appointment.services.length === 0) return false;
@@ -3214,19 +3214,7 @@ onMounted(async () => {
     }
   }
   
-  // Add click outside handler for action menus
-  const handleClickOutside = (event) => {
-    if (!event.target.closest('.action-menu-container')) {
-      closeActionMenu();
-    }
-  };
-  
-  document.addEventListener('click', handleClickOutside);
-  
-  // Cleanup function
-  return () => {
-    document.removeEventListener('click', handleClickOutside);
-  };
+  // Action menu functionality removed - no action menus implemented in this component
 });
 
 // Clean up when component is unmounted
@@ -3308,29 +3296,15 @@ if (status === 'All') {
 }
 showFilters.value = false;
 currentPage.value = 1;
-// Reset category filter when status changes
-categoryFilter.value = 'all';
+// Don't reset category filter - let them work together
 };
 
-const clearStatusFilter = () => {
-filters.value.status = '';
-currentPage.value = 1;
-// Reset category filter when status changes
-categoryFilter.value = 'all';
-};
+
 
 // Category filter functions
 const setCategoryFilter = () => {
   currentPage.value = 1;
-  // Reset status filter when category changes
-  filters.value.status = '';
-};
-
-const clearCategoryFilter = () => {
-  categoryFilter.value = 'all';
-  currentPage.value = 1;
-  // Reset status filter when category changes
-  filters.value.status = '';
+  // Don't reset status filter - let them work together
 };
 
 // Helper function to get category name by ID
@@ -3340,9 +3314,21 @@ const getCategoryName = (categoryId) => {
   return category ? category.name : 'Unknown Category';
 };
 
-// Clear all filters function
+// Clear all filters function - clears both status and category filters
 const clearAllFilters = () => {
   filters.value.status = '';
+  categoryFilter.value = 'all';
+  currentPage.value = 1;
+};
+
+// Clear only status filter - keeps category filter active
+const clearStatusFilterOnly = () => {
+  filters.value.status = '';
+  currentPage.value = 1;
+};
+
+// Clear only category filter - keeps status filter active
+const clearCategoryFilterOnly = () => {
   categoryFilter.value = 'all';
   currentPage.value = 1;
 };
@@ -5215,9 +5201,7 @@ const executeRescheduleRequest = async () => {
       // Ensure notification service has the store
       notificationService.setNotificationsStore(notificationsStore);
       // Set current user context for service (for fallback flows)
-      if (reschedulingAppointment.value.userId) {
-        window.currentUser = { userId: reschedulingAppointment.value.userId };
-      }
+      // Removed - no longer needed after removing notificationSyncService
       
       await notificationService.storeNotificationInFirestore(title, description, {
         type: 'appointment',
@@ -5265,8 +5249,8 @@ const executeRescheduleRequest = async () => {
         const userRef = doc(db, 'users', reschedulingAppointment.value.userId);
         const userDoc = await getDoc(userRef);
         
-        if (userDoc.exists() && userDoc.data().whatsapp) {
-          const whatsappNumber = userDoc.data().whatsapp;
+        if (userDoc.exists() && (userDoc.data().whatsapp || userDoc.data().phone)) {
+          const whatsappNumber = userDoc.data().whatsapp || userDoc.data().phone;
           
           const rescheduleData = {
             reason: rescheduleReason.value.trim(),
@@ -5276,24 +5260,20 @@ const executeRescheduleRequest = async () => {
           
           console.log('📱 Sending WhatsApp notification...');
           
-          const response = await fetch('http://localhost:3000/api/whatsapp/send-reschedule', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              phoneNumber: whatsappNumber,
-              appointment: reschedulingAppointment.value,
-              rescheduleData: rescheduleData
-            })
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            console.log('✅ WhatsApp notification sent successfully:', result.messageId);
-          } else {
-            const error = await response.json();
-            console.log('⚠️ WhatsApp notification failed:', error.error);
+          try {
+            const result = await whatsappService.sendRescheduleNotification(
+              whatsappNumber,
+              reschedulingAppointment.value,
+              rescheduleData
+            );
+            
+            if (result && result.success) {
+              console.log('✅ WhatsApp notification sent successfully:', result.messageId);
+            } else {
+              console.log('⚠️ WhatsApp notification failed:', result?.message || 'Unknown error');
+            }
+          } catch (serviceError) {
+            console.error('❌ WhatsApp service error for reschedule:', serviceError);
           }
         } else {
           console.log('ℹ️ No WhatsApp number found for user');
@@ -5475,9 +5455,7 @@ const sendDetailedCompletionNotification = async (appointmentId, completionData)
 
     // Ensure notification service is wired
     notificationService.setNotificationsStore(notificationsStore);
-    if (appointmentData.userId) {
-      window.currentUser = { userId: appointmentData.userId };
-    }
+    // Removed - no longer needed after removing notificationSyncService
 
     // Store detailed completion notification
       await notificationService.storeNotificationInFirestore(title, description, {
@@ -5508,13 +5486,19 @@ const sendDetailedCompletionNotification = async (appointmentId, completionData)
 // WHATSAPP NOTIFICATION FUNCTIONS
 // ========================================
 
+import whatsappService from '@/services/whatsappService'
+
 const sendWhatsAppNotification = async (appointmentId, actionType) => {
   try {
+    console.log('🔍 DEBUG: sendWhatsAppNotification called with:', { appointmentId, actionType });
+    
     const appointment = appointments.value.find(a => a.id === appointmentId);
     if (!appointment || !appointment.userId) {
       console.log('ℹ️ No user ID available for WhatsApp notification');
       return;
     }
+
+    console.log('🔍 DEBUG: Found appointment:', appointment);
 
     // Get user's WhatsApp number from users collection
     const { doc, getDoc } = await import('firebase/firestore');
@@ -5529,15 +5513,20 @@ const sendWhatsAppNotification = async (appointmentId, actionType) => {
     }
     
     const userData = userDoc.data();
-    const whatsappNumber = userData.whatsapp;
+    const whatsappNumber = userData.whatsapp || userData.phone; // Check both fields
+    
+    console.log('🔍 DEBUG: User data:', userData);
+    console.log('🔍 DEBUG: WhatsApp/Phone number:', whatsappNumber);
     
     if (!whatsappNumber) {
-      console.log('ℹ️ No WhatsApp number found for user, skipping WhatsApp notification');
+      console.log('ℹ️ No WhatsApp or phone number found for user, skipping WhatsApp notification');
       return;
     }
 
     // Check if WhatsApp number is valid
     const isPhoneNumber = /^[\+]?[0-9\s\-\(\)]{10,}$/.test(whatsappNumber);
+    
+    console.log('🔍 DEBUG: Phone number validation:', { whatsappNumber, isPhoneNumber });
     
     if (!isPhoneNumber) {
       console.log(`ℹ️ WhatsApp number is not valid (${whatsappNumber}), skipping WhatsApp notification`);
@@ -5545,72 +5534,68 @@ const sendWhatsAppNotification = async (appointmentId, actionType) => {
     }
 
     console.log(`📱 Sending WhatsApp ${actionType} notification...`);
+    console.log('🔍 DEBUG: About to call whatsappService with:', { whatsappNumber, appointment, actionType });
     
-    let endpoint = '';
-    let requestBody = {};
-    
-    switch (actionType) {
-      case 'approval':
-        endpoint = '/api/whatsapp/send-approval';
-        requestBody = {
-          phoneNumber: whatsappNumber,
-          appointment: appointment
-        };
-        break;
-        
-      case 'rejection':
-        endpoint = '/api/whatsapp/send-rejection';
-        requestBody = {
-          phoneNumber: whatsappNumber,
-          appointment: appointment,
-          reason: 'Schedule conflict or unavailability'
-        };
-        break;
-        
-      case 'cancellation':
-        endpoint = '/api/whatsapp/send-cancellation';
-        requestBody = {
-          phoneNumber: whatsappNumber,
-          appointment: appointment,
-          reason: 'Cancelled by veterinary staff'
-        };
-        break;
-        
-      case 'completion':
-        endpoint = '/api/whatsapp/send-completion';
-        requestBody = {
-          phoneNumber: whatsappNumber,
-          appointment: appointment
-        };
-        break;
-        
-      case 'reschedule':
-        // This is already handled in executeRescheduleRequest
-        return;
-        
-      default:
-        console.log(`⚠️ Unknown action type for WhatsApp: ${actionType}`);
-        return;
-    }
-    
-    const response = await fetch(`http://localhost:3000${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
-    });
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log(`✅ WhatsApp ${actionType} notification sent successfully:`, result.messageId);
-    } else {
-      const error = await response.json();
-      console.log(`⚠️ WhatsApp ${actionType} notification failed:`, error.error);
+    try {
+      let result;
+      
+      switch (actionType) {
+        case 'approval':
+          console.log('🔍 DEBUG: Calling sendAppointmentApproval...');
+          result = await whatsappService.sendAppointmentApproval(whatsappNumber, appointment);
+          break;
+          
+        case 'rejection':
+          console.log('🔍 DEBUG: Calling sendAppointmentRejection...');
+          result = await whatsappService.sendAppointmentRejection(whatsappNumber, appointment, 'Schedule conflict or unavailability');
+          break;
+          
+        case 'cancellation':
+          console.log('🔍 DEBUG: Calling sendAppointmentCancellation...');
+          result = await whatsappService.sendAppointmentCancellation(whatsappNumber, appointment, 'Cancelled by veterinary staff');
+          break;
+          
+        case 'completion':
+          console.log('🔍 DEBUG: Calling sendAppointmentCompletion...');
+          result = await whatsappService.sendAppointmentCompletion(whatsappNumber, appointment);
+          break;
+          
+        case 'reschedule':
+          // This is already handled in executeRescheduleRequest
+          return;
+          
+        default:
+          console.log(`⚠️ Unknown action type for WhatsApp: ${actionType}`);
+          return;
+      }
+      
+      console.log('🔍 DEBUG: Service result:', result);
+      
+      if (result && result.success) {
+        console.log(`✅ WhatsApp ${actionType} notification sent successfully:`, result.messageId);
+      } else if (result && result.fallback) {
+        console.log(`⚠️ WhatsApp ${actionType} notification failed, but in-app notification was sent as fallback`);
+        // The in-app notification is already sent, so we don't need to do anything else
+      } else {
+        console.log(`⚠️ WhatsApp ${actionType} notification failed:`, result?.message || 'Unknown error');
+      }
+      
+    } catch (serviceError) {
+      console.error(`❌ WhatsApp service error for ${actionType}:`, serviceError);
+      console.error('🔍 DEBUG: Service error details:', {
+        message: serviceError.message,
+        stack: serviceError.stack,
+        name: serviceError.name
+      });
     }
     
   } catch (error) {
     console.error(`❌ WhatsApp ${actionType} notification error:`, error);
+    console.error('🔍 DEBUG: General error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     // Don't fail the appointment action if WhatsApp fails
   }
 };

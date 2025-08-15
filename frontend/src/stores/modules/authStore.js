@@ -15,6 +15,8 @@ import {
 } from "firebase/auth"
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore"
 import emailService from "@/services/emailService"
+import smsService from "@/services/smsService"
+import whatsappService from "@/services/whatsappService"
 
 // OTP expiry in seconds (5 minutes)
 const OTP_EXPIRY_SECONDS = 300
@@ -40,7 +42,6 @@ export const useAuthStore = defineStore("auth", {
       }
       
       // Use the API endpoint to proxy the Google photo instead of accessing it directly
-      console.log('Creating proxy URL for Google photo');
       return `/api/profile/photo-proxy?url=${encodeURIComponent(originalURL)}`;
     },
     
@@ -72,7 +73,6 @@ export const useAuthStore = defineStore("auth", {
     async syncGoogleProfilePhoto() {
       try {
         if (!this.user || !this.user.uid) {
-          console.log('No user to sync Google photo');
           return false;
         }
         
@@ -84,12 +84,9 @@ export const useAuthStore = defineStore("auth", {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           if (userData.photoURL && this.isFirebaseStorageURL(userData.photoURL)) {
-            console.log('User has a custom photo, skipping Google photo sync:', userData.photoURL);
             return false;
           }
         }
-        
-        console.log('Syncing Google profile photo for user:', this.user.uid);
         
         const response = await fetch('/api/profile/sync-google-photo', {
           method: 'POST',
@@ -104,8 +101,6 @@ export const useAuthStore = defineStore("auth", {
         const data = await response.json();
         
         if (data.success) {
-          console.log('Google profile photo synced successfully:', data.photoURL);
-          
           // For Google photos, use a proxy URL for display
           const displayPhotoURL = this.getProxyPhotoURL(data.photoURL);
           
@@ -120,7 +115,6 @@ export const useAuthStore = defineStore("auth", {
           
           return true;
         } else {
-          console.log('Failed to sync Google profile photo:', data.message);
           return false;
         }
       } catch (error) {
@@ -133,28 +127,21 @@ export const useAuthStore = defineStore("auth", {
     async getProfilePhoto() {
       try {
         if (!this.user || !this.user.uid) {
-          console.log('No user to get profile photo');
           return null;
         }
         
         // Check if the user already has a custom photo
         // If they do, don't fetch a new photo
         if (this.user.photoURL && this.isFirebaseStorageURL(this.user.photoURL)) {
-          console.log('User already has a custom photo, skipping profile photo fetch:', this.user.photoURL);
           return this.user.photoURL;
         }
-        
-        console.log('Getting profile photo for user:', this.user.uid);
         
         const response = await fetch(`/api/profile/photo/${this.user.uid}`);
         const data = await response.json();
         
         if (data.success) {
-          console.log('Got profile photo:', data.photoURL);
-          
           // If the photo is from Firebase Storage, use it directly
           if (this.isFirebaseStorageURL(data.photoURL)) {
-            console.log('Using Firebase Storage photo directly:', data.photoURL);
             this.user = {
               ...this.user,
               photoURL: data.photoURL,
@@ -177,7 +164,6 @@ export const useAuthStore = defineStore("auth", {
           
           return displayPhotoURL;
         } else {
-          console.log('Failed to get profile photo:', data.message);
           return null;
         }
       } catch (error) {
@@ -244,14 +230,11 @@ export const useAuthStore = defineStore("auth", {
         if (userData.photoURL && this.isFirebaseStorageURL(userData.photoURL)) {
           photoURL = userData.photoURL;
           originalPhotoURL = userData.photoURL;
-          console.log("Using custom profile photo:", photoURL);
         }
         // Case 2: User has a current Google photo from auth
         else if (googlePhotoURL) {
           originalPhotoURL = googlePhotoURL;
           photoURL = this.getProxyPhotoURL(googlePhotoURL);
-          console.log("Using current Google photo URL from auth:", googlePhotoURL);
-          console.log("Proxied URL for display:", photoURL);
           
           // Update Firestore if the stored URL is different or missing
           if (userData.photoURL !== googlePhotoURL) {
@@ -262,19 +245,15 @@ export const useAuthStore = defineStore("auth", {
         else if (userData.photoURL && this.isGooglePhotoURL(userData.photoURL)) {
           originalPhotoURL = userData.photoURL;
           photoURL = this.getProxyPhotoURL(userData.photoURL);
-          console.log("Using stored Google photo URL from Firestore:", userData.photoURL);
-          console.log("Proxied URL for display:", photoURL);
         }
         
         // Update Firestore if needed
         if (shouldUpdateFirestore && googlePhotoURL && !this.isFirebaseStorageURL(userData.photoURL)) {
-          console.log("Updating Google photoURL in Firestore:", googlePhotoURL);
           try {
             await updateDoc(doc(db, "users", userId), { 
               photoURL: googlePhotoURL,
               updatedAt: new Date()
             });
-            console.log("Successfully updated photoURL in Firestore");
           } catch (error) {
             console.error("Error updating photoURL in Firestore:", error);
           }
@@ -291,8 +270,6 @@ export const useAuthStore = defineStore("auth", {
           photoURL: photoURL, // Use the proxied/processed URL for display
           originalPhotoURL: originalPhotoURL // Keep original URL for reference
         };
-        
-        console.log("User data fetched with final photo URL:", photoURL);
       } else {
         console.error("User document not found");
         this.user = null;
@@ -307,9 +284,6 @@ export const useAuthStore = defineStore("auth", {
       
       // Process photoURL for storage (store the original URL)
       let photoURL = user.photoURL || additionalData.photoURL || ""
-      
-      // No processing needed for Google photos when storing in Firestore
-      console.log("Creating user document with photo URL:", photoURL);
       
       const userData = {
         email: user.email,
@@ -327,8 +301,7 @@ export const useAuthStore = defineStore("auth", {
 
       try {
         await setDoc(userRef, userData)
-        console.log("User document created successfully with ID:", userId)
-        console.log("Stored user data:", userData)
+        console.log("User document created successfully")
         return userId
       } catch (error) {
         console.error("Error creating user document:", error)
@@ -346,12 +319,6 @@ export const useAuthStore = defineStore("auth", {
         const result = await signInWithPopup(auth, provider)
         const user = result.user
 
-        console.log("Google sign-in user:", user)
-        console.log("User email:", user.email)
-        console.log("User display name:", user.displayName)
-        console.log("User photo URL:", user.photoURL)
-        console.log("User UID:", user.uid)
-
         // Parse the user's name
         const nameParts = user.displayName ? user.displayName.split(" ") : ["", ""]
         let firstName, lastName
@@ -364,16 +331,11 @@ export const useAuthStore = defineStore("auth", {
           lastName = ""
         }
 
-        console.log("Parsed firstName:", firstName)
-        console.log("Parsed lastName:", lastName)
-
         // Use the original photo URL directly - don't split it
         const photoURL = user.photoURL || ""
-        console.log("Using original Google photo URL:", photoURL)
 
         const additionalUserInfo = getAdditionalUserInfo(result)
         const isNewUser = additionalUserInfo?.isNewUser
-        console.log("Is new user:", isNewUser)
 
         const userId = this.generateUserId(user.uid)
         const userDoc = await getDoc(doc(db, "users", userId))
@@ -399,14 +361,10 @@ export const useAuthStore = defineStore("auth", {
           
           // Only update if the user doesn't have a custom photo
           if (photoURL && (!userData.photoURL || this.isGooglePhotoURL(userData.photoURL))) {
-            console.log("Updating Google photoURL for existing user:", photoURL);
-            
             await updateDoc(doc(db, "users", userId), {
               photoURL: photoURL, // Use the complete URL
               updatedAt: new Date()
             });
-          } else {
-            console.log("User has a custom photo, not updating with Google photo:", userData.photoURL);
           }
         }
 
@@ -469,7 +427,7 @@ export const useAuthStore = defineStore("auth", {
       localStorage.removeItem("verificationData")
     },
 
-    async initiateRegistration({ email, password, firstName, lastName }) {
+    async initiateRegistration({ email, phone, password, firstName, lastName }) {
       this.loading = true
       this.error = null
       try {
@@ -480,6 +438,7 @@ export const useAuthStore = defineStore("auth", {
         // Store verification data
         this.setVerificationData({
           email,
+          phone,
           password,
           firstName,
           lastName,
@@ -492,6 +451,7 @@ export const useAuthStore = defineStore("auth", {
         await this.createUserDocument(user, {
           firstName,
           lastName,
+          phone,
           role: "user",
           status: "pending",
         })
@@ -532,28 +492,137 @@ export const useAuthStore = defineStore("auth", {
           throw new Error(response.message || "Invalid verification code")
         }
 
-        // Update existing user document status to active
+        // Update existing user document status to email verified
         const userId = this.generateUserId(verificationData.uid)
         const userRef = doc(db, "users", userId)
 
         await setDoc(
           userRef,
           {
-            status: "active",
             emailVerified: true,
             updatedAt: new Date(),
           },
           { merge: true },
         )
 
-        // Clear verification data
-        this.clearVerificationData()
-        localStorage.removeItem("otpSentTimestamp")
+        // Don't clear verification data yet - we need it for phone verification
+        // Just update the status to indicate email is verified
+        this.verificationData.emailVerified = true
 
         return true
       } catch (error) {
         this.error = error.message
         console.error("Registration completion error:", error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async sendPhoneOTP(phone, method = 'sms') {
+      this.loading = true
+      this.error = null
+      try {
+        let result
+        
+        if (method === 'whatsapp') {
+          // Generate OTP
+          const otp = whatsappService.generateOTP()
+          
+          // Send WhatsApp OTP
+          result = await whatsappService.sendOTP(phone, otp)
+          
+          if (result.success) {
+            // Store the OTP in verification data for verification
+            const verificationData = this.getVerificationData()
+            if (verificationData) {
+              verificationData.whatsappOTP = otp
+              this.setVerificationData(verificationData)
+            }
+            
+            // Store the timestamp when WhatsApp OTP was sent
+            this.otpSentTimestamp = Date.now()
+            localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
+            
+            console.log('WhatsApp OTP sent successfully')
+            return true
+          }
+        } else {
+          // Generate OTP
+          const otp = smsService.generateOTP()
+          
+          // Send SMS OTP using PhilSMS
+          result = await smsService.sendOTP(phone, otp)
+          
+          if (result.success) {
+            // Store the OTP in verification data for verification
+            const verificationData = this.getVerificationData()
+            if (verificationData) {
+              verificationData.smsOTP = otp
+              this.setVerificationData(verificationData)
+            }
+            
+            // Store the timestamp when SMS OTP was sent
+            this.otpSentTimestamp = Date.now()
+            localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
+            
+            console.log('SMS OTP sent successfully')
+            return true
+          }
+        }
+        
+        throw new Error(`Failed to send ${method.toUpperCase()} OTP`)
+      } catch (error) {
+        this.error = error.message
+        console.error(`${method.toUpperCase()} OTP sending error:`, error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async completePhoneVerification(otp) {
+      this.loading = true
+      this.error = null
+      try {
+        const verificationData = this.getVerificationData()
+        if (!verificationData) {
+          throw new Error("No verification data found")
+        }
+
+        if (!verificationData.emailVerified) {
+          throw new Error("Email must be verified before phone verification")
+        }
+
+        // Verify the OTP (SMS or WhatsApp)
+        if ((verificationData.smsOTP && verificationData.smsOTP === otp) || 
+            (verificationData.whatsappOTP && verificationData.whatsappOTP === otp)) {
+          // Update existing user document status to fully active
+          const userId = this.generateUserId(verificationData.uid)
+          const userRef = doc(db, "users", userId)
+
+          await setDoc(
+            userRef,
+            {
+              status: "active",
+              phoneVerified: true,
+              updatedAt: new Date(),
+            },
+            { merge: true },
+          )
+
+          // Now clear verification data since both email and phone are verified
+          this.clearVerificationData()
+          localStorage.removeItem("otpSentTimestamp")
+
+          console.log('Phone verification completed successfully')
+          return true
+        } else {
+          throw new Error("Invalid SMS verification code")
+        }
+      } catch (error) {
+        this.error = error.message
+        console.error("Phone verification completion error:", error)
         throw error
       } finally {
         this.loading = false
@@ -788,6 +857,28 @@ export const useAuthStore = defineStore("auth", {
         return localStorage.getItem("userEmail") || ""
       }
       return ""
+    },
+
+    // Check SMS balance
+    async checkSMSBalance() {
+      try {
+        const result = await smsService.getBalance()
+        return result
+      } catch (error) {
+        console.error("Error checking SMS balance:", error)
+        throw error
+      }
+    },
+
+    // Check WhatsApp service status
+    async checkWhatsAppStatus() {
+      try {
+        const result = await whatsappService.getStatus()
+        return result
+      } catch (error) {
+        console.error("Error checking WhatsApp status:", error)
+        throw error
+      }
     },
   },
 

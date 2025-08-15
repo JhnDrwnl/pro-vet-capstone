@@ -7,7 +7,6 @@ import '@/assets/styles/tailwind.css'
 
 // Import notification services
 import notificationService from './services/notificationService';
-import notificationSyncService from './services/notificationSyncService';
 
 // Import stores
 import { useNotificationsStore } from './stores/modules/notifications';
@@ -42,11 +41,9 @@ setTimeout(async () => {
   try {
     // Set the store in the services
     notificationService.setNotificationsStore(notificationsStore);
-    notificationSyncService.setNotificationsStore(notificationsStore);
     
     // Initialize services
     await notificationService.initialize();
-    await notificationSyncService.initialize();
     
     console.log('Services initialized successfully');
   } catch (error) {
