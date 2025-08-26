@@ -523,30 +523,30 @@
     <div v-if="showVaccinationCardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <!-- Modal Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
-          <div class="flex items-center justify-between">
+        <div class="print-header bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
+            <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               <h2 class="text-2xl font-bold">Vaccination Card</h2>
-            </div>
-            <button 
+              </div>
+              <button 
               @click="showVaccinationCardModal = false"
               class="text-white hover:text-gray-200 transition-colors"
-            >
+              >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
-            </button>
+              </button>
           </div>
           <p class="text-blue-100 mt-2">Official Pet Health Record</p>
-        </div>
+            </div>
 
         <!-- Modal Content -->
-        <div class="p-6">
+        <div id="vaccination-card-content" class="p-6">
           <!-- Pet Information Section -->
-          <div class="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
+          <div class="pet-info bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="flex items-center gap-4">
                 <img 
@@ -558,14 +558,14 @@
                   <h3 class="text-2xl font-bold text-gray-900">{{ selectedLocalPet?.name }}</h3>
                   <p class="text-gray-600">{{ selectedLocalPet?.species }} • {{ selectedLocalPet?.breed }}</p>
                   <p class="text-sm text-gray-500">{{ selectedLocalPet?.ageYears }}y {{ selectedLocalPet?.ageMonths }}m • {{ selectedLocalPet?.gender }}</p>
-                </div>
-              </div>
+          </div>
+        </div>
               
               <div class="space-y-3">
                 <div class="flex justify-between">
                   <span class="text-gray-500">Owner:</span>
                   <span class="font-medium">{{ authStore.user?.firstName }} {{ authStore.user?.lastName }}</span>
-                </div>
+        </div>
                 <div class="flex justify-between">
                   <span class="text-gray-500">Contact:</span>
                   <span class="font-medium">{{ authStore.user?.phone || authStore.user?.email || 'N/A' }}</span>
@@ -575,9 +575,9 @@
                   <span class="font-medium">{{ formatDate(new Date(), 'MMM dd, yyyy') }}</span>
                 </div>
               </div>
-            </div>
-          </div>
-
+      </div>
+    </div>
+    
           <!-- Vaccination Records Section -->
           <div v-if="vaccinationRecords.length > 0" class="space-y-4">
             <h4 class="text-xl font-semibold text-gray-900 mb-4">Vaccination History</h4>
@@ -586,7 +586,7 @@
               <div 
                 v-for="(record, index) in sortedVaccinationRecords" 
                 :key="record.id || index"
-                class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                class="vaccination-record border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
               >
                 <div class="flex items-start justify-between mb-3">
                   <div>
@@ -653,12 +653,21 @@
             </button>
             <button 
               @click="downloadVaccinationCard"
-              class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              :disabled="isGeneratingPDF"
+              :class="[
+                'px-6 py-3 rounded-lg transition-colors flex items-center gap-2',
+                isGeneratingPDF 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              ]"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-if="isGeneratingPDF" class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
-              Download PDF
+              {{ isGeneratingPDF ? 'Generating PDF...' : 'Download PDF' }}
             </button>
             <button 
               @click="showVaccinationCardModal = false"
@@ -732,6 +741,7 @@ const tabsDropdownOpen = ref(false);
 const genderDropdownOpen = ref(false);
 const showVaccinationCardModal = ref(false);
 const vaccinationRecords = ref([]);
+const isGeneratingPDF = ref(false);
 
 // History state
 const historyLoading = ref(false);
@@ -1369,19 +1379,591 @@ const getVaccinationStatusText = (record) => {
 };
 
 const printVaccinationCard = () => {
-  // Implement print functionality
-  window.print();
+  // Create a print-friendly version
+  const printWindow = window.open('', '_blank');
+  
+  // Get current date
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  // Create clean, print-optimized HTML
+  const printHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Vaccination Card - ${selectedLocalPet.value?.name || 'Pet'}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 0.75in;
+          }
+          
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: white;
+            color: #1f2937;
+            line-height: 1.6;
+          }
+          
+          .header {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          }
+          
+          .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          }
+          
+          .header p {
+            margin: 8px 0 0 0;
+            font-size: 16px;
+            opacity: 0.9;
+          }
+          
+          .pet-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          }
+          
+          .pet-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 25px;
+            align-items: center;
+          }
+          
+          .pet-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #e2e8f0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+          }
+          
+          .pet-details h3 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e293b;
+          }
+          
+          .pet-details p {
+            margin: 5px 0;
+            font-size: 16px;
+            color: #475569;
+          }
+          
+          .owner-info {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+          }
+          
+          .owner-info h4 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #374151;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+          }
+          
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 15px;
+          }
+          
+          .info-label {
+            font-weight: 600;
+            color: #6b7280;
+            min-width: 120px;
+          }
+          
+          .info-value {
+            font-weight: 500;
+            color: #1f2937;
+          }
+          
+          .vaccinations-section {
+            margin-top: 30px;
+          }
+          
+          .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3b82f6;
+          }
+          
+          .vaccination-record {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            page-break-inside: avoid;
+          }
+          
+          .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f1f5f9;
+          }
+          
+          .vaccine-info h5 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+          }
+          
+          .vaccine-info p {
+            margin: 0;
+            font-size: 14px;
+            color: #64748b;
+          }
+          
+          .vaccine-date {
+            text-align: right;
+          }
+          
+          .date-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            display: block;
+          }
+          
+          .date-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+          }
+          
+          .record-details {
+            font-size: 14px;
+            color: #475569;
+          }
+          
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+          }
+          
+          .detail-label {
+            font-weight: 600;
+            color: #6b7280;
+            min-width: 140px;
+          }
+          
+          .detail-value {
+            font-weight: 500;
+            color: #1f2937;
+          }
+          
+          .notes {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #f1f5f9;
+          }
+          
+          .notes .detail-label {
+            display: block;
+            margin-bottom: 5px;
+          }
+          
+          .notes .detail-value {
+            display: block;
+            font-style: italic;
+            color: #374151;
+          }
+          
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+          }
+          
+          @media print {
+            body { margin: 0; }
+            .header { background: #1e40af !important; }
+            .pet-section { background: #f8fafc !important; }
+            .vaccination-record { background: white !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🐾 Vaccination Card</h1>
+          <p>Official Pet Health Record</p>
+        </div>
+        
+        <div class="pet-section">
+          <div class="pet-grid">
+            <img 
+              src="${selectedLocalPet.value?.photoURL || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%23f3f4f6\'/%3E%3Ctext x=\'50\' y=\'50\' font-family=\'Arial\' font-size=\'40\' fill=\'%239ca3af\' text-anchor=\'middle\' dy=\'.3em\'%3E🐾%3C/text%3E%3C/svg%3E'}" 
+              alt="${selectedLocalPet.value?.name || 'Pet'}"
+              class="pet-photo"
+            >
+            <div class="pet-details">
+              <h3>${selectedLocalPet.value?.name || 'Pet Name'}</h3>
+              <p><strong>Species:</strong> ${selectedLocalPet.value?.species || 'Not specified'}</p>
+              <p><strong>Breed:</strong> ${selectedLocalPet.value?.breed || 'Not specified'}</p>
+              <p><strong>Age:</strong> ${selectedLocalPet.value?.ageYears || 0}y ${selectedLocalPet.value?.ageMonths || 0}m</p>
+              <p><strong>Gender:</strong> ${selectedLocalPet.value?.gender || 'Not specified'}</p>
+            </div>
+          </div>
+          
+          <div class="owner-info">
+            <h4>Owner Information</h4>
+            <div class="info-row">
+              <span class="info-label">Owner Name:</span>
+              <span class="info-value">${authStore.user?.firstName || ''} ${authStore.user?.lastName || ''}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Contact:</span>
+              <span class="info-value">${authStore.user?.phone || authStore.user?.email || 'Not provided'}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Generated On:</span>
+              <span class="info-value">${currentDate}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="vaccinations-section">
+          <h2 class="section-title">📋 Vaccination History</h2>
+          
+          ${vaccinationRecords.value.length > 0 ? 
+            vaccinationRecords.value.map(record => `
+              <div class="vaccination-record">
+                <div class="record-header">
+                  <div class="vaccine-info">
+                    <h5>${record.vaccineName || 'Vaccination'}</h5>
+                    <p>${record.vaccineType || 'Standard Vaccine'}</p>
+                  </div>
+                  <div class="vaccine-date">
+                    <span class="date-label">Date Administered</span>
+                    <span class="date-value">${formatDate(record.date, 'MMM dd, yyyy')}</span>
+                  </div>
+                </div>
+                
+                <div class="record-details">
+                  <div class="detail-row">
+                    <span class="detail-label">Processing Time:</span>
+                    <span class="detail-value">${record.processingTime || 'N/A'}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Administered By:</span>
+                    <span class="detail-value">${record.administeredBy || 'Veterinarian'}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">${record.location || 'ProVet Clinic'}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Appointment ID:</span>
+                    <span class="detail-value">${record.appointmentId || 'N/A'}</span>
+                  </div>
+                  ${record.notes ? `
+                    <div class="notes">
+                      <span class="detail-label">Notes:</span>
+                      <span class="detail-value">${record.notes}</span>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('') : 
+            `<div class="vaccination-record">
+              <div class="record-header">
+                <div class="vaccine-info">
+                  <h5>No Vaccination Records</h5>
+                  <p>${selectedLocalPet.value?.name || 'This pet'} doesn't have any vaccination records yet.</p>
+                </div>
+              </div>
+            </div>`
+          }
+        </div>
+        
+        <div class="footer">
+          <p>Generated by ProVet Veterinary Clinic • ${currentDate}</p>
+        </div>
+      </body>
+    </html>
+  `;
+  
+  printWindow.document.write(printHTML);
+  printWindow.document.close();
+  printWindow.focus();
+  
+  // Wait for content to load then print
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 1000);
 };
 
-const downloadVaccinationCard = () => {
-  // This would integrate with a PDF generation library like jsPDF or html2pdf
-  // For now, we'll just trigger the print dialog
-  alert('PDF download functionality coming soon! You can use the Print button for now.');
+const downloadVaccinationCard = async () => {
+  try {
+    isGeneratingPDF.value = true;
+    
+    // Import html2pdf library dynamically
+    const html2pdf = await import('html2pdf.js');
+    
+    // Get current date
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    // Create clean, PDF-optimized HTML (same as print version)
+    const pdfHTML = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1f2937; line-height: 1.6; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; border-radius: 12px; margin-bottom: 30px;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700;">🐾 Vaccination Card</h1>
+          <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.9;">Official Pet Health Record</p>
+        </div>
+        
+        <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; margin-bottom: 30px;">
+          <div style="display: grid; grid-template-columns: auto 1fr; gap: 25px; align-items: center;">
+            <img 
+              src="${selectedLocalPet.value?.photoURL || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'100\' viewBox=\'0 0 100 100\'%3E%3Crect width=\'100\' height=\'100\' fill=\'%23f3f4f6\'/%3E%3Ctext x=\'50\' y=\'50\' font-family=\'Arial\' font-size=\'40\' fill=\'%239ca3af\' text-anchor=\'middle\' dy=\'.3em\'%3E🐾%3C/text%3E%3C/svg%3E'}" 
+              alt="${selectedLocalPet.value?.name || 'Pet'}"
+              style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #e2e8f0;"
+            >
+            <div>
+              <h3 style="margin: 0 0 10px 0; font-size: 24px; font-weight: 700; color: #1e293b;">${selectedLocalPet.value?.name || 'Pet Name'}</h3>
+              <p style="margin: 5px 0; font-size: 16px; color: #475569;"><strong>Species:</strong> ${selectedLocalPet.value?.species || 'Not specified'}</p>
+              <p style="margin: 5px 0; font-size: 16px; color: #475569;"><strong>Breed:</strong> ${selectedLocalPet.value?.breed || 'Not specified'}</p>
+              <p style="margin: 5px 0; font-size: 16px; color: #475569;"><strong>Age:</strong> ${selectedLocalPet.value?.ageYears || 0}y ${selectedLocalPet.value?.ageMonths || 0}m</p>
+              <p style="margin: 5px 0; font-size: 16px; color: #475569;"><strong>Gender:</strong> ${selectedLocalPet.value?.gender || 'Not specified'}</p>
+            </div>
+          </div>
+          
+          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-top: 20px;">
+            <h4 style="margin: 0 0 15px 0; font-size: 18px; font-weight: 600; color: #374151; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Owner Information</h4>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px;">
+              <span style="font-weight: 600; color: #6b7280; min-width: 120px;">Owner Name:</span>
+              <span style="font-weight: 500; color: #1f2937;">${authStore.user?.firstName || ''} ${authStore.user?.lastName || ''}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px;">
+              <span style="font-weight: 600; color: #6b7280; min-width: 120px;">Contact:</span>
+              <span style="font-weight: 500; color: #1f2937;">${authStore.user?.phone || authStore.user?.email || 'Not provided'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px;">
+              <span style="font-weight: 600; color: #6b7280; min-width: 120px;">Generated On:</span>
+              <span style="font-weight: 500; color: #1f2937;">${currentDate}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 30px;">
+          <h2 style="font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #3b82f6;">📋 Vaccination History</h2>
+          
+          ${vaccinationRecords.value.length > 0 ? 
+            vaccinationRecords.value.map(record => `
+              <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9;">
+                  <div>
+                    <h5 style="margin: 0 0 5px 0; font-size: 18px; font-weight: 600; color: #1e293b;">${record.vaccineName || 'Vaccination'}</h5>
+                    <p style="margin: 0; font-size: 14px; color: #64748b;">${record.vaccineType || 'Standard Vaccine'}</p>
+                  </div>
+                  <div style="text-align: right;">
+                    <span style="font-size: 12px; color: #94a3b8; margin-bottom: 5px; display: block;">Date Administered</span>
+                    <span style="font-size: 16px; font-weight: 600; color: #1e293b;">${formatDate(record.date, 'MMM dd, yyyy')}</span>
+                  </div>
+                </div>
+                
+                <div style="font-size: 14px; color: #475569;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: #6b7280; min-width: 140px;">Processing Time:</span>
+                    <span style="font-weight: 500; color: #1f2937;">${record.processingTime || 'N/A'}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: #6b7280; min-width: 140px;">Administered By:</span>
+                    <span style="font-weight: 500; color: #1f2937;">${record.administeredBy || 'Veterinarian'}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: #6b7280; min-width: 140px;">Location:</span>
+                    <span style="font-weight: 500; color: #1f2937;">${record.location || 'ProVet Clinic'}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-weight: 600; color: #6b7280; min-width: 140px;">Appointment ID:</span>
+                    <span style="font-weight: 500; color: #1f2937;">${record.appointmentId || 'N/A'}</span>
+                  </div>
+                  ${record.notes ? `
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f1f5f9;">
+                      <span style="font-weight: 600; color: #6b7280; display: block; margin-bottom: 5px;">Notes:</span>
+                      <span style="font-style: italic; color: #374151; display: block;">${record.notes}</span>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `).join('') : 
+            `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9;">
+                <div>
+                  <h5 style="margin: 0 0 5px 0; font-size: 18px; font-weight: 600; color: #1e293b;">No Vaccination Records</h5>
+                  <p style="margin: 0; font-size: 14px; color: #64748b;">${selectedLocalPet.value?.name || 'This pet'} doesn't have any vaccination records yet.</p>
+                </div>
+              </div>
+            </div>`
+          }
+        </div>
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e2e8f0; text-align: center; color: #64748b; font-size: 14px;">
+          <p>Generated by ProVet Veterinary Clinic • ${currentDate}</p>
+        </div>
+      </div>
+    `;
+    
+    // Create a temporary container for the PDF content
+    const tempContainer = document.createElement('div');
+    tempContainer.innerHTML = pdfHTML;
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '-9999px';
+    document.body.appendChild(tempContainer);
+    
+    // Configure PDF options
+    const opt = {
+      margin: [15, 15, 15, 15],
+      filename: `vaccination-card-${selectedLocalPet.value?.name || 'pet'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        backgroundColor: '#ffffff'
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      }
+    };
+    
+    // Generate and download PDF
+    await html2pdf.default().set(opt).from(tempContainer).save();
+    
+    // Clean up
+    document.body.removeChild(tempContainer);
+    
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('PDF generation failed. Please try the print option instead.');
+  } finally {
+    isGeneratingPDF.value = false;
+  }
 };
 </script>
 
 <style scoped>
 .overflow-x-auto { scrollbar-width: none; -ms-overflow-style: none; }
 .overflow-x-auto::-webkit-scrollbar { display: none; }
+
+/* Print styles for vaccination card */
+@media print {
+  /* Hide everything except the vaccination card modal */
+  body * {
+    visibility: hidden;
+  }
+  
+  #vaccination-card-content,
+  #vaccination-card-content * {
+    visibility: visible !important;
+  }
+  
+  /* Position the vaccination card at the top of the page */
+  #vaccination-card-content {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+  
+  /* Ensure proper page breaks */
+  .vaccination-record {
+    page-break-inside: avoid;
+  }
+  
+  /* Optimize spacing for print */
+  .p-6 {
+    padding: 0.5in !important;
+  }
+  
+  /* Ensure colors print properly */
+  .bg-gradient-to-r {
+    background: #2563eb !important;
+  }
+  
+  .bg-gray-50 {
+    background: #f9fafb !important;
+  }
+  
+  .text-white {
+    color: black !important;
+  }
+  
+  .text-blue-100 {
+    color: #1e40af !important;
+  }
+  
+  /* Hide action buttons in print */
+  .flex.justify-center.gap-4.mt-8.pt-6.border-t.border-gray-200 {
+    display: none !important;
+  }
+  
+  /* Ensure text is readable */
+  body {
+    font-size: 12pt;
+    line-height: 1.4;
+  }
+  
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 0.5in;
+  }
+}
 </style>
 
