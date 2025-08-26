@@ -13,6 +13,7 @@ import VetCalendar from '@/views/vet/appointments/VetCalendar.vue';
 import VetEducationalResources from '@/views/vet/VetEducationalResources.vue';
 import Profile from '@/components/common/Profile.vue';
 import VetQueue from '@/views/vet/VetQueue.vue';
+import VaccinationCardPage from '@/views/vet/VaccinationCardPage.vue';
 
 export default [
   {
@@ -61,6 +62,11 @@ export default [
         component: VetTelehealth,
       },
       {
+        path: 'telehealth',
+        name: 'vetTelehealth',
+        component: VetTelehealth,
+      },
+      {
         path: 'medicalrecords',
         name: 'medicalrecords',
         component: MedicalRecords,
@@ -89,6 +95,11 @@ export default [
         path: 'queue',
         name: 'queue',
         component: VetQueue,
+      },
+      {
+        path: 'vaccination-card/:petId',
+        name: 'VaccinationCardPage',
+        component: VaccinationCardPage,
       },
     ],
   }

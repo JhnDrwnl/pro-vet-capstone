@@ -120,8 +120,25 @@ exports.verifyOTP = async (req, res) => {
       });
     }
     
-    // Verify OTP
-    const isValid = mailer.verifyOTP(email, otp, purpose);
+    // Validate OTP format (must be 6 digits)
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'OTP must be a 6-digit number' 
+      });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid email format' 
+      });
+    }
+    
+    // Verify OTP (now async)
+    const isValid = await mailer.verifyOTP(email, otp, purpose);
     
     if (!isValid) {
       return res.status(400).json({ 
@@ -133,7 +150,7 @@ exports.verifyOTP = async (req, res) => {
     // Don't clear the OTP for password-reset here
     // It will be cleared after the actual password reset
     if (purpose !== 'password-reset') {
-      mailer.clearOTP(email, purpose);
+      await mailer.clearOTP(email, purpose);
     }
     
     return res.status(200).json({
@@ -183,7 +200,7 @@ exports.resetPasswordWithOTP = async (req, res) => {
     
     // Verify the OTP first
     console.log('Verifying OTP for email:', email);
-    const otpValid = mailer.verifyOTP(email, otp, 'password-reset');
+    const otpValid = await mailer.verifyOTP(email, otp, 'password-reset');
     console.log('OTP verification result:', otpValid);
     
     if (!otpValid) {
@@ -268,7 +285,7 @@ exports.completeRegistration = async (req, res) => {
     }
     
     // Verify OTP
-    const isValid = mailer.verifyOTP(email, otp);
+    const isValid = await mailer.verifyOTP(email, otp);
     
     if (!isValid) {
       return res.status(400).json({ 
@@ -278,7 +295,7 @@ exports.completeRegistration = async (req, res) => {
     }
     
     // Clear the OTP after successful verification
-    mailer.clearOTP(email);
+    await mailer.clearOTP(email);
     
     return res.status(200).json({
       success: true,

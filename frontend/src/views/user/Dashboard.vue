@@ -93,7 +93,19 @@
               </router-link>
             </div>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+            <!-- Loading state for pets -->
+            <div v-if="petsLoading" class="flex justify-center items-center h-[90px]">
+              <div class="flex flex-col items-center">
+                <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <p class="mt-2 text-xs text-gray-600">Loading pets...</p>
+              </div>
+            </div>
+            <div v-else-if="petsError" class="text-center text-red-500">{{ petsError }}</div>
+            <div v-else-if="pets.length === 0" class="col-span-2 flex flex-col items-center justify-center py-4">
+              <BookOpenIcon class="w-8 h-8 text-gray-300 mb-2" />
+              <p class="text-xs text-gray-500">No pets added yet. Add a pet to get started!</p>
+            </div>
+            <div v-else class="space-y-3">
               <div v-for="(pet, index) in pets" :key="index" 
                   class="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
                 <div class="h-24 bg-blue-50 relative">
@@ -115,6 +127,109 @@
                     <div class="flex items-center text-[10px] text-gray-500">
                       <CalendarIcon class="w-2.5 h-2.5 mr-1" />
                       <span>{{ pet.nextAppointment }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Expand/Collapse Button for Pet History -->
+                  <div class="mt-3 pt-3 border-t border-gray-100">
+                    <button 
+                      @click="togglePetExpansion(pet.id)"
+                      class="w-full px-3 py-2 rounded-lg transition-all duration-300 text-xs font-medium flex items-center justify-center gap-2 transform hover:scale-105 active:scale-95"
+                      :class="{
+                        'bg-blue-600 text-white hover:bg-blue-700 shadow-lg ring-2 ring-blue-300': expandedPet === pet.id,
+                        'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 hover:border-blue-300': expandedPet !== pet.id
+                      }"
+                    >
+                      <svg 
+                        class="w-3 h-3 transition-all duration-300" 
+                        :class="{ 'rotate-180 scale-110': expandedPet === pet.id }"
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                      <span class="transition-all duration-300">
+                        {{ expandedPet === pet.id ? 'Hide History' : 'View History' }}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Pet History Timeline - Show only when expanded -->
+                <div v-if="expandedPet === pet.id" class="px-2 pb-2">
+                  <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-3">
+                    <div class="flex items-center gap-2 mb-3">
+                      <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                      <h4 class="text-xs font-semibold text-blue-900">
+                        {{ pet.name }}'s Appointment History
+                      </h4>
+                      <span class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded-full">
+                        Expanded
+                      </span>
+                    </div>
+                    
+                    <div class="relative">
+                      <!-- Timeline Line -->
+                      <div class="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+                      
+                      <!-- Timeline Items -->
+                      <div class="space-y-3">
+                        <div 
+                          v-for="(appointment, aptIndex) in getPetAppointments(pet.id)" 
+                          :key="appointment.id"
+                          class="relative pl-8"
+                        >
+                          <!-- Timeline Dot -->
+                          <div class="absolute left-0 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
+                               :class="{
+                                 'bg-green-500': appointment.status === 'completed',
+                                 'bg-yellow-500': appointment.status === 'pending',
+                                 'bg-blue-500': appointment.status === 'approved',
+                                 'bg-red-500': appointment.status === 'cancelled'
+                               }">
+                            <div class="w-1 h-1 rounded-full bg-white"></div>
+                          </div>
+                          
+                          <!-- Timeline Content -->
+                          <div class="bg-white rounded-lg border border-gray-200 p-2 hover:shadow-sm transition-shadow">
+                            <div class="flex items-start justify-between mb-2">
+                              <div class="flex-1">
+                                <h5 class="text-[10px] font-medium text-gray-900 line-clamp-2">
+                                  {{ appointment.serviceNames ? appointment.serviceNames.join(', ') : 'Appointment' }}
+                                </h5>
+                                <p class="text-[8px] text-gray-500">{{ formatAppointmentDate(appointment.date) }}</p>
+                                <p class="text-[8px] text-gray-500">{{ appointment.time || '' }}</p>
+                              </div>
+                              <div class="ml-2">
+                                <span class="px-1.5 py-0.5 text-[8px] font-medium rounded-full" 
+                                      :class="{
+                                        'bg-green-100 text-green-700': appointment.status === 'completed',
+                                        'bg-yellow-100 text-yellow-700': appointment.status === 'pending',
+                                        'bg-blue-100 text-blue-700': appointment.status === 'approved',
+                                        'bg-red-100 text-red-700': appointment.status === 'cancelled'
+                                      }">
+                                  {{ appointment.status }}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <!-- Doctor Info -->
+                            <div v-if="appointment.doctorName" class="text-[8px] text-gray-600 border-t border-gray-100 pt-1 mt-1">
+                              Dr. {{ appointment.doctorName }}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div v-if="!getPetAppointments(pet.id).length" 
+                             class="text-center py-4 text-gray-500">
+                          <div class="w-8 h-8 mx-auto mb-2 text-gray-300">
+                            <CalendarIcon class="w-full h-full" />
+                          </div>
+                          <p class="text-[10px]">No appointment history found for this pet.</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -265,11 +380,14 @@ import {
   File as FileIcon
 } from 'lucide-vue-next';
 import CalendarComponent from './dashboard/Calendar.vue';
+import { useAuthStore } from '@/stores/modules/authStore';
+import { usePetsStore } from '@/stores/modules/petsStore';
 
 const router = useRouter();
 
 // Initialize the store
 const resourceCategoryStore = useResourceCategoryStore();
+const authStore = useAuthStore();
 
 // Use storeToRefs to maintain reactivity when destructuring store state
 const { 
@@ -299,6 +417,185 @@ const displayedResources = computed(() => {
   if (!resources.value) return [];
   return resources.value.slice(0, 4);
 });
+
+// Pets
+const pets = ref([])
+const petsLoading = ref(false)
+const petsError = ref(null)
+const expandedPet = ref(null) // Track which pet is expanded
+const appointments = ref([]) // Store user appointments
+
+// Fetch real pets data
+const fetchPets = async () => {
+  if (!authStore.user?.userId) return
+  
+  petsLoading.value = true
+  petsError.value = null
+  
+  try {
+    // Use the pets store to fetch real data
+    const petsStore = usePetsStore()
+    await petsStore.fetchUserPets(authStore.user.userId)
+    
+    // Get the fetched pets and format them for display
+    const userPets = petsStore.getPets
+    pets.value = userPets.map(pet => ({
+      id: pet.id,
+      name: pet.name || 'Unnamed Pet',
+      image: pet.photoURL || '/placeholder.svg?height=128&width=128',
+      breed: pet.breed || 'Unknown Breed',
+      age: formatPetAge(pet),
+      status: getPetStatus(pet),
+      statusColor: getPetStatusColor(pet),
+      nextAppointment: getNextAppointment(pet)
+    }))
+    
+    // Also fetch appointments for the timeline
+    await fetchUserAppointments()
+  } catch (error) {
+    console.error('Error fetching pets:', error)
+    petsError.value = 'Failed to load pets'
+    pets.value = []
+  } finally {
+    petsLoading.value = false
+  }
+}
+
+// Fetch user appointments for timeline
+const fetchUserAppointments = async () => {
+  if (!authStore.user?.userId) return
+  
+  try {
+    // Import Firebase functions
+    const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore')
+    const { db } = await import('@shared/firebase')
+    
+    // Query appointments collection by userId
+    const appointmentsRef = collection(db, 'appointments')
+    const q = query(
+      appointmentsRef, 
+      where('userId', '==', authStore.user.userId),
+      orderBy('date', 'desc') // Most recent first
+    )
+    const querySnapshot = await getDocs(q)
+    
+    const appointmentsData = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+    appointments.value = appointmentsData
+    console.log('Fetched user appointments for timeline:', appointmentsData)
+  } catch (error) {
+    console.error('Error fetching appointments for timeline:', error)
+    appointments.value = []
+  }
+}
+
+// Helper functions for pet data formatting
+const formatPetAge = (pet) => {
+  if (pet.ageYears && pet.ageYears > 0) {
+    return `${pet.ageYears} ${pet.ageYears === 1 ? 'year' : 'years'}`
+  } else if (pet.ageMonths && pet.ageMonths > 0) {
+    return `${pet.ageMonths} ${pet.ageMonths === 1 ? 'month' : 'months'}`
+  } else if (pet.ageWeeks && pet.ageWeeks > 0) {
+    return `${pet.ageWeeks} ${pet.ageWeeks === 1 ? 'week' : 'weeks'}`
+  }
+  return 'Age not specified'
+}
+
+const getPetStatus = (pet) => {
+  // You can implement more sophisticated status logic here
+  // For now, return a basic status
+  if (pet.healthStatus) {
+    return pet.healthStatus
+  }
+  return 'Healthy'
+}
+
+const getPetStatusColor = (pet) => {
+  const status = getPetStatus(pet)
+  switch (status.toLowerCase()) {
+    case 'healthy':
+      return 'text-green-600'
+    case 'vaccination due':
+      return 'text-yellow-600'
+    case 'medication':
+      return 'text-blue-600'
+    case 'treatment':
+      return 'text-orange-600'
+    default:
+      return 'text-gray-600'
+  }
+}
+
+const getNextAppointment = (pet) => {
+  // Find the next appointment for this pet
+  if (!appointments.value || appointments.value.length === 0) return 'No upcoming'
+  
+  const now = new Date()
+  const futureAppointments = appointments.value.filter(apt => {
+    const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date)
+    return apt.petIds && apt.petIds.includes(pet.id) && aptDate > now && apt.status === 'approved'
+  })
+  
+  if (futureAppointments.length === 0) return 'No upcoming'
+  
+  // Sort by date and get the next one
+  const nextAppointment = futureAppointments.sort((a, b) => {
+    const dateA = a.date instanceof Date ? a.date : new Date(a.date)
+    const dateB = b.date instanceof Date ? b.date : new Date(b.date)
+    return dateA - dateB
+  })[0]
+  
+  const aptDate = nextAppointment.date instanceof Date ? nextAppointment.date : new Date(nextAppointment.date)
+  return aptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// Pet expansion functionality
+const togglePetExpansion = (petId) => {
+  if (expandedPet.value === petId) {
+    expandedPet.value = null
+  } else {
+    expandedPet.value = petId
+  }
+}
+
+// Get appointments for a specific pet
+const getPetAppointments = (petId) => {
+  if (!appointments.value || appointments.value.length === 0) return []
+  
+  // Filter appointments for this specific pet
+  return appointments.value.filter(apt => 
+    apt.petIds && apt.petIds.includes(petId)
+  ).sort((a, b) => {
+    // Sort by date, most recent first
+    const dateA = a.date instanceof Date ? a.date : new Date(a.date)
+    const dateB = b.date instanceof Date ? b.date : new Date(b.date)
+    return dateB - dateA
+  })
+}
+
+// Format appointment date for display
+const formatAppointmentDate = (date) => {
+  if (!date) return 'No date'
+  
+  try {
+    const appointmentDate = date instanceof Date ? date : new Date(date)
+    return appointmentDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    })
+  } catch (error) {
+    return 'Invalid date'
+  }
+}
+
+// Fetch pets when component mounts
+onMounted(() => {
+  fetchPets()
+})
 
 // Helper functions
 const typeColors = {
@@ -372,37 +669,6 @@ function closeResourceModal() {
   isResourceModalOpen.value = false;
   document.body.style.overflow = ''; // Restore scrolling
 }
-
-// Pets
-const pets = ref([
-  {
-    name: "Max",
-    image: "/placeholder.svg?height=128&width=128",
-    breed: "Golden Retriever",
-    age: "3 years",
-    status: "Healthy",
-    statusColor: "text-green-600",
-    nextAppointment: "Oct 15"
-  },
-  {
-    name: "Luna",
-    image: "/placeholder.svg?width=128&height=128",
-    breed: "Siamese Cat",
-    age: "2 years",
-    status: "Vaccination Due",
-    statusColor: "text-yellow-600",
-    nextAppointment: "Oct 8"
-  },
-  {
-    name: "Charlie",
-    image: "/placeholder.svg?width=128&height=128",
-    breed: "Beagle",
-    age: "5 years",
-    status: "Medication",
-    statusColor: "text-blue-600",
-    nextAppointment: "Oct 22"
-  }
-]);
 </script>
 
 <style scoped>
@@ -462,4 +728,4 @@ const pets = ref([
   color: #111827;
 }
 </style>
-</style>
+

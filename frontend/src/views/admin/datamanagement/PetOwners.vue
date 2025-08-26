@@ -420,15 +420,7 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
                   >
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                  <input
-                    type="tel"
-                    v-model="editForm.whatsapp"
-                    placeholder="Enter WhatsApp number"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                  >
-                </div>
+
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Alternative Email</label>
                   <input
@@ -725,12 +717,10 @@ const clearFilters = () => {
 // Fetch user sign-in data from Firebase Auth via API
 const fetchUserSignInData = async () => {
   try {
-    console.log('Fetching user sign-in data from API');
-    const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
     const response = await axios.get(`${API_URL}/api/auth/users-sign-in-data`);
     
     if (response.data && response.data.success) {
-      console.log('User sign-in data received:', response.data.users);
       return response.data.users || [];
     } else {
       console.error('API returned unsuccessful response:', response.data);
@@ -755,7 +745,6 @@ const fetchPetOwners = async () => {
     
     // Get user sign-in data from Firebase Auth
     const userSignInData = await fetchUserSignInData();
-    console.log('User sign-in data:', userSignInData);
     
     // Process query results
     const owners = []
@@ -791,7 +780,6 @@ const fetchPetOwners = async () => {
     }
     
     petOwners.value = owners
-    console.log(`Fetched ${owners.length} pet owners`)
   } catch (error) {
     console.error('Error fetching pet owners:', error)
     errorMessage.value = 'Failed to load pet owners. Please try again.'
@@ -1108,7 +1096,7 @@ const saveProfile = async () => {
       lastName: editForm.value.lastName,
       email: editForm.value.email,
       phone: editForm.value.phone,
-      whatsapp: editForm.value.whatsapp,
+
       alternativeEmail: editForm.value.alternativeEmail,
       gender: editForm.value.gender,
       streetAddress: editForm.value.streetAddress,
@@ -1141,7 +1129,7 @@ const saveProfile = async () => {
       }
     });
     
-    console.log('Updating profile with data:', profileData);
+    // Updating profile with data
     
     // Use the profileStore's updateUserProfile method instead of direct updateDoc
     const success = await profileStore.updateUserProfile(selectedOwnerId.value, profileData);
@@ -1278,7 +1266,6 @@ const loadGoogleMapsAPI = () => {
     script.defer = true
     script.onload = () => {
       googleMapsLoaded = true
-      console.log('Google Maps API loaded')
     }
     document.head.appendChild(script)
   } else {
@@ -1305,7 +1292,6 @@ const initializeAutocomplete = () => {
     })
     
     autocomplete.addListener('place_changed', handlePlaceSelect)
-    console.log('Autocomplete initialized')
   } else {
     console.warn('Address input not found')
   }

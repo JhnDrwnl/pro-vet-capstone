@@ -825,7 +825,7 @@ const registerDeviceSession = async () => {
       const ipData = await ipResponse.json()
       ipAddress = ipData.ip
     } catch (error) {
-      console.log('Could not get IP address')
+              
     }
     
     const deviceSession = {

@@ -342,10 +342,10 @@ export const useArchivesStore = defineStore('archives', {
             
             // For debugging, log the exact request we're about to make
             console.log('Making DELETE request to permanently delete user with uid:', uid);
-            console.log('Request URL:', `${process.env.VUE_APP_API_URL || ''}/api/archives/permanently-delete-user`);
+            console.log('Request URL:', `${import.meta.env.VITE_API_URL || ''}/api/archives/permanently-delete-user`);
             
             // Use the full API URL with the environment variable
-            const apiUrl = `${process.env.VUE_APP_API_URL || ''}/api/archives/permanently-delete-user`;
+            const apiUrl = `${import.meta.env.VITE_API_URL || ''}/api/archives/permanently-delete-user`;
             
             // Make the request with the uid in the request body
             const response = await axios({

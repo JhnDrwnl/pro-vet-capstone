@@ -472,7 +472,7 @@ const onCoverSelected = (event) => {
   const file = event.target.files[0]
   if (file) {
     // Handle cover photo upload
-    console.log('Cover photo selected:', file)
+          
   }
 }
 
@@ -485,7 +485,7 @@ const form = ref({
   gender: '',
   email: '',
   phone: '',
-  whatsapp: '',
+
   alternativeEmail: '',
   streetAddress: '',
   city: '',
@@ -584,13 +584,13 @@ const onDocumentSelected = (event) => {
 // Function to cancel pet changes
 const cancelPetChanges = () => {
   // Reset the pet form or navigate away
-  console.log('Changes cancelled')
+        
 }
 
 // Function to save pet changes
 const savePetChanges = () => {
   // Save the pet form data
-  console.log('Saving pet changes:', petForm.value)
+        
 }
 
 const emit = defineEmits(['save', 'cancel'])

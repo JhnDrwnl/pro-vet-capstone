@@ -13,7 +13,7 @@ class WebSocketService {
     this.pingTimeout = null;
     
     // Use the correct WebSocket URL based on environment
-    this.wsUrl = process.env.VUE_APP_WS_URL || 'ws://localhost:8765';
+    this.wsUrl = import.meta.env.VITE_ML_WEBSOCKET_URL || 'ws://localhost:8765';
   }
 
   connect() {

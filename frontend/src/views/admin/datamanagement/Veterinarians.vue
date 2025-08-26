@@ -824,7 +824,6 @@ const fetchVeterinarians = async () => {
     }
     
     veterinarians.value = vets
-    console.log(`Fetched ${vets.length} veterinarians`)
     
   } catch (error) {
     console.error('Error fetching veterinarians:', error)

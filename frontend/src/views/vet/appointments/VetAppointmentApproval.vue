@@ -2695,8 +2695,7 @@ const submitCompletionForm = async () => {
       // Send additional detailed completion notification with summary
       await sendDetailedCompletionNotification(selectedAppointment.value.id, completionData);
       
-      // Send WhatsApp notification to the user about completion
-      await sendWhatsAppNotification(selectedAppointment.value.id, 'completion');
+
     } catch (notificationError) {
       console.error('Error sending completion notification:', notificationError);
       // Don't fail the completion if notification fails
@@ -5239,52 +5238,7 @@ const executeRescheduleRequest = async () => {
       console.error('Failed to send vet notification:', vetNotifyErr);
     }
     
-    // Send WhatsApp notification if user has WhatsApp number
-    try {
-      if (reschedulingAppointment.value.userId) {
-        // Get user's WhatsApp number from users collection
-        const { doc, getDoc } = await import('firebase/firestore');
-        const { db } = await import('@shared/firebase');
-        
-        const userRef = doc(db, 'users', reschedulingAppointment.value.userId);
-        const userDoc = await getDoc(userRef);
-        
-        if (userDoc.exists() && (userDoc.data().whatsapp || userDoc.data().phone)) {
-          const whatsappNumber = userDoc.data().whatsapp || userDoc.data().phone;
-          
-          const rescheduleData = {
-            reason: rescheduleReason.value.trim(),
-            suggestedDate: selectedAutoRescheduleDate.value,
-            suggestedTime: selectedAutoRescheduleTime.value
-          };
-          
-          console.log('📱 Sending WhatsApp notification...');
-          
-          try {
-            const result = await whatsappService.sendRescheduleNotification(
-              whatsappNumber,
-              reschedulingAppointment.value,
-              rescheduleData
-            );
-            
-            if (result && result.success) {
-              console.log('✅ WhatsApp notification sent successfully:', result.messageId);
-            } else {
-              console.log('⚠️ WhatsApp notification failed:', result?.message || 'Unknown error');
-            }
-          } catch (serviceError) {
-            console.error('❌ WhatsApp service error for reschedule:', serviceError);
-          }
-        } else {
-          console.log('ℹ️ No WhatsApp number found for user');
-        }
-      } else {
-        console.log('ℹ️ No user ID available for WhatsApp notification');
-      }
-    } catch (whatsappErr) {
-      console.error('❌ WhatsApp notification error:', whatsappErr);
-      // Don't fail the entire reschedule process if WhatsApp fails
-    }
+
     
     // Close panel and show success
     closeAutoReschedulePanel();
@@ -5482,123 +5436,7 @@ const sendDetailedCompletionNotification = async (appointmentId, completionData)
   }
 };
 
-// ========================================
-// WHATSAPP NOTIFICATION FUNCTIONS
-// ========================================
 
-import whatsappService from '@/services/whatsappService'
-
-const sendWhatsAppNotification = async (appointmentId, actionType) => {
-  try {
-    console.log('🔍 DEBUG: sendWhatsAppNotification called with:', { appointmentId, actionType });
-    
-    const appointment = appointments.value.find(a => a.id === appointmentId);
-    if (!appointment || !appointment.userId) {
-      console.log('ℹ️ No user ID available for WhatsApp notification');
-      return;
-    }
-
-    console.log('🔍 DEBUG: Found appointment:', appointment);
-
-    // Get user's WhatsApp number from users collection
-    const { doc, getDoc } = await import('firebase/firestore');
-    const { db } = await import('@shared/firebase');
-    
-    const userRef = doc(db, 'users', appointment.userId);
-    const userDoc = await getDoc(userRef);
-    
-    if (!userDoc.exists()) {
-      console.log('ℹ️ User document not found for WhatsApp notification');
-      return;
-    }
-    
-    const userData = userDoc.data();
-    const whatsappNumber = userData.whatsapp || userData.phone; // Check both fields
-    
-    console.log('🔍 DEBUG: User data:', userData);
-    console.log('🔍 DEBUG: WhatsApp/Phone number:', whatsappNumber);
-    
-    if (!whatsappNumber) {
-      console.log('ℹ️ No WhatsApp or phone number found for user, skipping WhatsApp notification');
-      return;
-    }
-
-    // Check if WhatsApp number is valid
-    const isPhoneNumber = /^[\+]?[0-9\s\-\(\)]{10,}$/.test(whatsappNumber);
-    
-    console.log('🔍 DEBUG: Phone number validation:', { whatsappNumber, isPhoneNumber });
-    
-    if (!isPhoneNumber) {
-      console.log(`ℹ️ WhatsApp number is not valid (${whatsappNumber}), skipping WhatsApp notification`);
-      return;
-    }
-
-    console.log(`📱 Sending WhatsApp ${actionType} notification...`);
-    console.log('🔍 DEBUG: About to call whatsappService with:', { whatsappNumber, appointment, actionType });
-    
-    try {
-      let result;
-      
-      switch (actionType) {
-        case 'approval':
-          console.log('🔍 DEBUG: Calling sendAppointmentApproval...');
-          result = await whatsappService.sendAppointmentApproval(whatsappNumber, appointment);
-          break;
-          
-        case 'rejection':
-          console.log('🔍 DEBUG: Calling sendAppointmentRejection...');
-          result = await whatsappService.sendAppointmentRejection(whatsappNumber, appointment, 'Schedule conflict or unavailability');
-          break;
-          
-        case 'cancellation':
-          console.log('🔍 DEBUG: Calling sendAppointmentCancellation...');
-          result = await whatsappService.sendAppointmentCancellation(whatsappNumber, appointment, 'Cancelled by veterinary staff');
-          break;
-          
-        case 'completion':
-          console.log('🔍 DEBUG: Calling sendAppointmentCompletion...');
-          result = await whatsappService.sendAppointmentCompletion(whatsappNumber, appointment);
-          break;
-          
-        case 'reschedule':
-          // This is already handled in executeRescheduleRequest
-          return;
-          
-        default:
-          console.log(`⚠️ Unknown action type for WhatsApp: ${actionType}`);
-          return;
-      }
-      
-      console.log('🔍 DEBUG: Service result:', result);
-      
-      if (result && result.success) {
-        console.log(`✅ WhatsApp ${actionType} notification sent successfully:`, result.messageId);
-      } else if (result && result.fallback) {
-        console.log(`⚠️ WhatsApp ${actionType} notification failed, but in-app notification was sent as fallback`);
-        // The in-app notification is already sent, so we don't need to do anything else
-      } else {
-        console.log(`⚠️ WhatsApp ${actionType} notification failed:`, result?.message || 'Unknown error');
-      }
-      
-    } catch (serviceError) {
-      console.error(`❌ WhatsApp service error for ${actionType}:`, serviceError);
-      console.error('🔍 DEBUG: Service error details:', {
-        message: serviceError.message,
-        stack: serviceError.stack,
-        name: serviceError.name
-      });
-    }
-    
-  } catch (error) {
-    console.error(`❌ WhatsApp ${actionType} notification error:`, error);
-    console.error('🔍 DEBUG: General error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    // Don't fail the appointment action if WhatsApp fails
-  }
-};
 
 // ========================================
 // APPOINTMENT ACTION FUNCTIONS
@@ -5628,8 +5466,7 @@ const approveAppointment = async (appointmentId) => {
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'approve', 'approved');
     
-    // Send WhatsApp notification to the user
-    await sendWhatsAppNotification(appointmentId, 'approval');
+
     
     // Send notification to the vet about their action
     await sendVetNotification(appointmentId, 'approve', 'approved');
@@ -5670,8 +5507,7 @@ const rejectAppointment = async (appointmentId) => {
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'reject', 'rejected');
     
-    // Send WhatsApp notification to the user
-    await sendWhatsAppNotification(appointmentId, 'rejection');
+
     
     // Send notification to the vet about their action
     await sendVetNotification(appointmentId, 'reject', 'rejected');
@@ -5712,8 +5548,7 @@ const cancelApprovedAppointment = async (appointmentId) => {
     // Send notification to the user
     await sendAppointmentNotification(appointmentId, 'cancel', 'cancelled');
     
-    // Send WhatsApp notification to the user
-    await sendWhatsAppNotification(appointmentId, 'cancellation');
+
     
     // Send notification to the vet about their action
     await sendVetNotification(appointmentId, 'cancel', 'cancelled');
@@ -5754,8 +5589,7 @@ const completeAppointment = async (appointmentId) => {
     // Notify user
     await sendAppointmentNotification(appointmentId, 'complete', 'completed');
     
-    // Send WhatsApp notification to the user about completion
-    await sendWhatsAppNotification(appointmentId, 'completion');
+
     
     // Notify vet about their action
     await sendVetNotification(appointmentId, 'complete', 'completed');

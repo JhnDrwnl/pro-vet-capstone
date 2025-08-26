@@ -5,7 +5,7 @@
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-gray-900">Client Pets Management</h1>
       <p class="text-gray-500 mt-1">View and manage your clients and their pets</p>
-            </div>
+    </div>
 
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-20">
@@ -22,23 +22,24 @@
         <h3 class="text-lg font-semibold text-gray-700 mb-3">Authentication Required</h3>
         <p class="text-gray-500 mb-6">Please log in as a veterinarian to view your client pets.</p>
               </div>
-            </div>
+    </div>
     
     <!-- Main Content -->
-            <div v-else>
+    <div v-else>
       <!-- Search and Filters -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div class="relative flex-grow max-w-md">
             <input 
               v-model="searchQuery" 
-            class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
-            placeholder="Search clients or pets..."
+              class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+              placeholder="Search clients or pets..."
             />
+            
             <SearchIcon class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
     </div>
     
 
-            </div>
+      </div>
             
       <!-- Client Count -->
       <div class="mb-6">
@@ -112,227 +113,321 @@
                         <!-- Show more indicator if there are more than 5 pets -->
                         <div v-if="client.pets.length > 5" class="w-10 h-10 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs text-gray-600 font-medium">
                           +{{ client.pets.length - 5 }}
-                </div>
-                </div>
+                        </div>
+                      </div>
                       <span class="text-sm text-gray-600 ml-2">
                         {{ client.pets.length }} {{ client.pets.length === 1 ? 'pet' : 'pets' }}
                       </span>
-                </div>
+                    </div>
                     <div class="mt-2 text-sm text-gray-500">
                       {{ formatPetNames(client.pets) }}
-                </div>
+                    </div>
                     <div class="mt-1 text-xs text-gray-400">
                       {{ client.pets.length }} {{ client.pets.length === 1 ? 'pet' : 'pets' }} with transactions
-              </div>
+                    </div>
                   </td>
                   <td class="px-6 py-4">
                     <div class="text-sm">
                       <div class="text-gray-900 font-medium">
                         {{ client.totalVisits }} {{ client.totalVisits === 1 ? 'visit' : 'visits' }}
-                </div>
+                      </div>
                       <div class="text-gray-500">
                         {{ client.lastVisit ? formatDate(client.lastVisit) : 'No visits' }}
-              </div>
+                      </div>
                     </div>
                   </td>
                   <td class="px-6 py-4">
-              <button 
+                    <button 
                       @click="viewClientDetails(client)"
-                      class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="View Details"
-              >
+                      class="p-2 rounded-lg transition-all duration-300 transform hover:scale-110 active:scale-95"
+                      :class="{
+                        'text-blue-600 bg-blue-100 shadow-md ring-2 ring-blue-200': expandedClient === client.userId,
+                        'text-gray-400 hover:text-blue-600 hover:bg-blue-50': expandedClient !== client.userId
+                      }"
+                      :title="expandedClient === client.userId ? 'Hide Details' : 'View Details'"
+                    >
                       <EyeIcon class="w-4 h-4" />
-              </button>
+                    </button>
                   </td>
                 </tr>
                 
                 <!-- Expanded Client Row -->
-                <tr v-if="expandedClient === client.userId" class="bg-gray-50">
+                <tr v-if="expandedClient === client.userId" class="bg-gradient-to-r from-blue-50 to-indigo-50">
                   <td colspan="6" class="px-6 py-6">
                     <div class="space-y-6">
                       <!-- Header -->
-                      <div class="mb-4">
-                        <h3 class="text-lg font-medium text-gray-900">Client Details</h3>
-          </div>
+                      <div class="mb-4 flex items-center gap-3">
+                        <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <h3 class="text-lg font-semibold text-blue-900">Client Details</h3>
+                        <span class="ml-auto px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+                          Currently Viewing
+                        </span>
+                      </div>
                                             <!-- Client Information -->
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div class="bg-white rounded-lg border border-gray-200 p-4">
-                          <h4 class="font-medium text-gray-900 mb-3">Personal Information</h4>
+                        <div class="bg-white rounded-lg border border-blue-200 p-4 shadow-sm ring-1 ring-blue-100">
+                          <h4 class="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            Personal Information
+                          </h4>
                           <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                               <span class="text-gray-500">Full Name:</span>
                               <span class="font-medium">{{ client.firstName }} {{ client.lastName }}</span>
-                </div>
+                            </div>
                             <div class="flex justify-between">
                               <span class="text-gray-500">Email:</span>
                               <span class="font-medium">{{ client.email }}</span>
-              </div>
+                            </div>
                             <div class="flex justify-between">
                               <span class="text-gray-500">Phone:</span>
                               <span class="font-medium">{{ client.phone || 'No phone' }}</span>
-              </div>
+                            </div>
                             <div class="flex justify-between">
                               <span class="text-gray-500">Address:</span>
                               <span class="font-medium">{{ client.address || 'No address' }}</span>
-        </div>
-      </div>
-    </div>
+                            </div>
+                          </div>
+                        </div>
     
-                        <div class="bg-white rounded-lg border border-gray-200 p-4">
-                          <h4 class="font-medium text-gray-900 mb-3">Summary</h4>
+                        <div class="bg-white rounded-lg border border-blue-200 p-4 shadow-sm ring-1 ring-blue-100">
+                          <h4 class="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                            Summary
+                          </h4>
                           <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                               <span class="text-gray-500">Total Pets:</span>
                               <span class="font-medium">{{ client.pets.length }} pets</span>
-          </div>
+                            </div>
                             <div class="flex justify-between">
                               <span class="text-gray-500">Total Visits:</span>
                               <span class="font-medium">{{ client.totalVisits }} visits</span>
-        </div>
+                            </div>
                             <div class="flex justify-between">
                               <span class="text-gray-500">Last Visit:</span>
                               <span class="font-medium">{{ client.lastVisit ? formatDate(client.lastVisit) : 'No visits' }}</span>
-              </div>
-              </div>
-            </div>
-          </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
       
                                               <!-- Pets Section -->
                         <div>
-                          <h4 class="font-medium text-gray-900 mb-4">Pets with Transactions</h4>
+                          <h4 class="font-medium text-blue-900 mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                            </svg>
+                            Pets with Transactions
+                          </h4>
                           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div 
                               v-for="pet in client.pets" 
                               :key="pet.id"
-                              class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                              class="border rounded-lg p-4 transition-all duration-200 cursor-pointer"
+                              :class="{
+                                'bg-blue-50 border-blue-300 shadow-lg ring-2 ring-blue-100': expandedPet === pet.id,
+                                'bg-white border-gray-200 hover:shadow-md': expandedPet !== pet.id
+                              }"
                               @click="togglePetExpansion(pet.id)"
                             >
                               <div class="flex items-center gap-3 mb-3">
-                                <img 
-                                  :src="pet.photoURL || defaultPetPhotoURL" 
-                                  :alt="pet.name"
-                                  class="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                                >
-                  <div>
+                                <div class="relative">
+                                  <img 
+                                    :src="pet.photoURL || defaultPetPhotoURL" 
+                                    :alt="pet.name"
+                                    class="w-12 h-12 rounded-full object-cover border-2 transition-all duration-200"
+                                    :class="{
+                                      'border-blue-400 ring-2 ring-blue-200': expandedPet === pet.id,
+                                      'border-gray-200': expandedPet !== pet.id
+                                    }"
+                                  />
+                                  <!-- Expansion indicator dot -->
+                                  <div v-if="expandedPet === pet.id" 
+                                       class="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white animate-pulse">
+                                  </div>
+                                </div>
+                                <div>
                                   <h5 class="font-medium text-gray-900">{{ pet.name }}</h5>
                                   <p class="text-sm text-gray-500">{{ pet.species }} • {{ pet.breed }}</p>
-                  </div>
-                  </div>
+                                  <div v-if="expandedPet === pet.id" class="flex items-center gap-1 mt-1">
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <span class="text-xs text-blue-600 font-medium">Currently Expanded</span>
+                                  </div>
+                                </div>
+                              </div>
                               <div class="space-y-2 text-sm">
                                 <div class="flex justify-between">
                                   <span class="text-gray-500">Age:</span>
                                   <span class="font-medium">{{ pet.ageYears }}y {{ pet.ageMonths }}m</span>
-                  </div>
+                                </div>
                                 <div class="flex justify-between">
                                   <span class="text-gray-500">Gender:</span>
                                   <span class="font-medium capitalize">{{ pet.gender }}</span>
-                  </div>
+                                </div>
                                 <div class="flex justify-between">
                                   <span class="text-gray-500">Weight:</span>
                                   <span class="font-medium">{{ pet.weight }} kg</span>
-                  </div>
+                                </div>
                                 <div class="flex justify-between">
                                   <span class="text-gray-500">Visits:</span>
                                   <span class="font-medium text-blue-600">{{ pet.transactionCount }}</span>
-                </div>
-              </div>
-                              <div class="mt-3 pt-3 border-t border-gray-100">
-                                <button class="w-full px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm">
-                                  {{ expandedPet === pet.id ? 'Hide History' : 'View History' }}
-                </button>
-              </div>
-            </div>
-              </div>
-            </div>
-
-                                                                    <!-- Pet History Timeline -->
-                      <div v-if="expandedPet" class="mt-6">
-                        <h4 class="font-medium text-gray-900 mb-4">
-                          {{ client.pets.find(p => p.id === expandedPet)?.name }}'s Transaction History
-                        </h4>
+                                </div>
+                              </div>
+                                                            <div class="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                                <button 
+                                  @click="togglePetExpansion(pet.id)"
+                                  class="w-full px-3 py-2 rounded-lg transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2 transform hover:scale-105 active:scale-95"
+                                  :class="{
+                                    'bg-blue-600 text-white hover:bg-blue-700 shadow-lg ring-2 ring-blue-300': expandedPet === pet.id,
+                                    'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 hover:border-blue-300': expandedPet !== pet.id
+                                  }"
+                                >
+                                  <svg 
+                                    class="w-4 h-4 transition-all duration-300" 
+                                    :class="{ 'rotate-180 scale-110': expandedPet === pet.id }"
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                  </svg>
+                                  <span class="transition-all duration-300">
+                                    {{ expandedPet === pet.id ? 'Hide History' : 'View History' }}
+                                  </span>
+                                </button>
+                                
+                                <!-- View Vaccination Card Button - Only show if pet has vaccination records -->
+                                <button 
+                                  v-if="petVaccinations[pet.id] && petVaccinations[pet.id].length > 0"
+                                  @click.stop="navigateToVaccinationCard(pet.id)"
+                                  class="w-full px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors text-sm flex items-center justify-center gap-2"
+                                >
+                                  <ShieldIcon class="w-4 h-4" />
+                                  View Vaccination Card
+                                </button>
+                                
+                                <!-- Loading state for vaccination button -->
+                                <div 
+                                  v-else-if="!petVaccinations[pet.id]"
+                                  class="w-full px-3 py-2 bg-gray-50 text-gray-400 rounded-lg text-sm flex items-center justify-center gap-2"
+                                >
+                                  <div class="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                                  Loading...
+                                </div>
+                              </div>
+                              
+                              <!-- Pet History Timeline - Show only for this specific pet when expanded -->
+                              <div v-if="expandedPet === pet.id" class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                          <div class="flex items-center gap-3 mb-4">
+                            <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                            <h4 class="font-semibold text-blue-900">
+                              {{ pet.name }}'s Transaction History
+                            </h4>
+                            <span class="ml-auto px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                              Expanded
+                            </span>
+                          </div>
               
-                                                <div class="relative">
-                          <!-- Timeline Line -->
-                          <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-300"></div>
-                          
-                          <!-- Timeline Items -->
-                          <div class="space-y-4">
-                            <div 
-                              v-for="(appointment, index) in client.appointmentHistory?.filter(apt => apt.petIds?.includes(expandedPet))" 
-                              :key="appointment.id"
-                              class="relative pl-12"
-                            >
-                    <!-- Timeline Dot -->
-                              <div class="absolute left-0 w-3 h-3 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
-                                   :class="{
-                                     'bg-green-500': appointment.status === 'completed',
-                                     'bg-yellow-500': appointment.status === 'pending',
-                                     'bg-blue-500': appointment.status === 'approved'
-                                   }">
-                                <div class="w-1 h-1 rounded-full bg-white"></div>
-                    </div>
-                    
-                    <!-- Timeline Content -->
-                              <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                                                                <div class="flex items-start justify-between mb-3">
-                                  <div>
-                                    <h5 class="font-medium text-gray-900">{{ appointment.serviceNames.join(', ') }}</h5>
-                                    <p class="text-sm text-gray-500">{{ formatDate(appointment.date) }}</p>
+                          <div class="relative">
+                            <!-- Timeline Line -->
+                            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-gray-300"></div>
+                            
+                            <!-- Timeline Items -->
+                            <div class="space-y-4">
+                              <div 
+                                v-for="(appointment, index) in client.appointmentHistory?.filter(apt => apt.petIds?.includes(pet.id))" 
+                                :key="appointment.id"
+                                class="relative pl-12"
+                              >
+                                <!-- Timeline Dot -->
+                                <div class="absolute left-0 w-3 h-3 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
+                                     :class="{
+                                       'bg-green-500': appointment.status === 'completed',
+                                       'bg-yellow-500': appointment.status === 'pending',
+                                       'bg-blue-500': appointment.status === 'approved'
+                                     }">
+                                  <div class="w-1 h-1 rounded-full bg-white"></div>
+                                </div>
+                                
+                                <!-- Timeline Content -->
+                                <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                                  <div class="flex items-start justify-between mb-3">
+                                    <div>
+                                      <h5 class="font-medium text-gray-900">{{ appointment.serviceNames.join(', ') }}</h5>
+                                      <p class="text-sm text-gray-500">{{ formatDate(appointment.date) }}</p>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                      <span class="px-2 py-1 text-xs font-medium rounded-full" 
+                                            :class="{
+                                              'bg-green-100 text-green-700': appointment.status === 'completed',
+                                              'bg-yellow-100 text-yellow-700': appointment.status === 'pending',
+                                              'bg-blue-100 text-blue-700': appointment.status === 'approved'
+                                            }">
+                                        {{ appointment.status }}
+                                      </span>
+                                      
+                                      <!-- View Summary Button for Completed Appointments -->
+                                      <button 
+                                        v-if="appointment.status === 'completed' && appointment.completionData"
+                                        @click="viewAppointmentSummary(appointment)"
+                                        class="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors"
+                                        title="View Completion Summary"
+                                      >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                        </svg>
+                                      </button>
+                                      
+                                      <!-- View Vaccination Card Button for Vaccination Appointments -->
+                                      <button 
+                                        v-if="appointment.status === 'completed' && hasVaccinationServices(appointment)"
+                                        @click="navigateToVaccinationCard(pet.id)"
+                                        class="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 rounded-full transition-colors"
+                                        title="View Vaccination Card"
+                                      >
+                                        <ShieldIcon class="w-4 h-4" />
+                                      </button>
+                                    </div>
                                   </div>
-                        <div class="flex items-center gap-2">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full" 
-                                          :class="{
-                                            'bg-green-100 text-green-700': appointment.status === 'completed',
-                                            'bg-yellow-100 text-yellow-700': appointment.status === 'pending',
-                                            'bg-blue-100 text-blue-700': appointment.status === 'approved'
-                                          }">
-                                      {{ appointment.status }}
-                          </span>
-                                    
-                                    <!-- View Summary Button for Completed Appointments -->
-               <button 
-                                      v-if="appointment.status === 'completed' && appointment.completionData"
-                                      @click="viewAppointmentSummary(appointment)"
-                                      class="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full transition-colors"
-                                      title="View Completion Summary"
-                                    >
-                                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                      </svg>
-                </button>
-              </div>
-            </div>
-            
-                                                                <!-- Completion Summary Preview -->
-                                <div v-if="appointment.status === 'completed' && appointment.completionData" class="mt-3 pt-3 border-t border-gray-100">
-                                  <div class="text-xs text-gray-500 mb-2">Completion Summary Available</div>
-                                  <div class="bg-blue-50 rounded p-2 text-xs">
-                                    <div class="font-medium text-blue-800 mb-1">Services:</div>
-                                    <div class="text-blue-700">
-                                      {{ appointment.completionData.services?.length || 0 }} service(s) completed
-            </div>
-                                    <div class="font-medium text-blue-800 mt-2 mb-1">Health Assessment:</div>
-                                    <div class="text-blue-700">
-                                      {{ appointment.completionData.pets?.length || 0 }} pet(s) assessed
+                                  
+                                  <!-- Completion Summary Preview -->
+                                  <div v-if="appointment.status === 'completed' && appointment.completionData" class="mt-3 pt-3 border-t border-gray-100">
+                                    <div class="text-xs text-gray-500 mb-2">Completion Summary Available</div>
+                                    <div class="bg-blue-50 rounded p-2 text-xs">
+                                      <div class="font-medium text-blue-800 mb-1">Services:</div>
+                                      <div class="text-blue-700">
+                                        {{ appointment.completionData.services?.length || 0 }} service(s) completed
+                                      </div>
+                                      <div class="font-medium text-blue-800 mt-2 mb-1">Health Assessment:</div>
+                                      <div class="text-blue-700">
+                                        {{ appointment.completionData.pets?.length || 0 }} pet(s) assessed
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <!-- Empty State -->
+                              <div v-if="!client.appointmentHistory?.filter(apt => apt.petIds?.includes(pet.id))?.length" 
+                                   class="text-center py-8 text-gray-500">
+                                <PawPrintIcon class="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                <p>No transaction history found for this pet.</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      </div>
                     </div>
                   </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Empty State -->
-                            <div v-if="!client.appointmentHistory?.filter(apt => apt.petIds?.includes(expandedPet))?.length" 
-                                 class="text-center py-8 text-gray-500">
-                              <PawPrintIcon class="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                              <p>No transaction history found for this pet.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-                      </div>
-                    </td>
-                  </tr>
-              </template>
+                </td>
+              </tr>
+            </template>
               
               <!-- Empty State -->
               <tr v-if="filteredClients.length === 0">
@@ -348,10 +443,10 @@
                   </tr>
                 </tbody>
               </table>
-    </div>
+      </div>
     
         <!-- Pagination -->
-        <div v-if="filteredClients.length > 0" class="mt-6 flex justify-center">
+      <div v-if="filteredClients.length > 0" class="mt-6 flex justify-center">
           <div class="flex gap-2">
           <button 
               @click="prevPage" 
@@ -373,7 +468,7 @@
               Next
           </button>
       </div>
-            </div>
+      </div>
       </div>
 
       <!-- Appointment Summary Modal -->
@@ -397,28 +492,28 @@
                   <div class="text-sm text-gray-500 mb-1">Date & Time</div>
                   <div class="font-medium text-gray-900">
                     {{ formatDate(selectedAppointmentSummary.date) }} at {{ selectedAppointmentSummary.time || 'N/A' }}
-                </div>
+                  </div>
                 </div>
                 <div>
                   <div class="text-sm text-gray-500 mb-1">Services</div>
                   <div class="font-medium text-gray-900">
                     {{ selectedAppointmentSummary.serviceNames?.join(', ') }}
-                </div>
+                  </div>
                 </div>
             <div>
-                  <div class="text-sm text-gray-500 mb-1">Status</div>
-                  <div class="font-medium text-gray-900">
-                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                      {{ selectedAppointmentSummary.status }}
-                    </span>
-            </div>
+              <div class="text-sm text-gray-500 mb-1">Status</div>
+              <div class="font-medium text-gray-900">
+                <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                  {{ selectedAppointmentSummary.status }}
+                </span>
+              </div>
             </div>
             <div>
-                  <div class="text-sm text-gray-500 mb-1">Completed At</div>
-                  <div class="font-medium text-gray-900">
-                    {{ selectedAppointmentSummary.completedAt ? formatDate(selectedAppointmentSummary.completedAt) : 'N/A' }}
+              <div class="text-sm text-gray-500 mb-1">Completed At</div>
+              <div class="font-medium text-gray-900">
+                {{ selectedAppointmentSummary.completedAt ? formatDate(selectedAppointmentSummary.completedAt) : 'N/A' }}
+              </div>
             </div>
-                </div>
               </div>
             </div>    
 
@@ -436,18 +531,18 @@
                   <div class="flex items-center justify-between mb-3">
                     <h4 class="font-medium text-gray-900">{{ service.name }}</h4>
                     <span class="text-sm text-gray-500">Service {{ index + 1 }}</span>
-            </div>
+                  </div>
     
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+                    <div>
                       <div class="text-sm text-gray-500 mb-1">Status</div>
                       <div class="font-medium text-gray-900 capitalize">{{ service.status?.replace('_', ' ') }}</div>
-        </div>
+                    </div>
     
                     <div>
                       <div class="text-sm text-gray-500 mb-1">Duration</div>
                       <div class="font-medium text-gray-900">{{ service.duration || 'N/A' }} minutes</div>
-          </div>
+                    </div>
     
                     <div class="md:col-span-2">
                       <div class="text-sm text-gray-500 mb-1">Notes</div>
@@ -455,8 +550,8 @@
                         {{ service.notes || 'No notes provided' }}
                       </div>
                     </div>
-          </div>
-        </div>
+                  </div>
+                </div>
           </div>
         </div>
     
@@ -468,43 +563,43 @@
               </h3>
               
             <div class="space-y-4">
-                <div v-for="(pet, index) in selectedAppointmentSummary.completionData.pets" :key="index" class="border border-gray-200 rounded-lg p-4">
-                  <div class="flex items-center gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                      <PawPrintIcon class="w-6 h-6 text-gray-400" />
-                    </div>
-                    <div>
-                      <h4 class="font-medium text-gray-900">{{ pet.name }}</h4>
-                      <p class="text-sm text-gray-500">Pet {{ index + 1 }}</p>
+              <div v-for="(pet, index) in selectedAppointmentSummary.completionData.pets" :key="index" class="border border-gray-200 rounded-lg p-4">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                    <PawPrintIcon class="w-6 h-6 text-gray-400" />
+                  </div>
+                  <div>
+                    <h4 class="font-medium text-gray-900">{{ pet.name }}</h4>
+                    <p class="text-sm text-gray-500">Pet {{ index + 1 }}</p>
+                  </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div class="text-sm text-gray-500 mb-1">Overall Health</div>
+                    <div class="font-medium text-gray-900 capitalize">{{ pet.overallHealth || 'N/A' }}</div>
+                  </div>
+                  
+                  <div>
+                    <div class="text-sm text-gray-500 mb-1">Weight</div>
+                    <div class="font-medium text-gray-900">{{ pet.weight ? `${pet.weight} kg` : 'N/A' }}</div>
+                  </div>
+                  
+                  <div class="md:col-span-2">
+                    <div class="text-sm text-gray-500 mb-1">Health Notes</div>
+                    <div class="font-medium text-gray-900 bg-gray-50 p-3 rounded border">
+                      {{ pet.healthNotes || 'No health notes provided' }}
                     </div>
                   </div>
                   
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                      <div class="text-sm text-gray-500 mb-1">Overall Health</div>
-                      <div class="font-medium text-gray-900 capitalize">{{ pet.overallHealth || 'N/A' }}</div>
-              </div>
-              
-                <div>
-                      <div class="text-sm text-gray-500 mb-1">Weight</div>
-                      <div class="font-medium text-gray-900">{{ pet.weight ? `${pet.weight} kg` : 'N/A' }}</div>
-              </div>
-              
-                    <div class="md:col-span-2">
-                      <div class="text-sm text-gray-500 mb-1">Health Notes</div>
-                      <div class="font-medium text-gray-900 bg-gray-50 p-3 rounded border">
-                        {{ pet.healthNotes || 'No health notes provided' }}
-        </div>
-      </div>
-      
-                    <div class="md:col-span-2">
-                      <div class="text-sm text-gray-500 mb-1">Follow-up Required</div>
-                      <div class="font-medium text-gray-900">
-                        <span v-if="pet.followUpRequired" class="text-orange-600">Yes</span>
-                        <span v-else class="text-gray-600">No</span>
-        </div>
-                      <div v-if="pet.followUpRequired && pet.followUpNotes" class="mt-2 text-sm text-gray-700 bg-orange-50 p-3 rounded border">
-                        <strong>Follow-up Notes:</strong> {{ pet.followUpNotes }}
+                  <div class="md:col-span-2">
+                    <div class="text-sm text-gray-500 mb-1">Follow-up Required</div>
+                    <div class="font-medium text-gray-900">
+                      <span v-if="pet.followUpRequired" class="text-orange-600">Yes</span>
+                      <span v-else class="text-gray-600">No</span>
+                    </div>
+                    <div v-if="pet.followUpRequired && pet.followUpNotes" class="mt-2 text-sm text-gray-700 bg-orange-50 p-3 rounded border">
+                      <strong>Follow-up Notes:</strong> {{ pet.followUpNotes }}
         </div>
       </div>
     </div>
@@ -526,33 +621,46 @@
                   <div class="text-sm text-gray-500 mb-1">Treatment Summary</div>
                   <div class="font-medium text-gray-900 bg-gray-50 p-3 rounded border">
                     {{ selectedAppointmentSummary.completionData.generalNotes.treatmentSummary || 'No treatment summary provided' }}
-        </div>
-          </div>
-          
+                  </div>
+                </div>
+                
                 <div>
                   <div class="text-sm text-gray-500 mb-1">Owner Instructions</div>
                   <div class="font-medium text-gray-900 bg-gray-50 p-3 rounded border">
                     {{ selectedAppointmentSummary.completionData.generalNotes.ownerInstructions || 'No owner instructions provided' }}
-              </div>
-            </div>
-            
-                    <div>
+                  </div>
+                </div>
+                
+                <div>
                   <div class="text-sm text-gray-500 mb-1">Next Steps</div>
                   <div class="font-medium text-gray-900 bg-gray-50 p-3 rounded border">
                     {{ selectedAppointmentSummary.completionData.generalNotes.nextSteps || 'No next steps provided' }}
-                    </div>
-                    </div>
                   </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-  </div>
+    <!-- Vaccination Form Modal -->
+    <VaccinationForm
+      v-if="showVaccinationForm && selectedPetForVaccination"
+      :pet="selectedPetForVaccination"
+      :vaccination="editingVaccination"
+      :is-editing="!!editingVaccination"
+      @close="closeVaccinationForm"
+      @save="saveVaccination"
+    />
+
+
+
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   Search as SearchIcon,
   Eye as EyeIcon,
@@ -560,14 +668,24 @@ import {
   UserX as UserXIcon,
   Phone as PhoneIcon,
   MapPin as MapPinIcon,
-  User as UserIcon
+  User as UserIcon,
+  Plus as PlusIcon,
+  Shield as ShieldIcon
 } from 'lucide-vue-next'
+import VaccinationForm from '@/components/common/VaccinationForm.vue'
+import { 
+  generateVaccinationRecord, 
+  shouldGenerateVaccinationRecord,
+  mergeVaccinationRecords,
+  fetchServiceDetails
+} from '@/services/vaccinationService'
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '@shared/firebase'
 import { useAuthStore } from '@/stores/modules/authStore'
 
-// Initialize store
+// Initialize store and router
 const authStore = useAuthStore()
+const router = useRouter()
 
 // Default photo URLs
 const defaultPhotoURL = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 36 36\'%3E%3Crect width=\'36\' height=\'36\' fill=\'%23f0f2f5\'/%3E%3Cpath d=\'M18 20.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 0 0 0 11ZM8 28.5c0-2.5 5-5 10-5s10 2.5 10 5\' stroke=\'%23bec3c9\' stroke-width=\'2\' fill=\'none\'/%3E%3C/svg%3E'
@@ -585,9 +703,22 @@ const itemsPerPage = 10
 const expandedClient = ref(null)
 const expandedPet = ref(null)
 
+// Watch for pet expansion to load vaccinations
+watch(expandedPet, async (newPetId) => {
+  if (newPetId) {
+    await loadPetVaccinations(newPetId)
+  }
+})
+
 // Summary modal state
 const showSummaryModal = ref(false)
 const selectedAppointmentSummary = ref(null)
+
+// Vaccination form state
+const showVaccinationForm = ref(false)
+const editingVaccination = ref(null)
+const selectedPetForVaccination = ref(null)
+const petVaccinations = ref({})
 
 // Computed properties
 const filteredClients = computed(() => {
@@ -721,9 +852,12 @@ async function fetchClients() {
                   time: data.time || '',
                   status: data.status,
                   serviceNames: data.serviceNames || [],
+                  services: data.services || [], // Include services array for vaccination detection
                   completedAt: data.completedAt?.toDate?.() || null,
                   petNames: data.petNames || [],
                   petIds: data.petIds || [],
+                  doctorName: data.doctorName || '', // Include doctor name
+                  location: data.location || 'Veterinary Clinic', // Include location
                   // Include completion data if available
                   completionData: data.completionData || null
                 }
@@ -793,6 +927,9 @@ async function fetchClients() {
     })
     
     clients.value = clientsData
+    
+    // Pre-load vaccinations for all pets to show vaccination card buttons
+    await preloadAllPetVaccinations()
   } catch (error) {
     console.error('Error fetching clients:', error)
   } finally {
@@ -862,6 +999,136 @@ function viewAppointmentSummary(appointment) {
 function closeSummaryModal() {
   showSummaryModal.value = false
   selectedAppointmentSummary.value = null
+}
+
+// Vaccination handlers
+function navigateToVaccinationCard(petId) {
+  router.push(`/vet/vaccination-card/${petId}`)
+}
+
+function showVaccinationCardForPet(petId) {
+  selectedPetForVaccinationCard.value = clients.value
+    .flatMap(client => client.pets)
+    .find(p => p.id === petId)
+  showVaccinationCard.value = true
+}
+
+// Check if an appointment has vaccination services
+async function hasVaccinationServices(appointment) {
+  if (!appointment.services || appointment.services.length === 0) {
+    return false
+  }
+  
+  try {
+    const serviceDetails = await fetchServiceDetails(appointment.services)
+    return serviceDetails.some(service => 
+      service.isVaccination === true ||
+      service.name?.toLowerCase().includes('vaccination') ||
+      service.name?.toLowerCase().includes('vaccine') ||
+      service.name?.toLowerCase().includes('shot')
+    )
+  } catch (error) {
+    console.error('Error checking vaccination services:', error)
+    return false
+  }
+}
+
+// Pre-load vaccinations for all pets to show vaccination card buttons
+async function preloadAllPetVaccinations() {
+  try {
+    for (const client of clients.value) {
+      for (const pet of client.pets) {
+        await loadPetVaccinations(pet.id)
+      }
+    }
+  } catch (error) {
+    console.error('Error pre-loading pet vaccinations:', error)
+  }
+}
+
+async function getPetVaccinations(petId) {
+  const pet = clients.value
+    .flatMap(client => client.pets)
+    .find(p => p.id === petId)
+  
+  if (!pet) return []
+  
+  // Initialize vaccinations array if it doesn't exist
+  if (!pet.vaccinations) {
+    pet.vaccinations = []
+  }
+  
+  // Get pet's appointment history from the current client data
+  const client = clients.value.find(c => c.pets.some(p => p.id === petId))
+  
+  if (client && client.appointmentHistory) {
+    // Process each completed appointment for this pet
+    for (const appointment of client.appointmentHistory) {
+      if (appointment.petIds?.includes(petId)) {
+        // Fetch service details for this appointment
+        const serviceDetails = await fetchServiceDetails(appointment.services || [])
+        
+        if (shouldGenerateVaccinationRecord(appointment, serviceDetails)) {
+          // Check if vaccination record already exists for this appointment
+          const existingRecord = pet.vaccinations.find(v => 
+            v.appointmentId === appointment.id
+          )
+          
+          if (!existingRecord) {
+            // Generate new vaccination record
+            const vaccinationRecord = generateVaccinationRecord(appointment, pet, serviceDetails)
+            
+            if (vaccinationRecord) {
+              pet.vaccinations.push(vaccinationRecord)
+            }
+          }
+        }
+      }
+    }
+    
+    // Sort vaccinations by date (newest first)
+    pet.vaccinations.sort((a, b) => new Date(b.date) - new Date(a.date))
+  }
+  
+  return pet.vaccinations || []
+}
+
+function handleVaccinationCompleted(record) {
+  console.log('Mark vaccination completed:', record)
+  // This would mark a vaccination as completed
+}
+
+function handleEditVaccination(record) {
+  selectedPetForVaccination.value = clients.value
+    .flatMap(client => client.pets)
+    .find(p => p.vaccinations?.some(v => v.id === record.id))
+  editingVaccination.value = record
+  showVaccinationForm.value = true
+}
+
+function closeVaccinationForm() {
+  showVaccinationForm.value = false
+  editingVaccination.value = null
+  selectedPetForVaccination.value = null
+}
+
+
+
+function saveVaccination(vaccinationData) {
+  console.log('Save vaccination:', vaccinationData)
+  // This would save the vaccination to the database
+  closeVaccinationForm()
+}
+
+// Load vaccinations for a specific pet
+async function loadPetVaccinations(petId) {
+  try {
+    const vaccinations = await getPetVaccinations(petId)
+    petVaccinations.value[petId] = vaccinations
+  } catch (error) {
+    console.error('Error loading pet vaccinations:', error)
+    petVaccinations.value[petId] = []
+  }
 }
 
 

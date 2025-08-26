@@ -99,6 +99,7 @@
             </div>
           </div>
         </div>
+
         <div class="p-6">
           <div class="h-[400px] relative">
             <div v-if="loading" class="w-full h-full flex items-center justify-center">
@@ -1099,12 +1100,6 @@ const initDoughnutChart = () => {
 }
 
 const updateCharts = () => {
-  console.log('Updating charts...')
-  console.log('Appointments chart ref:', appointmentsChart.value)
-  console.log('Pet distribution chart ref:', petDistributionChart.value)
-  console.log('Filtered appointments:', filteredAppointments.value)
-  console.log('Filtered segments:', filteredSegments.value)
-  
   initLineChart()
   initDoughnutChart()
 }

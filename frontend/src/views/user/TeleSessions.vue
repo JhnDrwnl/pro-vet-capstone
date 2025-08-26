@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen bg-gray-900">
     <!-- Home View -->
     <div v-if="currentView === 'home'">
       <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -7,10 +7,10 @@
           <!-- Left Column -->
           <div class="space-y-8 flex flex-col justify-center h-full">
             <div class="space-y-4 mt-auto">
-              <h1 class="text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
+              <h1 class="text-4xl md:text-5xl font-bold text-white leading-tight">
                 {{ slides[currentSlide].title }}
               </h1>
-              <p class="text-xl text-gray-600">
+              <p class="text-xl text-gray-300">
                 {{ slides[currentSlide].subtitle }}
               </p>
             </div>
@@ -20,20 +20,20 @@
               <div class="flex flex-col sm:flex-row gap-4">
                 <button 
                   @click="currentView = 'sessions'"
-                  class="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white text-base font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  class="inline-flex items-center justify-center px-6 py-3 bg-orange-500 text-white text-base font-medium rounded-lg hover:bg-orange-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
                 >
                   <VideoIcon class="w-5 h-5 mr-2" />
                   Sessions
                 </button>
                 <button 
                   @click="currentView = 'meetings'"
-                  class="inline-flex items-center justify-center px-6 py-3 border border-gray-300 text-gray-700 text-base font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                  class="inline-flex items-center justify-center px-6 py-3 border border-gray-600 text-gray-300 text-base font-medium rounded-lg hover:bg-gray-800 hover:border-gray-500 transition-all duration-300"
                 >
                   <CalendarIcon class="w-5 h-5 mr-2" />
                   See upcoming meetings
                 </button>
               </div>
-              <a href="#" class="inline-flex text-blue-600 hover:underline">
+              <a href="#" class="inline-flex text-orange-400 hover:text-orange-300 transition-colors">
                 Learn more about Telehealth
               </a>
             </div>
@@ -44,20 +44,20 @@
             <!-- Navigation Arrows -->
             <button 
               @click="previousSlide" 
-              class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors z-20"
+              class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 p-2 rounded-full bg-gray-800 shadow-lg hover:bg-gray-700 transition-colors z-20 border border-gray-600"
             >
-              <ChevronLeftIcon class="w-6 h-6 text-gray-600" />
+              <ChevronLeftIcon class="w-6 h-6 text-gray-300" />
             </button>
             <button 
               @click="nextSlide"
-              class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 transition-colors z-20"
+              class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 p-2 rounded-full bg-gray-800 shadow-lg hover:bg-gray-700 transition-colors z-20 border border-gray-600"
             >
-              <ChevronRightIcon class="w-6 h-6 text-gray-600" />
+              <ChevronRightIcon class="w-6 h-6 text-gray-300" />
             </button>
 
             <!-- Main Illustration -->
             <div class="relative aspect-square max-w-md mx-auto">
-              <div class="absolute inset-0 bg-blue-50 rounded-full overflow-hidden">
+              <div class="absolute inset-0 bg-gray-800 rounded-full overflow-hidden border border-gray-600">
                 <TransitionGroup name="slide">
                   <div 
                     v-for="(slide, index) in slides" 
@@ -80,8 +80,8 @@
                 :class="[
                   'w-2 h-2 rounded-full transition-all',
                   currentSlide === index 
-                    ? 'bg-blue-600 w-4' 
-                    : 'bg-gray-300 hover:bg-gray-400'
+                    ? 'bg-orange-500 w-4' 
+                    : 'bg-gray-600 hover:bg-gray-500'
                 ]"
                 :aria-label="`Go to slide ${index + 1}`"
               />
@@ -93,115 +93,128 @@
 
     <!-- Sessions View -->
     <div v-else-if="currentView === 'sessions'">
-      <div class="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        <div class="space-y-6">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+        <div class="space-y-8">
           <!-- Header with back arrow on left -->
           <div class="flex items-center">
             <button 
               @click="currentView = 'home'" 
-              class="p-2 mr-4 rounded-full hover:bg-gray-100 text-gray-600"
+              class="p-3 mr-4 rounded-full hover:bg-gray-800 text-gray-300 transition-colors border border-gray-600"
             >
               <ArrowLeftIcon class="w-5 h-5" />
             </button>
-            <h1 class="text-2xl font-bold text-gray-900">Meetings</h1>
+            <h1 class="text-3xl font-bold text-white">Telehealth Sessions</h1>
           </div>
           
           <!-- Tabs -->
-          <div class="border-b border-gray-200">
+          <div class="border-b border-gray-700">
             <nav class="-mb-px flex space-x-8">
               <button 
                 @click="activeTab = 'upcoming'"
-                class="py-4 px-1 border-b-2 font-medium text-sm"
-                :class="activeTab === 'upcoming' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                class="py-4 px-1 border-b-2 font-medium text-sm transition-colors"
+                :class="activeTab === 'upcoming' ? 'border-orange-500 text-orange-400' : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'"
               >
-                Upcoming
+                Upcoming Sessions
               </button>
               <button 
                 @click="activeTab = 'previous'"
-                class="py-4 px-1 border-b-2 font-medium text-sm"
-                :class="activeTab === 'previous' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                class="py-4 px-1 border-b-2 font-medium text-sm transition-colors"
+                :class="activeTab === 'previous' ? 'border-orange-500 text-orange-400' : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'"
               >
-                Previous
+                Previous Sessions
               </button>
             </nav>
           </div>
           
           <!-- Meeting List -->
-          <div v-if="activeTab === 'upcoming' && upcomingMeetings.length > 0" class="space-y-3">
+          <div v-if="activeTab === 'upcoming' && upcomingMeetings.length > 0" class="space-y-4">
             <div 
               v-for="meeting in upcomingMeetings" 
               :key="meeting.id"
-              class="bg-blue-50 rounded-lg p-4 flex justify-between items-center"
+              class="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300 hover:bg-gray-750"
             >
-              <div class="flex items-center space-x-4">
-                <div class="bg-blue-100 p-2 rounded-lg">
-                  <component :is="meeting.icon" class="w-5 h-5 text-blue-500" />
-                </div>
-                <div>
-                  <div class="font-medium text-gray-900">{{ meeting.title }}</div>
-                  <div class="flex items-center text-sm text-gray-500 space-x-2">
-                    <ClockIcon class="w-4 h-4" />
-                    <span>{{ meeting.time }} • {{ meeting.duration }}</span>
+              <div class="flex justify-between items-start">
+                <div class="flex items-start space-x-4">
+                  <div class="bg-orange-500/20 p-3 rounded-lg border border-orange-500/30">
+                    <component :is="meeting.icon" class="w-6 h-6 text-orange-400" />
                   </div>
-                  <div class="flex items-center text-sm text-gray-500 space-x-2">
-                    <UserIcon class="w-4 h-4" />
-                    <span>{{ meeting.doctor }}</span>
+                  <div class="space-y-2">
+                    <div class="font-semibold text-white text-lg">{{ meeting.title }}</div>
+                    <div class="flex items-center text-sm text-gray-400 space-x-2">
+                      <ClockIcon class="w-4 h-4" />
+                      <span>{{ meeting.time }} • {{ meeting.duration }}</span>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-400 space-x-2">
+                      <UserIcon class="w-4 h-4" />
+                      <span>Dr. {{ meeting.doctor }}</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Status indicator with tournament-style design -->
+                <div class="flex flex-col items-end gap-3">
+                  <div class="flex items-center gap-2 px-3 py-2 bg-gray-700 rounded-lg border border-gray-600">
+                    <div class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></div>
+                    <span class="text-sm text-yellow-300 font-medium">Waiting</span>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-orange-400">{{ getQueuePosition(meeting) }}</div>
+                    <div class="text-xs text-gray-500 bg-gray-700 px-3 py-1 rounded-full border border-gray-600">
+                      Queue Position
+                    </div>
                   </div>
                 </div>
               </div>
-              <button 
-                @click="joinMeeting(meeting)"
-                class="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600"
-              >
-                <VideoIcon class="w-5 h-5" />
-              </button>
             </div>
           </div>
           
-          <div v-else-if="activeTab === 'previous' && previousMeetings.length > 0" class="space-y-3">
+          <div v-else-if="activeTab === 'previous' && previousMeetings.length > 0" class="space-y-4">
             <div 
               v-for="meeting in previousMeetings" 
               :key="meeting.id"
-              class="bg-gray-50 rounded-lg p-4 flex justify-between items-center"
+              class="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-gray-600 transition-all duration-300"
             >
-              <div class="flex items-center space-x-4">
-                <div class="bg-gray-100 p-2 rounded-lg">
-                  <component :is="meeting.icon" class="w-5 h-5 text-gray-500" />
-                </div>
-                <div>
-                  <div class="font-medium text-gray-900">{{ meeting.title }}</div>
-                  <div class="flex items-center text-sm text-gray-500 space-x-2">
-                    <ClockIcon class="w-4 h-4" />
-                    <span>{{ meeting.time }} • {{ meeting.duration }}</span>
+              <div class="flex justify-between items-start">
+                <div class="flex items-start space-x-4">
+                  <div class="bg-gray-600 p-3 rounded-lg border border-gray-500">
+                    <component :is="meeting.icon" class="w-6 h-6 text-gray-400" />
                   </div>
-                  <div class="flex items-center text-sm text-gray-500 space-x-2">
-                    <UserIcon class="w-4 h-4" />
-                    <span>{{ meeting.doctor }}</span>
+                  <div class="space-y-2">
+                    <div class="font-semibold text-white text-lg">{{ meeting.title }}</div>
+                    <div class="flex items-center text-sm text-gray-400 space-x-2">
+                      <ClockIcon class="w-4 h-4" />
+                      <span>{{ meeting.time }} • {{ meeting.duration }}</span>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-400 space-x-2">
+                      <UserIcon class="w-4 h-4" />
+                      <span>Dr. {{ meeting.doctor }}</span>
+                    </div>
                   </div>
                 </div>
+                <button 
+                  @click="viewRecording(meeting)"
+                  class="bg-gray-700 text-gray-300 p-3 rounded-lg hover:bg-gray-600 hover:text-white transition-all duration-300 border border-gray-600"
+                >
+                  <PlayIcon class="w-5 h-5" />
+                </button>
               </div>
-              <button 
-                @click="viewRecording(meeting)"
-                class="bg-gray-200 text-gray-700 p-2 rounded-full hover:bg-gray-300"
-              >
-                <PlayIcon class="w-5 h-5" />
-              </button>
             </div>
           </div>
           
-          <div v-else class="text-center py-12">
-            <CalendarIcon class="w-12 h-12 mx-auto text-gray-400" />
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No meetings</h3>
-            <p class="mt-1 text-sm text-gray-500">
-              {{ activeTab === 'upcoming' ? 'You have no upcoming meetings scheduled.' : 'You have no previous meetings.' }}
+          <div v-else class="text-center py-16">
+            <div class="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-600">
+              <CalendarIcon class="w-10 h-10 text-gray-500" />
+            </div>
+            <h3 class="text-lg font-medium text-white mb-2">No sessions found</h3>
+            <p class="text-gray-400 mb-6">
+              {{ activeTab === 'upcoming' ? 'You have no upcoming telehealth sessions scheduled.' : 'You have no previous telehealth sessions.' }}
             </p>
             <div class="mt-6">
               <button
                 @click="scheduleMeeting"
-                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                class="inline-flex items-center px-6 py-3 border border-transparent rounded-lg shadow-lg text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-300 transform hover:scale-105"
               >
                 <PlusIcon class="w-5 h-5 mr-2" />
-                Schedule a meeting
+                Schedule a session
               </button>
             </div>
           </div>
@@ -211,247 +224,124 @@
 
     <!-- Meetings View (placeholder) -->
     <div v-else-if="currentView === 'meetings'">
-      <div class="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-        <div class="flex items-center mb-6">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+        <div class="flex items-center mb-8">
           <button 
             @click="currentView = 'home'" 
-            class="p-2 mr-4 rounded-full hover:bg-gray-100 text-gray-600"
+            class="p-3 mr-4 rounded-full hover:bg-gray-800 text-gray-300 transition-colors border border-gray-600"
           >
             <ArrowLeftIcon class="w-5 h-5" />
           </button>
-          <h1 class="text-2xl font-bold text-gray-900">Upcoming Meetings</h1>
+          <h1 class="text-3xl font-bold text-white">Upcoming Meetings</h1>
         </div>
         <!-- Meetings content would go here -->
-        <p class="text-gray-600">Upcoming meetings view</p>
+        <div class="bg-gray-800 rounded-xl p-8 border border-gray-700 text-center">
+          <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CalendarIcon class="w-8 h-8 text-gray-500" />
+          </div>
+          <p class="text-gray-400 text-lg">Upcoming meetings view coming soon</p>
+        </div>
       </div>
     </div>
 
-    <!-- Video Call View with WebRTC - Redesigned to match the reference image -->
-    <div v-else-if="currentView === 'videoCall'" class="h-screen bg-white">
-      <div class="h-full flex flex-col">
-        <!-- Main Content -->
-        <div class="flex-1 flex">
-          <!-- Left Sidebar - Chat and Info -->
-          <div class="w-64 border-r border-gray-200 flex flex-col">
-            <!-- User Info -->
-            <div class="p-4 border-b border-gray-200">
-              <div class="flex items-center">
-                <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden mr-3">
-                  <img 
-                    :src="currentMeeting?.doctorAvatar || '/placeholder.svg?height=40&width=40'" 
-                    alt="Doctor" 
-                    class="w-full h-full object-cover"
-                  />
-                </div>
-                <div>
-                  <h3 class="font-medium text-gray-900">{{ currentMeeting?.doctor || 'Dr. Smith' }}</h3>
-                  <div class="flex items-center text-xs text-gray-500">
-                    <span>Female</span>
-                    <span class="mx-1">•</span>
-                    <span>{{ currentMeeting?.doctorAge || '51' }} y/o</span>
-                  </div>
-                </div>
-              </div>
-              <div class="mt-2 bg-gray-800 text-white text-xs px-2 py-1 rounded flex items-center">
-                <ClockIcon class="w-3 h-3 mr-1" />
-                <span>Time remaining: {{ callDuration }}</span>
-              </div>
-            </div>
-            
-            <!-- Tabs -->
-            <div class="flex border-b border-gray-200">
-              <button 
-                @click="chatTab = 'record'"
-                class="flex-1 py-3 text-xs font-medium text-center"
-                :class="chatTab === 'record' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'"
-              >
-                Record
-              </button>
-              <button 
-                @click="chatTab = 'chat'"
-                class="flex-1 py-3 text-xs font-medium text-center"
-                :class="chatTab === 'chat' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'"
-              >
-                Chat
-              </button>
-              <button 
-                @click="chatTab = 'notes'"
-                class="flex-1 py-3 text-xs font-medium text-center"
-                :class="chatTab === 'notes' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'"
-              >
-                Notes
-              </button>
-              <button 
-                @click="chatTab = 'docs'"
-                class="flex-1 py-3 text-xs font-medium text-center"
-                :class="chatTab === 'docs' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'"
-              >
-                Docs
-              </button>
-            </div>
-            
-            <!-- Chat Content -->
-            <div class="flex-1 overflow-y-auto p-4 bg-gray-50">
-              <!-- Date Header -->
-              <div class="text-center text-xs text-gray-500 uppercase mb-4">
-                JUNE 1
-              </div>
-              
-              <!-- Chat Messages -->
-              <div class="space-y-4">
-                <!-- Doctor Message -->
-                <div class="bg-blue-50 rounded-lg p-3 max-w-[85%] ml-auto">
-                  <p class="text-sm text-gray-800">Good afternoon, Olivia! How are you feeling today?</p>
-                  <span class="text-xs text-gray-500 block text-right mt-1">12:30</span>
-                </div>
-                
-                <!-- Patient Message -->
-                <div class="bg-gray-200 rounded-lg p-3 max-w-[85%]">
-                  <p class="text-sm text-gray-800">Good afternoon, Dr. Lopez! I'm good, looking forward to the appointment.</p>
-                  <span class="text-xs text-gray-500 block mt-1">12:34</span>
-                </div>
-                
-                <!-- Date Header -->
-                <div class="text-center text-xs text-gray-500 uppercase my-4">
-                  TODAY
-                </div>
-                
-                <!-- Doctor Message -->
-                <div class="bg-blue-50 rounded-lg p-3 max-w-[85%] ml-auto">
-                  <p class="text-sm text-gray-800">Hey, Olivia! Are you ready for a call?</p>
-                  <span class="text-xs text-gray-500 block text-right mt-1">13:58</span>
-                </div>
-                
-                <!-- Patient Message -->
-                <div class="bg-gray-200 rounded-lg p-3 max-w-[85%]">
-                  <p class="text-sm text-gray-800">Hello, Dr. Lopez</p>
-                  <span class="text-xs text-gray-500 block mt-1">14:00</span>
-                </div>
-                
-                <!-- Patient Message -->
-                <div class="bg-gray-200 rounded-lg p-3 max-w-[85%]">
-                  <p class="text-sm text-gray-800">I'm 5 minutes late, sorry!</p>
-                  <span class="text-xs text-gray-500 block mt-1">14:00</span>
-                </div>
-                
-                <!-- Doctor Message -->
-                <div class="bg-blue-50 rounded-lg p-3 max-w-[85%] ml-auto">
-                  <p class="text-sm text-gray-800">No worries, take your time 👍</p>
-                  <span class="text-xs text-gray-500 block text-right mt-1">14:01</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Message Input -->
-            <div class="p-3 border-t border-gray-200">
-              <div class="relative">
-                <input 
-                  type="text" 
-                  v-model="messageText"
-                  placeholder="Write your message..."
-                  class="w-full pl-3 pr-10 py-2 border border-gray-300 rounded-full text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <button 
-                  @click="sendMessage"
-                  class="absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 hover:text-blue-600"
-                >
-                  <SendIcon class="w-5 h-5" />
-                </button>
+    <!-- Waiting Room View -->
+    <div v-else-if="currentView === 'waitingRoom' && currentMeeting" class="h-screen bg-gray-900">
+      <div class="h-full flex flex-col items-center justify-center p-8">
+        <!-- Tournament-style header -->
+        <div class="text-center mb-12">
+          <div class="inline-flex items-center gap-3 px-6 py-3 bg-red-500/20 border border-red-500/30 rounded-full mb-4">
+            <div class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
+            <span class="text-red-400 font-semibold text-sm">LIVE SESSION</span>
+          </div>
+          <h1 class="text-4xl font-bold text-white mb-2">Waiting for Your Turn</h1>
+          <p class="text-xl text-gray-400">Your appointment with Dr. {{ currentMeeting?.doctor }} is in progress</p>
+        </div>
+        
+        <!-- Waiting Animation with tournament style -->
+        <div class="relative mb-12">
+          <div class="w-32 h-32 bg-gray-800 rounded-full flex items-center justify-center border-2 border-gray-600">
+            <div class="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center border border-gray-500">
+              <div class="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/30">
+                <div class="w-8 h-8 bg-orange-400 rounded-full animate-pulse"></div>
               </div>
             </div>
           </div>
+          <!-- Pulsing rings -->
+          <div class="absolute inset-0 border-2 border-orange-500/20 rounded-full animate-ping"></div>
+          <div class="absolute inset-0 border-2 border-orange-400/30 rounded-full animate-ping" style="animation-delay: 0.5s;"></div>
+        </div>
+        
+        <!-- Queue Information - Tournament bracket style -->
+        <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 mb-8 max-w-lg w-full border border-gray-700">
+          <div class="text-center mb-6">
+            <div class="text-4xl font-bold text-orange-400 mb-2">{{ getQueuePosition(currentMeeting) }}</div>
+            <p class="text-gray-400 text-lg">Position in Queue</p>
+          </div>
           
-          <!-- Main Video Area -->
-          <div class="flex-1 relative bg-white">
-            <!-- Remote Video -->
-            <video 
-              ref="remoteVideo" 
-              class="w-full h-full object-cover" 
-              autoplay 
-              playsinline
-            ></video>
-            
-            <!-- Loading state when remote video is not connected -->
-            <div 
-              v-if="!isRemoteConnected" 
-              class="absolute inset-0 flex flex-col items-center justify-center"
-            >
-              <div class="w-16 h-16 mb-4 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-              <p class="text-lg">Connecting to {{ currentMeeting ? currentMeeting.doctor : 'remote user' }}...</p>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center py-3 border-b border-gray-700">
+              <span class="text-gray-400">Estimated wait time:</span>
+              <span class="font-semibold text-white">{{ getEstimatedWaitTime(currentMeeting) }}</span>
             </div>
-            
-            <!-- Local Video (Small) -->
-            <div class="absolute top-4 right-4 w-32 h-24 bg-gray-800 rounded-lg overflow-hidden shadow-lg border-2 border-white">
-              <video 
-                ref="localVideo" 
-                class="w-full h-full object-cover" 
-                autoplay 
-                playsinline 
-                muted
-              ></video>
+            <div class="flex justify-between items-center py-3 border-b border-gray-700">
+              <span class="text-gray-400">Appointment time:</span>
+              <span class="font-semibold text-white">{{ currentMeeting?.time }}</span>
             </div>
-            
-            <!-- Call Controls -->
-            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center space-x-4">
-              <button 
-                @click="toggleMute" 
-                class="p-3 rounded-full focus:outline-none transition-colors"
-                :class="isMuted ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
-              >
-                <component :is="isMuted ? MicOffIcon : MicIcon" class="w-5 h-5" />
-              </button>
-              <button 
-                @click="toggleVideo" 
-                class="p-3 rounded-full focus:outline-none transition-colors"
-                :class="isVideoOff ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
-              >
-                <component :is="isVideoOff ? VideoOffIcon : VideoIcon" class="w-5 h-5" />
-              </button>
-              <button 
-                @click="endCall" 
-                class="p-3 rounded-full bg-red-600 text-white hover:bg-red-700 focus:outline-none transition-colors"
-              >
-                <PhoneOffIcon class="w-5 h-5" />
-              </button>
+            <div class="flex justify-between items-center py-3">
+              <span class="text-gray-400">Service:</span>
+              <span class="font-semibold text-white">{{ currentMeeting?.title }}</span>
             </div>
           </div>
         </div>
         
-        <!-- Bottom Toolbar -->
-        <div class="bg-white border-t border-gray-200 py-3 px-6 flex justify-between">
-          <div class="flex space-x-8">
-            <button class="flex flex-col items-center text-blue-600">
-              <VideoIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Record</span>
-            </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-700">
-              <Share2Icon class="w-5 h-5" />
-              <span class="text-xs mt-1">Share screen</span>
-            </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-700">
-              <MessageSquareIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Subtitles</span>
-            </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-700">
-              <LayoutIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">White board</span>
-            </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-700">
-              <FileTextIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Meeting plan</span>
-            </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-700">
-              <DumbbellIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Exercise</span>
-            </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-700">
-              <SlidersIcon class="w-5 h-5" />
-              <span class="text-xs mt-1">Slides</span>
-            </button>
+        <!-- Progress Bar - Tournament style -->
+        <div class="w-full max-w-lg mb-8">
+          <div class="flex justify-between text-sm text-gray-400 mb-3">
+            <span>Queue Progress</span>
+            <span class="text-orange-400 font-semibold">{{ getQueueProgress(currentMeeting) }}%</span>
           </div>
-          <button class="flex flex-col items-center text-gray-500 hover:text-gray-700">
-            <MoreVerticalIcon class="w-5 h-5" />
-            <span class="text-xs mt-1">More</span>
+          <div class="w-full bg-gray-700 rounded-full h-3 border border-gray-600">
+            <div 
+              class="bg-gradient-to-r from-orange-500 to-orange-600 h-3 rounded-full transition-all duration-1000 ease-out shadow-lg"
+              :style="{ width: getQueueProgress(currentMeeting) + '%' }"
+            ></div>
+          </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex gap-4">
+          <button 
+            @click="leaveWaitingRoom"
+            class="px-8 py-4 border border-gray-600 text-gray-300 rounded-xl hover:bg-gray-800 hover:border-gray-500 transition-all duration-300 font-medium"
+          >
+            Back to Sessions
+          </button>
+          <button 
+            @click="cancelAppointment"
+            class="px-8 py-4 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl hover:bg-red-500/30 hover:border-red-500/50 transition-all duration-300 font-medium"
+          >
+            Cancel Appointment
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Fallback for invalid waiting room state -->
+    <div v-else-if="currentView === 'waitingRoom' && !currentMeeting" class="h-screen bg-gray-900">
+      <div class="h-full flex flex-col items-center justify-center p-8">
+        <div class="text-center">
+          <div class="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/30">
+            <svg class="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+          </div>
+          <h1 class="text-2xl font-bold text-white mb-4">Session Not Found</h1>
+          <p class="text-gray-400 mb-8">The appointment session you're looking for is no longer available or has ended.</p>
+          <button 
+            @click="leaveWaitingRoom"
+            class="px-8 py-4 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-all duration-300 font-medium"
+          >
+            Return to Sessions
           </button>
         </div>
       </div>
@@ -508,6 +398,15 @@ const sessionNotes = ref('')
 const currentMeeting = ref(null)
 const callStartTime = ref(null)
 const currentTime = ref(0)
+
+// Queue and notification state
+const isInQueue = ref(false)
+const queuePosition = ref(0)
+const estimatedWaitTime = ref('5-10 min')
+const queueProgress = ref(25)
+const queueRefreshInterval = ref(null)
+const showNotification = ref(false)
+const notificationMessage = ref('')
 
 // WebRTC variables
 let localStream = null
@@ -621,6 +520,25 @@ const callDuration = computed(() => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 });
 
+// Queue-related computed properties
+const getQueuePosition = (meeting) => {
+  if (!meeting) return '--'
+  return queuePosition.value === 1 ? 'Next' : `${queuePosition.value}`
+}
+
+const getEstimatedWaitTime = (meeting) => {
+  if (!meeting) return '--'
+  if (queuePosition.value === 1) return 'Ready now'
+  if (queuePosition.value <= 3) return '5-10 min'
+  if (queuePosition.value <= 5) return '10-15 min'
+  return '15+ min'
+}
+
+const getQueueProgress = (meeting) => {
+  if (!meeting) return 0
+  return queueProgress.value
+}
+
 // Home view state
 const currentSlide = ref(0)
 let lottieInstances = []
@@ -642,6 +560,86 @@ const goToSlide = (index) => {
 const joinMeeting = (meeting) => {
   console.log('Joining meeting:', meeting)
   currentMeeting.value = meeting
+  
+  // Instead of joining directly, enter waiting room
+  enterWaitingRoom(meeting)
+}
+
+const enterWaitingRoom = (meeting) => {
+  // Safety check: ensure we have a valid meeting
+  if (!meeting || !meeting.id) {
+    console.error('Invalid meeting data provided to enterWaitingRoom')
+    return
+  }
+  
+  console.log('Entering waiting room for meeting:', meeting)
+  currentMeeting.value = meeting
+  isInQueue.value = true
+  currentView.value = 'waitingRoom'
+  
+  // Start queue monitoring
+  startQueueMonitoring(meeting)
+  
+  // Show notification
+  showQueueNotification(meeting)
+}
+
+const startQueueMonitoring = (meeting) => {
+  // Simulate queue position updates
+  queuePosition.value = Math.floor(Math.random() * 5) + 1
+  queueProgress.value = Math.floor(Math.random() * 40) + 10
+  
+  // Set up auto-refresh interval
+  queueRefreshInterval.value = setInterval(() => {
+    updateQueueStatus(meeting)
+  }, 30000) // 30 seconds
+  
+  // Initial update
+  updateQueueStatus(meeting)
+}
+
+const updateQueueStatus = (meeting) => {
+  // Simulate queue progress
+  if (queueProgress.value < 100) {
+    queueProgress.value += Math.floor(Math.random() * 10) + 5
+    if (queueProgress.value > 100) queueProgress.value = 100
+  }
+  
+  // Simulate position changes
+  if (queuePosition.value > 1) {
+    queuePosition.value -= Math.floor(Math.random() * 2)
+    if (queuePosition.value < 1) queuePosition.value = 1
+  }
+  
+  // Check if it's user's turn
+  if (queuePosition.value === 1 && queueProgress.value >= 90) {
+    // It's user's turn!
+    notifyTurnToJoin(meeting)
+  }
+}
+
+const notifyTurnToJoin = (meeting) => {
+  // Stop queue monitoring
+  if (queueRefreshInterval.value) {
+    clearInterval(queueRefreshInterval.value)
+    queueRefreshInterval.value = null
+  }
+  
+  // Show notification
+  showNotification.value = true
+  notificationMessage.value = `It's your turn! Dr. ${meeting.doctor} is ready to see you.`
+  
+  // Auto-join after 10 seconds if user doesn't respond
+  setTimeout(() => {
+    if (showNotification.value) {
+      autoJoinCall(meeting)
+    }
+  }, 10000)
+}
+
+const autoJoinCall = (meeting) => {
+  showNotification.value = false
+  isInQueue.value = false
   currentView.value = 'videoCall'
   
   // Initialize WebRTC after view change
@@ -650,12 +648,144 @@ const joinMeeting = (meeting) => {
   }, 0)
 }
 
+const showQueueNotification = (meeting) => {
+  showNotification.value = true
+  notificationMessage.value = `You've been added to the queue for your appointment with Dr. ${meeting.doctor}`
+  
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    showNotification.value = false
+  }, 5000)
+}
+
+const refreshQueueStatus = () => {
+  if (currentMeeting.value) {
+    updateQueueStatus(currentMeeting.value)
+  }
+}
+
+const manualJoinCall = () => {
+  showNotification.value = false
+  isInQueue.value = false
+  
+  if (currentMeeting.value) {
+    currentView.value = 'videoCall'
+    
+    // Initialize WebRTC after view change
+    setTimeout(() => {
+      initializeWebRTC()
+    }, 0)
+  }
+}
+
 const viewRecording = (meeting) => {
   console.log('Viewing recording:', meeting)
 }
 
 const scheduleMeeting = () => {
   console.log('Scheduling a new meeting')
+}
+
+const cancelAppointment = () => {
+  console.log('Cancelling appointment')
+  
+  // Clean up meeting state
+  if (currentMeeting.value) {
+    console.log('Cleaning up meeting state after cancellation')
+    currentMeeting.value = null
+  }
+  
+  // Stop queue monitoring
+  if (queueRefreshInterval.value) {
+    clearInterval(queueRefreshInterval.value)
+    queueRefreshInterval.value = null
+    console.log('Queue monitoring stopped after cancellation')
+  }
+  
+  // Reset queue state
+  isInQueue.value = false
+  queuePosition.value = 0
+  queueProgress.value = 0
+  estimatedWaitTime.value = '5-10 min'
+  
+  // Hide any notifications
+  showNotification.value = false
+  notificationMessage.value = ''
+  
+  // Navigate back to sessions view
+  currentView.value = 'sessions'
+  
+  console.log('Appointment cancelled and all state cleaned up')
+}
+
+// Function to leave waiting room and clean up state
+const leaveWaitingRoom = () => {
+  console.log('Leaving waiting room')
+  
+  // Clean up meeting state
+  if (currentMeeting.value) {
+    console.log('Cleaning up meeting state after leaving waiting room')
+    currentMeeting.value = null
+  }
+  
+  // Stop queue monitoring
+  if (queueRefreshInterval.value) {
+    clearInterval(queueRefreshInterval.value)
+    queueRefreshInterval.value = null
+    console.log('Queue monitoring stopped after leaving waiting room')
+  }
+  
+  // Reset queue state
+  isInQueue.value = false
+  queuePosition.value = 0
+  queueProgress.value = 0
+  estimatedWaitTime.value = '5-10 min'
+  
+  // Hide any notifications
+  showNotification.value = false
+  notificationMessage.value = ''
+  
+  // Navigate back to sessions view
+  currentView.value = 'sessions'
+  
+  console.log('Left waiting room and all state cleaned up')
+}
+
+// Comprehensive cleanup function for all states
+const cleanupAllStates = () => {
+  console.log('Performing comprehensive state cleanup')
+  
+  // Clean up meeting state
+  if (currentMeeting.value) {
+    currentMeeting.value = null
+  }
+  
+  // Stop queue monitoring
+  if (queueRefreshInterval.value) {
+    clearInterval(queueRefreshInterval.value)
+    queueRefreshInterval.value = null
+  }
+  
+  // Reset all queue states
+  isInQueue.value = false
+  queuePosition.value = 0
+  queueProgress.value = 0
+  estimatedWaitTime.value = '5-10 min'
+  
+  // Hide notifications
+  showNotification.value = false
+  notificationMessage.value = ''
+  
+  // Reset call states
+  isRemoteConnected.value = false
+  callStartTime.value = null
+  currentTime.value = 0
+  sessionNotes.value = ''
+  isMuted.value = false
+  isVideoOff.value = false
+  isScreenSharing.value = false
+  
+  console.log('All states cleaned up successfully')
 }
 
 // WebRTC methods
@@ -915,8 +1045,33 @@ const endCall = () => {
   isVideoOff.value = false
   isScreenSharing.value = false
   
+  // CRITICAL: Clean up meeting and queue state
+  if (currentMeeting.value) {
+    console.log('Cleaning up meeting state after call ended')
+    currentMeeting.value = null
+  }
+  
+  // Stop queue monitoring
+  if (queueRefreshInterval.value) {
+    clearInterval(queueRefreshInterval.value)
+    queueRefreshInterval.value = null
+    console.log('Queue monitoring stopped')
+  }
+  
+  // Reset queue state
+  isInQueue.value = false
+  queuePosition.value = 0
+  queueProgress.value = 0
+  estimatedWaitTime.value = '5-10 min'
+  
+  // Hide any notifications
+  showNotification.value = false
+  notificationMessage.value = ''
+  
   // Navigate back to sessions view
   currentView.value = 'sessions'
+  
+  console.log('Call ended and all state cleaned up')
 }
 
 const initializeLottieAnimations = () => {
@@ -975,6 +1130,9 @@ onUnmounted(() => {
   if (peerConnection) {
     peerConnection.close()
   }
+  
+  // Comprehensive cleanup of all states
+  cleanupAllStates()
 })
 
 watch(currentSlide, (newValue, oldValue) => {
@@ -996,6 +1154,12 @@ watch(currentView, (newValue) => {
         lottieInstances[currentSlide.value].play()
       }
     }, 0)
+  }
+  
+  // Safety check: if waiting room is accessed without a meeting, redirect to sessions
+  if (newValue === 'waitingRoom' && !currentMeeting.value) {
+    console.warn('Waiting room accessed without valid meeting, redirecting to sessions')
+    currentView.value = 'sessions'
   }
 })
 </script>
@@ -1020,5 +1184,62 @@ watch(currentView, (newValue) => {
 .slide-leave-from {
   opacity: 1;
   transform: translateX(0);
+}
+
+/* Tournament-style custom colors */
+.bg-gray-750 {
+  background-color: #374151;
+}
+
+/* Enhanced hover effects */
+.hover\:bg-gray-750:hover {
+  background-color: #374151;
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Enhanced focus states */
+button:focus,
+input:focus {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
+/* Tournament-style glow effects */
+.shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Animated borders */
+.border-orange-500\/30 {
+  border-color: rgba(249, 115, 22, 0.3);
+}
+
+.border-orange-500\/50 {
+  border-color: rgba(249, 115, 22, 0.5);
 }
 </style>

@@ -15,7 +15,9 @@
     <button @click="nextMonth" class="bg-white/20 hover:bg-white/30 p-1.5 rounded-full transition-colors">
       <ChevronRightIcon class="h-4 w-4" />
     </button>
-        <button @click="openLargeCalendar" class="ml-2 px-3 py-1.5 text-xs bg-white/20 hover:bg-white/30 rounded-full transition-colors">View Large</button>
+        <button @click="openLargeCalendar" class="ml-2 p-1.5 bg-white/20 hover:bg-white/30 rounded-full transition-colors group">
+          <MaximizeIcon class="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+        </button>
   </div>
 </div>
 </div>
@@ -42,7 +44,7 @@
     {{ date }}
     <!-- Appointment indicator dots -->
     <div v-if="hasAppointment(date)" class="absolute -bottom-1 flex space-x-0.5 justify-center">
-      <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+      <div class="w-1.5 h-1.5 rounded-full bg-blue-500 appointment-indicator"></div>
     </div>
   </div>
 </div>
@@ -106,8 +108,24 @@
   </div>
 </div>
   <!-- Large calendar modal -->
-  <div v-if="showLarge" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" @click="closeLargeCalendar">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden" @click.stop>
+  <Transition
+    enter-active-class="transition-all duration-300 ease-out"
+    enter-from-class="opacity-0 scale-95"
+    enter-to-class="opacity-100 scale-100"
+    leave-active-class="transition-all duration-200 ease-in"
+    leave-from-class="opacity-100 scale-100"
+    leave-to-class="opacity-0 scale-95"
+  >
+    <div v-if="showLarge" class="fixed inset-0 z-50 flex items-center justify-center" @click="closeLargeCalendar">
+      <!-- Backdrop with animation -->
+      <div class="absolute inset-0 bg-black/40 transition-opacity duration-300"></div>
+      
+      <!-- Modal content with enhanced animations -->
+      <div 
+        class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-out" 
+        @click.stop
+        :class="showLarge ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-4'"
+      >
       <!-- Header -->
       <div class="p-4 border-b flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
         <div class="text-lg font-semibold">{{ largeMonthLabel }}</div>
@@ -127,8 +145,14 @@
         <div class="p-2 text-center" v-for="d in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="d">{{ d }}</div>
       </div>
       <!-- Grid -->
-      <div class="grid grid-cols-7">
-        <div v-for="(cell, idx) in buildLargeCalendarDays" :key="idx" class="min-h-[110px] border-r border-b last:border-r-0 p-2" :class="cell.isCurrentMonth ? 'bg-white' : 'bg-slate-50'">
+      <div class="grid grid-cols-7 calendar-grid">
+        <div 
+          v-for="(cell, idx) in buildLargeCalendarDays" 
+          :key="idx" 
+          class="min-h-[110px] border-r border-b last:border-r-0 p-2 transition-all duration-200 hover:bg-gray-50 calendar-cell" 
+          :class="cell.isCurrentMonth ? 'bg-white' : 'bg-slate-50'"
+          :style="{ animationDelay: `${(idx % 7) * 50}ms` }"
+        >
           <div class="flex items-center justify-between mb-1">
             <span class="text-xs" :class="cell.isCurrentMonth ? 'text-slate-700' : 'text-slate-400'">{{ cell.date.getDate() }}</span>
           </div>
@@ -142,6 +166,7 @@
       </div>
     </div>
   </div>
+    </Transition>
 </div>
 </div>
 </template>
@@ -152,7 +177,8 @@ import {
 Clock as ClockIcon, 
 Calendar as CalendarIcon, 
 ChevronLeft as ChevronLeftIcon,
-ChevronRight as ChevronRightIcon
+ChevronRight as ChevronRightIcon,
+Maximize2 as MaximizeIcon
 } from 'lucide-vue-next';
 import { useAppointmentStore } from '@/stores/modules/appointmentStore';
 import { useAuthStore } from '@/stores/modules/authStore';
@@ -394,9 +420,9 @@ await serviceCategoryStore.fetchServices();
 categories.value = serviceCategoryStore.categories;
 services.value = serviceCategoryStore.services;
 
-console.log('Fetched services and categories:', services.value.length, categories.value.length);
+        
 } catch (error) {
-console.error('Error fetching services and categories:', error);
+      // Error fetching services and categories
 }
 };
 
@@ -486,9 +512,9 @@ return {
 };
 });
 
-console.log(`Loaded ${approvedAppointments.value.length} approved appointments`);
+        
 } catch (error) {
-console.error('Error fetching approved appointments:', error);
+      // Error fetching approved appointments
 } finally {
 isLoading.value = false;
 }
@@ -655,3 +681,100 @@ const largeToday = () => { largeCurrentDate.value = new Date(); };
 const openLargeCalendar = () => { showLarge.value = true; };
 const closeLargeCalendar = () => { showLarge.value = false; };
 </script>
+
+<style scoped>
+/* Calendar cell animations */
+.calendar-cell-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.calendar-cell-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.calendar-cell-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Modal backdrop animation */
+.modal-backdrop-enter-active,
+.modal-backdrop-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-backdrop-enter-from,
+.modal-backdrop-leave-to {
+  opacity: 0;
+}
+
+/* Modal content animation */
+.modal-content-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-content-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(20px);
+}
+
+.modal-content-enter-to {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* Hover effects for calendar cells */
+.calendar-cell {
+  transition: all 0.2s ease;
+}
+
+.calendar-cell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition: all 0.2s ease;
+}
+
+/* Enhanced button hover effects */
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+/* Calendar grid animation */
+.calendar-grid {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Appointment indicator animation */
+.appointment-indicator {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+</style>

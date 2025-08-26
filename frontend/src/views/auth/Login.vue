@@ -102,11 +102,11 @@
               {{ googleLoginLoading ? 'Signing in...' : 'Login with Google' }}
             </button>
 
-            <p class="text-center text-sm text-gray-600 mt-4">
-              Don't have an account? 
-              <router-link to="/auth/register" class="text-blue-600 hover:text-blue-700">Sign up</router-link>
-            </p>
-          </form>
+                         <p class="text-center text-sm text-gray-600 mt-4">
+               Don't have an account? 
+               <router-link to="/auth/register" class="text-blue-600 hover:text-blue-700">Sign up</router-link>
+             </p>
+           </form>
           
           <div v-if="error" class="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded text-sm max-w-md">
             {{ error }}
@@ -156,6 +156,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Phone Verification Prompt for Google Users - TEMPORARILY DISABLED -->
+  <!-- Phone verification is now skipped for Google users -->
 </template>
 
 <script setup>
@@ -167,6 +170,7 @@ import { useAuthStore } from '@/stores/modules/authStore'
 import emailService from '@/services/emailService'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '@shared/firebase'
+// PhoneVerificationPrompt import removed - phone verification disabled
 
 const router = useRouter()
 const route = useRoute()
@@ -177,6 +181,7 @@ const emailLoginLoading = ref(false)
 const googleLoginLoading = ref(false)
 const error = ref('')
 const lottieRef = ref(null)
+// showPhoneVerification removed - phone verification disabled
 
 const lottieOptions = {
   rendererSettings: {
@@ -329,7 +334,7 @@ const handleSubmit = async () => {
     } else if (result.errorCode === 'auth/network-request-failed') {
       error.value = 'Network error. Please check your internet connection and try again.'
     } else {
-      error.value = authStore.error || 'Failed to login. Please try again.'
+      error.value = 'Failed to login. Please try again.'
     }
   } catch (err) {
     console.error('Login error:', err)
@@ -356,6 +361,13 @@ const loginWithGoogle = async () => {
     
     // Check if user is authenticated after Google sign-in
     if (success && authStore.isAuthenticated) {
+      console.log('Google sign-in successful, proceeding to dashboard...')
+      
+      // TEMPORARILY DISABLED: Phone verification for Google users
+      // Phone verification is now skipped for Google users
+      
+      console.log('Phone verification disabled, proceeding to dashboard...')
+      
       // For existing Google users, check if they need to configure notifications
       const userId = authStore.currentUser.userId
       const userRef = doc(db, "users", userId)
@@ -378,11 +390,11 @@ const loginWithGoogle = async () => {
       
       redirectToDashboard(authStore.userRole)
     } else {
-      error.value = authStore.error || 'Failed to login with Google. Please try again.'
+      error.value = 'Failed to login with Google. Please try again.'
     }
   } catch (err) {
     console.error('Google sign-in error:', err)
-    error.value = err.message || 'Failed to login with Google. Please try again.'
+    error.value = 'Failed to login with Google. Please try again.'
   } finally {
     googleLoginLoading.value = false
   }
@@ -407,6 +419,10 @@ const redirectToDashboard = (userRole) => {
 const goToHome = () => {
   router.push('/')
 }
+
+// handlePhoneVerified function removed - phone verification disabled
+
+
 </script>
 
 <style scoped>

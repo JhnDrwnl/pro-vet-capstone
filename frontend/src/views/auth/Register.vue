@@ -244,6 +244,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Phone Verification Prompt for Google Users - TEMPORARILY DISABLED -->
+  <!-- Phone verification is now skipped for Google users -->
 </template>
 
 <script setup>
@@ -255,6 +258,7 @@ import Policies from '@/components/common/Policies.vue';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/firebase';
+// PhoneVerificationPrompt import removed - phone verification disabled
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -267,6 +271,7 @@ const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 const showPolicyModal = ref(false);
 const currentSlide = ref(0);
+// showPhoneVerification removed - phone verification disabled
 
 const form = reactive({
   firstName: '',
@@ -487,7 +492,12 @@ const registerWithGoogle = async () => {
       }
     });
     
-    console.log('🎯 Redirecting to dashboard...');
+    console.log('Google registration successful, proceeding to dashboard...')
+    
+    // TEMPORARILY DISABLED: Phone verification for Google users
+    // Phone verification is now skipped for Google users
+    
+    console.log('Phone verification disabled, redirecting to dashboard...');
     router.push('/user/dashboard');
   } catch (err) {
     console.error('❌ Google sign-in failed:', err);
@@ -590,6 +600,22 @@ const requestNotificationPermission = async () => {
 const goToHome = () => {
   router.push('/');
 };
+
+// handlePhoneVerified function removed - phone verification disabled
+
+const checkPhoneVerificationNeeded = () => {
+  // TEMPORARILY DISABLED: Phone verification for Google users
+  // Phone verification is now skipped for Google users
+  console.log('Phone verification disabled, skipping verification check')
+  return false
+  
+  // Check if the current user needs phone verification
+  if (authStore.needsPhoneVerification()) {
+    // showPhoneVerification.value = true // This line is removed
+    return true
+  }
+  return false
+}
 
 // Lifecycle hooks
 let autoplayInterval;

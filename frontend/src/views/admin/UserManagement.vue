@@ -588,7 +588,7 @@
   } from 'lucide-vue-next'
   
   // Define your API URL here
-  const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000'
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
   
   const authStore = useAuthStore()
   const users = ref([])
@@ -677,7 +677,6 @@
     
       // Get user sign-in data from Firebase Auth
       const userSignInData = await fetchUserSignInData();
-      console.log('User sign-in data:', userSignInData);
     
       users.value = userSnapshot.docs
         .map(doc => {
@@ -685,16 +684,8 @@
           const userId = doc.id;
           const uid = userData.uid; // This is the Firebase UID stored in Firestore
           
-          console.log(`Processing user ${userData.firstName} ${userData.lastName}, Firestore ID: ${userId}, Firebase UID: ${uid}`);
-          
           // Find sign-in data for this user if available
           const signInInfo = userSignInData.find(u => u.uid === uid);
-          
-          if (signInInfo) {
-            console.log(`Found sign-in data for ${userData.firstName} ${userData.lastName}:`, signInInfo);
-          } else {
-            console.log(`No sign-in data found for ${userData.firstName} ${userData.lastName} with UID: ${uid}`);
-          }
           
           return {
             userId: userId,
@@ -713,14 +704,7 @@
           role: user.role === 'user' ? 'Pet Owner' : (user.role === 'veterinary' ? 'Veterinarian' : user.role)
         }))
     
-      // Log statuses to debug
-      console.log('User statuses:', users.value.map(u => ({ 
-        name: `${u.firstName} ${u.lastName}`, 
-        status: u.status,
-        uid: u.uid,
-        lastSignInTime: u.lastSignInTime ? formatDate(u.lastSignInTime) : 'Never',
-        providers: u.providerData?.map(p => p.providerId) || []
-      })))
+      // User statuses processed
     } catch (err) {
       console.error('Error fetching users:', err)
       error.value = 'Failed to fetch users. Please try again.'
@@ -732,11 +716,9 @@
   // Fetch user sign-in data from Firebase Auth via API
   const fetchUserSignInData = async () => {
     try {
-      console.log('Fetching user sign-in data from API:', `${API_URL}/api/auth/users-sign-in-data`);
       const response = await axios.get(`${API_URL}/api/auth/users-sign-in-data`);
       
       if (response.data && response.data.success) {
-        console.log('User sign-in data received:', response.data.users);
         return response.data.users || [];
       } else {
         console.error('API returned unsuccessful response:', response.data);
@@ -1246,18 +1228,12 @@
     try {
       loading.value = true;
     
-      console.log('Form values:', {
-        firstName: userForm.value.firstName,
-        email: userForm.value.email,
-        password: userForm.value.password,
-        role: userForm.value.role
-      });
+      // Form values processed
     
       const roleToStore = userForm.value.role === 'Pet Owner' ? 'user' : 'veterinary';
     
       // Validation
       if (!editingUser.value && (!userForm.value.firstName || !userForm.value.email || !userForm.value.password)) {
-        console.log('Validation failed')
         showStatus('Please fill in all required fields', 'error')
         loading.value = false
         return
@@ -1294,11 +1270,9 @@
             if (response.data && response.data.success && response.data.uid) {
               // Get the Firebase UID from the response
               const firebaseUid = response.data.uid;
-              console.log('Firebase UID from API:', firebaseUid);
               
               // Generate the userId using the authStore pattern
               const userId = authStore.generateUserId(firebaseUid);
-              console.log('Generated userId for Firestore:', userId);
               
               // Create user document in Firestore with Pending status
               await setDoc(doc(db, 'users', userId), {
@@ -1348,11 +1322,9 @@
             if (response.data && response.data.success && response.data.uid) {
               // Get the Firebase UID from the response
               const firebaseUid = response.data.uid;
-              console.log('Firebase UID from API:', firebaseUid);
               
               // Generate the userId using the authStore pattern
               const userId = authStore.generateUserId(firebaseUid);
-              console.log('Generated userId for Firestore:', userId);
               
               // Create user document in Firestore with Active status
               await setDoc(doc(db, 'users', userId), {
@@ -1408,9 +1380,6 @@
         // If no direct uid property, try to extract it from userId
         if (!firebaseUid) {
           // The error suggests the userId format might be different
-          // Let's log it to see what we're working with
-          console.log('User ID format:', userId)
-          
           // Try different extraction methods based on your actual userId format
           if (userId.startsWith('user_')) {
             firebaseUid = userId.replace('user_', '')
@@ -1420,7 +1389,7 @@
           }
         }
         
-        console.log('Using Firebase UID:', firebaseUid)
+        // Using Firebase UID for status update
         
         try {
           // Call the API to update Firebase Auth status

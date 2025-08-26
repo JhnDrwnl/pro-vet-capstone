@@ -1,4 +1,9 @@
 <!-- components/common/ReminderTester.vue -->
+<!-- 
+  REMINDER TESTER - HIDDEN FOR PRODUCTION
+  This component is hidden but the code is preserved for development/testing purposes.
+  To re-enable: uncomment the toggle button below and set showTester default to true.
+-->
 <template>
   <div v-if="showTester" class="fixed bottom-4 right-4 z-50">
     <div class="bg-blue-600 text-white p-4 rounded-lg shadow-lg max-w-sm">
@@ -69,7 +74,8 @@
     </div>
   </div>
   
-  <!-- Toggle button -->
+  <!-- Toggle button - Hidden for production -->
+  <!-- 
   <button 
     @click="showTester = !showTester"
     class="fixed bottom-4 right-4 z-40 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
@@ -77,6 +83,7 @@
   >
     🔔
   </button>
+  -->
 </template>
 
 <script setup>

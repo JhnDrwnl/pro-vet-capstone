@@ -1,6 +1,7 @@
 // Import your telehealth component
 import TelehealthView from "../views/user/Telehealth.vue"
 import VetTelehealth from "../views/vet/VetTelehealth.vue"
+import VetVideoCall from "../views/vet/VetVideoCall.vue"
 // Define telehealth routes
 export const telehealthRoutes = [
   {
@@ -10,6 +11,16 @@ export const telehealthRoutes = [
     meta: {
       requiresAuth: true,
       title: "Telehealth",
+    },
+  },
+  {
+    path: "/telehealth/vet/call",
+    name: "VetVideoCall",
+    component: VetVideoCall,
+    meta: {
+      requiresAuth: true,
+      role: "veterinary",
+      title: "Vet Video Call",
     },
   },
   {

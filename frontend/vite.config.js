@@ -5,9 +5,8 @@ import Icons from 'unplugin-icons/vite'
 import path from 'path'
 
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
-  const env = loadEnv(mode, process.cwd(), '')
+  // Load only VITE_ prefixed environment variables for security
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
   
   // Create a properly formatted env object with string values
   const envWithStringValues = {}
@@ -26,7 +25,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
-        '@shared': path.resolve(__dirname, '../shared'),
+        '@shared': path.resolve(__dirname, './src'),
       },
     },
     optimizeDeps: {
@@ -57,12 +56,12 @@ export default defineConfig(({ mode }) => {
     // Vite options tailored for Vercel deployments
     build: {
       rollupOptions: {
-        external: ['@shared/firebase'],
+        // No external dependencies needed
       },
     },
     define: {
-      // Support both process.env and import.meta.env
-      'process.env': env,
+      // Only expose specific environment variables for security
+      'process.env.NODE_ENV': JSON.stringify(mode),
       // Ensure VITE_ prefixed variables are properly exposed
       ...envWithStringValues
     }

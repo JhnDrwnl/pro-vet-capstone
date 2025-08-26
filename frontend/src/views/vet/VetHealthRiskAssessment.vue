@@ -659,7 +659,7 @@ export default {
     
     // Listen for connection changes
     this.unsubscribeConnection = WebSocketService.onConnectionChange((status) => {
-      console.log('WebSocket connection status changed:', status);
+      
       this.connectionStatus = status;
     });
     
@@ -835,7 +835,7 @@ export default {
         species: this.species
       };
       
-      console.log('Sending prediction request:', formattedData);
+      
       
       // Set up message listener
       if (this.messageListener) {

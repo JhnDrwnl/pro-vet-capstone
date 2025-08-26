@@ -18,7 +18,7 @@ import AdminAccount from '@/views/admin/adminsettings/AccountSettings.vue';
 import Responses from '@/views/admin/chatbot/Responses.vue';
 import ChatLogs from '@/views/admin/chatbot/ChatLogs.vue';
 import OfficeHours from '@/views/admin/officesettings/OfficeHours.vue';
-import OfficeContact from '@/views/admin/officesettings/Officecontact.vue';
+import OfficeContact from '@/views/admin/officesettings/OfficeContact.vue';
 
 export default [
   {

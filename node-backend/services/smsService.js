@@ -7,7 +7,8 @@ class SemaphoreSMSService {
     // Semaphore API configuration
     this.apiKey = process.env.SEMAPHORE_API_KEY;
     this.baseURL = 'https://api.semaphore.co/api/v4';
-    this.senderName = process.env.SEMAPHORE_SENDER_NAME || 'InnoVet';
+    // Use default approved sender name until custom name is approved
+    this.senderName = process.env.SEMAPHORE_SENDER_NAME || 'SEMAPHORE';
     
     if (!this.apiKey) {
       console.warn('SEMAPHORE_API_KEY not found in environment variables');
@@ -53,8 +54,7 @@ Your verification code is: ${otp}
 🔒 Do not share this code with anyone
 
 ---
-This is an automated message from InnoVet
-Reply with "STOP" to unsubscribe.`;
+This is an automated message from InnoVet`;
 
       const payload = {
         apikey: this.apiKey,
@@ -95,6 +95,9 @@ Reply with "STOP" to unsubscribe.`;
       }
     } catch (error) {
       console.error('Semaphore SMS sending error:', error);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error message:', error.message);
       
       // Handle specific Semaphore errors
       if (error.response?.data) {
@@ -107,6 +110,8 @@ Reply with "STOP" to unsubscribe.`;
             throw new Error('Invalid phone number format');
           } else if (semaphoreError.error.includes('rate limit') || semaphoreError.error.includes('too many')) {
             throw new Error('Rate limit exceeded. Please wait before trying again.');
+          } else if (semaphoreError.error.includes('sender') || semaphoreError.error.includes('name')) {
+            throw new Error('Sender name not approved. Please contact Semaphore support.');
           } else {
             throw new Error(`Semaphore error: ${semaphoreError.error}`);
           }
@@ -116,6 +121,14 @@ Reply with "STOP" to unsubscribe.`;
       if (error.code === 'ECONNABORTED') {
         throw new Error('Request timeout. Please try again.');
       }
+      
+      // Log the full error for debugging
+      console.error('Full error details:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       
       throw new Error('Failed to send SMS. Please try again later.');
     }
@@ -262,3 +275,5 @@ Reply with "STOP" to unsubscribe.`;
 }
 
 module.exports = new SemaphoreSMSService();
+
+

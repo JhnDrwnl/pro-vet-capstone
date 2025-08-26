@@ -162,15 +162,7 @@
                     placeholder="Enter phone number"
                   >
                 </div>
-                <div>
-                  <label class="block text-sm text-gray-600 mb-2">WhatsApp</label>
-                  <input
-                    v-model="form.whatsapp"
-                    type="tel"
-                    class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
-                    placeholder="Enter WhatsApp number"
-                  >
-                </div>
+
                 <div>
                   <label class="block text-sm text-gray-600 mb-2">Alternative Email</label>
                   <input
@@ -539,7 +531,7 @@ const form = ref({
   gender: '',
   email: props.profile.email || '',
   phone: props.profile.phone || '',
-  whatsapp: '',
+
   alternativeEmail: '',
   streetAddress: '',
   city: '',
@@ -569,6 +561,6 @@ const files = [
 
 const handleSubmit = () => {
   // Handle form submission
-  console.log('Form submitted:', form.value)
+        
 }
 </script>

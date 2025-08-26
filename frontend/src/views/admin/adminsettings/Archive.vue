@@ -462,7 +462,7 @@ const resourceCategoryStore = useResourceCategoryStore();
 const resourceStore = useResourceStore();
 
 // Define your API URL here
-const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 // Computed property to check if all items are selected
 const isAllSelected = computed(() => {
@@ -621,25 +621,19 @@ const showStatus = (message, type = 'success') => {
 // Check for and delete expired items
 const checkAndDeleteExpiredItems = async () => {
   if (!autoDeleteEnabled.value) {
-    console.log('Auto-delete is disabled');
     return;
   }
   
-  console.log('Checking for expired items...');
   const expiredItems = archivedItems.value.filter(item => isItemExpired(item));
   
   if (expiredItems.length === 0) {
-    console.log('No expired items found');
     return;
   }
   
-  console.log(`Found ${expiredItems.length} expired items to auto-delete`);
   autoDeletedCount.value = 0;
   
   for (const item of expiredItems) {
     try {
-      console.log(`Auto-deleting expired item: ${getItemName(item)} (ID: ${item.id})`);
-      
       // Use the standard delete function for all item types
       const success = await archivesStore.permanentlyDeleteArchivedItem(item.id);
       
@@ -655,7 +649,6 @@ const checkAndDeleteExpiredItems = async () => {
   
   // If any items were deleted, refresh the data
   if (autoDeletedCount.value > 0) {
-    console.log(`Successfully auto-deleted ${autoDeletedCount.value} expired items`);
     // Show notification or update UI to inform user
     showStatus(`${autoDeletedCount.value} expired items were automatically deleted`, 'success');
     
@@ -763,9 +756,7 @@ const fetchArchivedItems = async () => {
   error.value = null;
   
   try {
-    console.log('Fetching archived items...');
     const items = await archivesStore.fetchArchivedItems();
-    console.log('Fetched items:', items);
     archivedItems.value = items;
     
     // Update the categories with real data
@@ -907,12 +898,10 @@ const categories = ref([
   }
 ]);
 
-// Update categories with real data
-const updateCategoriesWithRealData = () => {
-  console.log('Updating categories with real data...');
-  
-  // Find the Users category
-  const usersCategory = categories.value.find(cat => cat.name === 'Users');
+  // Update categories with real data
+  const updateCategoriesWithRealData = () => {
+    // Find the Users category
+    const usersCategory = categories.value.find(cat => cat.name === 'Users');
   if (usersCategory) {
     // Filter archived items for users
     const userItems = archivedItems.value.filter(item => item.itemType === 'user');
@@ -1143,11 +1132,9 @@ const performItemRestore = async (item) => {
   error.value = null;
   
   try {
-    console.log('Attempting to restore item:', item);
-    
     // Make sure we have the full item data
     if (!item.itemType || !item.originalId) {
-      console.log('Item missing required fields, fetching full data...');
+      // Item missing required fields, fetching full data
       const fullItem = await archivesStore.getArchivedItemById(item.id);
       if (!fullItem) {
         throw new Error('Could not retrieve full item data');
@@ -1231,7 +1218,6 @@ const confirmResourceRestore = async () => {
   
   try {
     // First restore the category
-    console.log('Restoring category first:', archivedCategoryInfo.value);
     const categorySuccess = await restoreResourceCategory(archivedCategoryInfo.value);
     
     if (!categorySuccess) {
@@ -1239,7 +1225,6 @@ const confirmResourceRestore = async () => {
     }
     
     // Then restore the resource
-    console.log('Restoring resource:', resourceToRestore.value);
     const resourceSuccess = await restoreResource(resourceToRestore.value);
     
     if (!resourceSuccess) {
@@ -1305,7 +1290,7 @@ const restoreUser = async (item) => {
       
       // Create user document in Firestore with ALL original data
       await setDoc(doc(db, 'users', userId), userData);
-      console.log(`User ${item.uid} restored to users collection with ALL profile data`);
+      // User restored to users collection with ALL profile data
       
       // The server already deletes the archived item, so we don't need to do it again
       return true;
@@ -1580,8 +1565,6 @@ const permanentlyDeleteItem = async (item) => {
   error.value = null;
   
   try {
-    console.log('Permanently deleting item:', item);
-    
     // Use the standard delete function for all item types
     const success = await archivesStore.permanentlyDeleteArchivedItem(item.id);
     
@@ -1678,7 +1661,6 @@ watch([autoDeleteEnabled, autoDeleteDays], () => {
 
 // Fetch data on mount
 onMounted(async () => {
-  console.log('Component mounted, fetching archived items...');
   await fetchArchivedItems();
   
   // After fetching items, check for and delete expired items

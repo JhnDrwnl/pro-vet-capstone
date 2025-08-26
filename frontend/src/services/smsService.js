@@ -1,10 +1,13 @@
 // src/services/smsService.js
 import axios from 'axios'
 
+// Use the main API URL for SMS services (Node.js backend)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
 class SMSService {
   constructor() {
     // Semaphore SMS service configuration
-    this.baseURL = '/api/sms' // Backend SMS API endpoint
+    this.baseURL = `${API_URL}/sms` // Backend SMS API endpoint
   }
 
   // Generate a 6-digit OTP code
@@ -42,8 +45,7 @@ Your verification code is: *${otp}*
 🔒 Do not share this code with anyone
 
 ---
-*This is an automated message from InnoVet*
-Reply with "STOP" to unsubscribe.`
+*This is an automated message from InnoVet*`
       
       const payload = {
         phoneNumber: formattedPhone,
@@ -76,7 +78,7 @@ Reply with "STOP" to unsubscribe.`
         const semaphoreError = error.response.data.error
         
         if (semaphoreError.includes('insufficient') || semaphoreError.includes('balance')) {
-          throw new Error('SMS service temporarily unavailable due to insufficient credits. Please try WhatsApp instead.')
+          throw new Error('SMS service temporarily unavailable due to insufficient credits. Please try again later.')
         } else if (semaphoreError.includes('invalid') || semaphoreError.includes('number')) {
           throw new Error('Invalid phone number format. Please check your number and try again.')
         } else if (semaphoreError.includes('rate limit') || semaphoreError.includes('too many')) {
@@ -86,7 +88,7 @@ Reply with "STOP" to unsubscribe.`
         }
       }
       
-      throw new Error('Failed to send SMS verification code. Please try WhatsApp instead.')
+      throw new Error('Failed to send SMS verification code. Please try again.')
     }
   }
 

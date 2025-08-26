@@ -263,6 +263,8 @@
         </div>
       </div>
 
+
+
       <!-- Security Tab Content -->
       <div v-if="currentTab === 'security'" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div class="p-4 sm:p-6">
@@ -371,12 +373,15 @@ import {
   AlertTriangleIcon,
   TrashIcon,
   AlertCircleIcon,
-  CheckIcon
+  CheckIcon,
+  MessageSquareIcon
 } from 'lucide-vue-next'
+
 
 const tabs = [
   { id: 'account', name: 'Account', icon: UserIcon },
   { id: 'notification', name: 'Notification', icon: BellIcon },
+
   { id: 'security', name: 'Security', icon: ShieldIcon }
 ]
 

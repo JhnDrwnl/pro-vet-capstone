@@ -241,15 +241,7 @@
                       class="w-full px-2 sm:px-3 py-0.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 h-8 sm:h-12 text-sm sm:text-base"
                     />
                   </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-0 sm:mb-1">WhatsApp</label>
-                    <input
-                      v-model="form.whatsapp"
-                      type="tel"
-                      placeholder="Enter WhatsApp number"
-                      class="w-full px-2 sm:px-3 py-0.5 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 h-8 sm:h-12 text-sm sm:text-base"
-                    />
-                  </div>
+
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-0 sm:mb-1">Alternative Email</label>
                     <input
@@ -692,7 +684,7 @@ const calculateProgress = computed(() => {
   const addressFields = ['streetAddress', 'city', 'province', 'country'];
   
   // Optional fields that contribute to progress but aren't required for 100%
-  const optionalFields = ['whatsapp', 'alternativeEmail', 'postalCode'];
+  const optionalFields = ['alternativeEmail', 'postalCode'];
   
   // Photo is considered a separate field
   const hasPhoto = photoChanged.value ? !!previewPhotoURL.value : !!form.value.photoURL;

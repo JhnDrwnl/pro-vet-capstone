@@ -125,7 +125,7 @@
                 <p class="text-sm text-gray-500">{{ selectedLocalPet?.isNew ? 'Complete the form and save to view details' : getDisplayDetails() }}</p>
           </div>
           <div class="flex space-x-2">
-                <button v-if="viewMode === 'view'" @click="editPet(selectedLocalPet)" type="button" class="p-2 text-gray-500 hover:text-gray-700" title="Edit pet">
+            <button v-if="viewMode === 'view' && selectedPetTab === 'basic-details'" @click="editPet(selectedLocalPet)" type="button" class="p-2 text-gray-500 hover:text-gray-700" title="Edit pet">
               <EditIcon class="w-5 h-5" />
             </button>
           </div>
@@ -134,7 +134,7 @@
             <!-- Tabs -->
             <div v-if="!selectedLocalPet?.isNew && viewMode === 'view'" class="border-b border-gray-200">
           <nav class="hidden md:flex -mb-px space-x-8">
-                <button v-for="tab in petTabs" :key="tab.id" @click.prevent="selectedPetTab = tab.id" type="button" :class="['py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center', selectedPetTab === tab.id ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300']">
+                <button v-for="tab in petTabs" :key="tab.id" @click.prevent="selectedPetTab = tab.id" type="button" :class="['py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center', selectedPetTab === tab.id ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300']">
               <component :is="tab.icon" class="w-5 h-5 mr-2" />
               {{ tab.name }}
             </button>
@@ -201,12 +201,29 @@
               </div>
               
               <!-- Medical History -->
-              <div v-if="selectedPetTab === 'medical-history' && viewMode === 'view' && !selectedLocalPet?.isNew" class="space-y-6">
+              <div v-if="selectedPetTab === 'medical-history' && !selectedLocalPet?.isNew" class="space-y-6">
                 <!-- Header with Actions -->
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="text-xl font-semibold text-gray-900">Medical History</h3>
                     <p class="text-sm text-gray-600 mt-1">Complete medical records, vaccinations, and appointment history</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <!-- View Vaccination Card Button -->
+                    <button 
+                      @click="openVaccinationCardModal"
+                      class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                    >
+                      <ShieldIcon class="w-4 h-4" />
+                      View Vaccination Card
+                    </button>
+                    <button 
+                      @click="addNewRecord"
+                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      <PlusIcon class="w-4 h-4" />
+                      Add Record
+                    </button>
                   </div>
                 </div>
 
@@ -476,7 +493,7 @@
 
     
               <!-- Documents -->
-              <div v-if="selectedPetTab === 'documents' && viewMode === 'view' && !selectedLocalPet?.isNew" class="bg-white rounded-lg shadow p-6">
+              <div v-if="selectedPetTab === 'documents' && !selectedLocalPet?.isNew" class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-medium text-gray-900">Documents</h3>
               <button class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center">
@@ -490,6 +507,8 @@
               <p class="text-sm text-gray-400 mt-1">Documents will appear here once uploaded.</p>
             </div>
           </div>
+
+
         </div>
         </div>
       </div>
@@ -497,6 +516,160 @@
     
     <!-- Hidden file input for pet photo -->
       <input type="file" ref="photoInput" @change="handlePetPhotoSelect" accept="image/*" class="hidden" />
+
+
+
+    <!-- Vaccination Card Modal -->
+    <div v-if="showVaccinationCardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <h2 class="text-2xl font-bold">Vaccination Card</h2>
+            </div>
+            <button 
+              @click="showVaccinationCardModal = false"
+              class="text-white hover:text-gray-200 transition-colors"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <p class="text-blue-100 mt-2">Official Pet Health Record</p>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="p-6">
+          <!-- Pet Information Section -->
+          <div class="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="flex items-center gap-4">
+                <img 
+                  :src="selectedLocalPet?.photoURL || '/placeholder.svg?height=80&width=80'" 
+                  :alt="selectedLocalPet?.name"
+                  class="w-20 h-20 rounded-full object-cover border-4 border-gray-200"
+                >
+                <div>
+                  <h3 class="text-2xl font-bold text-gray-900">{{ selectedLocalPet?.name }}</h3>
+                  <p class="text-gray-600">{{ selectedLocalPet?.species }} • {{ selectedLocalPet?.breed }}</p>
+                  <p class="text-sm text-gray-500">{{ selectedLocalPet?.ageYears }}y {{ selectedLocalPet?.ageMonths }}m • {{ selectedLocalPet?.gender }}</p>
+                </div>
+              </div>
+              
+              <div class="space-y-3">
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Owner:</span>
+                  <span class="font-medium">{{ authStore.user?.firstName }} {{ authStore.user?.lastName }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Contact:</span>
+                  <span class="font-medium">{{ authStore.user?.phone || authStore.user?.email || 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Generated on:</span>
+                  <span class="font-medium">{{ formatDate(new Date(), 'MMM dd, yyyy') }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vaccination Records Section -->
+          <div v-if="vaccinationRecords.length > 0" class="space-y-4">
+            <h4 class="text-xl font-semibold text-gray-900 mb-4">Vaccination History</h4>
+            
+            <div class="space-y-4">
+              <div 
+                v-for="(record, index) in sortedVaccinationRecords" 
+                :key="record.id || index"
+                class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <div class="flex items-start justify-between mb-3">
+                  <div>
+                    <h5 class="font-medium text-gray-900">{{ record.vaccineName || 'Vaccination' }}</h5>
+                    <p class="text-sm text-gray-500">{{ record.vaccineType || 'Standard vaccine' }}</p>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-sm text-gray-500">Date Administered</div>
+                    <div class="font-medium text-gray-900">{{ formatDate(record.date, 'MMM dd, yyyy') }}</div>
+                  </div>
+                </div>
+                
+                <div class="text-sm">
+                  <div>
+                    <span class="text-gray-500">Processing Time:</span>
+                    <span class="ml-2 font-medium">{{ record.processingTime || 'N/A' }}</span>
+                  </div>
+                </div>
+                
+                <div v-if="record.notes" class="mt-3 pt-3 border-t border-gray-100">
+                  <span class="text-gray-500">Notes:</span>
+                  <span class="ml-2 text-gray-900">{{ record.notes }}</span>
+                </div>
+                
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                  <div class="flex items-center justify-between">
+                    <span class="text-gray-500">Administered by:</span>
+                    <span class="font-medium">{{ record.administeredBy || 'Veterinarian' }}</span>
+                  </div>
+                  <div class="flex items-center justify-between mt-1">
+                    <span class="text-gray-500">Location:</span>
+                    <span class="font-medium">{{ record.location || 'ProVet Clinic' }}</span>
+                  </div>
+                  <div class="flex items-center justify-between mt-1">
+                    <span class="text-gray-500">Appointment ID:</span>
+                    <span class="font-medium text-sm text-gray-600">{{ record.appointmentId || 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Vaccination Records -->
+          <div v-else class="text-center py-12">
+            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 mx-auto">
+              <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">No Vaccination Records</h4>
+            <p class="text-gray-500 mb-6">{{ selectedLocalPet?.name }} doesn't have any vaccination records yet.</p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex justify-center gap-4 mt-8 pt-6 border-t border-gray-200">
+            <button 
+              @click="printVaccinationCard"
+              class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+              </svg>
+              Print Card
+            </button>
+            <button 
+              @click="downloadVaccinationCard"
+              class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Download PDF
+            </button>
+            <button 
+              @click="showVaccinationCardModal = false"
+              class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
       <!-- Overlay loader -->
     <LoadingSpinner v-if="isSavingChanges || isDeleting" isOverlay :text="loadingText" />
@@ -511,7 +684,7 @@
   Plus as PlusIcon,
   FileText as FileTextIcon,
   Activity as ActivityIcon,
-  Syringe as SyringeIcon,
+
   Folder as FolderIcon,
   Trash2,
   Eye as EyeIcon,
@@ -519,6 +692,7 @@
   ArrowLeft as ArrowLeftIcon,
   ChevronDown as ChevronDownIcon,
   X as XIcon,
+  Shield as ShieldIcon,
 } from 'lucide-vue-next';
 import { usePetsStore } from '@/stores/modules/petsStore';
 import { useAuthStore } from '@/stores/modules/authStore';
@@ -526,6 +700,8 @@ import { useArchivesStore } from '@/stores/modules/archivesStore';
 import { useAppointmentStore } from '@/stores/modules/appointmentStore';
 import { format } from 'date-fns';
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
+
+
 
 // Stores
 const petsStore = usePetsStore();
@@ -550,10 +726,12 @@ const localPets = ref([]);
 const pendingChanges = ref(false);
 const deletedPetIds = ref([]);
 const petToDelete = ref(null);
-const viewMode = ref('edit');
+const viewMode = ref('view');
 const originalPets = ref([]);
 const tabsDropdownOpen = ref(false);
 const genderDropdownOpen = ref(false);
+const showVaccinationCardModal = ref(false);
+const vaccinationRecords = ref([]);
 
 // History state
 const historyLoading = ref(false);
@@ -604,6 +782,7 @@ const fetchPets = async () => {
     initialLoading.value = true;
     await petsStore.fetchUserPets(authStore.user.userId);
     const userPets = storedPets.value;
+    
     const petsChanged = JSON.stringify(userPets) !== JSON.stringify(localPets.value);
     localPets.value = userPets.map(p => ({ ...p }));
     originalPets.value = JSON.parse(JSON.stringify(localPets.value));
@@ -1016,12 +1195,6 @@ watch([selectedLocalPet, selectedPetTab, viewMode], ([pet, tab, mode]) => {
     historyFilter.value = 'all'; // Reset filter when switching pets or entering medical history tab
     fetchPetAppointments();
   }
-  // Redirect from old vaccinations tab to medical history
-  if (pet && tab === 'vaccinations' && mode === 'view') {
-    selectedPetTab.value = 'medical-history';
-    historyFilter.value = 'vaccinations'; // Set filter to vaccinations
-    fetchPetAppointments();
-  }
 });
 
 // Save operations (kept as original logic)
@@ -1075,6 +1248,10 @@ const handleClickOutside = (event) => {
   if (genderDropdownOpen.value && !event.target.closest('.gender-dropdown')) genderDropdownOpen.value = false;
 };
 
+
+
+
+
 // Keep editablePet in sync
 watch(selectedLocalPet, (newPet) => { if (newPet) editablePet.value = { ...newPet }; });
 
@@ -1083,6 +1260,124 @@ defineExpose({ saveAllChanges, hasPendingChanges, fetchPets });
 
 // Make format function available to template
 const formatDate = (date, formatString) => format(date, formatString);
+
+// Add new record function
+const addNewRecord = () => {
+  // This function can be implemented to add new medical records
+  console.log('Add new record clicked');
+};
+
+// Vaccination card modal functions
+const openVaccinationCardModal = () => {
+  if (!selectedLocalPet.value?.id) {
+    console.error('No pet selected for vaccination card');
+    return;
+  }
+  
+  // Load vaccination records for the selected pet
+  loadVaccinationRecords();
+  showVaccinationCardModal.value = true;
+};
+
+const loadVaccinationRecords = async () => {
+  try {
+    if (!selectedLocalPet.value?.id || !authStore.user?.userId) {
+      console.error('No pet selected or user not authenticated');
+      vaccinationRecords.value = [];
+      return;
+    }
+
+    // Import Firebase functions
+    const { collection, query, where, getDocs, doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('@shared/firebase');
+
+    const records = [];
+    
+    // Fetch appointments for this pet that are completed
+    const appointmentsRef = collection(db, 'appointments');
+    const appointmentsQuery = query(
+      appointmentsRef,
+      where('petIds', 'array-contains', selectedLocalPet.value.id),
+      where('status', '==', 'completed')
+    );
+    
+    const appointmentsSnapshot = await getDocs(appointmentsQuery);
+    
+    for (const appointmentDoc of appointmentsSnapshot.docs) {
+      const appointmentData = appointmentDoc.data();
+      
+      // Check if this appointment has vaccination services
+      if (appointmentData.services && appointmentData.services.length > 0) {
+        // Fetch service details to check if they are vaccinations
+        for (const serviceId of appointmentData.services) {
+          try {
+            const serviceDoc = await getDoc(doc(db, 'services', serviceId));
+            if (serviceDoc.exists()) {
+              const serviceData = serviceDoc.data();
+              
+              // Check if this service is a vaccination
+              if (serviceData.isVaccination === true) {
+                // Create vaccination record from appointment data
+                const vaccinationRecord = {
+                  id: `${appointmentDoc.id}-${serviceId}`,
+                  vaccineName: serviceData.name || 'Vaccination',
+                  vaccineType: serviceData.classification || 'Standard Vaccine',
+                  date: appointmentData.date?.toDate?.() || new Date(appointmentData.date),
+                  notes: appointmentData.completionData?.services?.find(s => s.name === serviceData.name)?.notes || 
+                         appointmentData.completionData?.generalNotes?.treatmentSummary || 
+                         'Vaccination completed successfully',
+                  administeredBy: appointmentData.doctorName || 'Veterinarian',
+                  location: appointmentData.location || 'ProVet Clinic',
+                  appointmentId: appointmentDoc.id,
+                  serviceId: serviceId,
+                  processingTime: serviceData.processingTime || 'N/A'
+                };
+                
+                records.push(vaccinationRecord);
+              }
+            }
+          } catch (serviceError) {
+            console.error(`Error fetching service ${serviceId}:`, serviceError);
+          }
+        }
+      }
+    }
+    
+    // Sort vaccinations by date (newest first)
+    vaccinationRecords.value = records.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    console.log('Loaded vaccination records from appointments:', vaccinationRecords.value);
+    
+  } catch (error) {
+    console.error('Error loading vaccination records:', error);
+    vaccinationRecords.value = [];
+  }
+};
+
+const sortedVaccinationRecords = computed(() => {
+  return [...vaccinationRecords.value].sort((a, b) => new Date(b.date) - new Date(a.date));
+});
+
+const getVaccinationStatusClass = (record) => {
+  if (record.completed) return 'bg-green-100 text-green-800';
+  return 'bg-blue-100 text-blue-800';
+};
+
+const getVaccinationStatusText = (record) => {
+  if (record.completed) return 'Completed';
+  return 'Scheduled';
+};
+
+const printVaccinationCard = () => {
+  // Implement print functionality
+  window.print();
+};
+
+const downloadVaccinationCard = () => {
+  // This would integrate with a PDF generation library like jsPDF or html2pdf
+  // For now, we'll just trigger the print dialog
+  alert('PDF download functionality coming soon! You can use the Print button for now.');
+};
 </script>
 
 <style scoped>

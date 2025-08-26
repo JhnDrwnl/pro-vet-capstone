@@ -603,7 +603,6 @@ const fetchPets = async () => {
     }
     
     pets.value = petsData
-    console.log(`Fetched ${petsData.length} pets`)
   } catch (error) {
     console.error('Error fetching pets:', error)
     statusMessage.value = 'Failed to load pets. Please try again.'
@@ -978,7 +977,6 @@ const confirmDelete = async () => {
     
     // Use the archivesStore to save to archives collection with a dynamic document ID
     const archiveId = await archivesStore.saveToArchivesCollection(petData);
-    console.log('Pet archived with ID:', archiveId);
     
     // Delete from pets collection
     const petRef = doc(db, 'pets', itemToDelete.value);

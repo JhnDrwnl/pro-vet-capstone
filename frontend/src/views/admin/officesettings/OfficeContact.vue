@@ -346,7 +346,7 @@ const contactTypes = [
   'Twitter',
   'YouTube',
   'LinkedIn',
-  'WhatsApp',
+
   'Telegram',
   'Viber',
   'Other'
@@ -486,7 +486,7 @@ const getContactIcon = (type) => {
     case 'Twitter': return Twitter
     case 'YouTube': return Youtube
     case 'LinkedIn': return Linkedin
-    case 'WhatsApp': return MessageSquare
+
     case 'Telegram': return MessageSquare
     case 'Viber': return MessageSquare
     default: return MessageSquare
@@ -524,7 +524,7 @@ const getContactValueLabel = (type) => {
     case 'Twitter': return 'Twitter Handle'
     case 'YouTube': return 'YouTube Channel'
     case 'LinkedIn': return 'LinkedIn Profile'
-    case 'WhatsApp': return 'WhatsApp Number'
+
     case 'Telegram': return 'Telegram Username'
     case 'Viber': return 'Viber Number'
     default: return 'Value'
@@ -543,7 +543,7 @@ const getContactPlaceholder = (type) => {
     case 'Twitter': return '@yourusername or https://twitter.com/yourusername'
     case 'YouTube': return 'channelname or https://youtube.com/c/channelname'
     case 'LinkedIn': return 'username or https://linkedin.com/in/username'
-    case 'WhatsApp': return '+63 917 123 4567'
+
     case 'Telegram': return '@username'
     case 'Viber': return '+63 917 123 4567'
     default: return 'Enter value'

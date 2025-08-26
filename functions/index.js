@@ -13,6 +13,16 @@ admin.initializeApp()
 * This function can be called from your client application
 */
 exports.sendNotification = onRequest((req, res) => {
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Origin', 'https://innovet-project.vercel.app');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Access-Control-Max-Age', '3600');
+    res.status(204).send('');
+    return;
+  }
+
  return cors(req, res, async () => {
    // Only allow POST requests
    if (req.method !== "POST") {
@@ -196,3 +206,170 @@ exports.sendNotificationOnCreate = onDocumentCreated("notifications/{notificatio
    return null
  }
 })
+
+/**
+* Cloud function to send emails (OTP, verification, etc.)
+* This function handles all email-related operations
+*/
+exports.sendEmail = onRequest((req, res) => {
+  return cors(req, res, async () => {
+    // Handle preflight OPTIONS request
+    if (req.method === 'OPTIONS') {
+      res.set('Access-Control-Allow-Origin', 'https://innovet-project.vercel.app');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.set('Access-Control-Max-Age', '3600');
+      res.status(204).send('');
+      return;
+    }
+
+    // Only allow POST requests
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    try {
+      const { email, firstName, purpose, otp, newPassword } = req.body;
+      const endpoint = req.path.split('/').pop(); // Get the last part of the URL
+
+      logger.info(`Email function called with endpoint: ${endpoint}`, { email, purpose, endpoint });
+
+      switch (endpoint) {
+        case 'send-otp':
+          // Generate OTP and send email
+          const generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+          
+          // Store OTP in Firestore with expiry (5 minutes)
+          const otpRef = admin.firestore().collection('otps').doc(email);
+          await otpRef.set({
+            otp: generatedOTP,
+            purpose: purpose || 'verification',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+            attempts: 0
+          });
+
+          // TODO: Integrate with your email service (SendGrid, Nodemailer, etc.)
+          // For now, just log the OTP
+          logger.info(`OTP generated for ${email}: ${generatedOTP}`);
+          
+          res.status(200).json({ 
+            success: true, 
+            message: 'OTP sent successfully',
+            // Remove this in production - only for testing
+            otp: generatedOTP 
+          });
+          break;
+
+        case 'verify-otp':
+          // Verify OTP
+          const otpDoc = await admin.firestore().collection('otps').doc(email).get();
+          
+          if (!otpDoc.exists) {
+            res.status(400).json({ success: false, message: 'No OTP found for this email' });
+            return;
+          }
+
+          const otpData = otpDoc.data();
+          
+          // Check if OTP is expired
+          if (otpData.expiresAt.toDate() < new Date()) {
+            res.status(400).json({ success: false, message: 'OTP has expired' });
+            return;
+          }
+
+          // Check if OTP matches
+          if (otpData.otp !== otp) {
+            // Increment attempts
+            await otpRef.update({ attempts: admin.firestore.FieldValue.increment(1) });
+            
+            if (otpData.attempts >= 3) {
+              res.status(400).json({ success: false, message: 'Too many failed attempts. Please request a new OTP.' });
+              return;
+            }
+            
+            res.status(400).json({ success: false, message: 'Invalid OTP' });
+            return;
+          }
+
+          // OTP is valid - delete it and return success
+          await otpRef.delete();
+          
+          res.status(200).json({ 
+            success: true, 
+            message: 'OTP verified successfully',
+            valid: true 
+          });
+          break;
+
+        case 'resend-otp':
+          // Resend OTP (same logic as send-otp)
+          const resendOTP = Math.floor(100000 + Math.random() * 900000).toString();
+          
+          const resendOtpRef = admin.firestore().collection('otps').doc(email);
+          await resendOtpRef.set({
+            otp: resendOTP,
+            purpose: purpose || 'verification',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+            attempts: 0
+          });
+
+          logger.info(`OTP resent for ${email}: ${resendOTP}`);
+          
+          res.status(200).json({ 
+            success: true, 
+            message: 'OTP resent successfully',
+            // Remove this in production - only for testing
+            otp: resendOTP 
+          });
+          break;
+
+        case 'reset-password':
+          // Handle password reset
+          if (!otp || !newPassword) {
+            res.status(400).json({ success: false, message: 'OTP and new password are required' });
+            return;
+          }
+
+          // Verify OTP first
+          const resetOtpDoc = await admin.firestore().collection('otps').doc(email).get();
+          
+          if (!resetOtpDoc.exists) {
+            res.status(400).json({ success: false, message: 'No OTP found for this email' });
+            return;
+          }
+
+          const resetOtpData = resetOtpDoc.data();
+          
+          if (resetOtpData.otp !== otp) {
+            res.status(400).json({ success: false, message: 'Invalid OTP' });
+            return;
+          }
+
+          if (resetOtpData.expiresAt.toDate() < new Date()) {
+            res.status(400).json({ success: false, message: 'OTP has expired' });
+            return;
+          }
+
+          // TODO: Update user password in Firebase Auth
+          // For now, just delete the OTP
+          await resetOtpDoc.ref.delete();
+          
+          res.status(200).json({ 
+            success: true, 
+            message: 'Password reset successfully' 
+          });
+          break;
+
+        default:
+          res.status(404).json({ success: false, message: 'Endpoint not found' });
+      }
+
+    } catch (error) {
+      logger.error("Error in sendEmail function:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+});

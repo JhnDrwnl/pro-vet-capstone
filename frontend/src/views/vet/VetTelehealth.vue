@@ -1075,7 +1075,7 @@ const fetchAppointments = async () => {
       return appointment.doctorId === currentVetId;
     });
     
-    console.log(`Filtered ${fetchedAppointments.length} appointments for veterinarian ID: ${currentVetId}`);
+            
     
     // Create an array to hold all the promises for data fetching
     const dataFetchPromises = [];
@@ -1260,7 +1260,7 @@ const fetchAppointments = async () => {
 };
 
 // Initialize component
-onMounted(() => {
+onMounted(async () => {
   checkMobileView();
   window.addEventListener("resize", checkMobileView);
   fetchAppointments();
@@ -1268,6 +1268,8 @@ onMounted(() => {
   
   // Add event listener for screen share ended event
   window.addEventListener('webrtc-screenshare-ended', handleScreenShareEnded);
+  
+  // No automatic call activation needed - this is just the appointment list page
 });
 
 // Clean up when component is unmounted
@@ -1331,6 +1333,8 @@ const clearStatusFilter = () => {
   filters.value.status = 'all';
   currentPage.value = 1;
 };
+
+// This function is no longer needed - video calls are handled in VetVideoCall.vue
 
 // Helper function to check if an appointment is a telehealth appointment
 const isTelehealthAppointment = (appointment) => {
@@ -1611,7 +1615,6 @@ const joinVideoCall = async (appointment) => {
         
         // Check if there are already tracks in the remote stream
         if (streams.remoteStream.getTracks().length > 0) {
-          console.log('Remote stream already has tracks, activating');
           remoteStreamActive.value = true;
           // Update connection status to connected when remote stream is active
           connectionStatus.value = 'connected';
@@ -1619,7 +1622,6 @@ const joinVideoCall = async (appointment) => {
         
         // Listen for remote tracks to update UI
         streams.remoteStream.onaddtrack = (event) => {
-          console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
           // Update connection status to connected when remote stream gets tracks
           connectionStatus.value = 'connected';
@@ -1628,7 +1630,6 @@ const joinVideoCall = async (appointment) => {
         // Add a periodic check for remote stream tracks
         const checkInterval = setInterval(() => {
           if (streams.remoteStream.getTracks().length > 0) {
-            console.log('Remote tracks detected in interval check');
             remoteStreamActive.value = true;
             // Update connection status to connected when remote stream gets tracks
             connectionStatus.value = 'connected';
@@ -1644,14 +1645,12 @@ const joinVideoCall = async (appointment) => {
         if (data) {
           // If the call was rejected by the user, return to table view
           if (data.status === 'rejected') {
-            console.log('Call was rejected by the user');
             // Clean up and return to table view
             endCall();
           }
           
           // If the call was ended by the user, return to table view
           if (data.status === 'ended') {
-            console.log('Call was ended by the user');
             // Clean up and return to table view
             endCall();
           }
@@ -1668,7 +1667,6 @@ const joinVideoCall = async (appointment) => {
       if (WebRTCService.peerConnection) {
         WebRTCService.peerConnection.oniceconnectionstatechange = () => {
           const state = WebRTCService.peerConnection.iceConnectionState;
-          console.log('ICE connection state changed:', state);
           
           if (state === 'connected' || state === 'completed') {
             connectionStatus.value = 'connected';
@@ -1977,7 +1975,7 @@ const toggleSpeaker = () => {
 
 // Add this function to properly handle screen share ended events
 const handleScreenShareEnded = () => {
-  console.log('Screen sharing ended event received');
+          
   // Update UI state to reflect that screen sharing has ended
   isScreenSharing.value = false;
   
@@ -2207,7 +2205,6 @@ const acceptIncomingCall = async () => {
         
         // Check if there are already tracks in the remote stream
         if (streams.remoteStream.getTracks().length > 0) {
-          console.log('Remote stream already has tracks, activating');
           remoteStreamActive.value = true;
           // Update connection status to connected when remote stream is active
           connectionStatus.value = 'connected';
@@ -2215,7 +2212,6 @@ const acceptIncomingCall = async () => {
         
         // Listen for remote tracks to update UI
         streams.remoteStream.onaddtrack = (event) => {
-          console.log('New remote track added:', event.track.kind);
           remoteStreamActive.value = true;
           // Update connection status to connected when remote stream gets tracks
           connectionStatus.value = 'connected';
@@ -2224,7 +2220,6 @@ const acceptIncomingCall = async () => {
         // Add a periodic check for remote stream tracks
         const checkInterval = setInterval(() => {
           if (streams.remoteStream.getTracks().length > 0) {
-            console.log('Remote tracks detected in interval check');
             remoteStreamActive.value = true;
             // Update connection status to connected when remote stream gets tracks
             connectionStatus.value = 'connected';
@@ -2240,7 +2235,6 @@ const acceptIncomingCall = async () => {
         if (data) {
           // If the call was ended by the user, return to table view
           if (data.status === 'ended') {
-            console.log('Call was ended by the user');
             // Clean up and return to table view
             endCall();
           }
@@ -2254,7 +2248,6 @@ const acceptIncomingCall = async () => {
       if (WebRTCService.peerConnection) {
         WebRTCService.peerConnection.oniceconnectionstatechange = () => {
           const state = WebRTCService.peerConnection.iceConnectionState;
-          console.log('ICE connection state changed:', state);
           
           if (state === 'connected' || state === 'completed') {
             connectionStatus.value = 'connected';
@@ -2306,7 +2299,7 @@ const setupIncomingCallsListener = () => {
     incomingCallsUnsubscribe = WebRTCService.listenForIncomingCalls(
       authStore.user.userId,
       (callData) => {
-        console.log("Incoming call detected:", callData);
+        
         
         // Find the appointment details for this call
         const appointment = appointments.value.find(a => a.id === callData.id);
@@ -2314,7 +2307,7 @@ const setupIncomingCallsListener = () => {
         if (appointment) {
           // Check if it's time for the appointment
           if (!isAppointmentTime(appointment)) {
-            console.log("Ignoring incoming call outside of appointment time");
+            
             return;
           }
           
@@ -2346,7 +2339,7 @@ const setupIncomingCallsListener = () => {
           if (data) {
             // If the call was rejected or ended by the user, hide the incoming call modal
             if (data.status === 'rejected' || data.status === 'ended') {
-              console.log('Call was rejected or ended by the user');
+              
               // Hide the incoming call modal
               if (incomingCall.value && incomingCall.value.id === callData.id) {
                 incomingCall.value = null;
@@ -2359,7 +2352,7 @@ const setupIncomingCallsListener = () => {
       }
     );
     
-    console.log("Incoming calls listener set up successfully for user ID:", authStore.user.userId);
+            
   } catch (error) {
     console.error("Error setting up incoming calls listener:", error);
   }

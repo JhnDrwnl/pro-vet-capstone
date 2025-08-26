@@ -1,13 +1,13 @@
 // src/services/emailService.js
 import axios from 'axios'
 
-// Update this to point to your actual backend server
-const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000/api'
+// Use the main API URL for email services (Node.js backend)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 class EmailService {
   constructor() {
     this.client = axios.create({
-      baseURL: API_URL,
+      baseURL: `${API_URL}/auth`,
       timeout: 15000, // Increased timeout to 15 seconds
       headers: {
         'Content-Type': 'application/json'
@@ -87,7 +87,7 @@ class EmailService {
 
   async sendOTP(email, firstName) {
     return this.retryRequest(async () => {
-      const response = await this.client.post('/auth/send-otp', {
+      const response = await this.client.post('/send-otp', {
         email,
         firstName,
         purpose: 'verification'
@@ -98,7 +98,7 @@ class EmailService {
 
   async resendOTP(email, firstName) {
     return this.retryRequest(async () => {
-      const response = await this.client.post('/auth/resend-otp', {
+      const response = await this.client.post('/resend-otp', {
         email,
         firstName,
         purpose: 'verification'
@@ -109,7 +109,7 @@ class EmailService {
 
   async verifyOTP(email, otp, purpose = 'verification') {
     return this.retryRequest(async () => {
-      const response = await this.client.post('/auth/verify-otp', {
+      const response = await this.client.post('/verify-otp', {
         email,
         otp,
         purpose
@@ -120,7 +120,7 @@ class EmailService {
 
   async sendPasswordResetOTP(email) {
     return this.retryRequest(async () => {
-      const response = await this.client.post('/auth/send-otp', {
+      const response = await this.client.post('/send-otp', {
         email,
         purpose: 'password-reset'
       })
@@ -136,7 +136,7 @@ class EmailService {
     })
     
     return this.retryRequest(async () => {
-      const response = await this.client.post('/auth/reset-password', {
+      const response = await this.client.post('/reset-password', {
         email,
         otp,
         newPassword

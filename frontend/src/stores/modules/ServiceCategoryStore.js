@@ -38,7 +38,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
       this.error = null;
       
       try {
-        console.log('Fetching categories');
+        
         // Query categories collection
         const categoriesRef = collection(db, 'categories');
         const q = query(categoriesRef, orderBy('name'));
@@ -50,11 +50,9 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
             ...doc.data()
           }));
           
-          console.log('Fetched categories data:', categoriesData);
           this.categories = categoriesData;
           return categoriesData;
         } else {
-          console.log('No categories found');
           this.categories = [];
           return [];
         }
@@ -89,7 +87,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         const randomId = Math.floor(1000 + Math.random() * 9000); // Always 4 digits
         const docId = `${namePrefix}${randomId}`;
         
-        console.log('Generated category ID:', docId);
+        
         
         // Create a reference to the document with the dynamic ID
         const categoryRef = doc(db, 'categories', docId);
@@ -102,6 +100,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         const categoryWithMetadata = {
           name: categoryData.name,
           description: categoryData.description,
+          isTelehealth: categoryData.isTelehealth || false,
           id: docId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -120,7 +119,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           }
         }
         
-        console.log('Category added successfully:', categoryWithMetadata);
+        
         
         // Update local state
         const newCategory = {
@@ -163,6 +162,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         let updatedData = {
           name: categoryData.name,
           description: categoryData.description,
+          isTelehealth: categoryData.isTelehealth || false,
           updatedAt: serverTimestamp()
         };
         
@@ -200,7 +200,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           };
         }
         
-        console.log('Category updated successfully:', categoryId);
+        
         return true;
       } catch (error) {
         console.error('Error updating category:', error);
@@ -248,7 +248,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         // Update local state
         this.categories = this.categories.filter(c => c.id !== categoryId);
         
-        console.log('Category archived successfully:', categoryId);
+        
         return true;
       } catch (error) {
         console.error('Error archiving category:', error);
@@ -289,7 +289,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         // Update local state
         this.categories = this.categories.filter(c => c.id !== categoryId);
         
-        console.log('Category deleted successfully:', categoryId);
+        
         return true;
       } catch (error) {
         console.error('Error deleting category:', error);
@@ -312,12 +312,10 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         const photoRef = storageRef(storage, `categories/${categoryId}/${Date.now()}-${file.name}`);
         
         // Upload the file
-        console.log('Uploading category cover photo to Firebase Storage...');
         const snapshot = await uploadBytes(photoRef, file);
         
         // Get the download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
-        console.log('Category cover photo uploaded successfully. Download URL:', downloadURL);
         
         return downloadURL;
       } catch (error) {
@@ -344,7 +342,6 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         
         // Delete the file
         await deleteObject(photoRef);
-        console.log('Category cover photo deleted from storage');
         return true;
       } catch (error) {
         console.error('Error deleting category cover photo:', error);
@@ -401,7 +398,6 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         const categoriesSnapshot = await getDocs(categoriesRef);
         
         if (categoriesSnapshot.empty) {
-          console.log('No categories to migrate');
           return true;
         }
         
@@ -413,7 +409,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           
           // Check if ID is too long
           if (categoryId.length > 10) {
-            console.log(`Migrating category: ${categoryId}`);
+            
             
             // Generate new ID with consistent length
             const words = categoryData.name.toLowerCase().split(/\s+/);
@@ -452,13 +448,13 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           // Delete old document
           await deleteDoc(doc(db, 'categories', item.oldId));
           
-          console.log(`Migrated ${item.oldId} to ${item.newId}`);
+          
         }
         
         // Refresh categories
         await this.fetchCategories();
         
-        console.log(`Migration completed. Migrated ${batch.length} categories.`);
+        
         return true;
       } catch (error) {
         console.error('Error migrating categories:', error);
@@ -478,7 +474,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
       this.error = null;
       
       try {
-        console.log('Fetching services');
+        
         // Query services collection
         const servicesRef = collection(db, 'services');
         const q = query(servicesRef, orderBy('name'));
@@ -490,11 +486,9 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
             ...doc.data()
           }));
           
-          console.log('Fetched services data:', servicesData);
           this.services = servicesData;
           return servicesData;
         } else {
-          console.log('No services found');
           this.services = [];
           return [];
         }
@@ -529,7 +523,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         const randomId = Math.floor(1000 + Math.random() * 9000); // Always 4 digits
         const docId = `${namePrefix}${randomId}`;
         
-        console.log('Generated service ID:', docId);
+        
         
         // Create a reference to the document with the dynamic ID
         const serviceRef = doc(db, 'services', docId);
@@ -550,6 +544,8 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           processingTime: serviceData.processingTime,
           fees: serviceData.fees,
           description: serviceData.description,
+          isTelehealth: serviceData.isTelehealth || false,
+          isVaccination: serviceData.isVaccination || false, // NEW: Added isVaccination field
           requirements: requirements,
           id: docId,
           createdAt: serverTimestamp(),
@@ -569,7 +565,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           }
         }
         
-        console.log('Service added successfully:', serviceWithMetadata);
+        
         
         // Update local state
         const newService = {
@@ -622,6 +618,8 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           processingTime: serviceData.processingTime,
           fees: serviceData.fees,
           description: serviceData.description,
+          isTelehealth: serviceData.isTelehealth || false,
+          isVaccination: serviceData.isVaccination || false, // NEW: Added isVaccination field
           requirements: requirements,
           updatedAt: serverTimestamp()
         };
@@ -660,7 +658,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
           };
         }
         
-        console.log('Service updated successfully:', serviceId);
+        
         return true;
       } catch (error) {
         console.error('Error updating service:', error);
@@ -708,7 +706,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         // Update local state
         this.services = this.services.filter(s => s.id !== serviceId);
         
-        console.log('Service archived successfully:', serviceId);
+        
         return true;
       } catch (error) {
         console.error('Error archiving service:', error);
@@ -749,7 +747,7 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         // Update local state
         this.services = this.services.filter(s => s.id !== serviceId);
         
-        console.log('Service deleted successfully:', serviceId);
+        
         return true;
       } catch (error) {
         console.error('Error deleting service:', error);
@@ -772,12 +770,11 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         const photoRef = storageRef(storage, `services/${serviceId}/${Date.now()}-${file.name}`);
         
         // Upload the file
-        console.log('Uploading service cover photo to Firebase Storage...');
+        
         const snapshot = await uploadBytes(photoRef, file);
         
         // Get the download URL
         const downloadURL = await getDownloadURL(snapshot.ref);
-        console.log('Service cover photo uploaded successfully. Download URL:', downloadURL);
         
         return downloadURL;
       } catch (error) {
@@ -804,7 +801,6 @@ export const useServiceCategoryStore = defineStore('serviceCategory', {
         
         // Delete the file
         await deleteObject(photoRef);
-        console.log('Service cover photo deleted from storage');
         return true;
       } catch (error) {
         console.error('Error deleting service cover photo:', error);

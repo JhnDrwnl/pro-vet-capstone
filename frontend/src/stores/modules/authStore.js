@@ -16,7 +16,7 @@ import {
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore"
 import emailService from "@/services/emailService"
 import smsService from "@/services/smsService"
-import whatsappService from "@/services/whatsappService"
+
 
 // OTP expiry in seconds (5 minutes)
 const OTP_EXPIRY_SECONDS = 300
@@ -88,7 +88,8 @@ export const useAuthStore = defineStore("auth", {
           }
         }
         
-        const response = await fetch('/api/profile/sync-google-photo', {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+        const response = await fetch(`${API_URL}/profile/sync-google-photo`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -136,7 +137,8 @@ export const useAuthStore = defineStore("auth", {
           return this.user.photoURL;
         }
         
-        const response = await fetch(`/api/profile/photo/${this.user.uid}`);
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+        const response = await fetch(`${API_URL}/profile/photo/${this.user.uid}`);
         const data = await response.json();
         
         if (data.success) {
@@ -344,16 +346,28 @@ export const useAuthStore = defineStore("auth", {
           // Call the onNewUser callback
           onNewUser()
 
-          // Create user document with status based on where the sign-in was initiated
+          // TEMPORARILY DISABLED: Phone verification for Google users
+          // Create user document immediately for new Google users
+          console.log('New Google user detected - creating user document immediately (phone verification disabled)')
+          
+          // Create user document in Firestore immediately
           await this.createUserDocument(user, {
             firstName,
             lastName,
-            photoURL: photoURL, // Use the complete URL
-            email: user.email || additionalUserInfo?.profile?.email || "",
+            phone: '', // Empty phone since verification is disabled
             role: "user",
-            status: "active", // Always set as active for Google sign-in
-            emailVerified: true,
+            status: "active", // Set to active instead of pending
+            phoneVerified: true, // Mark as verified since we're skipping verification
+            registrationMethod: "google",
+            photoURL: photoURL
           })
+          
+          // Update the local user object with active status
+          if (this.user) {
+            this.user.status = "active"
+            this.user.phoneVerified = true
+            this.user.registrationMethod = "google"
+          }
         } else {
           // For existing users with Google accounts, only update the photoURL
           // if they don't have a custom photo
@@ -366,6 +380,13 @@ export const useAuthStore = defineStore("auth", {
               updatedAt: new Date()
             });
           }
+          
+          // Update local user object with existing data
+          if (this.user) {
+            this.user.status = userData.status || "active"
+            this.user.phoneVerified = userData.phoneVerified || false
+            this.user.registrationMethod = "google"
+          }
         }
 
         await this.fetchUserData(user)
@@ -377,12 +398,37 @@ export const useAuthStore = defineStore("auth", {
         }
         
         this.registrationMethod = "google"
+        
+        // Set registration method in user object for easier access
+        if (this.user) {
+          this.user.registrationMethod = "google"
+        }
+        
         console.log("Google sign-in successful")
         return true
       } catch (error) {
-        this.error = error.message
-        console.error("Google sign-in error:", error)
-        return false
+        // Handle specific Google authentication errors
+        let errorMessage = 'Something went wrong. Please try again.';
+        
+        if (error.code === 'auth/popup-closed-by-user') {
+          errorMessage = 'Sign-in was cancelled. Please try again.';
+        } else if (error.code === 'auth/popup-blocked') {
+          errorMessage = 'Pop-up was blocked by your browser. Please allow pop-ups and try again.';
+        } else if (error.code === 'auth/cancelled-popup-request') {
+          errorMessage = 'Sign-in was cancelled. Please try again.';
+        } else if (error.code === 'auth/account-exists-with-different-credential') {
+          errorMessage = 'An account already exists with this email using a different sign-in method.';
+        } else if (error.code === 'auth/network-request-failed') {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (error.code === 'auth/operation-not-allowed') {
+          errorMessage = 'Google sign-in is not enabled. Please contact support.';
+        } else if (error.code === 'auth/too-many-requests') {
+          errorMessage = 'Too many failed attempts. Please try again later.';
+        }
+        
+        this.error = errorMessage;
+        console.error("Google sign-in error:", error);
+        return false;
       } finally {
         this.loading = false
       }
@@ -456,7 +502,7 @@ export const useAuthStore = defineStore("auth", {
           status: "pending",
         })
 
-        // Send OTP using Nodemailer service
+        // Send OTP using Node.js backend
         await emailService.sendOTP(email, firstName)
 
         // Store the timestamp when OTP was sent
@@ -468,9 +514,24 @@ export const useAuthStore = defineStore("auth", {
 
         return true
       } catch (error) {
-        this.error = error.message
-        console.error("Registration initiation error:", error)
-        throw error
+        // Handle specific Firebase authentication errors
+        let errorMessage = 'Something went wrong. Please try again.';
+        
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage = 'An account with this email already exists. Please use a different email or try logging in.';
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = 'Please enter a valid email address.';
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage = 'Password is too weak. Please choose a stronger password (at least 6 characters).';
+        } else if (error.code === 'auth/operation-not-allowed') {
+          errorMessage = 'Email/password accounts are not enabled. Please contact support.';
+        } else if (error.code === 'auth/too-many-requests') {
+          errorMessage = 'Too many failed attempts. Please try again later.';
+        }
+        
+        this.error = errorMessage;
+        console.error("Registration initiation error:", error);
+        throw new Error(errorMessage);
       } finally {
         this.loading = false
       }
@@ -485,7 +546,7 @@ export const useAuthStore = defineStore("auth", {
           throw new Error("No verification data found")
         }
 
-        // Verify OTP using Nodemailer service
+        // Verify OTP using Node.js backend
         const response = await emailService.verifyOTP(verificationData.email, otp)
 
         if (!response.success || !response.valid) {
@@ -511,9 +572,20 @@ export const useAuthStore = defineStore("auth", {
 
         return true
       } catch (error) {
-        this.error = error.message
-        console.error("Registration completion error:", error)
-        throw error
+        // Handle specific errors with better messages
+        let errorMessage = 'Something went wrong. Please try again.';
+        
+        if (error.message.includes('Invalid verification code')) {
+          errorMessage = 'Invalid verification code. Please check your email and try again.';
+        } else if (error.message.includes('No verification data found')) {
+          errorMessage = 'Verification session expired. Please start registration again.';
+        } else if (error.message.includes('verification code')) {
+          errorMessage = error.message;
+        }
+        
+        this.error = errorMessage;
+        console.error("Registration completion error:", error);
+        throw new Error(errorMessage);
       } finally {
         this.loading = false
       }
@@ -525,57 +597,42 @@ export const useAuthStore = defineStore("auth", {
       try {
         let result
         
-        if (method === 'whatsapp') {
-          // Generate OTP
-          const otp = whatsappService.generateOTP()
-          
-          // Send WhatsApp OTP
-          result = await whatsappService.sendOTP(phone, otp)
-          
-          if (result.success) {
-            // Store the OTP in verification data for verification
-            const verificationData = this.getVerificationData()
-            if (verificationData) {
-              verificationData.whatsappOTP = otp
-              this.setVerificationData(verificationData)
-            }
-            
-            // Store the timestamp when WhatsApp OTP was sent
-            this.otpSentTimestamp = Date.now()
-            localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
-            
-            console.log('WhatsApp OTP sent successfully')
-            return true
+                // Generate OTP
+        const otp = smsService.generateOTP()
+        
+        // Send SMS OTP using PhilSMS
+        result = await smsService.sendOTP(phone, otp)
+        
+        if (result.success) {
+          // Store the OTP in verification data for verification
+          const verificationData = this.getVerificationData()
+          if (verificationData) {
+            verificationData.smsOTP = otp
+            this.setVerificationData(verificationData)
           }
-        } else {
-          // Generate OTP
-          const otp = smsService.generateOTP()
           
-          // Send SMS OTP using PhilSMS
-          result = await smsService.sendOTP(phone, otp)
+          // Store the timestamp when SMS OTP was sent
+          this.otpSentTimestamp = Date.now()
+          localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
           
-          if (result.success) {
-            // Store the OTP in verification data for verification
-            const verificationData = this.getVerificationData()
-            if (verificationData) {
-              verificationData.smsOTP = otp
-              this.setVerificationData(verificationData)
-            }
-            
-            // Store the timestamp when SMS OTP was sent
-            this.otpSentTimestamp = Date.now()
-            localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
-            
-            console.log('SMS OTP sent successfully')
-            return true
-          }
+          console.log('SMS OTP sent successfully')
+          return true
         }
         
         throw new Error(`Failed to send ${method.toUpperCase()} OTP`)
       } catch (error) {
-        this.error = error.message
-        console.error(`${method.toUpperCase()} OTP sending error:`, error)
-        throw error
+        // Handle specific errors with better messages
+        let errorMessage = 'Something went wrong. Please try again.';
+        
+        if (error.message.includes('Failed to send')) {
+          errorMessage = `Failed to send ${method.toUpperCase()} verification code. Please try again.`;
+        } else if (error.message.includes('phone')) {
+          errorMessage = 'Invalid phone number. Please check and try again.';
+        }
+        
+        this.error = errorMessage;
+        console.error(`${method.toUpperCase()} OTP sending error:`, error);
+        throw new Error(errorMessage);
       } finally {
         this.loading = false
       }
@@ -594,9 +651,8 @@ export const useAuthStore = defineStore("auth", {
           throw new Error("Email must be verified before phone verification")
         }
 
-        // Verify the OTP (SMS or WhatsApp)
-        if ((verificationData.smsOTP && verificationData.smsOTP === otp) || 
-            (verificationData.whatsappOTP && verificationData.whatsappOTP === otp)) {
+        // Verify the OTP (SMS)
+        if (verificationData.smsOTP && verificationData.smsOTP === otp) {
           // Update existing user document status to fully active
           const userId = this.generateUserId(verificationData.uid)
           const userRef = doc(db, "users", userId)
@@ -621,9 +677,199 @@ export const useAuthStore = defineStore("auth", {
           throw new Error("Invalid SMS verification code")
         }
       } catch (error) {
-        this.error = error.message
+        this.error = `Something went wrong. Please try again.`
         console.error("Phone verification completion error:", error)
-        throw error
+        throw new Error('Something went wrong. Please try again.')
+      } finally {
+        this.loading = false
+      }
+    },
+
+        // Method to handle phone verification for Google users
+    async completeGooglePhoneVerification(otp, phone) {
+      this.loading = true
+      this.error = null
+      try {
+        // For Google users, we need to check the stored OTP from verification data
+        const verificationData = this.getVerificationData()
+        if (!verificationData) {
+          throw new Error("No verification data found")
+        }
+
+        // Verify the OTP (SMS)
+        if (verificationData.smsOTP && verificationData.smsOTP === otp) {
+
+          // Create or update user document with complete information
+          const userId = this.generateUserId(this.user.uid)
+          const userRef = doc(db, "users", userId)
+
+          // Get user data from verification data or use defaults
+          const userData = {
+            firstName: verificationData.firstName || this.user?.displayName?.split(' ')[0] || '',
+            lastName: verificationData.lastName || this.user?.displayName?.split(' ').slice(1).join(' ') || '',
+            email: this.user?.email || '',
+            photoURL: this.user?.photoURL || '',
+            role: "user",
+            status: "active",
+            emailVerified: true,
+            phoneVerified: true,
+            phone: phone,
+            registrationMethod: "google",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            uid: this.user?.uid || ''
+          }
+
+          await setDoc(userRef, userData)
+
+          // Clear verification data
+          this.clearVerificationData()
+          localStorage.removeItem("otpSentTimestamp")
+
+          // Update local user state
+          if (this.user) {
+            this.user.phone = phone
+            this.user.phoneVerified = true
+            this.user.status = "active"
+          }
+
+          console.log('Google user phone verification completed successfully')
+          return true
+        } else {
+          throw new Error("Invalid verification code")
+        }
+      } catch (error) {
+        this.error = `Something went wrong. Please try again.`
+        console.error("Google phone verification completion error:", error)
+        throw new Error('Something went wrong. Please try again.')
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Method to update user phone number
+    async updateUserPhone(phone) {
+      try {
+        if (!this.user || !this.user.uid) {
+          throw new Error("No authenticated user found")
+        }
+
+        const userId = this.generateUserId(this.user.uid)
+        const userRef = doc(db, "users", userId)
+
+        await setDoc(
+          userRef,
+          {
+            phone: phone,
+            updatedAt: new Date(),
+          },
+          { merge: true },
+        )
+
+        // Update local user state
+        if (this.user) {
+          this.user.phone = phone
+          this.user.phoneVerified = true
+          this.user.status = "active"
+        }
+
+        console.log('User phone number updated successfully')
+        return true
+      } catch (error) {
+        console.error("Error updating user phone:", error)
+        throw new Error('Something went wrong. Please try again.')
+      }
+    },
+
+    // Method to check if Google user needs phone verification
+    async needsPhoneVerification() {
+      if (!this.user) {
+        console.log('needsPhoneVerification: No user found')
+        return false
+      }
+      
+      console.log('needsPhoneVerification: Checking user:', {
+        registrationMethod: this.registrationMethod,
+        providerData: this.user.providerData,
+        phoneVerified: this.user.phoneVerified,
+        status: this.user.status
+      })
+      
+      // Check if user is a Google user
+      const isGoogleUser = this.registrationMethod === "google" || 
+                          this.user.providerData?.some(p => p.providerId === 'google.com')
+      
+      if (!isGoogleUser) {
+        console.log('needsPhoneVerification: Not a Google user')
+        return false
+      }
+      
+      // TEMPORARILY DISABLED: Phone verification for Google users
+      // Always return false to skip phone verification
+      console.log('needsPhoneVerification: Phone verification temporarily disabled for Google users')
+      return false
+      
+      // Check if user document exists in Firestore
+      try {
+        const userId = this.generateUserId(this.user.uid)
+        const userRef = doc(db, "users", userId)
+        const userDoc = await getDoc(userRef)
+        
+        if (!userDoc.exists()) {
+          console.log('needsPhoneVerification: User document does not exist - needs phone verification')
+          return true
+        }
+        
+        // If user document exists, check if they need phone verification
+        const userData = userDoc.data()
+        const needsVerification = !userData.phoneVerified || 
+                                 userData.status === "pending_phone_verification"
+        
+        console.log('needsPhoneVerification: User document exists, needs verification:', needsVerification)
+        return needsVerification
+        
+      } catch (error) {
+        console.error('needsPhoneVerification: Error checking user document:', error)
+        return false
+      }
+    },
+
+    // Method to send OTP for Google users (without requiring email verification first)
+    async sendGooglePhoneOTP(phone, method = 'sms') {
+      this.loading = true
+      this.error = null
+      try {
+        let result
+        
+        // Generate OTP
+        const otp = smsService.generateOTP()
+        
+        // Send SMS OTP using PhilSMS
+        result = await smsService.sendOTP(phone, otp)
+        
+        if (result.success) {
+          // Store the OTP in verification data for verification
+          const verificationData = this.getVerificationData() || {}
+          verificationData.smsOTP = otp
+          verificationData.phone = phone
+          verificationData.method = method
+          verificationData.firstName = this.user?.displayName?.split(' ')[0] || ''
+          verificationData.lastName = this.user?.displayName?.split(' ').slice(1).join(' ') || ''
+          this.setVerificationData(verificationData)
+
+          // Store the timestamp when SMS OTP was sent
+          this.otpSentTimestamp = Date.now()
+          localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
+
+          console.log('SMS OTP sent successfully for Google user')
+          return true
+        }
+        
+        throw new Error(`Failed to send ${method.toUpperCase()} OTP`)
+      } catch (error) {
+        this.error = `Something went wrong. Please try again.`
+        console.error(`${method.toUpperCase()} OTP sending error for Google user:`, error)
+        throw new Error('Something went wrong. Please try again.')
       } finally {
         this.loading = false
       }
@@ -697,7 +943,7 @@ export const useAuthStore = defineStore("auth", {
             return await attemptLogin()
           }
 
-          this.error = error.message
+          this.error = `Something went wrong. Please try again.`
           console.error("Login error:", error)
 
           // Return specific error type for invalid credentials
@@ -706,7 +952,16 @@ export const useAuthStore = defineStore("auth", {
             error.code === "auth/user-not-found" ||
             error.code === "auth/wrong-password"
           ) {
+            this.error = "Invalid email or password. Please check your credentials and try again.";
             return { success: false, invalidCredentials: true }
+          } else if (error.code === "auth/user-disabled") {
+            this.error = "This account has been disabled. Please contact support.";
+          } else if (error.code === "auth/too-many-requests") {
+            this.error = "Too many failed login attempts. Please try again later.";
+          } else if (error.code === "auth/network-request-failed") {
+            this.error = "Network error. Please check your internet connection and try again.";
+          } else if (error.code === "auth/operation-not-allowed") {
+            this.error = "Email/password accounts are not enabled. Please contact support.";
           }
 
           return { success: false, errorCode: error.code }
@@ -731,7 +986,7 @@ export const useAuthStore = defineStore("auth", {
         localStorage.removeItem("rememberMe")
         localStorage.removeItem("userEmail")
       } catch (error) {
-        this.error = error.message
+        this.error = `Something went wrong. Please try again.`
         console.error("Logout error:", error)
       } finally {
         this.loading = false
@@ -750,7 +1005,7 @@ export const useAuthStore = defineStore("auth", {
         const verificationEmail = email || verificationData.email
         const firstName = verificationData?.firstName || ""
 
-        // Use Nodemailer service to resend OTP
+        // Use Firebase Cloud Function to resend OTP
         const response = await emailService.resendOTP(verificationEmail, firstName)
 
         if (response.success) {
@@ -763,8 +1018,8 @@ export const useAuthStore = defineStore("auth", {
         }
       } catch (error) {
         console.error("Error resending verification email:", error)
-        this.error = error.message
-        throw error
+        this.error = `Something went wrong. Please try again.`
+        throw new Error('Something went wrong. Please try again.')
       } finally {
         this.loading = false
       }
@@ -774,7 +1029,7 @@ export const useAuthStore = defineStore("auth", {
       this.loading = true
       this.error = null
       try {
-        // Send password reset OTP via email service
+        // Send password reset OTP via Firebase Cloud Function
         await emailService.sendPasswordResetOTP(email)
 
         // Store email for later steps
@@ -786,9 +1041,9 @@ export const useAuthStore = defineStore("auth", {
 
         return true
       } catch (error) {
-        this.error = error.message
+        this.error = `Something went wrong. Please try again.`
         console.error("Password reset initiation error:", error)
-        throw error
+        throw new Error('Something went wrong. Please try again.')
       } finally {
         this.loading = false
       }
@@ -809,9 +1064,9 @@ export const useAuthStore = defineStore("auth", {
 
         throw new Error(response.message || "Invalid verification code")
       } catch (error) {
-        this.error = error.message
+        this.error = `Something went wrong. Please try again.`
         console.error("OTP verification error:", error)
-        throw error
+        throw new Error('Something went wrong. Please try again.')
       } finally {
         this.loading = false
       }
@@ -834,9 +1089,9 @@ export const useAuthStore = defineStore("auth", {
 
         return result
       } catch (error) {
-        this.error = error.response?.data?.message || error.message
+        this.error = `Something went wrong. Please try again.`
         console.error("Password reset error:", error)
-        throw error
+        throw new Error('Something went wrong. Please try again.')
       } finally {
         this.loading = false
       }
@@ -870,16 +1125,7 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
-    // Check WhatsApp service status
-    async checkWhatsAppStatus() {
-      try {
-        const result = await whatsappService.getStatus()
-        return result
-      } catch (error) {
-        console.error("Error checking WhatsApp status:", error)
-        throw error
-      }
-    },
+
   },
 
   getters: {

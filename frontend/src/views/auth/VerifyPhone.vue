@@ -48,18 +48,7 @@
                   </div>
                 </button>
 
-                <button 
-                  @click="selectMethod('whatsapp')"
-                  class="w-full py-4 px-6 bg-white border-2 border-green-200 rounded-lg hover:border-green-400 hover:bg-green-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                >
-                  <div class="flex items-center justify-center space-x-3">
-                    <span class="text-2xl">💬</span>
-                    <div class="text-left">
-                      <div class="font-semibold text-gray-800">Send via WhatsApp</div>
-                      <div class="text-sm text-gray-500">Receive code via WhatsApp message</div>
-                    </div>
-                  </div>
-                </button>
+
 
                 
               </div>
@@ -80,7 +69,7 @@
                 <span class="font-semibold">{{ formatDisplayPhone(phone) }}</span>
                 <br>
                 <span class="text-xs text-gray-500">
-                  via {{ selectedMethod === 'sms' ? 'SMS' : 'WhatsApp' }}
+                  via SMS
                 </span>
               </p>
 
@@ -127,13 +116,7 @@
                   >
                     📱 Send via SMS
                   </button>
-                  <button 
-                    @click="sendViaWhatsApp"
-                    :disabled="resendTimer > 0"
-                    class="text-green-600 hover:text-green-700 text-sm font-medium focus:outline-none disabled:opacity-50"
-                  >
-                    💬 Send via WhatsApp
-                  </button>
+
                   
                 </div>
                 
@@ -465,7 +448,7 @@ const resendCode = async () => {
     
     // Check if it's a credit issue and suggest the other method
     if (selectedMethod.value === 'sms' && err.message.includes('credits insufficient')) {
-      error.value = 'SMS service temporarily unavailable. Please try WhatsApp instead.'
+      error.value = 'SMS service temporarily unavailable. Please try again later.'
     } else {
       error.value = 'Failed to resend verification code. Please try again.'
     }
@@ -503,52 +486,20 @@ const sendViaSMS = async () => {
   } catch (err) {
     console.error('SMS send error:', err)
     
-    // Check if it's a credit issue and suggest WhatsApp
+    // Check if it's a credit issue
     if (err.message.includes('insufficient') || err.message.includes('credits')) {
-      error.value = 'SMS service temporarily unavailable due to insufficient credits. Please try WhatsApp instead.'
+      error.value = 'SMS service temporarily unavailable due to insufficient credits. Please try again later.'
     } else if (err.message.includes('invalid') || err.message.includes('number')) {
       error.value = 'Invalid phone number format. Please check your number and try again.'
     } else if (err.message.includes('rate limit') || err.message.includes('too many')) {
       error.value = 'Too many SMS requests. Please wait before trying again.'
     } else {
-      error.value = 'Failed to send SMS verification code. Please try WhatsApp instead.'
+      error.value = 'Failed to send SMS verification code. Please try again.'
     }
   }
 }
 
-const sendViaWhatsApp = async () => {
-  try {
-    if (!phone.value) {
-      error.value = 'Phone number not found. Please try registering again.'
-      return
-    }
 
-    // Update selected method
-    selectedMethod.value = 'whatsapp'
-
-    // Send WhatsApp OTP
-    await authStore.sendPhoneOTP(phone.value, 'whatsapp')
-    
-    // Reset OTP inputs
-    otpDigits.value = Array(6).fill('')
-    // Focus on first input
-    nextTick(() => {
-      if (otpRefs.value[0]) {
-        otpRefs.value[0].focus()
-      }
-    })
-    
-    // Reset timers
-    startResendTimer()
-    startExpiryTimer()
-    
-    // Clear any previous errors
-    error.value = ''
-  } catch (err) {
-    console.error('WhatsApp send error:', err)
-    error.value = 'Failed to send WhatsApp verification code. Please try again.'
-  }
-}
 
  
 
@@ -583,9 +534,9 @@ const selectMethod = async (method) => {
   } catch (err) {
     console.error(`Failed to send ${method.toUpperCase()} OTP:`, err)
     
-    // Check if it's a credit issue and suggest the other method
+    // Check if it's a credit issue
     if (method === 'sms' && err.message.includes('credits insufficient')) {
-      error.value = 'SMS service temporarily unavailable. Please try WhatsApp instead.'
+      error.value = 'SMS service temporarily unavailable. Please try again later.'
       methodChosen.value = false // Go back to method selection
     } else {
       error.value = `Failed to send ${method.toUpperCase()} verification code. Please try again.`

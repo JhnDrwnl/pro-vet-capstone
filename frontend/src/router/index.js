@@ -27,6 +27,13 @@ const routes = [
   },
 ];
 
+// Debug: Log all registered routes
+console.log('=== REGISTERED ROUTES ===')
+routes.forEach(route => {
+  console.log(`Route: ${route.path} -> ${route.name} (Component: ${route.component?.name || 'Dynamic'})`)
+})
+console.log('=== END ROUTES ===')
+
 const router = createRouter({
   history: createWebHistory(),
   routes,
@@ -53,6 +60,11 @@ function getRoleBasedRedirect(role) {
 }
 
 router.beforeEach(async (to, from, next) => {
+  console.log('=== ROUTER GUARD START ===')
+  console.log('Router guard - navigating from:', from.path, 'to:', to.path)
+  console.log('Route name:', to.name)
+  console.log('Route meta:', to.meta)
+  console.log('Full route object:', to)
   const authStore = useAuthStore();
 
   // Always allow access to public routes
@@ -110,12 +122,21 @@ router.beforeEach(async (to, from, next) => {
     if (to.name === 'login' || to.name === 'register') {
       // If user is authenticated and trying to access login or register, redirect to appropriate dashboard
       const roleBasedRedirect = getRoleBasedRedirect(userRole);
+      console.log('Redirecting to dashboard:', roleBasedRedirect)
+      next(roleBasedRedirect);
+    } else if (to.meta.role && to.meta.role !== userRole) {
+      // If the route requires a specific role and the user doesn't have access, redirect to the correct dashboard
+      const roleBasedRedirect = getRoleBasedRedirect(userRole);
+      console.log('Role mismatch, redirecting to dashboard:', roleBasedRedirect)
       next(roleBasedRedirect);
     } else if (to.meta.roles && !to.meta.roles.includes(userRole)) {
       // If the route requires specific roles and the user doesn't have access, redirect to the correct dashboard
       const roleBasedRedirect = getRoleBasedRedirect(userRole);
+      console.log('Roles mismatch, redirecting to dashboard:', roleBasedRedirect)
       next(roleBasedRedirect);
     } else {
+      console.log('Route guard passed, proceeding to:', to.path)
+      console.log('=== ROUTER GUARD END - PROCEEDING ===')
       next();
     }
   } else {

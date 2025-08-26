@@ -712,7 +712,6 @@ const currentMonthAppointments = computed(() => {
 
 const generateNewData = () => {
   // No longer needed as we're using real data
-  console.log('Chart data updated with real appointments')
 }
 
 const formatDate = (date, offset = 0) => {

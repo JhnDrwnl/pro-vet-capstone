@@ -45,9 +45,8 @@ setTimeout(async () => {
     // Initialize services
     await notificationService.initialize();
     
-    console.log('Services initialized successfully');
   } catch (error) {
-    console.error('Error initializing services:', error);
+    // Error initializing services
   }
 }, 100);
 
@@ -57,8 +56,6 @@ if ('serviceWorker' in navigator) {
     scope: '/'
   })
     .then((registration) => {
-      console.log('Service Worker registered with scope:', registration.scope);
-      
       // Pass Firebase config to the service worker
       const firebaseConfig = {
         apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -77,11 +74,9 @@ if ('serviceWorker' in navigator) {
           type: 'FIREBASE_CONFIG',
           config: firebaseConfig
         });
-        
-        console.log('Firebase config sent to service worker');
       }
     })
     .catch((error) => {
-      console.error('Service Worker registration failed:', error);
+      // Service Worker registration failed
     });
 }

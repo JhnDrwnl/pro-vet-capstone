@@ -1,9 +1,0 @@
-2025/08/15-08:34:26.610 6490 Reusing MANIFEST C:\pro-vet\node-backend\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
-2025/08/15-08:34:26.610 6490 Recovering log #4
-2025/08/15-08:34:26.611 6490 Reusing old log C:\pro-vet\node-backend\.wwebjs_auth\session\Default\Local Storage\leveldb/000004.log 
-2025/08/15-10:20:25.040 3010 Level-0 table #8: started
-2025/08/15-10:20:25.049 3010 Level-0 table #8: 14340 bytes OK
-2025/08/15-10:20:25.052 3010 Delete type=0 #4
-2025/08/15-17:53:04.673 4514 Level-0 table #10: started
-2025/08/15-17:53:04.684 4514 Level-0 table #10: 12618 bytes OK
-2025/08/15-17:53:04.690 4514 Delete type=0 #7

@@ -28,17 +28,41 @@
     </div>
 
     <!-- Current Patient -->
-    <div v-if="currentPatient" class="bg-blue-50 rounded-lg border border-blue-200 p-6 mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl font-semibold text-gray-900">Currently Consulting</h2>
-        <span class="text-sm text-gray-500">Started: {{ formatTime(currentPatient.startTime) }}</span>
+    <div v-if="currentPatient" class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-8 mb-8 shadow-lg">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-4">
+          <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900">Currently Consulting</h2>
+            <p class="text-green-600 font-medium">Session in Progress</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-sm text-gray-500 mb-1">Started at</div>
+          <div class="text-lg font-semibold text-gray-900">{{ formatTime(currentPatient.startTime) }}</div>
+        </div>
       </div>
       
-      <div class="mb-4">
-        <div class="text-lg font-medium text-gray-900 mb-1">{{ currentPatient.ownerName }}</div>
-        <div class="text-gray-600">{{ currentPatient.petName }} - {{ currentPatient.serviceName }}</div>
+      <div class="mb-6">
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
+            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-1">{{ currentPatient.ownerName }}</h3>
+            <p class="text-lg text-blue-600 font-medium">{{ currentPatient.petName }}</p>
+            <p class="text-gray-600">{{ currentPatient.serviceName }}</p>
+          </div>
+        </div>
+        
         <!-- Telehealth indicator -->
-        <div v-if="currentPatient.isTelehealth" class="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+        <div v-if="isTelehealthAppointment(currentPatient)" class="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium border border-green-200">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
           </svg>
@@ -46,75 +70,154 @@
         </div>
       </div>
       
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-4">
         <button 
           @click="openCompletionForm(currentPatient)"
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2"
         >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
           Mark as Done
         </button>
         <button 
           @click="skipPatient(currentPatient.id)"
-          class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          class="bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2"
         >
-          Skip
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+          Skip Patient
         </button>
+        
+        <button 
+          @click="clearCurrentPatient"
+          class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2"
+          title="Clear current patient (for debugging)"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+          Clear Patient
+        </button>
+        
         <!-- Telehealth call button -->
         <button 
-          v-if="currentPatient.isTelehealth"
-          @click="router.push(`/vet/telehealth?appointmentId=${currentPatient.id}`)"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          v-if="isTelehealthAppointment(currentPatient)"
+          @click="startTelehealthConsultation"
+          :disabled="!canStartTelehealth(currentPatient)"
+          :class="[
+            'px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2',
+            canStartTelehealth(currentPatient) 
+              ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white' 
+              : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+          ]"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
           </svg>
-          Join Video Call
+          {{ canRejoinCall ? 'Rejoin Call' : getStartButtonText(currentPatient) }}
         </button>
+      </div>
+      
+      <!-- Time Status for Current Patient -->
+      <div v-if="isTelehealthAppointment(currentPatient)" class="mt-6 p-4 bg-white rounded-xl border border-gray-100">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
+                 :class="getTimeStatusClass(currentPatient)">
+              <span v-if="getTimeStatus(currentPatient) === 'ready'">🟢 Ready for Call</span>
+              <span v-else-if="getTimeStatus(currentPatient) === 'waiting'">🟡 Waiting for Time</span>
+              <span v-if="getTimeStatus(currentPatient) === 'early'">🔵 Too Early</span>
+              <span v-if="getTimeStatus(currentPatient) === 'expired'">🔴 Time Expired</span>
+            </div>
+            <div class="text-sm text-gray-600 mt-2">
+              {{ getTimeInfo(currentPatient) }}
+            </div>
+          </div>
+          
+          <!-- Debug info and refresh button -->
+          <div class="flex items-center gap-3">
+            <button 
+              @click="refreshAppointmentData"
+              class="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
+              title="Refresh appointment data"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              Refresh
+            </button>
+            <span v-if="currentPatient._fromQueue" class="px-3 py-2 text-sm text-orange-600 bg-orange-100 rounded-lg border border-orange-200">
+              From Queue
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Queue Controls -->
-    <div class="bg-gray-50 rounded-lg p-6 mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900">Queue Controls</h2>
-        <div class="flex items-center gap-4">
+    <div class="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 p-8 mb-8 shadow-lg">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Queue Management</h2>
+            <p class="text-gray-600">Control patient flow and system status</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-6">
           <!-- Xirsys Status Indicator -->
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg" 
+               :class="{
+                 'bg-green-100 text-green-800 border border-green-200': xirsysStatus === 'available',
+                 'bg-yellow-100 text-yellow-800 border border-yellow-200': xirsysStatus === 'limited',
+                 'bg-red-100 text-red-800 border border-red-200': xirsysStatus === 'unavailable',
+                 'bg-yellow-100 text-yellow-800 border border-yellow-200': xirsysStatus === 'checking'
+               }">
             <div class="w-2 h-2 rounded-full" :class="{
               'bg-green-500': xirsysStatus === 'available',
               'bg-yellow-500': xirsysStatus === 'limited',
               'bg-red-500': xirsysStatus === 'unavailable',
               'bg-yellow-500': xirsysStatus === 'checking'
             }"></div>
-            <span class="text-sm text-gray-600">
-              {{ xirsysStatus === 'available' ? 'Telehealth Ready' : 
-                 xirsysStatus === 'limited' ? 'Telehealth Limited' :
-                 xirsysStatus === 'unavailable' ? 'Telehealth Unavailable' : 
-                 'Checking Telehealth...' }}
+            <span class="text-sm font-medium">
+              {{ xirsysStatus === 'available' ? 'Xirsys Ready' : 
+                 xirsysStatus === 'limited' ? 'Xirsys Limited' :
+                 xirsysStatus === 'unavailable' ? 'Xirsys Unavailable' : 
+                 'Checking Xirsys...' }}
             </span>
           </div>
+          
           <!-- Queue Status -->
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 px-3 py-2 rounded-lg"
+               :class="queuePaused ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'">
             <div class="w-2 h-2 rounded-full" :class="queuePaused ? 'bg-red-500' : 'bg-green-500'"></div>
-            <span class="text-sm text-gray-600">{{ queuePaused ? 'Paused' : 'Active' }}</span>
+            <span class="text-sm font-medium">{{ queuePaused ? 'Queue Paused' : 'Queue Active' }}</span>
           </div>
         </div>
       </div>
       
-      <div class="flex gap-3">
+      <div class="flex gap-4">
         <button 
-          @click="callNext"
+          @click="callNextWithConfirmation"
           :disabled="!canCallNext"
-          class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:transform-none flex items-center gap-2"
         >
-          Call Next
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+          </svg>
+          Call Next Patient
         </button>
         <button 
           @click="pauseQueue"
           :disabled="!canPause"
-          class="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:transform-none flex items-center gap-2"
         >
-          {{ queuePaused ? 'Resume' : 'Pause' }}
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7 3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          {{ queuePaused ? 'Resume Queue' : 'Pause Queue' }}
         </button>
       </div>
     </div>
@@ -126,72 +229,166 @@
     </div>
 
     <!-- Waiting Queue -->
-    <div v-else class="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div class="px-6 py-4 border-b border-gray-200">
-        <h2 class="text-lg font-semibold text-gray-900">Waiting Queue</h2>
+    <div v-else class="bg-gradient-to-br from-white to-blue-50 rounded-2xl border border-blue-100 overflow-hidden shadow-lg">
+      <div class="px-8 py-6 border-b border-blue-100 bg-gradient-to-r from-blue-600 to-blue-700">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div>
+              <h2 class="text-xl font-bold text-white">Patient Queue</h2>
+              <p class="text-blue-100 text-sm">{{ waitingQueue.length }} patient{{ waitingQueue.length !== 1 ? 's' : '' }} waiting</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 bg-white/20 px-3 py-2 rounded-full">
+            <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+            <span class="text-white text-sm font-medium">Live Updates</span>
+          </div>
+        </div>
       </div>
       
-      <div v-if="waitingQueue.length === 0" class="text-center py-12 text-gray-500">
-        <p class="text-lg">No patients waiting</p>
+      <div v-if="waitingQueue.length === 0" class="text-center py-16">
+        <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Queue is Empty</h3>
+        <p class="text-gray-500">No patients are currently waiting</p>
       </div>
 
-      <div v-else class="divide-y divide-gray-200">
+      <div v-else class="p-6 space-y-4">
         <div v-for="(patient, index) in waitingQueue" :key="patient.id" 
-             class="p-6 hover:bg-gray-50 transition-colors">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <div class="w-8 h-8 bg-gray-200 text-gray-700 rounded-full flex items-center justify-center text-sm font-medium">
-                {{ index + 1 }}
-              </div>
-              <div>
-                <div class="font-medium text-gray-900">{{ patient.ownerName }}</div>
-                <div class="text-sm text-gray-600">{{ patient.petName }}</div>
-                <div class="text-xs text-gray-500">{{ patient.serviceName }}</div>
-                <!-- Telehealth indicator for waiting patients -->
-                <div v-if="isTelehealthAppointment(patient)" class="mt-1 inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                  </svg>
-                  Telehealth
+             class="group relative bg-white rounded-xl border border-gray-100 p-6 hover:shadow-lg transition-all duration-300 hover:border-blue-200 hover:bg-blue-50/30">
+          
+          <!-- Position Badge -->
+          <div class="absolute -top-3 -left-3 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg"
+               :class="{
+                 'bg-gradient-to-r from-green-500 to-green-600': index === 0,
+                 'bg-gradient-to-r from-blue-500 to-blue-600': index === 1,
+                 'bg-gradient-to-r from-purple-500 to-purple-600': index === 2,
+                 'bg-gradient-to-r from-gray-500 to-gray-600': index > 2
+               }">
+            {{ index + 1 }}
+          </div>
+          
+          <!-- Next in Line Indicator -->
+          <div v-if="index === 0" class="absolute -top-2 -right-2">
+            <div class="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium animate-pulse">
+              NEXT
+            </div>
+          </div>
+          
+          <div class="flex items-start justify-between">
+            <div class="flex-1 ml-8">
+              <!-- Patient Info -->
+              <div class="mb-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ patient.ownerName }}</h3>
+                    <p class="text-blue-600 font-medium">{{ patient.petName }}</p>
+                    <p class="text-sm text-gray-600">{{ patient.serviceName }}</p>
+                  </div>
                 </div>
-                <div class="text-xs text-gray-400 mt-1">
-                  Scheduled: {{ formatDateTime(patient.date, patient.time) }}
+                
+                <!-- Schedule Info -->
+                <div class="flex items-center gap-4 text-sm text-gray-600">
+                  <div class="flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>{{ formatDate(patient.date) }}</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>{{ patient.time }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Telehealth Status -->
+              <div v-if="isTelehealthAppointment(patient)" class="mb-4">
+                <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium"
+                     :class="{
+                       'bg-green-100 text-green-800 border border-green-200': getTimeStatus(patient) === 'ready',
+                       'bg-yellow-100 text-yellow-800 border border-yellow-200': getTimeStatus(patient) === 'waiting',
+                       'bg-blue-100 text-blue-800 border border-blue-200': getTimeStatus(patient) === 'early',
+                       'bg-red-100 text-red-800 border border-red-200': getTimeStatus(patient) === 'expired'
+                     }">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                  </svg>
+                  <span v-if="getTimeStatus(patient) === 'ready'">🟢 Ready for Call</span>
+                  <span v-else-if="getTimeStatus(patient) === 'waiting'">🟡 Waiting for Time</span>
+                  <span v-else-if="getTimeStatus(patient) === 'early'">🔵 Too Early</span>
+                  <span v-else-if="getTimeStatus(patient) === 'expired'">🔴 Time Expired</span>
+                </div>
+                
+                <div class="text-xs text-gray-500 mt-1">
+                  {{ getTimeInfo(patient) }}
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-3">
-              <div class="text-right text-sm text-gray-500">
-                <div>Position #{{ index + 1 }}</div>
-                <div v-if="index === 0" class="text-blue-600 font-medium">Next in line</div>
-                <div v-else>~{{ getEstimatedWaitTime(index + 1) }} min wait</div>
+            
+            <!-- Right Side - Actions and Info -->
+            <div class="flex flex-col items-end gap-4">
+              <!-- Queue Position Info -->
+              <div class="text-right">
+                <div v-if="index === 0" class="text-green-600 font-bold text-lg">Ready Now</div>
+                <div v-else class="text-gray-600">
+                  <div class="text-sm">Position #{{ index + 1 }}</div>
+                  <div class="text-lg font-semibold text-blue-600">~{{ getEstimatedWaitTime(index + 1) }} min</div>
+                </div>
                 <div class="text-xs text-gray-400">
                   Est. start: {{ getEstimatedStartTime(index + 1) }}
                 </div>
               </div>
-              <div class="flex gap-2">
+              
+              <!-- Action Buttons -->
+              <div class="flex flex-col gap-2">
+                <!-- Queue Controls -->
+                <div class="flex gap-1">
+                  <button 
+                    @click="transferPatient(patient.id, 'up')"
+                    :disabled="index === 0"
+                    class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:text-gray-200 disabled:cursor-not-allowed rounded-lg transition-colors"
+                    title="Move up in queue"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                    </svg>
+                  </button>
+                  <button 
+                    @click="transferPatient(patient.id, 'down')"
+                    :disabled="index === waitingQueue.length - 1"
+                    class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:text-gray-200 disabled:cursor-not-allowed rounded-lg transition-colors"
+                    title="Move down in queue"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                <!-- Start Button -->
                 <button 
-                  @click="transferPatient(patient.id, 'up')"
-                  :disabled="index === 0"
-                  class="p-1 text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed"
-                  title="Move up"
+                  @click="startConsultationWithConfirmation(patient.id)"
+                  class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="getTimeStatus(patient) === 'early' || getTimeStatus(patient) === 'expired'"
                 >
-                  ↑
-                </button>
-                <button 
-                  @click="transferPatient(patient.id, 'down')"
-                  :disabled="index === waitingQueue.length - 1"
-                  class="p-1 text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed"
-                  title="Move down"
-                >
-                  ↓
+                  <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Start Consultation</span>
+                  </div>
                 </button>
               </div>
-              <button 
-                @click="startConsultation(patient.id)"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                Start
-              </button>
             </div>
           </div>
         </div>
@@ -480,6 +677,31 @@
     </div>
   </div>
 
+  <!-- Time Warning Modal -->
+  <div v-if="showTimeWarningModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+      <div class="text-center">
+        <!-- Warning Icon -->
+        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+          </svg>
+        </div>
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Cannot Start Video Call</h3>
+        <p class="text-sm text-gray-600 mb-6">{{ timeWarningMessage }}</p>
+        
+        <div class="flex gap-3 justify-center">
+          <button 
+            @click="showTimeWarningModal = false"
+            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Telehealth Loading Modal -->
   <div v-if="isInitializingTelehealth" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
@@ -515,11 +737,43 @@
     </div>
   </div>
 
+  <!-- Action Confirmation Modal -->
+  <div v-if="showActionConfirm" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+      <div class="text-center">
+        <!-- Warning Icon -->
+        <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+          </svg>
+        </div>
+        
+        <h3 class="text-lg font-medium text-gray-900 mb-2">Confirm Action</h3>
+        <p class="text-sm text-gray-600 mb-6">{{ actionMessage }}</p>
+        
+        <div class="flex gap-3 justify-center">
+          <button 
+            @click="cancelActionConfirm"
+            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            {{ actionCancelText }}
+          </button>
+          <button 
+            @click="executeConfirmedAction"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            {{ actionConfirmText }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Telehealth Modal -->
   <div v-if="showTelehealthModal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">Start Telehealth Consultation</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Video Call Setup</h2>
         <button @click="cancelTelehealthConsultation" class="text-gray-400 hover:text-gray-600">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -527,105 +781,168 @@
         </button>
       </div>
       
-      <div class="p-6 text-center">
-        <div class="mb-6">
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-            </svg>
-          </div>
-          <h3 class="text-lg font-medium text-gray-900 mb-2">Telehealth Consultation</h3>
-          <p class="text-gray-600">{{ telehealthAppointment?.ownerName }} - {{ telehealthAppointment?.petName }}</p>
-        </div>
-        
-        <div class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-          <h4 class="font-medium text-gray-900 mb-2">Services:</h4>
-          <ul class="text-sm text-gray-600 space-y-1">
-            <li v-for="service in (telehealthAppointment?.['Service Names'] || telehealthAppointment?.serviceNames || [])" :key="service" class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              {{ service }}
-            </li>
-          </ul>
-        </div>
-        
-        <div class="mb-6">
-          <p class="text-sm text-gray-500 mb-4">
-            This consultation will use Xirsys-powered video calling. Please ensure your camera and microphone are ready.
-          </p>
-          <!-- Xirsys Status in Modal -->
-          <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg" :class="{
-            'bg-green-100 text-green-800': xirsysStatus === 'available',
-            'bg-yellow-100 text-yellow-800': xirsysStatus === 'limited',
-            'bg-red-100 text-red-800': xirsysStatus === 'unavailable',
-            'bg-yellow-100 text-yellow-800': xirsysStatus === 'checking'
-          }">
-            <div class="w-2 h-2 rounded-full" :class="{
-              'bg-green-500': xirsysStatus === 'available',
-              'bg-yellow-500': xirsysStatus === 'limited',
-              'bg-red-500': xirsysStatus === 'unavailable',
-              'bg-yellow-500': xirsysStatus === 'checking'
-            }"></div>
-            <span class="text-sm font-medium">
-              {{ xirsysStatus === 'available' ? 'Xirsys TURN Ready' : 
-                 xirsysStatus === 'limited' ? 'Xirsys STUN Only' :
-                 xirsysStatus === 'unavailable' ? 'Xirsys Unavailable' : 
-                 'Checking Xirsys...' }}
-            </span>
+      <!-- Google Meet Style Layout -->
+      <div class="flex flex-col lg:flex-row h-full">
+        <!-- Left Side: Camera Preview (Main Focus) -->
+        <div class="flex-1 p-6 flex flex-col items-center justify-center">
+          <!-- Camera Preview Container -->
+          <div class="relative mb-6">
+            <div class="bg-gray-900 rounded-xl overflow-hidden shadow-2xl">
+              <video 
+                ref="localVideoRef" 
+                autoplay 
+                muted 
+                class="w-full h-80 lg:h-96 object-cover"
+              ></video>
+              
+              <!-- Camera Overlay Info -->
+              <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                <div class="text-white text-center">
+                  <div class="text-sm font-medium">{{ telehealthAppointment?.ownerName }}</div>
+                  <div class="text-xs text-gray-300">{{ telehealthAppointment?.petName }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Camera Controls Overlay -->
+            <div class="absolute top-4 right-4 flex gap-2">
+              <button 
+                @click="toggleMute"
+                class="p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                :class="isMuted ? 'bg-red-500' : ''"
+                title="Toggle Microphone"
+              >
+                <svg v-if="isMuted" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+                </svg>
+                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                </svg>
+              </button>
+              
+              <button 
+                @click="toggleVideo"
+                class="p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                :class="isVideoOff ? 'bg-red-500' : ''"
+                title="Toggle Camera"
+              >
+                <svg v-if="isVideoOff" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L5.636 5.636"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+              </button>
+            </div>
           </div>
           
-          <!-- Status description -->
-          <div class="text-xs text-gray-500 mt-2">
-            <span v-if="xirsysStatus === 'available'">
-              ✓ Full TURN server support for reliable video calls
-            </span>
-            <span v-else-if="xirsysStatus === 'limited'">
-              ⚠ STUN servers only - may have connectivity issues
-            </span>
-            <span v-else-if="xirsysStatus === 'unavailable'">
-              ✗ No ICE servers available - check configuration
-            </span>
-            <span v-else>
-              🔄 Verifying Xirsys connection...
-            </span>
+          <!-- Join Call Button -->
+          <button 
+            @click="joinVideoCall"
+            :disabled="!canStartTelehealth(telehealthAppointment)"
+            :class="[
+              'px-8 py-4 rounded-full font-medium text-lg flex items-center gap-3 shadow-lg transition-all',
+              canStartTelehealth(telehealthAppointment) 
+                ? 'bg-green-600 text-white hover:bg-green-700 hover:shadow-xl' 
+                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+            ]"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+            </svg>
+            {{ canStartTelehealth(telehealthAppointment) ? 'Join Call' : 'Time Not Ready' }}
+          </button>
+          
+          <!-- Time Status in Modal -->
+          <div v-if="telehealthAppointment" class="mt-4 text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm"
+                 :class="getTimeStatusClass(telehealthAppointment)">
+              <span v-if="getTimeStatus(telehealthAppointment) === 'ready'">🟢 Ready to Start</span>
+              <span v-else-if="getTimeStatus(telehealthAppointment) === 'waiting'">🟡 Waiting for Time</span>
+              <span v-else-if="getTimeStatus(telehealthAppointment) === 'early'">🔵 Too Early</span>
+              <span v-else-if="getTimeStatus(telehealthAppointment) === 'expired'">🔴 Time Expired</span>
+            </div>
+            <div class="text-sm text-gray-600 mt-2">
+              {{ getTimeInfo(telehealthAppointment) }}
+            </div>
           </div>
         </div>
         
-        <div class="flex gap-3 justify-center">
+        <!-- Right Side: Brief Info Panel -->
+        <div class="lg:w-80 bg-gray-50 p-6 border-l border-gray-200">
+          <!-- Patient Info -->
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Patient Info</h3>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                <span class="text-sm text-gray-700">{{ telehealthAppointment?.ownerName }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+                <span class="text-sm text-gray-700">{{ telehealthAppointment?.petName }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Services -->
+          <div class="mb-6">
+            <h4 class="font-medium text-gray-900 mb-2">Services</h4>
+            <div class="space-y-1">
+              <div v-for="service in (telehealthAppointment?.['Service Names'] || telehealthAppointment?.serviceNames || [])" :key="service" class="flex items-center gap-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span class="text-sm text-gray-600">{{ service }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Connection Status -->
+          <div class="mb-6">
+            <h4 class="font-medium text-gray-900 mb-2">Connection</h4>
+            <div class="inline-flex items-center gap-2 px-3 py-2 rounded-lg" :class="{
+              'bg-green-100 text-green-800': xirsysStatus === 'available',
+              'bg-yellow-100 text-yellow-800': xirsysStatus === 'limited',
+              'bg-red-100 text-red-800': xirsysStatus === 'unavailable',
+              'bg-yellow-100 text-yellow-800': xirsysStatus === 'checking'
+            }">
+              <div class="w-2 h-2 rounded-full" :class="{
+                'bg-green-500': xirsysStatus === 'available',
+                'bg-yellow-500': xirsysStatus === 'limited',
+                'bg-red-500': xirsysStatus === 'unavailable',
+                'bg-yellow-500': xirsysStatus === 'checking'
+              }"></div>
+              <span class="text-sm font-medium">
+                {{ xirsysStatus === 'available' ? 'Ready' : 
+                   xirsysStatus === 'limited' ? 'Limited' :
+                   xirsysStatus === 'unavailable' ? 'Unavailable' : 
+                   'Checking...' }}
+              </span>
+            </div>
+          </div>
+          
+          <!-- Cancel Button -->
           <button 
             @click="cancelTelehealthConsultation"
-            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
-          <button 
-            @click="startTelehealthConsultation"
-            :disabled="xirsysStatus === 'unavailable' || xirsysStatus === 'checking' || isInitializingTelehealth"
-            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <svg v-if="isInitializingTelehealth" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            <svg v-else-if="xirsysStatus === 'checking'" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-            </svg>
-            <span v-if="isInitializingTelehealth">Initializing...</span>
-            <span v-else-if="xirsysStatus === 'checking'">Checking...</span>
-            <span v-else-if="xirsysStatus === 'unavailable'">Service Unavailable</span>
-            <span v-else>Start Video Call</span>
-          </button>
         </div>
       </div>
+      
+      
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/modules/authStore'
 import { collection, query, where, getDocs, orderBy, doc, setDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore'
 import { db } from '@shared/firebase'
@@ -650,12 +967,20 @@ const showTelehealthModal = ref(false)
 const xirsysStatus = ref('checking') // 'checking', 'available', 'unavailable'
 const isInitializingTelehealth = ref(false)
 const telehealthProgress = ref(0)
+const showCameraPreview = ref(false)
+const isMuted = ref(false)
+const isVideoOff = ref(false)
+const localVideoRef = ref(null)
 const telehealthSteps = ref([
-  'Initializing Xirsys...',
-  'Fetching ICE servers...',
+  'Initializing...',
+  'Fetching servers...',
   'Configuring WebRTC...',
   'Opening video interface...'
 ])
+
+// Time warning modal state
+const showTimeWarningModal = ref(false)
+const timeWarningMessage = ref('')
 
 // Completion form state
 const showCompletionFormModal = ref(false)
@@ -683,6 +1008,14 @@ const serviceCategories = ref({})
 const servicesData = ref({})
 const categoriesData = ref({})
 
+// Action confirmation state
+const showActionConfirm = ref(false)
+const actionToConfirm = ref(null)
+const actionData = ref(null)
+const actionMessage = ref('')
+const actionConfirmText = ref('')
+const actionCancelText = ref('')
+
 // Computed properties
 const queueStats = computed(() => ({
   total: waitingQueue.value.length + (currentPatient.value ? 1 : 0),
@@ -704,103 +1037,495 @@ const getAppointmentServices = (appointment) => {
   }
 }
 
+// Time validation function
+const validateAppointmentTime = (appointment) => {
+  console.log('=== VALIDATING APPOINTMENT TIME ===')
+  console.log('Appointment:', appointment)
+  console.log('Date:', appointment.date)
+  console.log('Time:', appointment.time)
+  console.log('Date type:', typeof appointment.date)
+  console.log('Time type:', typeof appointment.time)
+  console.log('Appointment keys:', Object.keys(appointment || {}))
+  
+  // Check if this is from the queue collection
+  if (appointment._fromQueue) {
+    console.log('⚠️ WARNING: Appointment data is from queue collection')
+    console.log('Queue appointment data:', appointment)
+  }
+  
+  if (!appointment.date || !appointment.time) {
+    console.log('Missing date or time')
+    return { valid: false, reason: 'No appointment date/time specified' }
+  }
+  
+  const now = new Date()
+  console.log('Current time:', now)
+  console.log('Current date string:', now.toDateString())
+  
+  // Handle different date formats
+  let appointmentDate
+  if (appointment.date instanceof Date) {
+    appointmentDate = appointment.date
+    console.log('Date is already a Date object')
+  } else if (typeof appointment.date === 'string') {
+    // Try to parse the date string
+    appointmentDate = new Date(appointment.date)
+    console.log('Parsed date from string')
+  } else if (appointment.date && appointment.date.toDate) {
+    // Handle Firestore Timestamp
+    appointmentDate = appointment.date.toDate()
+    console.log('Converted Firestore timestamp to Date')
+  } else {
+    console.log('Invalid date format:', appointment.date)
+    console.log('Date object keys:', Object.keys(appointment.date || {}))
+    return { valid: false, reason: 'Invalid appointment date format' }
+  }
+  
+  console.log('Parsed appointment date:', appointmentDate)
+  console.log('Appointment date string:', appointmentDate.toDateString())
+  
+  // Check if date is valid
+  if (isNaN(appointmentDate.getTime())) {
+    console.log('Invalid date after parsing')
+    return { valid: false, reason: 'Invalid appointment date' }
+  }
+  
+  // Check if it's the same day
+  const nowDateString = now.toDateString()
+  const appointmentDateString = appointmentDate.toDateString()
+  console.log('Current date string:', nowDateString)
+  console.log('Appointment date string:', appointmentDateString)
+  
+  if (appointmentDateString !== nowDateString) {
+    console.log('Different days - appointment not today')
+    console.log('Current day:', nowDateString)
+    console.log('Appointment day:', appointmentDateString)
+    return { valid: false, reason: 'Appointment is not scheduled for today' }
+  }
+  
+  // Parse appointment time - handle "1:00 PM - 1:30 PM" format
+  let startTime, endTime
+  if (typeof appointment.time === 'string') {
+    if (appointment.time.includes(' - ')) {
+      // Handle "1:00 PM - 1:30 PM" format
+      [startTime, endTime] = appointment.time.split(' - ')
+      console.log('Start time:', startTime, 'End time:', endTime)
+    } else if (appointment.time.includes(':')) {
+      // Handle "1:00 PM" format
+      startTime = appointment.time
+      endTime = appointment.time
+    } else {
+      console.log('Invalid time format:', appointment.time)
+      return { valid: false, reason: 'Invalid appointment time format' }
+    }
+  } else if (typeof appointment.time === 'object' && appointment.time.hours !== undefined) {
+    // Handle object format
+    startTime = `${appointment.time.hours}:${appointment.time.minutes} ${appointment.time.period || 'AM'}`
+    endTime = startTime
+  } else {
+    console.log('Invalid time format:', appointment.time)
+    return { valid: false, reason: 'Invalid appointment time format' }
+  }
+  
+  // Parse start time to get hours and minutes
+  const parseTimeString = (timeStr) => {
+    // Handle "1:00 PM" format
+    const timeMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
+    if (!timeMatch) {
+      console.log('Could not parse time string:', timeStr)
+      return null
+    }
+    
+    let hours = parseInt(timeMatch[1])
+    const minutes = parseInt(timeMatch[2])
+    const period = timeMatch[3].toUpperCase()
+    
+    console.log('Parsed time components:', { hours, minutes, period })
+    
+    // Convert to 24-hour format
+    if (period === 'PM' && hours !== 12) {
+      hours += 12
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0
+    }
+    
+    console.log('24-hour format:', { hours, minutes })
+    return { hours, minutes }
+  }
+  
+  const startTimeObj = parseTimeString(startTime)
+  if (!startTimeObj) {
+    return { valid: false, reason: 'Could not parse appointment start time' }
+  }
+  
+  console.log('Parsed start time:', startTimeObj)
+  
+  // Create appointment datetime using start time
+  const appointmentDateTime = new Date(appointmentDate)
+  appointmentDateTime.setHours(startTimeObj.hours, startTimeObj.minutes, 0, 0)
+  
+  console.log('Appointment datetime:', appointmentDateTime)
+  
+  // Allow call 5 minutes before and 15 minutes after scheduled time
+  const earlyBuffer = new Date(appointmentDateTime.getTime() - (5 * 60 * 1000))
+  const lateBuffer = new Date(appointmentDateTime.getTime() + (15 * 60 * 1000))
+  
+  console.log('Early buffer:', earlyBuffer)
+  console.log('Late buffer:', lateBuffer)
+  console.log('Is now < early buffer?', now < earlyBuffer)
+  console.log('Is now > late buffer?', now > lateBuffer)
+  
+  if (now < earlyBuffer) {
+    const diffMinutes = Math.ceil((earlyBuffer - now) / (1000 * 60))
+    console.log('Too early - wait', diffMinutes, 'minutes')
+    return { valid: false, reason: `Appointment time has not started yet. Please wait ${diffMinutes} more minutes.` }
+  }
+  
+  if (now > lateBuffer) {
+    const diffMinutes = Math.ceil((now - lateBuffer) / (1000 * 60))
+    console.log('Too late - expired', diffMinutes, 'minutes ago')
+    return { valid: false, reason: `Appointment time has expired ${diffMinutes} minutes ago.` }
+  }
+  
+  console.log('Time validation passed - can start call')
+  return { valid: true }
+}
+
+// Get time status for appointment
+const getTimeStatus = (appointment) => {
+  try {
+    console.log('=== GETTING TIME STATUS ===')
+    console.log('Appointment:', appointment)
+    
+    if (!appointment.date || !appointment.time) {
+      console.log('No date or time - returning expired')
+      return 'expired'
+    }
+    
+    const now = new Date()
+    console.log('Current time:', now)
+    
+    // Handle different date formats
+    let appointmentDate
+    if (appointment.date instanceof Date) {
+      appointmentDate = appointment.date
+    } else if (typeof appointment.date === 'string') {
+      appointmentDate = new Date(appointment.date)
+    } else if (appointment.date && appointment.date.toDate) {
+      appointmentDate = appointment.date.toDate()
+    } else {
+      console.log('Invalid date format - returning expired')
+      return 'expired'
+    }
+    
+    console.log('Parsed appointment date:', appointmentDate)
+    
+    // Check if date is valid
+    if (isNaN(appointmentDate.getTime())) {
+      console.log('Invalid date - returning expired')
+      return 'expired'
+    }
+    
+    // Check if it's the same day
+    const nowDateString = now.toDateString()
+    const appointmentDateString = appointmentDate.toDateString()
+    
+    if (appointmentDateString !== nowDateString) {
+      console.log('Different days - returning expired')
+      return 'expired'
+    }
+    
+    // Parse appointment time - handle "1:00 PM - 1:30 PM" format
+    let startTime, endTime
+    if (typeof appointment.time === 'string') {
+      if (appointment.time.includes(' - ')) {
+        // Handle "1:00 PM - 1:30 PM" format
+        [startTime, endTime] = appointment.time.split(' - ')
+        console.log('Start time:', startTime, 'End time:', endTime)
+      } else if (appointment.time.includes(':')) {
+        // Handle "1:00 PM" format
+        startTime = appointment.time
+        endTime = appointment.time
+      } else {
+        console.log('Invalid time format - returning expired')
+        return 'expired'
+      }
+    } else if (typeof appointment.time === 'object' && appointment.time.hours !== undefined) {
+      // Handle object format
+      startTime = `${appointment.time.hours}:${appointment.time.minutes} ${appointment.time.period || 'AM'}`
+      endTime = startTime
+    } else {
+      console.log('Invalid time format - returning expired')
+      return 'expired'
+    }
+    
+    // Parse start time to get hours and minutes
+    const parseTimeString = (timeStr) => {
+      // Handle "1:00 PM" format
+      const timeMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
+      if (!timeMatch) {
+        console.log('Could not parse time string:', timeStr)
+        return null
+      }
+      return { hours: parseInt(timeMatch[1]), minutes: parseInt(timeMatch[2]), period: timeMatch[3].toUpperCase() }
+    }
+    
+    const startTimeObj = parseTimeString(startTime)
+    if (!startTimeObj) {
+      console.log('Could not parse start time - returning expired')
+      return 'expired'
+    }
+    
+    console.log('Parsed start time:', startTimeObj)
+    
+    // Convert to 24-hour format
+    let hours = startTimeObj.hours
+    const minutes = startTimeObj.minutes
+    
+    if (startTimeObj.period === 'PM' && hours !== 12) {
+      hours += 12
+    } else if (startTimeObj.period === 'AM' && hours === 12) {
+      hours = 0
+    }
+    
+    console.log('24-hour format - Hours:', hours, 'Minutes:', minutes)
+    
+    // Create appointment datetime using start time
+    const appointmentDateTime = new Date(appointmentDate)
+    appointmentDateTime.setHours(hours, minutes, 0, 0)
+    
+    console.log('Appointment datetime:', appointmentDateTime)
+    
+    // Allow call 5 minutes before and 15 minutes after scheduled time
+    const earlyBuffer = new Date(appointmentDateTime.getTime() - (5 * 60 * 1000))
+    const lateBuffer = new Date(appointmentDateTime.getTime() + (15 * 60 * 1000))
+    
+    console.log('Early buffer:', earlyBuffer)
+    console.log('Late buffer:', lateBuffer)
+    
+    if (now < earlyBuffer) {
+      console.log('Too early - returning early')
+      return 'early'
+    }
+    
+    if (now > lateBuffer) {
+      console.log('Too late - returning expired')
+      return 'expired'
+    }
+    
+    if (now >= appointmentDateTime) {
+      console.log('Within time window - returning ready')
+      return 'ready'
+    } else {
+      console.log('Waiting for time - returning waiting')
+      return 'waiting'
+    }
+  } catch (error) {
+    console.error('Error in getTimeStatus:', error)
+    return 'expired'
+  }
+}
+
+// Get CSS classes for time status
+const getTimeStatusClass = (appointment) => {
+  const status = getTimeStatus(appointment)
+  switch (status) {
+    case 'ready': return 'bg-green-100 text-green-800'
+    case 'waiting': return 'bg-yellow-100 text-yellow-800'
+    case 'early': return 'bg-blue-100 text-blue-800'
+    case 'expired': return 'bg-red-100 text-red-800'
+    default: return 'bg-gray-100 text-gray-800'
+  }
+}
+
+// Check if telehealth can be started
+const canStartTelehealth = (appointment) => {
+  return getTimeStatus(appointment) === 'ready'
+}
+
+// Get start button text based on status
+const getStartButtonText = (appointment) => {
+  const status = getTimeStatus(appointment)
+  switch (status) {
+    case 'ready': return 'Start Video Call'
+    case 'waiting': return 'Wait for Time'
+    case 'early': return 'Too Early'
+    case 'expired': return 'Time Expired'
+    default: return 'Cannot Start'
+  }
+}
+
+// Get time information for display
+const getTimeInfo = (appointment) => {
+  if (!appointment.date || !appointment.time) return 'No time specified'
+  
+  try {
+    const now = new Date()
+    
+    // Handle different date formats
+    let appointmentDate
+    if (appointment.date instanceof Date) {
+      appointmentDate = appointment.date
+    } else if (typeof appointment.date === 'string') {
+      appointmentDate = new Date(appointment.date)
+    } else if (appointment.date && appointment.date.toDate) {
+      appointmentDate = appointment.date.toDate()
+    } else {
+      return 'Invalid date format'
+    }
+    
+    // Check if date is valid
+    if (isNaN(appointmentDate.getTime())) {
+      return 'Invalid date'
+    }
+    
+    // Parse appointment time - handle "1:00 PM - 1:30 PM" format
+    let startTime
+    if (typeof appointment.time === 'string') {
+      if (appointment.time.includes(' - ')) {
+        // Handle "1:00 PM - 1:30 PM" format
+        [startTime] = appointment.time.split(' - ')
+      } else if (appointment.time.includes(':')) {
+        // Handle "1:00 PM" format
+        startTime = appointment.time
+      } else {
+        return 'Invalid time format'
+      }
+    } else if (typeof appointment.time === 'object' && appointment.time.hours !== undefined) {
+      // Handle object format
+      startTime = `${appointment.time.hours}:${appointment.time.minutes} ${appointment.time.period || 'AM'}`
+    } else {
+      return 'Invalid time format'
+    }
+    
+    // Parse start time to get hours and minutes
+    const timeMatch = startTime.match(/(\d+):(\d+)\s*(AM|PM)/i)
+    if (!timeMatch) {
+      return 'Could not parse time'
+    }
+    
+    let hours = parseInt(timeMatch[1])
+    const minutes = parseInt(timeMatch[2])
+    const period = timeMatch[3].toUpperCase()
+    
+    // Convert to 24-hour format
+    if (period === 'PM' && hours !== 12) {
+      hours += 12
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0
+    }
+    
+    // Create appointment datetime using start time
+    const appointmentDateTime = new Date(appointmentDate)
+    appointmentDateTime.setHours(hours, minutes, 0, 0)
+    
+    const diffMs = appointmentDateTime - now
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    
+    if (diffMinutes > 0) {
+      return `Starts in ${diffMinutes} minutes`
+    } else if (diffMinutes >= -15) {
+      return `Started ${Math.abs(diffMinutes)} minutes ago`
+    } else {
+      return 'Appointment time has passed'
+    }
+  } catch (error) {
+    console.error('Error in getTimeInfo:', error)
+    return 'Error parsing time'
+  }
+}
+
 // Telehealth detection function
 const isTelehealthAppointment = (appointment) => {
-  console.log('🔍 Checking if appointment is telehealth:', appointment.id)
+  // First, check if the appointment has the isTelehealth field set
+  if (appointment.isTelehealth === true) {
+    return true
+  }
   
   // Check both possible field names for services
   const serviceIds = appointment.Services || appointment.services || []
   const serviceNames = appointment['Service Names'] || appointment.serviceNames || []
   
-  console.log('  🔧 Service IDs found:', serviceIds)
-  console.log('  🔧 Service Names found:', serviceNames)
-  
   if (!serviceIds.length && !serviceNames.length) {
-    console.log('  ❌ No services found in appointment')
     return false
   }
   
   // First try to check by service IDs (more reliable)
   if (serviceIds.length > 0) {
-    console.log('  📋 Checking services by ID:', serviceIds)
-    
     const hasTelehealthService = serviceIds.some(serviceId => {
-      console.log(`    🔍 Checking service ID: "${serviceId}"`)
-      
       const service = servicesData.value[serviceId]
       if (!service) {
-        console.log(`      ❌ Service not found in services data for ID: ${serviceId}`)
         return false
       }
       
-      console.log(`      ✅ Service found:`, service)
+      // Check if the service itself is marked as telehealth
+      if (service.isTelehealth === true) {
+        return true
+      }
       
       if (!service.categoryId) {
-        console.log(`      ❌ Service has no category ID`)
         return false
       }
       
       const category = categoriesData.value[service.categoryId]
       if (!category) {
-        console.log(`      ❌ Category not found for ID: ${service.categoryId}`)
         return false
       }
       
-      console.log(`      📂 Category: "${category.name}" (${category.description})`)
+      // Check if the category is marked as telehealth
+      if (category.isTelehealth === true) {
+        return true
+      }
       
+      // Fallback: check if category name contains 'telehealth'
       const isTelehealth = category.name.toLowerCase().includes('telehealth')
-      console.log(`      🎯 Is Telehealth: ${isTelehealth}`)
       
       return isTelehealth
     })
     
     if (hasTelehealthService) {
-      console.log(`  🎯 Final Result: Appointment is TELEHEALTH (detected by service IDs)`)
       return true
     }
   }
   
   // Fallback: check by service names if no telehealth found by ID
   if (serviceNames.length > 0) {
-    console.log('  📋 Checking services by name (fallback):', serviceNames)
-    
     const hasTelehealthService = serviceNames.some(serviceName => {
-      console.log(`    🔍 Checking service name: "${serviceName}"`)
-      
       const service = getServiceByName(serviceName)
       if (!service) {
-        console.log(`      ❌ Service not found in services data`)
         return false
       }
       
-      console.log(`      ✅ Service found:`, service)
+      // Check if the service itself is marked as telehealth
+      if (service.isTelehealth === true) {
+        return true
+      }
       
       if (!service.categoryId) {
-        console.log(`      ❌ Service has no category ID`)
         return false
       }
       
       const category = categoriesData.value[service.categoryId]
       if (!category) {
-        console.log(`      ❌ Category not found for ID: ${service.categoryId}`)
         return false
       }
       
-      console.log(`      📂 Category: "${category.name}" (${category.description})`)
+      // Check if the category is marked as telehealth
+      if (category.isTelehealth === true) {
+        return true
+      }
       
+      // Fallback: check if category name contains 'telehealth'
       const isTelehealth = category.name.toLowerCase().includes('telehealth')
-      console.log(`      🎯 Is Telehealth: ${isTelehealth}`)
       
       return isTelehealth
     })
     
     if (hasTelehealthService) {
-      console.log(`  🎯 Final Result: Appointment is TELEHEALTH (detected by service names)`)
       return true
     }
   }
   
-  console.log(`  🎯 Final Result: Appointment is NOT telehealth`)
   return false
 }
 
@@ -808,7 +1533,7 @@ const isTelehealthAppointment = (appointment) => {
 const checkXirsysAvailability = async () => {
   try {
     xirsysStatus.value = 'checking'
-    console.log('Checking Xirsys availability...')
+    
     
     const iceConfig = await XirsysService.getIceServers()
     
@@ -821,7 +1546,7 @@ const checkXirsysAvailability = async () => {
       if (hasTurnServers) {
         xirsysStatus.value = 'available'
         isTelehealthEnabled.value = true
-        console.log('Xirsys TURN servers available for telehealth')
+        
       } else {
         // Only STUN servers available (fallback)
         xirsysStatus.value = 'limited'
@@ -850,107 +1575,95 @@ const startConsultation = async (patientId) => {
   const patient = waitingQueue.value.find(p => p.id === patientId)
   if (!patient) return
   
-  console.log('=== STARTING CONSULTATION ===')
-  console.log('Patient ID:', patientId)
-  console.log('Patient Data:', patient)
-  
   // Check both possible field names for services
   const serviceIds = patient.Services || patient.services || []
   const serviceNames = patient['Service Names'] || patient.serviceNames || []
   
-  console.log('Service IDs:', serviceIds)
-  console.log('Service Names:', serviceNames)
-  
-  // Log detailed category information for each service
-  if (serviceIds.length > 0) {
-    console.log('--- SERVICE CATEGORY ANALYSIS (by ID) ---')
-    serviceIds.forEach((serviceId, index) => {
-      console.log(`Service ${index + 1} ID: "${serviceId}"`)
-      
-      // Get service details by ID
-      const service = servicesData.value[serviceId]
-      if (service) {
-        console.log(`  - Service ID: ${service.id}`)
-        console.log(`  - Service Name: ${service.name}`)
-        console.log(`  - Category ID: ${service.categoryId}`)
-        
-        // Get category details
-        if (service.categoryId && categoriesData.value[service.categoryId]) {
-          const category = categoriesData.value[service.categoryId]
-          console.log(`  - Category Name: "${category.name}"`)
-          console.log(`  - Category Description: "${category.description}"`)
-          console.log(`  - Is Telehealth: ${category.name.toLowerCase().includes('telehealth')}`)
-        } else {
-          console.log(`  - Category: Not found or no category assigned`)
-        }
-      } else {
-        console.log(`  - Service: Not found in services data`)
-      }
-    })
-  }
-  
-  if (serviceNames.length > 0) {
-    console.log('--- SERVICE CATEGORY ANALYSIS (by Name) ---')
-    serviceNames.forEach((serviceName, index) => {
-      console.log(`Service ${index + 1} Name: "${serviceName}"`)
-      
-      // Get service details by name
-      const service = getServiceByName(serviceName)
-      if (service) {
-        console.log(`  - Service ID: ${service.id}`)
-        console.log(`  - Service Name: ${service.name}`)
-        console.log(`  - Category ID: ${service.categoryId}`)
-        
-        // Get category details
-        if (service.categoryId && categoriesData.value[service.categoryId]) {
-          const category = categoriesData.value[service.categoryId]
-          console.log(`  - Category Name: "${category.name}"`)
-          console.log(`  - Category Description: "${category.description}"`)
-          console.log(`  - Is Telehealth: ${category.name.toLowerCase().includes('telehealth')}`)
-        } else {
-          console.log(`  - Category: Not found or no category assigned`)
-        }
-      } else {
-        console.log(`  - Service: Not found in services data`)
-      }
-    })
-  }
-  
   // Check if this is a telehealth appointment
   const isTelehealth = isTelehealthAppointment(patient)
-  console.log('--- TELEHEALTH DETECTION ---')
-  console.log('Is Telehealth Appointment:', isTelehealth)
   
   if (isTelehealth) {
-    console.log('→ Showing telehealth modal')
     // Store the telehealth appointment and show modal
     telehealthAppointment.value = patient
     showTelehealthModal.value = true
     return
   }
   
-  console.log('→ Starting regular consultation')
-  // Regular appointment - proceed as before
-  currentPatient.value = {
-    ...patient,
-    startTime: new Date()
-  }
-  waitingQueue.value = waitingQueue.value.filter(p => p.id !== patientId)
-  
-  // Update appointment status to 'in-progress'
-  updateAppointmentStatus(patientId, 'in-progress')
-  
-  // Update Firestore queue
-  updateFirestoreQueue()
-  
-  console.log('=== CONSULTATION STARTED ===')
+      // Regular appointment - proceed as before
+    currentPatient.value = {
+      ...patient,
+      startTime: new Date()
+    }
+    waitingQueue.value = waitingQueue.value.filter(p => p.id !== patientId)
+    
+    // Update appointment status to 'in-progress'
+    updateAppointmentStatus(patientId, 'in-progress')
+    
+    // Update Firestore queue
+    updateFirestoreQueue()
 }
 
-// Start telehealth consultation
-const startTelehealthConsultation = async () => {
-  if (!telehealthAppointment.value) return
-  
+// Start consultation with confirmation if there's a current patient
+const startConsultationWithConfirmation = (patientId) => {
+  if (currentPatient.value) {
+    // Show confirmation dialog
+    showActionConfirmDialog(
+      'startConsultation',
+      'Start New Consultation',
+      `Are you sure you want to start a consultation with "${waitingQueue.value.find(p => p.id === patientId)?.ownerName}"? This will end the current consultation with "${currentPatient.value.ownerName}".`,
+      'Start Consultation',
+      'Cancel'
+    )
+    actionData.value = patientId
+  } else {
+    // No current patient, start consultation directly
+    startConsultation(patientId)
+  }
+}
+
+// Join the actual video call (navigate to full interface)
+const joinVideoCall = async () => {
   try {
+    // Check if this is a rejoin attempt
+    const endedAppointment = sessionStorage.getItem('telehealth_appointment_ended')
+    const isRejoin = endedAppointment && JSON.parse(endedAppointment).id === telehealthAppointment.value.id
+    
+    if (isRejoin) {
+      console.log('Detected rejoin attempt for appointment:', telehealthAppointment.value.id)
+      const endedData = JSON.parse(endedAppointment)
+      
+      // Check if rejoin is allowed based on appointment time
+      if (endedData.canRejoin) {
+        // Validate if we're still within the appointment time window
+        const timeValidation = validateAppointmentTime(telehealthAppointment.value)
+        
+        if (timeValidation.valid) {
+          // Rejoin is allowed, use existing data
+          console.log('Rejoining existing call within appointment time window')
+          await rejoinTelehealthCall(endedData)
+          return
+        } else {
+          // Appointment time has passed, clear old data and start fresh
+          sessionStorage.removeItem('telehealth_appointment_ended')
+          sessionStorage.removeItem('telehealth_ice_config_ended')
+          console.log('Rejoin not allowed - appointment time expired, starting fresh consultation')
+        }
+      }
+    }
+    
+    // Validate appointment time before proceeding
+    const timeValidation = validateAppointmentTime(telehealthAppointment.value)
+    
+    if (!timeValidation.valid) {
+      // Log failed attempt
+      await logTelehealthAttempt(telehealthAppointment.value.id, false, timeValidation.reason)
+      
+      // Show time warning modal
+      showTimeWarningModal.value = true
+      timeWarningMessage.value = timeValidation.reason
+      return
+    }
+    
     // Show loading modal and start progress
     isInitializingTelehealth.value = true
     telehealthProgress.value = 0
@@ -964,7 +1677,6 @@ const startTelehealthConsultation = async () => {
     }, 300)
     
     // Step 1: Initialize Xirsys and get ICE servers
-    console.log('Initializing Xirsys for telehealth consultation...')
     telehealthProgress.value = 25
     
     const iceConfig = await XirsysService.getIceServers()
@@ -975,7 +1687,6 @@ const startTelehealthConsultation = async () => {
     
     // Step 2: ICE servers fetched successfully
     telehealthProgress.value = 50
-    console.log('Xirsys initialized successfully with ICE servers:', iceConfig.iceServers)
     
     // Step 3: Configure WebRTC
     telehealthProgress.value = 75
@@ -1005,8 +1716,26 @@ const startTelehealthConsultation = async () => {
     telehealthProgress.value = 90
     
     // Store ICE configuration in sessionStorage for the telehealth interface
+    
+    // Store the ORIGINAL appointment data (not the processed currentPatient)
+    // This ensures date/time objects remain in their original format
+    const originalAppointmentData = {
+      id: telehealthAppointment.value.id,
+      userId: telehealthAppointment.value.userId,
+      ownerName: telehealthAppointment.value.ownerName,
+      petName: telehealthAppointment.value.petNames?.[0] || 'Unknown Pet',
+      serviceName: telehealthAppointment.value.serviceNames?.[0] || 'Unknown Service',
+      date: telehealthAppointment.value.date, // Keep original date format
+      time: telehealthAppointment.value.time, // Keep original time format
+      duration: telehealthAppointment.value.duration,
+      doctorId: telehealthAppointment.value.doctorId,
+      doctorName: telehealthAppointment.value.doctorName,
+      isHealthCertificate: telehealthAppointment.value.isHealthCertificate,
+      ownerAvatar: telehealthAppointment.value.ownerAvatar
+    }
+    
     sessionStorage.setItem('telehealth_ice_config', JSON.stringify(iceConfig))
-    sessionStorage.setItem('telehealth_appointment', JSON.stringify(currentPatient.value))
+    sessionStorage.setItem('telehealth_appointment', JSON.stringify(originalAppointmentData))
     
     // Complete progress
     telehealthProgress.value = 100
@@ -1017,23 +1746,60 @@ const startTelehealthConsultation = async () => {
     // Clear progress interval
     clearInterval(progressInterval)
     
-    // Close modals
+    // Close modal and navigate to full telehealth page
     showTelehealthModal.value = false
-    telehealthAppointment.value = null
     isInitializingTelehealth.value = false
     
-    // Navigate to telehealth interface with appointment context
-    router.push({
-      path: '/vet/telehealth',
-      query: { 
+    // Navigate to full telehealth interface
+    
+    try {
+      console.log('About to navigate to VetVideoCall route')
+      console.log('Current route:', router.currentRoute.value)
+      console.log('Available routes:', router.getRoutes().map(r => ({ name: r.name, path: r.path })))
+      
+      // Try multiple navigation methods
+      const navigationTarget = {
+        path: '/telehealth/vet/call',
+        query: { 
+          appointmentId: currentPatient.value.id,
+          mode: 'consultation',
+          iceConfig: btoa(JSON.stringify(iceConfig)) // Encode ICE config in URL
+        }
+      }
+      
+      console.log('Navigation target:', navigationTarget)
+      
+          // Log successful attempt
+    await logTelehealthAttempt(currentPatient.value.id, true, 'Telehealth started successfully')
+    
+    // First try with path
+    await router.push(navigationTarget)
+    console.log('Navigation successful with path')
+    
+    // Verify the navigation actually happened
+    setTimeout(() => {
+      console.log('Current route after navigation:', router.currentRoute.value)
+      if (router.currentRoute.value.path !== '/telehealth/vet/call') {
+        console.warn('Navigation may have been intercepted, current path:', router.currentRoute.value.path)
+      }
+    }, 100)
+      
+    } catch (error) {
+      console.error('Navigation failed:', error)
+      
+      // Fallback: try using window.location
+      console.log('Trying fallback navigation with window.location')
+      const queryString = new URLSearchParams({
         appointmentId: currentPatient.value.id,
         mode: 'consultation',
-        iceConfig: btoa(JSON.stringify(iceConfig)) // Encode ICE config in URL
-      }
-    })
+        iceConfig: btoa(JSON.stringify(iceConfig))
+      }).toString()
+      
+      window.location.href = `/telehealth/vet/call?${queryString}`
+    }
     
   } catch (error) {
-    console.error('Error starting telehealth consultation:', error)
+    console.error('Error starting full video call:', error)
     
     // Clear progress interval if it exists
     if (window.progressInterval) {
@@ -1048,7 +1814,7 @@ const startTelehealthConsultation = async () => {
     isTelehealthEnabled.value = false
     
     // Show detailed error message
-    let errorMessage = 'Failed to start telehealth consultation. '
+    let errorMessage = 'Failed to start video call. '
     if (error.message.includes('ICE servers')) {
       errorMessage += 'Xirsys ICE servers are not available. Please check your configuration.'
     } else if (error.message.includes('credentials')) {
@@ -1061,10 +1827,162 @@ const startTelehealthConsultation = async () => {
   }
 }
 
+// Start video call setup (show camera preview)
+const startTelehealthConsultation = async () => {
+  // If no telehealth appointment is set, use current patient
+  if (!telehealthAppointment.value && currentPatient.value?.isTelehealth) {
+    telehealthAppointment.value = currentPatient.value
+  }
+  
+  if (!telehealthAppointment.value) return
+  
+  // Validate appointment time before proceeding
+  const timeValidation = validateAppointmentTime(telehealthAppointment.value)
+  
+  if (!timeValidation.valid) {
+    // Log failed attempt
+    await logTelehealthAttempt(telehealthAppointment.value.id, false, timeValidation.reason)
+    
+    // Show time warning modal
+    showTimeWarningModal.value = true
+    timeWarningMessage.value = timeValidation.reason
+    return
+  }
+  
+  // Show the telehealth modal first
+  showTelehealthModal.value = true
+  
+  // Show camera preview immediately
+  showCameraPreview.value = true
+  
+  // Initialize camera preview
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: true, 
+      audio: true 
+    })
+    if (localVideoRef.value) {
+      localVideoRef.value.srcObject = stream
+    }
+  } catch (error) {
+    console.error('Error accessing camera/microphone:', error)
+    // Don't show error, just continue without preview
+  }
+}
+
+// Rejoin telehealth call
+const rejoinTelehealthCall = async (endedData) => {
+  try {
+    console.log('=== REJOINING TELEHEALTH CALL ===')
+    
+    // Get the stored ICE config
+    const storedIceConfig = sessionStorage.getItem('telehealth_ice_config_ended')
+    if (!storedIceConfig) {
+      throw new Error('No ICE configuration found for rejoin')
+    }
+    
+    const iceConfig = JSON.parse(storedIceConfig)
+    
+    // Validate appointment time for rejoin - this ensures we're still within the appointment window
+    const timeValidation = validateAppointmentTime(telehealthAppointment.value)
+    if (!timeValidation.valid) {
+      await logTelehealthAttempt(telehealthAppointment.value.id, false, `Rejoin failed: ${timeValidation.reason}`)
+      showTimeWarningModal.value = true
+      timeWarningMessage.value = `Cannot rejoin: ${timeValidation.reason}`
+      
+      // Clear expired rejoin data since appointment time has passed
+      sessionStorage.removeItem('telehealth_appointment_ended')
+      sessionStorage.removeItem('telehealth_ice_config_ended')
+      return
+    }
+    
+    // Set as current patient with telehealth flag and existing ICE config
+    currentPatient.value = {
+      ...telehealthAppointment.value,
+      startTime: new Date(),
+      isTelehealth: true,
+      iceConfig: iceConfig,
+      isRejoin: true
+    }
+    
+    // Update Firestore queue
+    updateFirestoreQueue()
+    
+    // Store data for video call
+    sessionStorage.setItem('telehealth_ice_config', storedIceConfig)
+    sessionStorage.setItem('telehealth_appointment', JSON.stringify(telehealthAppointment.value))
+    
+    // Log successful rejoin
+    await logTelehealthAttempt(telehealthAppointment.value.id, true, 'Call rejoined successfully')
+    
+    // Close modal and navigate to video call
+    showTelehealthModal.value = false
+    isInitializingTelehealth.value = false
+    
+    // Navigate to video call interface
+    router.push({
+      path: '/telehealth/vet/call',
+      query: {
+        appointmentId: telehealthAppointment.value.id,
+        mode: 'consultation',
+        iceConfig: btoa(storedIceConfig)
+      }
+    })
+    
+    // Clear ended data since we're rejoining
+    sessionStorage.removeItem('telehealth_appointment_ended')
+    sessionStorage.removeItem('telehealth_ice_config_ended')
+    
+  } catch (error) {
+    console.error('Error rejoining telehealth call:', error)
+    await logTelehealthAttempt(telehealthAppointment.value.id, false, `Rejoin error: ${error.message}`)
+    alert('Failed to rejoin call. Starting fresh consultation instead.')
+    
+    // Clear ended data and continue with fresh start
+    sessionStorage.removeItem('telehealth_appointment_ended')
+    sessionStorage.removeItem('telehealth_ice_config_ended')
+    
+    // Continue with normal flow
+    throw error
+  }
+}
+
+// Log telehealth attempt for audit purposes
+const logTelehealthAttempt = async (appointmentId, success, reason = '') => {
+  try {
+    const logData = {
+      appointmentId,
+      vetId: authStore.user?.userId,
+      timestamp: new Date(),
+      success,
+      reason,
+      userAgent: navigator.userAgent,
+      // Note: IP address would need to be captured server-side
+    }
+    
+    console.log('Logging telehealth attempt:', logData)
+    
+    // You can store this in Firestore for audit purposes
+    // await addDoc(collection(db, 'telehealth_logs'), logData)
+  } catch (error) {
+    console.error('Error logging telehealth attempt:', error)
+  }
+}
+
+
+
 // Cancel telehealth consultation
 const cancelTelehealthConsultation = () => {
   showTelehealthModal.value = false
   telehealthAppointment.value = null
+  showCameraPreview.value = false
+  
+  // Stop camera stream if it exists
+  if (localVideoRef.value && localVideoRef.value.srcObject) {
+    const stream = localVideoRef.value.srcObject
+    stream.getTracks().forEach(track => track.stop())
+    localVideoRef.value.srcObject = null
+  }
 }
 
 // Computed properties
@@ -1075,6 +1993,54 @@ const canCallNext = computed(() =>
 const canPause = computed(() => 
   waitingQueue.value.length > 0 || currentPatient.value
 )
+
+// Check if rejoin is available
+const canRejoinCall = computed(() => {
+  try {
+    const endedAppointment = sessionStorage.getItem('telehealth_appointment_ended')
+    if (!endedAppointment) return false
+    
+    const endedData = JSON.parse(endedAppointment)
+    
+    // Check if this is the same appointment and rejoin is allowed
+    if (endedData.canRejoin && endedData.endTime && currentPatient.value) {
+      if (endedData.id === currentPatient.value.id) {
+        // Check if we're still within the appointment time window
+        const timeValidation = validateAppointmentTime(currentPatient.value)
+        return timeValidation.valid
+      }
+    }
+    
+    return false
+  } catch (error) {
+    console.error('Error checking rejoin availability:', error)
+    return false
+  }
+})
+
+// Get remaining rejoin time based on appointment schedule
+const getRemainingRejoinTime = computed(() => {
+  try {
+    if (!canRejoinCall.value || !currentPatient.value) return null
+    
+    const timeStatus = getTimeStatus(currentPatient.value)
+    
+    if (timeStatus === 'ready') {
+      return 'Available now'
+    } else if (timeStatus === 'waiting') {
+      const timeInfo = getTimeInfo(currentPatient.value)
+      return timeInfo
+    } else if (timeStatus === 'early') {
+      const timeInfo = getTimeInfo(currentPatient.value)
+      return `Starts ${timeInfo}`
+    } else {
+      return 'Expired'
+    }
+  } catch (error) {
+    console.error('Error getting remaining rejoin time:', error)
+    return null
+  }
+})
 
 // Queue status indicator
 const queueStatus = computed(() => {
@@ -1111,7 +2077,7 @@ const checkForOngoingConsultations = async () => {
     
     if (!querySnapshot.empty) {
       const ongoingAppointment = querySnapshot.docs[0].data()
-      console.log('Found ongoing consultation:', ongoingAppointment)
+              
       
       // If we don't have a current patient but there's an ongoing appointment,
       // restore it from the appointment data
@@ -1140,7 +2106,7 @@ const checkForOngoingConsultations = async () => {
           isTelehealth: isTelehealthAppointment(ongoingAppointment)
         }
         
-        console.log('Restored ongoing consultation as current patient:', currentPatient.value)
+        
         
         // Update the queue to reflect this
         updateFirestoreQueue()
@@ -1148,6 +2114,46 @@ const checkForOngoingConsultations = async () => {
     }
   } catch (error) {
     console.error('Error checking for ongoing consultations:', error)
+  }
+  
+  // Check for potential rejoin opportunities
+  await checkForRejoinOpportunities()
+}
+
+// Check if there are opportunities to rejoin calls
+const checkForRejoinOpportunities = async () => {
+  try {
+    const endedAppointment = sessionStorage.getItem('telehealth_appointment_ended')
+    if (!endedAppointment) return
+    
+    const endedData = JSON.parse(endedAppointment)
+    
+    // Check if rejoin is still valid based on appointment time
+    if (endedData.canRejoin) {
+      // Find the current appointment to validate time
+      const currentAppointment = telehealthAppointments.value.find(apt => apt.id === endedData.id)
+      
+      if (currentAppointment) {
+        const timeValidation = validateAppointmentTime(currentAppointment)
+        
+        if (!timeValidation.valid) {
+          // Appointment time has passed, clear rejoin data
+          sessionStorage.removeItem('telehealth_appointment_ended')
+          sessionStorage.removeItem('telehealth_ice_config_ended')
+          console.log('Rejoin opportunity expired - appointment time passed:', endedData.id)
+        } else {
+          // Rejoin is still available within appointment time
+          console.log('Rejoin opportunity available for appointment:', endedData.id)
+        }
+      } else {
+        // Appointment not found, clear rejoin data
+        sessionStorage.removeItem('telehealth_appointment_ended')
+        sessionStorage.removeItem('telehealth_ice_config_ended')
+        console.log('Rejoin opportunity cleared - appointment not found:', endedData.id)
+      }
+    }
+  } catch (error) {
+    console.error('Error checking for rejoin opportunities:', error)
   }
 }
 
@@ -1161,7 +2167,7 @@ const fetchAppointments = async () => {
     
     if (queueRestored) {
       // Queue was restored from Firestore, no need to fetch appointments again
-      console.log('Queue restored from Firestore, skipping appointment fetch')
+              
       isLoading.value = false
       return
     }
@@ -1171,7 +2177,7 @@ const fetchAppointments = async () => {
     
     // Only fetch appointments if we don't have a current patient
     if (!currentPatient.value) {
-      console.log('No current patient, fetching appointments...')
+              
       const { startOfDay, endOfDay } = getTodayRange()
       
       const appointmentsRef = collection(db, 'appointments')
@@ -1224,7 +2230,7 @@ const fetchAppointments = async () => {
       // Update Firestore queue with initial data
       updateFirestoreQueue()
     } else {
-      console.log('Current patient exists, appointments already loaded')
+              
     }
     
   } catch (error) {
@@ -1239,14 +2245,39 @@ const callNext = () => {
   if (!canCallNext.value) return
   
   const nextPatient = waitingQueue.value[0]
+  if (!nextPatient) {
+    console.log('No patients in waiting queue')
+    return
+  }
+  
+  // Set current patient and remove from waiting queue
   currentPatient.value = {
     ...nextPatient,
     startTime: new Date()
   }
   waitingQueue.value.shift()
   
+  console.log(`Called next patient: ${nextPatient.ownerName} with ${nextPatient.petName}`)
+  
   // Update Firestore queue
   updateFirestoreQueue()
+}
+
+// Call next patient with confirmation if there's a current patient
+const callNextWithConfirmation = () => {
+  if (currentPatient.value) {
+    // Show confirmation dialog
+    showActionConfirmDialog(
+      'callNext',
+      'Call Next Patient',
+      `Are you sure you want to call the next patient? This will end the current consultation with "${currentPatient.value.ownerName}" and start a new one.`,
+      'Call Next Patient',
+      'Cancel'
+    )
+  } else {
+    // No current patient, call next directly
+    callNext()
+  }
 }
 
 // Completion form functions
@@ -1323,12 +2354,34 @@ const submitCompletionForm = async () => {
     // Store completion data
     await storeCompletionData(completionData)
     
+    // CRITICAL: Remove completed patient from current patient and queue
+    if (currentPatient.value?.id === selectedAppointment.value.id) {
+      currentPatient.value = null
+      console.log('Completed patient removed from current patient')
+      
+          // Auto-call next patient if available
+    if (waitingQueue.value.length > 0) {
+      console.log('Auto-calling next patient...')
+      setTimeout(() => {
+        callNext()
+      }, 1000) // Small delay to show completion
+    } else {
+      console.log('No more patients in queue - all consultations completed!')
+      // Update Firestore queue to clear current patient
+      await updateFirestoreQueue()
+    }
+    }
+    
     // Close modal and refresh data
     closeCompletionFormModal()
     await fetchAppointments()
     
+    // Update Firestore queue to reflect the change
+    await updateFirestoreQueue()
+    
     // Show success message (you can add a toast notification here)
     console.log('Appointment completed successfully!')
+            
     
   } catch (error) {
     console.error('Error completing appointment:', error)
@@ -1427,18 +2480,135 @@ const getServiceByName = (serviceName) => {
 
 const skipPatient = (patientId) => {
   if (currentPatient.value?.id === patientId) {
+    // Show confirmation dialog
+    showActionConfirmDialog(
+      'skipPatient',
+      'Skip Current Patient',
+      `Are you sure you want to skip "${currentPatient.value.ownerName}"? They will be moved to the end of the queue and the next patient will be called.`,
+      'Skip Patient',
+      'Cancel'
+    )
+    actionData.value = patientId
+  }
+}
+
+// Execute skip patient after confirmation
+const skipPatientConfirmed = (patientId) => {
+  if (currentPatient.value?.id === patientId) {
     // Add back to end of queue
     waitingQueue.value.push(currentPatient.value)
     // Re-sort to maintain date order
     sortQueueByDate()
     currentPatient.value = null
     
+    console.log('Patient skipped and moved to end of queue')
+    
+    // Auto-call next patient if available
+    if (waitingQueue.value.length > 0) {
+      console.log('Auto-calling next patient after skip...')
+      setTimeout(() => {
+        callNext()
+      }, 500) // Quick transition for skipped patients
+    }
+    
     // Update Firestore queue
     updateFirestoreQueue()
   }
 }
 
+// Function to manually clear current patient (useful for debugging or manual control)
+const clearCurrentPatient = () => {
+  if (currentPatient.value) {
+    // Show confirmation dialog
+    showActionConfirmDialog(
+      'clearPatient',
+      'Clear Current Patient',
+      `Are you sure you want to clear the current patient "${currentPatient.value.ownerName}"? This will remove them from the consultation and they will need to be called again.`,
+      'Clear Patient',
+      'Cancel'
+    )
+  }
+}
+
+// Execute the confirmed action
+const executeConfirmedAction = () => {
+  if (!actionToConfirm.value) return
+  
+  switch (actionToConfirm.value) {
+    case 'clearPatient':
+      if (currentPatient.value) {
+        console.log('Manually clearing current patient')
+        currentPatient.value = null
+        updateFirestoreQueue()
+      }
+      break
+      
+    case 'skipPatient':
+      if (actionData.value) {
+        skipPatientConfirmed(actionData.value)
+      }
+      break
+      
+    case 'transferPatient':
+      if (actionData.value) {
+        const { patientId, direction } = actionData.value
+        transferPatientConfirmed(patientId, direction)
+      }
+      break
+      
+    case 'pauseQueue':
+      pauseQueueConfirmed()
+      break
+      
+    case 'callNext':
+      callNext()
+      break
+      
+    case 'startConsultation':
+      if (actionData.value) {
+        startConsultation(actionData.value)
+      }
+      break
+  }
+  
+  // Close confirmation dialog
+  showActionConfirm.value = false
+  actionToConfirm.value = null
+  actionData.value = null
+}
+
+// Show action confirmation dialog
+const showActionConfirmDialog = (action, title, message, confirmText = 'Confirm', cancelText = 'Cancel') => {
+  actionToConfirm.value = action
+  actionMessage.value = message
+  actionConfirmText.value = confirmText
+  actionCancelText.value = cancelText
+  showActionConfirm.value = true
+}
+
+// Cancel action confirmation
+const cancelActionConfirm = () => {
+  showActionConfirm.value = false
+  actionToConfirm.value = null
+  actionData.value = null
+}
+
 const pauseQueue = () => {
+  const action = queuePaused.value ? 'resume' : 'pause'
+  const actionText = queuePaused.value ? 'resume' : 'pause'
+  
+  // Show confirmation dialog
+  showActionConfirmDialog(
+    'pauseQueue',
+    `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} Queue`,
+    `Are you sure you want to ${actionText} the queue? This will ${queuePaused.value ? 'allow' : 'stop'} new patients from being called.`,
+    queuePaused.value ? 'Resume Queue' : 'Pause Queue',
+    'Cancel'
+  )
+}
+
+// Execute pause/resume queue after confirmation
+const pauseQueueConfirmed = () => {
   queuePaused.value = !queuePaused.value
   
   // Update Firestore queue
@@ -1455,6 +2625,25 @@ const sortQueueByDate = () => {
 }
 
 const transferPatient = (patientId, direction) => {
+  const patientIndex = waitingQueue.value.findIndex(p => p.id === patientId)
+  if (patientIndex === -1) return
+  
+  const patient = waitingQueue.value[patientIndex]
+  const directionText = direction === 'up' ? 'up' : 'down'
+  
+  // Show confirmation dialog
+  showActionConfirmDialog(
+    'transferPatient',
+    'Move Patient in Queue',
+    `Are you sure you want to move "${patient.ownerName}" ${directionText} in the queue? This will change their position from #${patientIndex + 1}.`,
+    'Move Patient',
+    'Cancel'
+  )
+  actionData.value = { patientId, direction }
+}
+
+// Execute transfer patient after confirmation
+const transferPatientConfirmed = (patientId, direction) => {
   const patientIndex = waitingQueue.value.findIndex(p => p.id === patientId)
   if (patientIndex === -1) return
   
@@ -1485,48 +2674,71 @@ const updateFirestoreQueue = async () => {
     let currentPatientData = null
     if (currentPatient.value) {
       currentPatientData = {
-        id: currentPatient.value.id,
-        userId: currentPatient.value.userId,
-        petNames: currentPatient.value.petNames,
-        Services: currentPatient.value.Services || currentPatient.value.services || [], // Store service IDs
-        'Service Names': currentPatient.value['Service Names'] || currentPatient.value.serviceNames || [], // Store service names
-        startTime: currentPatient.value.startTime,
-        ownerName: currentPatient.value.ownerName,
-        petName: currentPatient.value.petName,
-        serviceName: currentPatient.value.serviceName,
-        isTelehealth: currentPatient.value.isTelehealth,
-        iceConfig: currentPatient.value.iceConfig,
+        id: currentPatient.value.id || null,
+        userId: currentPatient.value.userId || null,
+        petNames: currentPatient.value.petNames || [],
+        Services: currentPatient.value.Services || currentPatient.value.services || [],
+        'Service Names': currentPatient.value['Service Names'] || currentPatient.value.serviceNames || [],
+        startTime: currentPatient.value.startTime || new Date(),
+        ownerName: currentPatient.value.ownerName || 'Unknown Owner',
+        petName: currentPatient.value.petName || 'Unknown Pet',
+        serviceName: currentPatient.value.serviceName || 'Unknown Service',
+        isTelehealth: currentPatient.value.isTelehealth || false,
+        iceConfig: currentPatient.value.iceConfig || null,
+        // CRITICAL: Preserve original appointment scheduling data
+        date: currentPatient.value.date || null,
+        time: currentPatient.value.time || null,
+        duration: currentPatient.value.duration || 30,
         // Add additional fields that might be needed
-        appointmentId: currentPatient.value.id,
+        appointmentId: currentPatient.value.id || null,
         status: 'in-progress'
       }
+      
+      // Remove any undefined values
+      Object.keys(currentPatientData).forEach(key => {
+        if (currentPatientData[key] === undefined) {
+          delete currentPatientData[key]
+        }
+      })
     }
     
     const queueData = {
-      doctorId: authStore.user?.userId,
+      doctorId: authStore.user?.userId || null,
       date: new Date(),
       currentPatient: currentPatientData,
-      waitingQueue: waitingQueue.value.map(patient => ({
-        id: patient.id,
-        userId: patient.userId,
-        petNames: patient.petNames,
-        Services: patient.Services || patient.services || [], // Store service IDs
-        'Service Names': patient['Service Names'] || patient.serviceNames || [], // Store service names
-        date: patient.date,
-        time: patient.time,
-        ownerName: patient.ownerName,
-        petName: patient.petName,
-        serviceName: patient.serviceName,
-        duration: patient.duration
-      })),
+      waitingQueue: waitingQueue.value.map(patient => {
+        // Filter out undefined values and provide defaults
+        const cleanPatient = {
+          id: patient.id || null,
+          userId: patient.userId || null,
+          petNames: patient.petNames || [],
+          Services: patient.Services || patient.services || [],
+          'Service Names': patient['Service Names'] || patient.serviceNames || [],
+          // CRITICAL: Preserve original appointment scheduling data
+          date: patient.date || null,
+          time: patient.time || null,
+          duration: patient.duration || 30,
+          ownerName: patient.ownerName || 'Unknown Owner',
+          petName: patient.petName || 'Unknown Pet',
+          serviceName: patient.serviceName || 'Unknown Service'
+        }
+        
+        // Remove any remaining undefined values
+        Object.keys(cleanPatient).forEach(key => {
+          if (cleanPatient[key] === undefined) {
+            delete cleanPatient[key]
+          }
+        })
+        
+        return cleanPatient
+      }),
       queueStatus: queuePaused.value ? 'paused' : 'active',
       lastUpdated: new Date(),
       totalPatients: waitingQueue.value.length + (currentPatient.value ? 1 : 0)
     }
     
     await setDoc(queueDocRef, queueData, { merge: true })
-    console.log('Queue updated in Firestore with current patient:', currentPatientData ? 'Yes' : 'No')
-    console.log('Waiting queue length:', waitingQueue.value.length)
+            
   } catch (error) {
     console.error('Error updating Firestore queue:', error)
   }
@@ -1536,9 +2748,79 @@ const clearFirestoreQueue = async () => {
   try {
     const queueDocRef = getQueueDocRef()
     await deleteDoc(queueDocRef)
-    console.log('Queue cleared from Firestore')
+            
   } catch (error) {
     console.error('Error clearing Firestore queue:', error)
+  }
+}
+
+// Load queue data from Firestore
+const loadFirestoreQueue = async () => {
+  try {
+    const queueDocRef = getQueueDocRef()
+    const queueDoc = await getDoc(queueDocRef)
+    
+    if (queueDoc.exists()) {
+      const queueData = queueDoc.data()
+      console.log('Loaded queue data from Firestore:', queueData)
+      
+      // Restore current patient if exists
+      if (queueData.currentPatient && !currentPatient.value) {
+        console.log('Restoring current patient from queue:', queueData.currentPatient)
+        
+        // Try to get fresh appointment data to ensure we have correct scheduling info
+        let freshAppointmentData = null
+        try {
+          if (queueData.currentPatient.id) {
+            const appointmentRef = doc(db, 'appointments', queueData.currentPatient.id)
+            const appointmentDoc = await getDoc(appointmentRef)
+            if (appointmentDoc.exists()) {
+              freshAppointmentData = appointmentDoc.data()
+              console.log('Found fresh appointment data:', freshAppointmentData)
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching fresh appointment data:', error)
+        }
+        
+        // Ensure date and time are properly preserved
+        const restoredPatient = {
+          ...queueData.currentPatient,
+          // Use fresh appointment data if available, otherwise fall back to queue data
+          date: freshAppointmentData?.date ? new Date(freshAppointmentData.date) : 
+                 queueData.currentPatient.date ? new Date(queueData.currentPatient.date) : null,
+          time: freshAppointmentData?.time || queueData.currentPatient.time || null,
+          duration: freshAppointmentData?.duration || queueData.currentPatient.duration || 30,
+          // Ensure startTime is a proper Date object
+          startTime: queueData.currentPatient.startTime ? new Date(queueData.currentPatient.startTime) : new Date(),
+          // Mark as from queue for debugging
+          _fromQueue: true
+        }
+        
+        currentPatient.value = restoredPatient
+        console.log('Restored patient with date:', restoredPatient.date, 'and time:', restoredPatient.time)
+      }
+      
+      // Restore waiting queue if exists
+      if (queueData.waitingQueue && Array.isArray(queueData.waitingQueue)) {
+        console.log('Restoring waiting queue from Firestore:', queueData.waitingQueue)
+        
+        const restoredWaitingQueue = queueData.waitingQueue.map(patient => ({
+          ...patient,
+          // Ensure date is a proper Date object
+          date: patient.date ? new Date(patient.date) : null,
+          // Ensure time is preserved as string
+          time: patient.time || null,
+          // Mark as from queue for debugging
+          _fromQueue: true
+        }))
+        
+        waitingQueue.value = restoredWaitingQueue
+        console.log('Restored waiting queue with dates and times preserved')
+      }
+    }
+  } catch (error) {
+    console.error('Error loading Firestore queue:', error)
   }
 }
 
@@ -1549,7 +2831,7 @@ const updateAppointmentStatus = async (appointmentId, status) => {
       status: status,
       lastUpdated: new Date()
     })
-    console.log(`Appointment ${appointmentId} status updated to ${status}`)
+            
   } catch (error) {
     console.error('Error updating appointment status:', error)
   }
@@ -1562,11 +2844,11 @@ const initializeQueueFromFirestore = async () => {
     
     if (!queueDoc.empty) {
       const queueData = queueDoc.docs[0].data()
-      console.log('Found existing queue data:', queueData)
+              
       
       // Restore current patient if exists
       if (queueData.currentPatient) {
-        console.log('Restoring current patient:', queueData.currentPatient)
+        
         currentPatient.value = {
           ...queueData.currentPatient,
           startTime: queueData.currentPatient.startTime ? new Date(queueData.currentPatient.startTime) : new Date(),
@@ -1586,7 +2868,7 @@ const initializeQueueFromFirestore = async () => {
       
       // Restore waiting queue
       if (queueData.waitingQueue) {
-        console.log('Restoring waiting queue with', queueData.waitingQueue.length, 'patients')
+        
         waitingQueue.value = queueData.waitingQueue.map(patient => ({
           ...patient,
           date: patient.date?.toDate ? patient.date.toDate() : new Date(patient.date)
@@ -1596,13 +2878,11 @@ const initializeQueueFromFirestore = async () => {
       // Restore queue status
       queuePaused.value = queueData.queueStatus === 'paused'
       
-      console.log('Queue restored from Firestore successfully')
-      console.log('Current patient:', currentPatient.value)
-      console.log('Waiting queue length:', waitingQueue.value.length)
+              
       return true
     }
     
-    console.log('No existing queue found in Firestore')
+            
     return false
   } catch (error) {
     console.error('Error initializing queue from Firestore:', error)
@@ -1765,16 +3045,93 @@ const formatDateTime = (date, time) => {
   }
 }
 
+// Video control functions for preview
+const toggleMute = () => {
+  isMuted.value = !isMuted.value
+  if (localVideoRef.value && localVideoRef.value.srcObject) {
+    const audioTrack = localVideoRef.value.srcObject.getAudioTracks()[0]
+    if (audioTrack) {
+      audioTrack.enabled = !isMuted.value
+    }
+  }
+}
+
+const toggleVideo = () => {
+  isVideoOff.value = !isVideoOff.value
+  if (localVideoRef.value && localVideoRef.value.srcObject) {
+    const videoTrack = localVideoRef.value.srcObject.getVideoTracks()[0]
+    if (videoTrack) {
+      videoTrack.enabled = !isVideoOff.value
+    }
+  }
+}
+
 // Periodic queue sync to prevent data loss
 const syncQueueState = async () => {
   try {
     // If we have a current patient, ensure the queue is synced
     if (currentPatient.value) {
-      console.log('Syncing queue state for current patient:', currentPatient.value.id)
       await updateFirestoreQueue()
     }
+    
+    // Also refresh appointment data to ensure we have correct scheduling info
+    await refreshAppointmentData()
   } catch (error) {
     console.error('Error syncing queue state:', error)
+  }
+}
+
+// Refresh appointment data to ensure correct scheduling information
+const refreshAppointmentData = async () => {
+  try {
+    // Refresh current patient data if it exists
+    if (currentPatient.value?.id) {
+      const appointmentRef = doc(db, 'appointments', currentPatient.value.id)
+      const appointmentDoc = await getDoc(appointmentRef)
+      
+      if (appointmentDoc.exists()) {
+        const freshData = appointmentDoc.data()
+        console.log('Refreshing current patient appointment data:', freshData)
+        
+        // Update only the scheduling fields, preserve other state
+        currentPatient.value = {
+          ...currentPatient.value,
+          date: freshData.date ? new Date(freshData.date) : currentPatient.value.date,
+          time: freshData.time || currentPatient.value.time,
+          duration: freshData.duration || currentPatient.value.duration
+        }
+        
+        console.log('Updated current patient with fresh scheduling data')
+      }
+    }
+    
+    // Refresh waiting queue data
+    for (let i = 0; i < waitingQueue.value.length; i++) {
+      const patient = waitingQueue.value[i]
+      if (patient.id) {
+        try {
+          const appointmentRef = doc(db, 'appointments', patient.id)
+          const appointmentDoc = await getDoc(appointmentRef)
+          
+          if (appointmentDoc.exists()) {
+            const freshData = appointmentDoc.data()
+            console.log(`Refreshing waiting patient ${patient.id} appointment data:`, freshData)
+            
+            // Update only the scheduling fields
+            waitingQueue.value[i] = {
+              ...patient,
+              date: freshData.date ? new Date(freshData.date) : patient.date,
+              time: freshData.time || patient.time,
+              duration: freshData.duration || patient.duration
+            }
+          }
+        } catch (error) {
+          console.error(`Error refreshing patient ${patient.id} data:`, error)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error refreshing appointment data:', error)
   }
 }
 
@@ -1810,6 +3167,9 @@ onMounted(async () => {
   // Fetch appointments and restore queue state
   await fetchAppointments()
   
+  // Load queue data from Firestore to restore state
+  await loadFirestoreQueue()
+  
   // Update current time every minute to refresh wait estimates
   const timer = setInterval(() => {
     currentTime.value = new Date()
@@ -1821,6 +3181,11 @@ onMounted(async () => {
   // Sync queue state every 30 seconds to prevent data loss
   const queueSyncTimer = setInterval(syncQueueState, 30000)
   
+  // Update time status every minute for real-time updates
+  const timeUpdateTimer = setInterval(() => {
+    currentTime.value = new Date()
+  }, 60000) // Update every minute
+  
   // Check end of day every hour
   const endOfDayTimer = setInterval(() => {
     checkEndOfDay()
@@ -1831,6 +3196,7 @@ onMounted(async () => {
     clearInterval(timer)
     clearInterval(xirsysTimer) // Clear Xirsys timer
     clearInterval(queueSyncTimer) // Clear queue sync timer
+    clearInterval(timeUpdateTimer) // Clear time update timer
     clearInterval(endOfDayTimer)
   })
 })
