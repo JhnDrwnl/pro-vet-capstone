@@ -1,487 +1,546 @@
 <template>
   <div class="min-h-screen flex flex-col bg-gray-50 -mt-4 md:mt-0">
-    <div class="flex flex-col flex-1 px-0 md:px-4 pb-20 pt-14 md:pt-0 md:pb-4">
-    <LoadingSpinner v-if="isLoading" isOverlay text="Loading pets data..." />
+    <!-- Enhanced Page Header -->
+    <div class="bg-white border-b border-gray-200 px-4 md:px-6 py-6">
+      <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">My Pets</h1>
+            <p class="text-lg text-gray-600 mt-2">Manage your pets and view their health records</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button
+              @click.prevent="addNewPet"
+              :disabled="hasUnsavedNewPet"
+              :class="[
+                'px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm',
+                hasUnsavedNewPet 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md transform hover:scale-105'
+              ]"
+              type="button"
+              :title="hasUnsavedNewPet ? 'Please save the current pet before adding a new one' : 'Add a new pet'"
+            >
+              <PlusIcon class="w-5 h-5" />
+              Add Pet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <div v-if="!isLoading" class="grid grid-cols-1 gap-3 md:gap-4">
-        <!-- Left Column -->
-        <div class="flex flex-col gap-3 md:gap-4">
+    <!-- Main Content Area -->
+    <div class="flex-1 px-4 md:px-6 py-6">
+      <div class="max-w-7xl mx-auto">
+        <LoadingSpinner v-if="isLoading" isOverlay text="Loading pets data..." />
+
+        <div v-if="!isLoading" class="space-y-6">
           <!-- List view -->
-      <div v-if="!selectedPetId">
-            <div class="flex items-center justify-between pb-4">
-              <h2 class="text-lg font-semibold text-gray-900">My Pets</h2>
-          <button
-            @click.prevent="addNewPet"
-            :disabled="hasUnsavedNewPet"
-            :class="[
-              'px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center',
-                  hasUnsavedNewPet ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
-            ]"
-            type="button"
-            :title="hasUnsavedNewPet ? 'Please save the current pet before adding a new one' : 'Add a new pet'"
-          >
-            <PlusIcon class="w-4 h-4 mr-1" />
-            Add Pet
-          </button>
-        </div>
-        
-            <!-- Empty -->
-        <div v-if="localPets.length === 0" class="text-center py-12">
-          <p class="text-gray-500">No pets added yet. Click the + button to add a pet.</p>
-        </div>
-        
-            <!-- Bento Grid -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-if="!selectedPetId">
+            <!-- Empty State -->
+            <div v-if="localPets.length === 0" class="text-center py-16">
+              <div class="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <HeartIcon class="w-12 h-12 text-blue-400" />
+              </div>
+              <h3 class="text-2xl font-semibold text-gray-900 mb-3">No pets added yet</h3>
+              <p class="text-gray-600 mb-8 max-w-md mx-auto">Start your journey with ProVET by adding your first pet. We'll help you track their health, vaccinations, and medical history.</p>
+              <button
+                @click.prevent="addNewPet"
+                class="px-8 py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <PlusIcon class="w-5 h-5 mr-2 inline" />
+                Add Your First Pet
+              </button>
+            </div>
+            
+            <!-- Pets Grid -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div
                 v-for="(pet, index) in localPets"
                 :key="pet.id || pet.tempId"
-                class="group relative overflow-hidden rounded-2xl border bg-white/90 backdrop-blur shadow-sm hover:shadow-lg transition-all"
-                :class="getBentoCardClasses(index)"
+                class="group relative overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
               >
                 <!-- Accent stripe -->
                 <div class="absolute inset-x-0 top-0 h-1" :class="getCardStripe(index)"></div>
 
                 <!-- Header with avatar -->
-                <div class="p-5 pt-7">
+                <div class="p-6 pt-8">
                   <div class="flex items-start gap-4">
-                    <div class="relative -mt-7 w-16 h-16 rounded-full overflow-hidden ring-2 ring-white shadow">
+                    <div class="relative -mt-8 w-20 h-20 rounded-full overflow-hidden ring-4 ring-white shadow-lg">
                       <img v-if="pet.photoURL && !pet.isNew" :src="pet.photoURL" :alt="pet.name" class="w-full h-full object-cover" />
-                <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
-                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Ccircle cx='11' cy='4' r='2'/%3E%3Ccircle cx='18' cy='8' r='2'/%3E%3Ccircle cx='20' cy='16' r='2'/%3E%3Cpath d='M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z'/%3E%3C/g%3E%3C/svg%3E" alt="Pet icon" class="w-7 h-7" />
+                      <div v-else class="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-gray-400">
+                        <HeartIcon class="w-10 h-10 text-blue-400" />
                       </div>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2">
-                        <h3 class="text-base font-semibold text-gray-900 truncate">{{ pet.isNew ? 'New Pet' : pet.name }}</h3>
-                        <span v-if="pet.isNew" class="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700">New</span>
+                      <div class="flex items-center gap-2 mb-2">
+                        <h3 class="text-xl font-bold text-gray-900 truncate">{{ pet.isNew ? 'New Pet' : pet.name }}</h3>
+                        <span v-if="pet.isNew" class="px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">New</span>
                       </div>
-                      <div class="mt-1 text-xs text-gray-500 line-clamp-1">{{ pet.breed || 'No breed' }} • {{ formatPetAge(pet) }}</div>
+                      <p class="text-sm text-gray-600 mb-1">{{ pet.breed || 'No breed' }} • {{ formatPetAge(pet) }}</p>
+                      <p class="text-xs text-gray-500">{{ pet.species || 'Species not specified' }}</p>
                     </div>
-                    <div class="flex items-center gap-1">
-                      <button v-if="!pet.isNew" @click.stop="viewPet(pet)" class="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100" title="View">
+                    <div class="flex items-center gap-2">
+                      <button v-if="!pet.isNew" @click.stop="viewPet(pet)" class="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="View">
                         <EyeIcon class="w-4 h-4" />
                       </button>
-                      <button @click.stop="editPet(pet)" class="p-1.5 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100" title="Edit">
+                      <button @click.stop="editPet(pet)" class="p-2 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 transition-colors" title="Edit">
                         <EditIcon class="w-4 h-4" />
                       </button>
-                      <button v-if="!pet.isNew" @click.stop="confirmDeletePet(pet)" class="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" title="Delete">
+                      <button v-if="!pet.isNew" @click.stop="confirmDeletePet(pet)" class="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors" title="Delete">
                         <Trash2 class="w-4 h-4" />
                       </button>
                     </div>
                   </div>
 
                   <!-- Info grid -->
-                  <div class="mt-4 grid grid-cols-2 gap-2 text-xs">
-                    <div class="rounded-lg border bg-white/70 p-2">
-                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Species</div>
-                      <div class="font-medium text-gray-800">{{ pet.species || '—' }}</div>
+                  <div class="mt-6 grid grid-cols-2 gap-3">
+                    <div class="rounded-xl border bg-gray-50 p-3">
+                      <div class="text-xs uppercase tracking-wide text-gray-500 font-medium mb-1">Species</div>
+                      <div class="font-semibold text-gray-800">{{ pet.species || '—' }}</div>
                     </div>
-                    <div class="rounded-lg border bg-white/70 p-2">
-                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Gender</div>
-                      <div class="font-medium text-gray-800">{{ pet.gender ? formatGender(pet.gender) : '—' }}</div>
+                    <div class="rounded-xl border bg-gray-50 p-3">
+                      <div class="text-xs uppercase tracking-wide text-gray-500 font-medium mb-1">Gender</div>
+                      <div class="font-semibold text-gray-800">{{ pet.gender ? formatGender(pet.gender) : '—' }}</div>
                     </div>
-                    <div class="rounded-lg border bg-white/70 p-2">
-                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Weight</div>
-                      <div class="font-medium text-gray-800">{{ pet.weight ? pet.weight + ' kg' : '—' }}</div>
+                    <div class="rounded-xl border bg-gray-50 p-3">
+                      <div class="text-xs uppercase tracking-wide text-gray-500 font-medium mb-1">Weight</div>
+                      <div class="font-semibold text-gray-800">{{ pet.weight ? pet.weight + ' kg' : '—' }}</div>
                     </div>
-                    <div class="rounded-lg border bg-white/70 p-2">
-                      <div class="text-[10px] uppercase tracking-wide text-gray-400">Records</div>
-                      <div class="font-medium text-gray-800">{{ (pet.medicalHistory?.length || 0) + (pet.vaccinations?.length || 0) }}</div>
+                    <div class="rounded-xl border bg-gray-50 p-3">
+                      <div class="text-xs uppercase tracking-wide text-gray-500 font-medium mb-1">Records</div>
+                      <div class="font-semibold text-blue-600">{{ (pet.medicalHistory?.length || 0) + (pet.vaccinations?.length || 0) }}</div>
                     </div>
                   </div>
 
                   <!-- Footer -->
-                  <div class="mt-4 flex items-center justify-between">
-                    <div class="flex flex-wrap gap-1 text-[10px] text-gray-600">
-                      <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ pet.species || 'Species' }}</span>
-                      <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ pet.breed || 'Breed' }}</span>
+                  <div class="mt-6 flex items-center justify-between">
+                    <div class="flex flex-wrap gap-2">
+                      <span class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">{{ pet.species || 'Species' }}</span>
+                      <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">{{ pet.breed || 'Breed' }}</span>
                     </div>
-                    <router-link to="/user/userappointments" class="px-3 py-1.5 rounded-full bg-indigo-600 text-white text-[11px] hover:bg-indigo-700">Book</router-link>
+                    <router-link to="/user/userappointments" class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md">
+                      Book Appointment
+                    </router-link>
                   </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-  
-          <!-- Details view -->
-          <div v-else class="space-y-6">
-        <div class="flex items-center mb-4">
-              <button @click="backToList" type="button" class="mr-4 text-gray-500 hover:text-gray-700">
-            <ArrowLeftIcon class="w-5 h-5" />
-          </button>
-          <div class="relative group mr-4">
-                <div v-if="selectedLocalPet?.photoURL && !selectedLocalPet.isNew" class="w-20 h-20 rounded-full overflow-hidden">
-                  <img :src="selectedLocalPet.photoURL" :alt="selectedLocalPet.name" class="w-full h-full object-cover" />
-            </div>
-            <div v-else class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-gray-400">
-                  <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'%3E%3Ccircle cx='11' cy='4' r='2'/%3E%3Ccircle cx='18' cy='8' r='2'/%3E%3Ccircle cx='20' cy='16' r='2'/%3E%3Cpath d='M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045q-.64-2.065-2.7-2.705A3.5 3.5 0 0 1 5.5 10Z'/%3E%3C/g%3E%3C/svg%3E" alt="Pet icon" class="w-16 h-16" />
-            </div>
-                <button v-if="viewMode === 'edit'" @click.prevent="triggerPetPhotoUpload" type="button" class="absolute bottom-0 right-0 bg-white rounded-full p-1 shadow-md hover:bg-gray-100">
-              <CameraIcon class="w-4 h-4 text-gray-600" />
+      
+      <!-- Details view -->
+      <div v-if="selectedPetId" class="space-y-6">
+        <!-- Enhanced Header -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center gap-6">
+            <button @click="backToList" type="button" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+              <ArrowLeftIcon class="w-6 h-6" />
             </button>
-          </div>
-          <div class="flex-1">
-                <h2 class="text-2xl font-bold text-gray-900">{{ selectedLocalPet?.isNew ? 'New Pet' : getDisplayName() }}</h2>
-                <p class="text-sm text-gray-500">{{ selectedLocalPet?.isNew ? 'Complete the form and save to view details' : getDisplayDetails() }}</p>
-          </div>
-          <div class="flex space-x-2">
-            <button v-if="viewMode === 'view' && selectedPetTab === 'basic-details'" @click="editPet(selectedLocalPet)" type="button" class="p-2 text-gray-500 hover:text-gray-700" title="Edit pet">
-              <EditIcon class="w-5 h-5" />
-            </button>
+            <div class="relative group">
+              <div v-if="selectedLocalPet?.photoURL && !selectedLocalPet.isNew" class="w-24 h-24 rounded-full overflow-hidden ring-4 ring-white shadow-lg">
+                <img :src="selectedLocalPet.photoURL" :alt="selectedLocalPet.name" class="w-full h-full object-cover" />
+              </div>
+              <div v-else class="w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-gray-400 ring-4 ring-white shadow-lg">
+                <HeartIcon class="w-16 h-16 text-blue-400" />
+              </div>
+              <button v-if="viewMode === 'edit'" @click.prevent="triggerPetPhotoUpload" type="button" class="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-md hover:bg-gray-100 transition-colors">
+                <CameraIcon class="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
+            <div class="flex-1">
+              <h2 class="text-3xl font-bold text-gray-900 mb-2">{{ selectedLocalPet?.isNew ? 'New Pet' : getDisplayName() }}</h2>
+              <p class="text-lg text-gray-600">{{ selectedLocalPet?.isNew ? 'Complete the form and save to view details' : getDisplayDetails() }}</p>
+            </div>
+            <div class="flex space-x-3">
+              <button v-if="viewMode === 'view' && selectedPetTab === 'basic-details'" @click="editPet(selectedLocalPet)" type="button" class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-2">
+                <EditIcon class="w-4 h-4" />
+                Edit Pet
+              </button>
+              <button v-if="viewMode === 'edit'" @click="saveAllChanges" :disabled="isSavingChanges || !pendingChanges" :class="['px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2', isSavingChanges || !pendingChanges ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700']">
+                <div v-if="isSavingChanges" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                {{ isSavingChanges ? 'Saving...' : 'Save Pet' }}
+              </button>
+            </div>
           </div>
         </div>
         
-            <!-- Tabs -->
-            <div v-if="!selectedLocalPet?.isNew && viewMode === 'view'" class="border-b border-gray-200">
-          <nav class="hidden md:flex -mb-px space-x-8">
-                <button v-for="tab in petTabs" :key="tab.id" @click.prevent="selectedPetTab = tab.id" type="button" :class="['py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center', selectedPetTab === tab.id ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300']">
-              <component :is="tab.icon" class="w-5 h-5 mr-2" />
+        <!-- Tabs -->
+        <div v-if="!selectedLocalPet?.isNew && viewMode === 'view'" class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <nav class="hidden md:flex border-b border-gray-200">
+            <button v-for="tab in petTabs" :key="tab.id" @click.prevent="selectedPetTab = tab.id" type="button" :class="['py-4 px-6 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2 transition-colors', selectedPetTab === tab.id ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50']">
+              <component :is="tab.icon" class="w-5 h-5" />
               {{ tab.name }}
             </button>
           </nav>
           <div class="md:hidden relative">
-                <button @click.stop="toggleTabsDropdown" type="button" class="w-full flex items-center justify-between py-3 px-4 border rounded-md">
-              <div class="flex items-center">
-                <component :is="getCurrentTabIcon()" class="w-5 h-5 mr-2" />
+            <button @click.stop="toggleTabsDropdown" type="button" class="w-full flex items-center justify-between py-4 px-6 border-b border-gray-200">
+              <div class="flex items-center gap-2">
+                <component :is="getCurrentTabIcon()" class="w-5 h-5" />
                 <span>{{ getCurrentTabName() }}</span>
               </div>
               <ChevronDownIcon class="w-5 h-5" :class="{ 'transform rotate-180': tabsDropdownOpen }" />
             </button>
-                <div v-show="tabsDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg tabs-dropdown">
-                  <button v-for="tab in petTabs" :key="tab.id" @click.stop="selectTabAndCloseDropdown(tab.id)" type="button" :class="['w-full text-left py-3 px-4 flex items-center', selectedPetTab === tab.id ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50']">
-                <component :is="tab.icon" class="w-5 h-5 mr-2" />
+            <div v-show="tabsDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg tabs-dropdown">
+              <button v-for="tab in petTabs" :key="tab.id" @click.stop="selectTabAndCloseDropdown(tab.id)" type="button" :class="['w-full text-left py-3 px-6 flex items-center gap-2', selectedPetTab === tab.id ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50']">
+                <component :is="tab.icon" class="w-5 h-5" />
                 {{ tab.name }}
               </button>
             </div>
           </div>
         </div>
-  
+        
         <!-- Tab Content -->
-        <div>
-              <!-- Basic Details -->
-          <div v-if="viewMode === 'edit' || (viewMode === 'view' && selectedPetTab === 'basic-details')" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
-                  <input v-model="editablePet.name" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Species <span class="text-red-500">*</span></label>
-                  <input v-model="editablePet.species" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Breed <span class="text-red-500">*</span></label>
-                  <input v-model="editablePet.breed" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Age (Years, Months, Weeks)</label>
-              <div class="grid grid-cols-3 gap-2">
-                    <input v-model.number="editablePet.ageYears" type="number" min="0" placeholder="Years" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
-                    <input v-model.number="editablePet.ageMonths" type="number" min="0" max="11" placeholder="Months" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
-                    <input v-model.number="editablePet.ageWeeks" type="number" min="0" max="3" placeholder="Weeks" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <!-- Basic Details -->
+          <div v-if="viewMode === 'edit' || (viewMode === 'view' && selectedPetTab === 'basic-details')" class="space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Name <span class="text-red-500">*</span></label>
+                <input v-model="editablePet.name" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Species <span class="text-red-500">*</span></label>
+                <input v-model="editablePet.species" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Breed <span class="text-red-500">*</span></label>
+                <input v-model="editablePet.breed" type="text" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Age (Years, Months, Weeks)</label>
+                <div class="grid grid-cols-3 gap-3">
+                  <input v-model.number="editablePet.ageYears" type="number" min="0" placeholder="Years" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+                  <input v-model.number="editablePet.ageMonths" type="number" min="0" max="11" placeholder="Months" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+                  <input v-model.number="editablePet.ageWeeks" type="number" min="0" max="3" placeholder="Weeks" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Weight (kg)</label>
+                <input v-model.number="editablePet.weight" type="number" step="0.1" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-colors" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Gender <span class="text-red-500">*</span></label>
+                <div v-if="viewMode !== 'view'" class="relative">
+                  <div @click="toggleGenderDropdown" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm cursor-pointer flex justify-between items-center gender-dropdown transition-colors">
+                    <span v-if="editablePet.gender">{{ formatGender(editablePet.gender) }}</span>
+                    <span v-else class="text-gray-500">Select gender</span>
+                    <ChevronDownIcon class="w-4 h-4 text-gray-500" :class="{ 'transform rotate-180': genderDropdownOpen }" />
+                  </div>
+                  <div v-show="genderDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg gender-dropdown">
+                    <div v-for="option in genderOptions" :key="option.value" @click="selectGender(option.value)" class="px-4 py-3 hover:bg-gray-100 cursor-pointer text-sm gender-dropdown transition-colors">{{ option.label }}</div>
                   </div>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                  <input v-model.number="editablePet.weight" type="number" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm" @input="updateLocalPet" :disabled="viewMode === 'view'" />
+                <div v-else class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-sm">{{ editablePet.gender ? formatGender(editablePet.gender) : 'Not specified' }}</div>
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700">Gender <span class="text-red-500">*</span></label>
-              <div v-if="viewMode !== 'view'" class="relative">
-                    <div @click="toggleGenderDropdown" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm cursor-pointer flex justify-between items-center gender-dropdown">
-                  <span v-if="editablePet.gender">{{ formatGender(editablePet.gender) }}</span>
-                  <span v-else class="text-gray-500">Select gender</span>
-                  <ChevronDownIcon class="w-4 h-4 text-gray-500" :class="{ 'transform rotate-180': genderDropdownOpen }" />
-                </div>
-                    <div v-show="genderDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg gender-dropdown">
-                      <div v-for="option in genderOptions" :key="option.value" @click="selectGender(option.value)" class="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm gender-dropdown">{{ option.label }}</div>
-                    </div>
-                  </div>
-                  <div v-else class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm">{{ editablePet.gender ? formatGender(editablePet.gender) : 'Not specified' }}</div>
+            
+            <!-- Action Buttons for Edit Mode -->
+            <div v-if="viewMode === 'edit'" class="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
+              <button
+                @click="backToList"
+                type="button"
+                class="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                @click="saveAllChanges"
+                :disabled="isSavingChanges || !pendingChanges"
+                :class="[
+                  'px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2',
+                  isSavingChanges || !pendingChanges
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                ]"
+              >
+                <div v-if="isSavingChanges" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                {{ isSavingChanges ? 'Saving...' : 'Save Changes' }}
+              </button>
+            </div>
+          </div>
+          
+          <!-- Medical History Tab Content -->
+          <div v-if="selectedPetTab === 'medical-history' && !selectedLocalPet?.isNew" class="space-y-6">
+            <!-- Header with Actions -->
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-xl font-semibold text-gray-900">Medical History</h3>
+                <p class="text-sm text-gray-600 mt-1">Complete medical records, vaccinations, and appointment history</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- View Vaccination Card Button -->
+                <button 
+                  @click="openVaccinationCardModal"
+                  class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <ShieldIcon class="w-4 h-4" />
+                  View Vaccination Card
+                </button>
+                <button 
+                  @click="addNewRecord"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                >
+                  <PlusIcon class="w-4 h-4" />
+                  Add Record
+                </button>
+              </div>
+            </div>
+
+            <!-- Enhanced Filter Buttons -->
+            <div class="flex flex-wrap gap-3">
+              <button
+                @click="setHistoryFilter('all')"
+                :class="[
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                  historyFilter === 'all'
+                    ? 'bg-blue-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                ]"
+              >
+                <ActivityIcon class="w-4 h-4" />
+                All Records
+              </button>
+              <!-- Service Category Filters -->
+              <div class="w-full border-t border-gray-200 pt-3 mt-2">
+                <div class="text-xs font-medium text-gray-600 mb-2">Service Categories:</div>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="category in categories"
+                    :key="category.id"
+                    @click="setHistoryFilter(category.id)"
+                    :class="[
+                      'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                      historyFilter === category.id
+                        ? 'bg-purple-500 text-white shadow-md'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                    ]"
+                    :title="category.description"
+                  >
+                    <div class="w-3 h-3 rounded-full" :class="{
+                      'bg-blue-500': category.id === 'telehealth5192',
+                      'bg-green-500': category.id === 'elective3401',
+                      'bg-orange-500': category.id === 'veterinary8515',
+                      'bg-red-500': category.id === 'walk-in8438',
+                      'bg-purple-500': !['telehealth5192', 'elective3401', 'veterinary8515', 'walk-in8438'].includes(category.id)
+                    }"></div>
+                    {{ category.name }}
+                  </button>
                 </div>
               </div>
               
-              <!-- Medical History -->
-              <div v-if="selectedPetTab === 'medical-history' && !selectedLocalPet?.isNew" class="space-y-6">
-                <!-- Header with Actions -->
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h3 class="text-xl font-semibold text-gray-900">Medical History</h3>
-                    <p class="text-sm text-gray-600 mt-1">Complete medical records, vaccinations, and appointment history</p>
+              <button
+                @click="setHistoryFilter('completed')"
+                :class="[
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
+                  historyFilter === 'completed'
+                    ? 'bg-green-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
+                ]"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Completed Appointments
+              </button>
+
+              <!-- Clear Filter Button -->
+              <button
+                v-if="historyFilter !== 'all'"
+                @click="setHistoryFilter('all')"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-sm flex items-center gap-2"
+              >
+                <XIcon class="w-4 h-4" />
+                Clear Filter
+              </button>
+            </div>
+
+            <!-- Record Counter and Stats -->
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-6">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-gray-900">{{ timelineEntries.length }}</div>
+                    <div class="text-xs text-gray-500">Total Records</div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <!-- View Vaccination Card Button -->
-                    <button 
-                      @click="openVaccinationCardModal"
-                      class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                    >
-                      <ShieldIcon class="w-4 h-4" />
-                      View Vaccination Card
-                    </button>
-                    <button 
-                      @click="addNewRecord"
-                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                    >
-                      <PlusIcon class="w-4 h-4" />
-                      Add Record
-                    </button>
+                  <div class="text-center">
+                    <div class="text-lg font-semibold text-blue-600">{{ petAppointments.length }}</div>
+                    <div class="text-xs text-gray-500">Total Appointments</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-lg font-semibold text-green-600">{{ petAppointments.filter(a => a.status === 'completed').length }}</div>
+                    <div class="text-xs text-gray-500">Completed Appointments</div>
+                  </div>
+                  <div class="text-center">
+                    <div class="text-lg font-semibold text-purple-600">{{ categories.length }}</div>
+                    <div class="text-xs text-gray-500">Service Categories</div>
                   </div>
                 </div>
+                <div class="text-sm text-gray-600">
+                  <span v-if="historyFilter !== 'all'">Filtered by: {{ 
+                    historyFilter === 'completed' ? 'Completed Appointments' :
+                    categories.find(cat => cat.id === historyFilter)?.name || 'Unknown Category'
+                  }}</span>
+                </div>
+              </div>
+            </div>
 
-                <!-- Enhanced Filter Buttons -->
-                <div class="flex flex-wrap gap-3">
-                  <button
-                    @click="setHistoryFilter('all')"
-                    :class="[
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
-                      historyFilter === 'all'
-                        ? 'bg-blue-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
-                    ]"
-                  >
-                    <ActivityIcon class="w-4 h-4" />
-                    All Records
-                  </button>
-                  <!-- Service Category Filters -->
-                  <div class="w-full border-t border-gray-200 pt-3 mt-2">
-                    <div class="text-xs font-medium text-gray-600 mb-2">Service Categories:</div>
-                    <div class="flex flex-wrap gap-2">
-                      <button
-                        v-for="category in categories"
-                        :key="category.id"
-                        @click="setHistoryFilter(category.id)"
-                        :class="[
-                          'px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
-                          historyFilter === category.id
-                            ? 'bg-purple-500 text-white shadow-md'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
-                        ]"
-                        :title="category.description"
-                      >
-                        <div class="w-3 h-3 rounded-full" :class="{
-                          'bg-blue-500': category.id === 'telehealth5192',
-                          'bg-green-500': category.id === 'elective3401',
-                          'bg-orange-500': category.id === 'veterinary8515',
-                          'bg-red-500': category.id === 'walk-in8438',
-                          'bg-purple-500': !['telehealth5192', 'elective3401', 'veterinary8515', 'walk-in8438'].includes(category.id)
-                        }"></div>
-                        {{ category.name }}
-                      </button>
+            <!-- Loading and Error States -->
+            <div v-if="historyLoading" class="py-12 text-center">
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p class="text-gray-500">Loading medical records...</p>
+            </div>
+            
+            <div v-else-if="historyError" class="bg-red-50 border border-red-200 text-red-600 p-6 rounded-lg text-center">
+              <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <XIcon class="w-6 h-6 text-red-500" />
+              </div>
+              <p class="font-medium">{{ historyError }}</p>
+              <button @click="fetchPetAppointments" class="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                Try Again
+              </button>
+            </div>
+
+            <!-- Records Timeline -->
+            <div v-else>
+              <div v-if="timelineEntries.length === 0" class="text-center py-12">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <component
+                    :is="historyFilter === 'vaccinations' ? ShieldIcon :
+                         historyFilter === 'telehealth' ? ActivityIcon :
+                         historyFilter === 'treatments' ? ActivityIcon : ActivityIcon"
+                    class="w-8 h-8 text-gray-400"
+                  />
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">
+                  {{ historyFilter === 'all' ? 'No appointments yet' :
+                     historyFilter === 'completed' ? 'No completed appointments found' :
+                     categories.find(cat => cat.id === historyFilter) ? `No ${categories.find(cat => cat.id === historyFilter).name} appointments found` :
+                     'No appointments found' }}
+                </h3>
+                <p class="text-gray-500 max-w-md mx-auto">
+                  {{ historyFilter === 'all' ? 'Appointments will appear here once they are scheduled and completed.' :
+                     historyFilter === 'completed' ? 'Completed appointments with detailed notes will appear here once your veterinarian completes them.' :
+                     categories.find(cat => cat.id === historyFilter) ? `${categories.find(cat => cat.id === historyFilter).name} appointments will appear here once they are scheduled and completed.` :
+                     'Appointments will appear here once they are scheduled.' }}
+                </p>
+              </div>
+              
+              <!-- Enhanced Timeline -->
+              <div v-else class="relative">
+                <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                <div class="space-y-6">
+                  <div v-for="(e, idx) in timelineEntries" :key="idx" class="relative pl-8">
+                    <!-- Timeline Dot -->
+                    <div class="absolute left-0 w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center" :class="{
+                      'bg-green-500': e.kind === 'Vaccination' && e.status === 'completed',
+                      'bg-yellow-500': e.kind === 'Vaccination' && e.status === 'pending',
+                      'bg-blue-500': e.kind === 'Telehealth',
+                      'bg-emerald-500': e.kind === 'Treatment',
+                      'bg-indigo-500': e.kind === 'Appointment'
+                    }">
+                      <component :is="e.icon" class="w-2.5 h-2.5 text-white" />
                     </div>
-                  </div>
-                  
-                  <button
-                    @click="setHistoryFilter('completed')"
-                    :class="[
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2',
-                      historyFilter === 'completed'
-                        ? 'bg-green-500 text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow-sm'
-                    ]"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Completed Appointments
-                  </button>
-
-                  <!-- Clear Filter Button -->
-                  <button
-                    v-if="historyFilter !== 'all'"
-                    @click="setHistoryFilter('all')"
-                    class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-sm flex items-center gap-2"
-                  >
-                    <XIcon class="w-4 h-4" />
-                    Clear Filter
-                  </button>
-                </div>
-
-                <!-- Record Counter and Stats -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-6">
-                      <div class="text-center">
-                        <div class="text-2xl font-bold text-gray-900">{{ timelineEntries.length }}</div>
-                        <div class="text-xs text-gray-500">Total Records</div>
+                    
+                    <!-- Timeline Content -->
+                    <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200">
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs font-medium px-2 py-1 rounded-full" :class="{
+                            'bg-green-100 text-green-700': e.kind === 'Vaccination' && e.status === 'completed',
+                            'bg-yellow-100 text-yellow-700': e.kind === 'Vaccination' && e.status === 'pending',
+                            'bg-blue-100 text-blue-700': e.kind === 'Telehealth',
+                            'bg-emerald-100 text-emerald-700': e.kind === 'Treatment',
+                            'bg-indigo-100 text-indigo-700': e.kind === 'Appointment'
+                          }">
+                            {{ e.kind }}
+                          </span>
+                          <span v-if="e.status" class="text-xs px-2 py-1 rounded-full" :class="{
+                            'bg-yellow-100 text-yellow-700': e.status === 'pending',
+                            'bg-green-100 text-green-700': e.status === 'completed',
+                            'bg-blue-100 text-blue-700': e.status === 'approved',
+                            'bg-red-100 text-red-700': e.status === 'rejected' || e.status === 'cancelled'
+                          }">
+                            {{ e.status.charAt(0).toUpperCase() + e.status.slice(1) }}
+                          </span>
+                          <!-- Completion Notes Indicator -->
+                          <span v-if="e.status === 'completed' && e.completionData" class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            📝 Notes
+                          </span>
+                        </div>
+                        <div class="text-xs text-gray-400">{{ formatDate(e.date, 'PPpp') }}</div>
                       </div>
-                      <div class="text-center">
-                        <div class="text-lg font-semibold text-blue-600">{{ petAppointments.length }}</div>
-                        <div class="text-xs text-gray-500">Total Appointments</div>
-                      </div>
-                      <div class="text-center">
-                        <div class="text-lg font-semibold text-green-600">{{ petAppointments.filter(a => a.status === 'completed').length }}</div>
-                        <div class="text-xs text-gray-500">Completed Appointments</div>
-                      </div>
-                      <div class="text-center">
-                        <div class="text-lg font-semibold text-purple-600">{{ categories.length }}</div>
-                        <div class="text-xs text-gray-500">Service Categories</div>
-                      </div>
-                    </div>
-                    <div class="text-sm text-gray-600">
-                      <span v-if="historyFilter !== 'all'">Filtered by: {{ 
-                        historyFilter === 'completed' ? 'Completed Appointments' :
-                        categories.find(cat => cat.id === historyFilter)?.name || 'Unknown Category'
-                      }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Loading and Error States -->
-                <div v-if="historyLoading" class="py-12 text-center">
-                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p class="text-gray-500">Loading medical records...</p>
-                </div>
-                
-                <div v-else-if="historyError" class="bg-red-50 border border-red-200 text-red-600 p-6 rounded-lg text-center">
-                  <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <XIcon class="w-6 h-6 text-red-500" />
-                  </div>
-                  <p class="font-medium">{{ historyError }}</p>
-                  <button @click="fetchPetAppointments" class="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
-                    Try Again
-                  </button>
-                </div>
-
-                <!-- Records Timeline -->
-                <div v-else>
-                  <div v-if="timelineEntries.length === 0" class="text-center py-12">
-                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <component
-                        :is="historyFilter === 'vaccinations' ? SyringeIcon :
-                             historyFilter === 'telehealth' ? ActivityIcon :
-                             historyFilter === 'treatments' ? ActivityIcon : ActivityIcon"
-                        class="w-8 h-8 text-gray-400"
-                      />
-                    </div>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">
-                      {{ historyFilter === 'all' ? 'No appointments yet' :
-                         historyFilter === 'completed' ? 'No completed appointments found' :
-                         categories.find(cat => cat.id === historyFilter) ? `No ${categories.find(cat => cat.id === historyFilter).name} appointments found` :
-                         'No appointments found' }}
-                    </h3>
-                    <p class="text-gray-500 max-w-md mx-auto">
-                      {{ historyFilter === 'all' ? 'Appointments will appear here once they are scheduled and completed.' :
-                         historyFilter === 'completed' ? 'Completed appointments with detailed notes will appear here once your veterinarian completes them.' :
-                         categories.find(cat => cat.id === historyFilter) ? `${categories.find(cat => cat.id === historyFilter).name} appointments will appear here once they are scheduled and completed.` :
-                         'Appointments will appear here once they are scheduled.' }}
-                    </p>
-                  </div>
-                  
-                  <!-- Enhanced Timeline -->
-                  <div v-else class="relative">
-                    <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                    <div class="space-y-6">
-                      <div v-for="(e, idx) in timelineEntries" :key="idx" class="relative pl-8">
-                        <!-- Timeline Dot -->
-                        <div class="absolute left-0 w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center" :class="{
-                          'bg-green-500': e.kind === 'Vaccination' && e.status === 'completed',
-                          'bg-yellow-500': e.kind === 'Vaccination' && e.status === 'pending',
-                          'bg-blue-500': e.kind === 'Telehealth',
-                          'bg-emerald-500': e.kind === 'Treatment',
-                          'bg-indigo-500': e.kind === 'Appointment'
-                        }">
-                          <component :is="e.icon" class="w-2.5 h-2.5 text-white" />
+                      
+                      <h4 class="font-medium text-gray-900 mb-1">{{ e.title }}</h4>
+                      <div v-if="e.subtitle" class="text-sm text-gray-600 mb-2">{{ e.subtitle }}</div>
+                      <div v-if="e.details" class="text-sm text-gray-500 bg-gray-50 rounded p-2">{{ e.details }}</div>
+                      
+                      <!-- Completion Summary for Completed Appointments -->
+                      <div v-if="e.status === 'completed' && e.completionData" class="mt-3 pt-3 border-t border-gray-100">
+                        <div class="flex items-center gap-2 mb-3">
+                          <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                          <span class="text-sm font-medium text-gray-700">Completion Summary</span>
                         </div>
                         
-                        <!-- Timeline Content -->
-                        <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow duration-200">
-                          <div class="flex items-start justify-between mb-2">
-                            <div class="flex items-center gap-2">
-                              <span class="text-xs font-medium px-2 py-1 rounded-full" :class="{
-                                'bg-green-100 text-green-700': e.kind === 'Vaccination' && e.status === 'completed',
-                                'bg-yellow-100 text-yellow-700': e.kind === 'Vaccination' && e.status === 'pending',
-                                'bg-blue-100 text-blue-700': e.kind === 'Telehealth',
-                                'bg-emerald-100 text-emerald-700': e.kind === 'Treatment',
-                                'bg-indigo-100 text-indigo-700': e.kind === 'Appointment'
-                              }">
-                                {{ e.kind }}
-                              </span>
-                              <span v-if="e.status" class="text-xs px-2 py-1 rounded-full" :class="{
-                                'bg-yellow-100 text-yellow-700': e.status === 'pending',
-                                'bg-green-100 text-green-700': e.status === 'completed',
-                                'bg-blue-100 text-blue-700': e.status === 'approved',
-                                'bg-red-100 text-red-700': e.status === 'rejected' || e.status === 'cancelled'
-                              }">
-                                {{ e.status.charAt(0).toUpperCase() + e.status.slice(1) }}
-                              </span>
-                              <!-- Completion Notes Indicator -->
-                              <span v-if="e.status === 'completed' && e.completionData" class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-                                📝 Notes
-                              </span>
+                        <!-- Services Summary -->
+                        <div v-if="e.completionData.services && e.completionData.services.length > 0" class="mb-3">
+                          <div class="text-xs font-medium text-gray-600 mb-2">Services Completed:</div>
+                          <div class="space-y-2">
+                            <div v-for="(service, index) in e.completionData.services" :key="index" class="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                              <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-blue-800">{{ service.name || `Service ${index + 1}` }}</span>
+                                <span class="text-xs text-blue-600 capitalize">{{ service.status?.replace('_', ' ') || 'completed' }}</span>
+                              </div>
+                              <div v-if="service.duration" class="text-xs text-blue-600 mb-1">Duration: {{ service.duration }} minutes</div>
+                              <div v-if="service.notes" class="text-sm text-blue-700 bg-white rounded p-2 border border-blue-200">
+                                {{ service.notes }}
+                              </div>
                             </div>
-                            <div class="text-xs text-gray-400">{{ formatDate(e.date, 'PPpp') }}</div>
+                          </div>
+                        </div>
+                        
+                        <!-- Pet Health Assessment -->
+                        <div v-if="e.completionData.pets && e.completionData.pets.length > 0" class="mb-3">
+                          <div class="text-xs font-medium text-gray-600 mb-2">Health Assessment:</div>
+                          <div class="space-y-2">
+                            <div v-for="(pet, index) in e.completionData.pets" :key="index" class="bg-green-50 rounded-lg p-3 border border-green-100">
+                              <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-green-800">{{ pet.name || `Pet ${index + 1}` }}</span>
+                                <span class="text-xs text-green-600 capitalize">{{ pet.overallHealth || 'assessed' }}</span>
+                              </div>
+                              <div v-if="pet.weight" class="text-xs text-green-600 mb-1">Weight: {{ pet.weight }} kg</div>
+                              <div v-if="pet.healthNotes" class="text-sm text-green-700 bg-white rounded p-2 border border-green-200">
+                                {{ pet.healthNotes }}
+                              </div>
+                              <div v-if="pet.followUpRequired" class="mt-2">
+                                <div class="flex items-center gap-2">
+                                  <span class="text-xs font-medium text-orange-600">Follow-up Required:</span>
+                                  <span class="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">Yes</span>
+                                </div>
+                                <div v-if="pet.followUpNotes" class="text-sm text-orange-700 bg-orange-50 rounded p-2 mt-1 border border-orange-200">
+                                  {{ pet.followUpNotes }}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- General Notes -->
+                        <div v-if="e.completionData.generalNotes" class="space-y-3">
+                          <div v-if="e.completionData.generalNotes.treatmentSummary" class="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                            <div class="text-xs font-medium text-purple-800 mb-1">Treatment Summary:</div>
+                            <div class="text-sm text-purple-700">{{ e.completionData.generalNotes.treatmentSummary }}</div>
                           </div>
                           
-                          <h4 class="font-medium text-gray-900 mb-1">{{ e.title }}</h4>
-                          <div v-if="e.subtitle" class="text-sm text-gray-600 mb-2">{{ e.subtitle }}</div>
-                          <div v-if="e.details" class="text-sm text-gray-500 bg-gray-50 rounded p-2">{{ e.details }}</div>
+                          <div v-if="e.completionData.generalNotes.ownerInstructions" class="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
+                            <div class="text-xs font-medium text-indigo-800 mb-1">Owner Instructions:</div>
+                            <div class="text-sm text-indigo-700">{{ e.completionData.generalNotes.ownerInstructions }}</div>
+                          </div>
                           
-                          <!-- Completion Summary for Completed Appointments -->
-                          <div v-if="e.status === 'completed' && e.completionData" class="mt-3 pt-3 border-t border-gray-100">
-                            <div class="flex items-center gap-2 mb-3">
-                              <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                              <span class="text-sm font-medium text-gray-700">Completion Summary</span>
-                            </div>
-                            
-                            <!-- Services Summary -->
-                            <div v-if="e.completionData.services && e.completionData.services.length > 0" class="mb-3">
-                              <div class="text-xs font-medium text-gray-600 mb-2">Services Completed:</div>
-                              <div class="space-y-2">
-                                <div v-for="(service, index) in e.completionData.services" :key="index" class="bg-blue-50 rounded-lg p-3 border border-blue-100">
-                                  <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm font-medium text-blue-800">{{ service.name || `Service ${index + 1}` }}</span>
-                                    <span class="text-xs text-blue-600 capitalize">{{ service.status?.replace('_', ' ') || 'completed' }}</span>
-                                  </div>
-                                  <div v-if="service.duration" class="text-xs text-blue-600 mb-1">Duration: {{ service.duration }} minutes</div>
-                                  <div v-if="service.notes" class="text-sm text-blue-700 bg-white rounded p-2 border border-blue-200">
-                                    {{ service.notes }}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <!-- Pet Health Assessment -->
-                            <div v-if="e.completionData.pets && e.completionData.pets.length > 0" class="mb-3">
-                              <div class="text-xs font-medium text-gray-600 mb-2">Health Assessment:</div>
-                              <div class="space-y-2">
-                                <div v-for="(pet, index) in e.completionData.pets" :key="index" class="bg-green-50 rounded-lg p-3 border border-green-100">
-                                  <div class="flex items-center justify-between mb-2">
-                                    <span class="text-sm font-medium text-green-800">{{ pet.name || `Pet ${index + 1}` }}</span>
-                                    <span class="text-xs text-green-600 capitalize">{{ pet.overallHealth || 'assessed' }}</span>
-                                  </div>
-                                  <div v-if="pet.weight" class="text-xs text-green-600 mb-1">Weight: {{ pet.weight }} kg</div>
-                                  <div v-if="pet.healthNotes" class="text-sm text-green-700 bg-white rounded p-2 border border-green-200">
-                                    {{ pet.healthNotes }}
-                                  </div>
-                                  <div v-if="pet.followUpRequired" class="mt-2">
-                                    <div class="flex items-center gap-2">
-                                      <span class="text-xs font-medium text-orange-600">Follow-up Required:</span>
-                                      <span class="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded-full">Yes</span>
-                                    </div>
-                                    <div v-if="pet.followUpNotes" class="text-sm text-orange-700 bg-orange-50 rounded p-2 mt-1 border border-orange-200">
-                                      {{ pet.followUpNotes }}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <!-- General Notes -->
-                            <div v-if="e.completionData.generalNotes" class="space-y-3">
-                              <div v-if="e.completionData.generalNotes.treatmentSummary" class="bg-purple-50 rounded-lg p-3 border border-purple-100">
-                                <div class="text-xs font-medium text-purple-800 mb-1">Treatment Summary:</div>
-                                <div class="text-sm text-purple-700">{{ e.completionData.generalNotes.treatmentSummary }}</div>
-                              </div>
-                              
-                              <div v-if="e.completionData.generalNotes.ownerInstructions" class="bg-indigo-50 rounded-lg p-3 border border-indigo-100">
-                                <div class="text-xs font-medium text-indigo-800 mb-1">Owner Instructions:</div>
-                                <div class="text-sm text-indigo-700">{{ e.completionData.generalNotes.ownerInstructions }}</div>
-                              </div>
-                              
-                              <div v-if="e.completionData.generalNotes.nextSteps" class="bg-amber-50 rounded-lg p-3 border border-amber-100">
-                                <div class="text-xs font-medium text-amber-800 mb-1">Next Steps:</div>
-                                <div class="text-sm text-amber-700">{{ e.completionData.generalNotes.nextSteps }}</div>
-                              </div>
-                            </div>
+                          <div v-if="e.completionData.generalNotes.nextSteps" class="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                            <div class="text-xs font-medium text-amber-800 mb-1">Next Steps:</div>
+                            <div class="text-sm text-amber-700">{{ e.completionData.generalNotes.nextSteps }}</div>
                           </div>
                         </div>
                       </div>
@@ -489,59 +548,38 @@
                   </div>
                 </div>
               </div>
-    
-
-    
-              <!-- Documents -->
-              <div v-if="selectedPetTab === 'documents' && !selectedLocalPet?.isNew" class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-medium text-gray-900">Documents</h3>
-              <button class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center">
-                <PlusIcon class="w-4 h-4 mr-1" />
-                Upload Document
-              </button>
-            </div>
-            <div class="text-center py-8">
-              <FolderIcon class="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p class="text-gray-500">No documents uploaded yet.</p>
-              <p class="text-sm text-gray-400 mt-1">Documents will appear here once uploaded.</p>
             </div>
           </div>
-
-
-        </div>
         </div>
       </div>
     </div>
-    
+
     <!-- Hidden file input for pet photo -->
-      <input type="file" ref="photoInput" @change="handlePetPhotoSelect" accept="image/*" class="hidden" />
-
-
+    <input type="file" ref="photoInput" @change="handlePetPhotoSelect" accept="image/*" class="hidden" />
 
     <!-- Vaccination Card Modal -->
     <div v-if="showVaccinationCardModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <!-- Modal Header -->
         <div class="print-header bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-t-lg">
-            <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               <h2 class="text-2xl font-bold">Vaccination Card</h2>
-              </div>
-              <button 
+            </div>
+            <button 
               @click="showVaccinationCardModal = false"
               class="text-white hover:text-gray-200 transition-colors"
-              >
+            >
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
               </svg>
-              </button>
+            </button>
           </div>
           <p class="text-blue-100 mt-2">Official Pet Health Record</p>
-            </div>
+        </div>
 
         <!-- Modal Content -->
         <div id="vaccination-card-content" class="p-6">
@@ -558,14 +596,14 @@
                   <h3 class="text-2xl font-bold text-gray-900">{{ selectedLocalPet?.name }}</h3>
                   <p class="text-gray-600">{{ selectedLocalPet?.species }} • {{ selectedLocalPet?.breed }}</p>
                   <p class="text-sm text-gray-500">{{ selectedLocalPet?.ageYears }}y {{ selectedLocalPet?.ageMonths }}m • {{ selectedLocalPet?.gender }}</p>
-          </div>
-        </div>
+                </div>
+              </div>
               
               <div class="space-y-3">
                 <div class="flex justify-between">
                   <span class="text-gray-500">Owner:</span>
                   <span class="font-medium">{{ authStore.user?.firstName }} {{ authStore.user?.lastName }}</span>
-        </div>
+                </div>
                 <div class="flex justify-between">
                   <span class="text-gray-500">Contact:</span>
                   <span class="font-medium">{{ authStore.user?.phone || authStore.user?.email || 'N/A' }}</span>
@@ -575,9 +613,9 @@
                   <span class="font-medium">{{ formatDate(new Date(), 'MMM dd, yyyy') }}</span>
                 </div>
               </div>
-      </div>
-    </div>
-    
+            </div>
+          </div>
+          
           <!-- Vaccination Records Section -->
           <div v-if="vaccinationRecords.length > 0" class="space-y-4">
             <h4 class="text-xl font-semibold text-gray-900 mb-4">Vaccination History</h4>
@@ -680,9 +718,8 @@
       </div>
     </div>
 
-      <!-- Overlay loader -->
+    <!-- Overlay loader -->
     <LoadingSpinner v-if="isSavingChanges || isDeleting" isOverlay :text="loadingText" />
-    </div>
   </div>
 </template>
   
@@ -702,6 +739,8 @@
   ChevronDown as ChevronDownIcon,
   X as XIcon,
   Shield as ShieldIcon,
+  Heart as HeartIcon,
+  Syringe as SyringeIcon,
 } from 'lucide-vue-next';
 import { usePetsStore } from '@/stores/modules/petsStore';
 import { useAuthStore } from '@/stores/modules/authStore';
@@ -769,13 +808,40 @@ const genderOptions = [
 const petTabs = [
   { id: 'basic-details', name: 'Basic Details', icon: FileTextIcon },
   { id: 'medical-history', name: 'Medical History', icon: ActivityIcon },
-  { id: 'documents', name: 'Documents', icon: FolderIcon },
 ];
 
-const getCurrentTabName = () => petTabs.find(t => t.id === selectedPetTab.value)?.name || 'Basic Details';
-const getCurrentTabIcon = () => petTabs.find(t => t.id === selectedPetTab.value)?.icon || FileTextIcon;
-const toggleTabsDropdown = () => { tabsDropdownOpen.value = !tabsDropdownOpen.value; };
-const selectTabAndCloseDropdown = (tabId) => { selectedPetTab.value = tabId; tabsDropdownOpen.value = false; };
+const getCurrentTabIcon = () => {
+  const currentTab = petTabs.find(tab => tab.id === selectedPetTab.value);
+  return currentTab ? currentTab.icon : FileTextIcon;
+};
+
+const getCurrentTabName = () => {
+  const currentTab = petTabs.find(tab => tab.id === selectedPetTab.value);
+  return currentTab ? currentTab.name : 'Basic Details';
+};
+
+const toggleTabsDropdown = () => {
+  tabsDropdownOpen.value = !tabsDropdownOpen.value;
+};
+
+const selectTabAndCloseDropdown = (tabId) => {
+  selectedPetTab.value = tabId;
+  tabsDropdownOpen.value = false;
+};
+
+const toggleGenderDropdown = () => {
+  genderDropdownOpen.value = !genderDropdownOpen.value;
+};
+
+const selectGender = (gender) => {
+  editablePet.value.gender = gender;
+  genderDropdownOpen.value = false;
+  updateLocalPet();
+};
+
+const formatGender = (gender) => {
+  return gender === 'male' ? 'Male' : gender === 'female' ? 'Female' : gender;
+};
 
 // Computed
 const storedPets = computed(() => petsStore.getPets);
@@ -805,32 +871,31 @@ const fetchPets = async () => {
 };
 
 // Helpers
-const formatGender = (gender) => (gender === 'male' ? 'Male' : gender === 'female' ? 'Female' : gender);
 const formatPetAge = (pet) => {
-  if (!pet.ageYears && !pet.ageMonths && !pet.ageWeeks) return 'Age not specified';
-  const parts = [];
-  if (pet.ageYears > 0) parts.push(`${pet.ageYears} ${pet.ageYears === 1 ? 'year' : 'years'}`);
-  if (pet.ageMonths > 0) parts.push(`${pet.ageMonths} ${pet.ageMonths === 1 ? 'month' : 'months'}`);
-  if (pet.ageWeeks > 0) parts.push(`${pet.ageWeeks} ${pet.ageWeeks === 1 ? 'week' : 'weeks'}`);
-  return parts.join(' ');
+  if (pet.ageYears && pet.ageYears > 0) {
+    return `${pet.ageYears} year${pet.ageYears > 1 ? 's' : ''}`;
+  } else if (pet.ageMonths && pet.ageMonths > 0) {
+    return `${pet.ageMonths} month${pet.ageMonths > 1 ? 's' : ''}`;
+  } else if (pet.ageWeeks && pet.ageWeeks > 0) {
+    return `${pet.ageWeeks} week${pet.ageWeeks > 1 ? 's' : ''}`;
+  }
+  return 'Age not specified';
 };
 
 const getDisplayName = () => {
-  if (!selectedLocalPet.value) return '';
-  if (viewMode.value === 'edit' && selectedLocalPet.value.id) {
-    const original = originalPets.value.find(p => p.id === selectedLocalPet.value.id);
-    return original ? original.name : selectedLocalPet.value.name;
-  }
-  return selectedLocalPet.value.name;
+  return selectedLocalPet.value?.name || 'Unnamed Pet';
 };
 
 const getDisplayDetails = () => {
-  if (!selectedLocalPet.value) return '';
-  if (viewMode.value === 'edit' && selectedLocalPet.value.id) {
-    const original = originalPets.value.find(p => p.id === selectedLocalPet.value.id);
-    return formatPetDetails(original || selectedLocalPet.value);
-  }
-  return formatPetDetails(selectedLocalPet.value);
+  const pet = selectedLocalPet.value;
+  if (!pet) return '';
+  
+  const details = [];
+  if (pet.species) details.push(pet.species);
+  if (pet.breed) details.push(pet.breed);
+  if (pet.ageYears || pet.ageMonths || pet.ageWeeks) details.push(formatPetAge(pet));
+  
+  return details.length > 0 ? details.join(' • ') : 'No details available';
 };
 
 const formatPetDetails = (pet) => {
@@ -854,19 +919,16 @@ const getBentoAccent = (index) => {
 };
 
 const getCardStripe = (index) => {
-  const stripes = [
-    'bg-blue-500',
-    'bg-indigo-500',
-    'bg-emerald-500',
-    'bg-amber-500',
-    'bg-slate-500'
+  const colors = [
+    'bg-gradient-to-r from-blue-500 to-blue-600',
+    'bg-gradient-to-r from-green-500 to-green-600',
+    'bg-gradient-to-r from-purple-500 to-purple-600',
+    'bg-gradient-to-r from-orange-500 to-orange-600',
+    'bg-gradient-to-r from-red-500 to-red-600',
+    'bg-gradient-to-r from-indigo-500 to-indigo-600'
   ];
-  return stripes[index % stripes.length];
+  return colors[index % colors.length];
 };
-
-// Gender dropdown
-const toggleGenderDropdown = () => { genderDropdownOpen.value = !genderDropdownOpen.value; };
-const selectGender = (value) => { editablePet.value.gender = value; genderDropdownOpen.value = false; updateLocalPet(); };
 
 // Local updates
 const updateLocalPet = () => {

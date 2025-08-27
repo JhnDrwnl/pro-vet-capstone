@@ -275,7 +275,7 @@
                 
                 <!-- Schedule display -->
                 <div class="text-xs text-gray-600 mb-2">
-                  {{ doctor.schedule || 'Mon-Fri, 9:00 AM to 5:00 PM' }}
+                  {{ doctor.schedule || 'Mon-Fri, 9:00 AM to 11:00 PM' }}
                 </div>
                 
                 <!-- Availability indicators -->
@@ -948,7 +948,7 @@
                   <Clock class="w-5 h-5 text-gray-500 mr-2 mt-0.5" />
                   <div>
                     <p class="text-sm font-medium text-gray-700">Regular Hours</p>
-                    <p class="text-sm text-gray-600">{{ selectedDoctor.schedule || 'Mon-Fri, 9:00 AM to 5:00 PM' }}</p>
+                    <p class="text-sm text-gray-600">{{ selectedDoctor.schedule || 'Mon-Fri, 9:00 AM to 11:00 PM' }}</p>
                   </div>
                 </div>
                 
@@ -2659,7 +2659,8 @@ const parseDoctorWorkingHours = (doctor, dayOfWeek) => {
   if (!doctor || !doctor.schedule) return null
   
   // Default office hours to use if we can't parse specific times
-  const defaultHours = { openTime: "09:00", closeTime: "17:00" }
+  // Updated to reflect actual vet availability: 9am to 11pm
+  const defaultHours = { openTime: "09:00", closeTime: "23:00" }
   
   try {
     const schedule = doctor.schedule
@@ -3567,23 +3568,70 @@ const isDoctorAvailableToday = (doctor) => {
   // Get the current day of the week (0 = Sunday, 1 = Monday, etc.)
   const today = new Date().getDay()
   
+  console.log(`🔍 Checking availability for doctor: ${doctor.firstName} ${doctor.lastName}`)
+  console.log(`📅 Today is day index: ${today} (${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][today]})`)
+  console.log(`📋 Doctor schedule: "${doctor.schedule}"`)
+  
   // Check if the doctor is available on this day
-  return isDoctorAvailableOnDay(doctor, today)
+  const isAvailable = isDoctorAvailableOnDay(doctor, today)
+  console.log(`✅ Doctor available today: ${isAvailable}`)
+  
+  return isAvailable
 }
 
 // Function to check if a doctor is available on a specific day
 const isDoctorAvailableOnDay = (doctor, dayIndex) => {
-  if (!doctor || !doctor.schedule) return false
+  if (!doctor || !doctor.schedule) {
+    console.log(`❌ No doctor or schedule found`)
+    return false
+  }
   
   // Default schedule is Monday to Friday
   const defaultAvailableDays = [1, 2, 3, 4, 5] // Monday to Friday
   
   // Check if the schedule contains specific days
   const schedule = doctor.schedule.toLowerCase()
+  console.log(`🔍 Checking schedule: "${schedule}" for day index: ${dayIndex}`)
+  
+  // Check for "all week" or "every day" patterns first
+  if (schedule.includes("all week") || 
+      schedule.includes("every day") || 
+      schedule.includes("daily") || 
+      schedule.includes("7 days") || 
+      schedule.includes("seven days") ||
+      schedule.includes("all days") ||
+      schedule.includes("full week")) {
+    console.log(`✅ Pattern matched: "all week" type`)
+    return true // Available every day
+  }
+  
+  // Check for "Mon-Sun" or similar full week patterns
+  if (schedule.includes("mon-sun") || 
+      schedule.includes("monday to sunday") || 
+      schedule.includes("monday-sunday") ||
+      schedule.includes("mon to sun") ||
+      schedule.includes("monday through sunday")) {
+    console.log(`✅ Pattern matched: "Mon-Sun" type`)
+    return true // Available every day (Monday through Sunday)
+  }
   
   // Check for common day patterns
-  if (schedule.includes("mon-fri") || schedule.includes("monday to friday") || schedule.includes("monday-friday")) {
+  if (schedule.includes("mon-fri") || 
+      schedule.includes("monday to friday") || 
+      schedule.includes("monday-friday") ||
+      schedule.includes("weekdays") ||
+      schedule.includes("week days")) {
+    console.log(`✅ Pattern matched: "Mon-Fri" type`)
     return defaultAvailableDays.includes(dayIndex)
+  }
+  
+  // Check for weekend patterns
+  if (schedule.includes("weekend") || 
+      schedule.includes("week ends") ||
+      schedule.includes("sat-sun") ||
+      schedule.includes("saturday to sunday")) {
+    console.log(`✅ Pattern matched: "weekend" type`)
+    return dayIndex === 0 || dayIndex === 6 // Sunday or Saturday
   }
   
   // Check for specific days
@@ -3598,10 +3646,18 @@ const isDoctorAvailableOnDay = (doctor, dayIndex) => {
   ]
   
   // Check if the day is mentioned in the schedule
-  return days.some(day => 
+  const dayMatch = days.some(day => 
     (day.index === dayIndex) && 
     (schedule.includes(day.name) || schedule.includes(day.abbr))
   )
+  
+  if (dayMatch) {
+    console.log(`✅ Pattern matched: specific day`)
+  } else {
+    console.log(`❌ No pattern matched for day index ${dayIndex}`)
+  }
+  
+  return dayMatch
 }
 
 // Function to get the next available day for a doctor
@@ -3643,7 +3699,7 @@ const isExpanded = ref(false)
 // Format office hours for display
 const formatOfficeHours = computed(() => {
   if (!officeStore || !officeStore.getOfficeHours) {
-    return { openTime: "9:00 AM", closeTime: "5:00 PM" }
+    return { openTime: "9:00 AM", closeTime: "11:00 PM" }
   }
   
   // Get the day of week for the selected date or today

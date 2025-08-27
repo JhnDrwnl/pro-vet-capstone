@@ -3,20 +3,28 @@
   <div class="min-h-screen flex flex-col bg-gray-50 -mt-4 md:mt-0">
     <!-- Main content area with adjusted padding for mobile -->
     <div class="flex flex-col flex-1 px-0 md:px-4 pb-20 pt-14 md:pt-0 md:pb-4">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
-        <!-- Left Column (2/3 width on large screens) -->
-        <div class="lg:col-span-2 flex flex-col gap-3 md:gap-4">
-          <!-- Welcome Banner - Fixed height -->
-          <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-3 md:p-4 flex items-center justify-between overflow-hidden relative h-[120px] md:h-[160px] flex-shrink-0">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-4">
+        <!-- Left Column (3/4 width on large screens) -->
+        <div class="lg:col-span-3 flex flex-col gap-3 md:gap-4">
+          <!-- Welcome Banner - Enhanced with stats -->
+          <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-4 md:p-6 flex items-center justify-between overflow-hidden relative h-[140px] md:h-[180px] flex-shrink-0">
             <div class="text-white z-10 max-w-[60%]">
-              <h1 class="text-lg md:text-xl font-bold mb-1 md:mb-2">Welcome to ProVET!</h1>
-              <p class="text-xs text-blue-100 mb-2 md:mb-3">Track your pet's health, manage appointments, and get reminders for vaccinations.</p>
-              <router-link 
-                to="/user/userappointments" 
-                class="bg-white text-blue-600 px-3 py-1 md:px-4 md:py-1.5 rounded-full text-xs font-medium hover:bg-blue-50 transition-colors inline-flex items-center"
-              >
-                Connect to Doctor
-              </router-link>
+              <h1 class="text-xl md:text-2xl font-bold mb-2 md:mb-3">Welcome to ProVET!</h1>
+              <p class="text-sm md:text-base text-blue-100 mb-3 md:mb-4">Track your pet's health, manage appointments, and get reminders for vaccinations.</p>
+              <div class="flex gap-3">
+                <router-link 
+                  to="/user/userappointments" 
+                  class="bg-white text-blue-600 px-4 py-2 md:px-5 md:py-2.5 rounded-full text-sm font-medium hover:bg-blue-50 transition-colors inline-flex items-center"
+                >
+                  Book Appointment
+                </router-link>
+                <router-link 
+                  to="/user/pets" 
+                  class="bg-blue-500 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-full text-sm font-medium hover:bg-blue-400 transition-colors inline-flex items-center"
+                >
+                  Manage Pets
+                </router-link>
+              </div>
             </div>
             <div class="absolute right-0 top-0 h-full w-1/2 flex items-center justify-end">
               <img src="/src/assets/media/images/common/banner.png" 
@@ -25,247 +33,238 @@
             </div>
           </div>
 
-          <!-- Educational Resources - Fixed height without scrolling -->
-          <div class="bg-white rounded-2xl p-3 md:p-4 shadow-sm border border-blue-50">
-            <div class="flex justify-between items-center mb-2 md:mb-3">
-              <h2 class="text-base md:text-lg font-semibold text-gray-800">Educational Resources</h2>
-              <router-link to="/user/educational-resources" class="text-blue-600 text-xs font-medium">View All</router-link>
+          <!-- Quick Stats Row -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-blue-50">
+              <div class="flex items-center">
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mr-4">
+                  <CalendarIcon class="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Today's Appointments</p>
+                  <p class="text-2xl font-bold text-gray-900">{{ todayAppointmentsCount }}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-green-50">
+              <div class="flex items-center">
+                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mr-4">
+                  <HeartIcon class="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Active Pets</p>
+                  <p class="text-2xl font-bold text-gray-900">{{ pets.length }}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-purple-50">
+              <div class="flex items-center">
+                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mr-4">
+                  <BookOpenIcon class="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p class="text-sm text-gray-600">Resources Available</p>
+                  <p class="text-2xl font-bold text-gray-900">{{ displayedResources.length }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Pets - Enhanced with better layout -->
+          <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-blue-50">
+            <div class="flex justify-between items-center mb-4 md:mb-6">
+              <div>
+                <h2 class="text-lg md:text-xl font-semibold text-gray-800">My Pets</h2>
+                <p class="text-sm text-gray-600 mt-1">Manage your pets and view their health status</p>
+              </div>
+              <router-link 
+                to="/user/pets" 
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center"
+              >
+                <PlusIcon class="w-4 h-4 mr-2" />
+                Add Pet 
+              </router-link>
+            </div>
+            
+            <!-- Loading state for pets -->
+            <div v-if="petsLoading" class="flex justify-center items-center h-[120px]">
+              <div class="flex flex-col items-center">
+                <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <p class="mt-2 text-sm text-gray-600">Loading pets...</p>
+              </div>
+            </div>
+            <div v-else-if="petsError" class="text-center text-red-500">{{ petsError }}</div>
+            <div v-else-if="pets.length === 0" class="text-center py-12">
+              <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <HeartIcon class="w-10 h-10 text-blue-400" />
+              </div>
+              <h3 class="text-lg font-medium text-gray-900 mb-2">No pets added yet</h3>
+              <p class="text-gray-500 mb-6">Add your first pet to get started with ProVET services.</p>
+              <router-link 
+                to="/user/pets" 
+                class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center"
+              >
+                <PlusIcon class="w-4 h-4 mr-2" />
+                Add Your First Pet
+              </router-link>
+            </div>
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-for="(pet, index) in pets" :key="index" 
+                  class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+                <div class="h-32 bg-gradient-to-r from-blue-100 to-indigo-100 relative overflow-hidden">
+                  <img v-if="pet.image" :src="pet.image" :alt="pet.name" class="w-full h-full object-cover" />
+                  <div v-else class="w-full h-full flex items-center justify-center">
+                    <HeartIcon class="w-16 h-16 text-blue-300" />
+                  </div>
+                  <div class="absolute bottom-3 left-3">
+                    <span class="px-2 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-xs font-medium text-gray-700">
+                      {{ pet.age }}
+                    </span>
+                  </div>
+                </div>
+                <div class="p-4">
+                  <div class="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 class="text-lg font-semibold text-gray-800 mb-1">{{ pet.name }}</h3>
+                      <p class="text-sm text-gray-600">{{ pet.breed }} • {{ pet.species }}</p>
+                      <p class="text-xs text-gray-500">{{ pet.age }} • {{ pet.weight }}kg</p>
+                    </div>
+                    <div class="text-right">
+                      <!-- Next Visit section removed -->
+                    </div>
+                  </div>
+                  
+                  <div class="flex gap-2 mb-4">
+                    <router-link 
+                      :to="`/user/pets?id=${pet.id}`"
+                      class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors text-center"
+                    >
+                      View Details
+                    </router-link>
+                    <router-link 
+                      to="/user/userappointments" 
+                      class="flex-1 bg-white text-blue-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors border border-blue-200 text-center"
+                    >
+                      Book Visit
+                    </router-link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Educational Resources - Enhanced -->
+          <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-blue-50">
+            <div class="flex justify-between items-center mb-4 md:mb-6">
+              <div>
+                <h2 class="text-lg md:text-xl font-semibold text-gray-800">Educational Resources</h2>
+                <p class="text-sm text-gray-600 mt-1">Learn more about pet care and health</p>
+              </div>
+              <router-link to="/user/educational-resources" class="text-blue-600 text-sm font-medium hover:text-blue-700">View All</router-link>
             </div>
             
             <!-- Loading state -->
-            <div v-if="isLoading" class="flex justify-center items-center h-[90px]">
+            <div v-if="isLoading" class="flex justify-center items-center h-[120px]">
               <div class="flex flex-col items-center">
                 <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-                <p class="mt-2 text-xs text-gray-600">Loading resources...</p>
+                <p class="mt-2 text-sm text-gray-600">Loading resources...</p>
               </div>
             </div>
             
             <!-- Resources grid -->
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div v-for="resource in displayedResources" :key="resource.id" 
-                  class="flex border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-[90px]"
+                  class="bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer h-[140px]"
                   @click="openResourceModal(resource)">
-                <div class="w-16 md:w-20 h-full bg-blue-100 flex-shrink-0">
+                <div class="h-20 bg-gradient-to-r from-blue-100 to-indigo-100 flex-shrink-0 relative">
                   <img 
                     v-if="resource.coverPhoto" 
                     :src="resource.coverPhoto" 
                     :alt="resource.name" 
                     class="w-full h-full object-cover" 
                   />
-                  <div v-else class="w-full h-full flex items-center justify-center bg-blue-100">
-                    <FileIcon class="w-6 h-6 text-blue-500" />
+                  <div v-else class="w-full h-full flex items-center justify-center">
+                    <FileIcon class="w-8 h-8 text-blue-400" />
+                  </div>
+                  <div class="absolute top-2 left-2">
+                    <span :class="`px-2 py-1 rounded-full text-xs font-medium bg-white/90 backdrop-blur-sm ${getTagColor(resource.type)}`">
+                      {{ resource.type }}
+                    </span>
                   </div>
                 </div>
-                <div class="p-2 flex flex-col justify-between flex-1">
-                  <div>
-                    <div class="flex items-center mb-1">
-                      <span :class="`text-[10px] px-1.5 py-0.5 rounded-full ${getTagColor(resource.type)}`">
-                        {{ resource.type }}
-                      </span>
-                    </div>
-                    <h3 class="text-xs font-medium text-gray-800 line-clamp-2">{{ resource.name }}</h3>
-                  </div>
-                  <div class="flex items-center text-[10px] text-gray-500">
-                    <ClockIcon class="w-2.5 h-2.5 mr-1" />
-                    <span>{{ getReadTime(resource.description) }}</span>
+                <div class="p-3">
+                  <h3 class="text-sm font-medium text-gray-800 line-clamp-2 mb-2">{{ resource.name }}</h3>
+                  <div class="flex items-center text-xs text-gray-500">
+                    <ClockIcon class="w-3 h-3 mr-1" />
+                    <span>{{ getReadTime(resource.description) }} min read</span>
                   </div>
                 </div>
               </div>
               
               <!-- Empty state if no resources -->
-              <div v-if="displayedResources.length === 0" class="col-span-2 flex flex-col items-center justify-center py-4">
-                <BookOpenIcon class="w-8 h-8 text-gray-300 mb-2" />
-                <p class="text-xs text-gray-500">No resources available</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- My Pets - Fixed height without scrolling -->
-          <div class="bg-white rounded-2xl p-3 md:p-4 shadow-sm border border-blue-50">
-            <div class="flex justify-between items-center mb-2 md:mb-3">
-              <h2 class="text-base md:text-lg font-semibold text-gray-800">My Pets</h2>
-              <router-link 
-                to="/user/profile" 
-                class="text-blue-600 text-xs font-medium flex items-center"
-              >
-                <PlusIcon class="w-3.5 h-3.5 mr-1" />
-                Add Pet 
-              </router-link>
-            </div>
-            
-            <!-- Loading state for pets -->
-            <div v-if="petsLoading" class="flex justify-center items-center h-[90px]">
-              <div class="flex flex-col items-center">
-                <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-                <p class="mt-2 text-xs text-gray-600">Loading pets...</p>
-              </div>
-            </div>
-            <div v-else-if="petsError" class="text-center text-red-500">{{ petsError }}</div>
-            <div v-else-if="pets.length === 0" class="col-span-2 flex flex-col items-center justify-center py-4">
-              <BookOpenIcon class="w-8 h-8 text-gray-300 mb-2" />
-              <p class="text-xs text-gray-500">No pets added yet. Add a pet to get started!</p>
-            </div>
-            <div v-else class="space-y-3">
-              <div v-for="(pet, index) in pets" :key="index" 
-                  class="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                <div class="h-24 bg-blue-50 relative">
-                  <img :src="pet.image" :alt="pet.name" class="w-full h-full object-cover" />
-                  <div class="absolute bottom-0 right-0 m-2">
-                    <span :class="`text-[10px] px-1.5 py-0.5 rounded-full bg-white ${pet.statusColor}`">
-                      {{ pet.status }}
-                    </span>
-                  </div>
-                </div>
-                <div class="p-2">
-                  <div class="flex justify-between items-center">
-                    <h3 class="text-xs font-medium text-gray-800">{{ pet.name }}</h3>
-                    <span class="text-[10px] text-gray-500">{{ pet.age }}</span>
-                  </div>
-                  <p class="text-[10px] text-gray-500 mt-0.5">{{ pet.breed }}</p>
-                  <div class="flex justify-between items-center mt-1.5">
-                    <button class="text-blue-600 text-[10px] font-medium">View Details</button>
-                    <div class="flex items-center text-[10px] text-gray-500">
-                      <CalendarIcon class="w-2.5 h-2.5 mr-1" />
-                      <span>{{ pet.nextAppointment }}</span>
-                    </div>
-                  </div>
-                  
-                  <!-- Expand/Collapse Button for Pet History -->
-                  <div class="mt-3 pt-3 border-t border-gray-100">
-                    <button 
-                      @click="togglePetExpansion(pet.id)"
-                      class="w-full px-3 py-2 rounded-lg transition-all duration-300 text-xs font-medium flex items-center justify-center gap-2 transform hover:scale-105 active:scale-95"
-                      :class="{
-                        'bg-blue-600 text-white hover:bg-blue-700 shadow-lg ring-2 ring-blue-300': expandedPet === pet.id,
-                        'bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 hover:border-blue-300': expandedPet !== pet.id
-                      }"
-                    >
-                      <svg 
-                        class="w-3 h-3 transition-all duration-300" 
-                        :class="{ 'rotate-180 scale-110': expandedPet === pet.id }"
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                      </svg>
-                      <span class="transition-all duration-300">
-                        {{ expandedPet === pet.id ? 'Hide History' : 'View History' }}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Pet History Timeline - Show only when expanded -->
-                <div v-if="expandedPet === pet.id" class="px-2 pb-2">
-                  <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-3">
-                    <div class="flex items-center gap-2 mb-3">
-                      <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                      <h4 class="text-xs font-semibold text-blue-900">
-                        {{ pet.name }}'s Appointment History
-                      </h4>
-                      <span class="ml-auto px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded-full">
-                        Expanded
-                      </span>
-                    </div>
-                    
-                    <div class="relative">
-                      <!-- Timeline Line -->
-                      <div class="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-300"></div>
-                      
-                      <!-- Timeline Items -->
-                      <div class="space-y-3">
-                        <div 
-                          v-for="(appointment, aptIndex) in getPetAppointments(pet.id)" 
-                          :key="appointment.id"
-                          class="relative pl-8"
-                        >
-                          <!-- Timeline Dot -->
-                          <div class="absolute left-0 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
-                               :class="{
-                                 'bg-green-500': appointment.status === 'completed',
-                                 'bg-yellow-500': appointment.status === 'pending',
-                                 'bg-blue-500': appointment.status === 'approved',
-                                 'bg-red-500': appointment.status === 'cancelled'
-                               }">
-                            <div class="w-1 h-1 rounded-full bg-white"></div>
-                          </div>
-                          
-                          <!-- Timeline Content -->
-                          <div class="bg-white rounded-lg border border-gray-200 p-2 hover:shadow-sm transition-shadow">
-                            <div class="flex items-start justify-between mb-2">
-                              <div class="flex-1">
-                                <h5 class="text-[10px] font-medium text-gray-900 line-clamp-2">
-                                  {{ appointment.serviceNames ? appointment.serviceNames.join(', ') : 'Appointment' }}
-                                </h5>
-                                <p class="text-[8px] text-gray-500">{{ formatAppointmentDate(appointment.date) }}</p>
-                                <p class="text-[8px] text-gray-500">{{ appointment.time || '' }}</p>
-                              </div>
-                              <div class="ml-2">
-                                <span class="px-1.5 py-0.5 text-[8px] font-medium rounded-full" 
-                                      :class="{
-                                        'bg-green-100 text-green-700': appointment.status === 'completed',
-                                        'bg-yellow-100 text-yellow-700': appointment.status === 'pending',
-                                        'bg-blue-100 text-blue-700': appointment.status === 'approved',
-                                        'bg-red-100 text-red-700': appointment.status === 'cancelled'
-                                      }">
-                                  {{ appointment.status }}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <!-- Doctor Info -->
-                            <div v-if="appointment.doctorName" class="text-[8px] text-gray-600 border-t border-gray-100 pt-1 mt-1">
-                              Dr. {{ appointment.doctorName }}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <!-- Empty State -->
-                        <div v-if="!getPetAppointments(pet.id).length" 
-                             class="text-center py-4 text-gray-500">
-                          <div class="w-8 h-8 mx-auto mb-2 text-gray-300">
-                            <CalendarIcon class="w-full h-full" />
-                          </div>
-                          <p class="text-[10px]">No appointment history found for this pet.</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div v-if="displayedResources.length === 0" class="col-span-full text-center py-8">
+                <BookOpenIcon class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p class="text-gray-500">No resources available at the moment.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Right Column (1/3 width on large screens) -->
+        <!-- Right Column (1/4 width on large screens) -->
         <div class="flex flex-col gap-3 md:gap-4">
           <!-- Calendar Component -->
           <div class="bg-white rounded-2xl shadow-sm border border-blue-50 overflow-hidden">
             <CalendarComponent />
           </div>
 
-          <!-- Emergency Contact - Separate component with its own container -->
-          <div class="bg-red-50 rounded-2xl p-3 md:p-4 shadow-sm border border-red-100 mb-16 md:mb-0">
-            <div class="flex items-center mb-2 md:mb-3">
-              <div class="bg-red-100 p-1.5 rounded-full mr-2">
-                <PhoneIcon class="w-4 h-4 text-red-600" />
-              </div>
-              <h2 class="text-base md:text-lg font-semibold text-gray-800">Emergency Contact</h2>
+          <!-- Queue Position Component -->
+          <QueuePosition />
+
+          <!-- Quick Actions -->
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-blue-50">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+            <div class="space-y-3">
+              <router-link 
+                to="/user/userappointments" 
+                class="flex items-center p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group"
+              >
+                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-blue-200 transition-colors">
+                  <CalendarIcon class="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <div class="font-medium text-gray-800">Book Appointment</div>
+                  <div class="text-xs text-gray-600">Schedule a visit</div>
+                </div>
+              </router-link>
+              
+              <router-link 
+                to="/user/pets" 
+                class="flex items-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors group"
+              >
+                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-green-200 transition-colors">
+                  <HeartIcon class="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <div class="font-medium text-gray-800">Manage Pets</div>
+                  <div class="text-xs text-gray-600">Update pet info</div>
+                </div>
+              </router-link>
+              
+              <router-link 
+                to="/user/educational-resources" 
+                class="flex items-center p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group"
+              >
+                <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-purple-200 transition-colors">
+                  <BookOpenIcon class="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <div class="font-medium text-gray-800">Learn More</div>
+                  <div class="text-xs text-gray-600">Educational content</div>
+                </div>
+              </router-link>
             </div>
-            
-            <p class="text-xs text-gray-600 mb-3">
-              If your pet is experiencing a medical emergency, please call our emergency line immediately:
-            </p>
-            
-            <a href="tel:+1234567890" class="bg-red-600 text-white px-3 py-2 md:px-4 md:py-2.5 rounded-full text-center font-medium hover:bg-red-700 transition-colors flex items-center justify-center mb-1.5 md:mb-2">
-              <PhoneIcon class="w-3.5 h-3.5 mr-1.5" />
-              (123) 456-7890
-            </a>
-            
-            <p class="text-[10px] text-gray-500 text-center">
-              Available 24/7 for urgent care
-            </p>
           </div>
         </div>
       </div>
@@ -281,7 +280,7 @@
             </span>
             <span class="text-xs text-gray-500 ml-2 flex items-center">
               <ClockIcon class="w-3 h-3 mr-1" />
-              {{ getReadTime(selectedResource.description) }}
+              {{ getReadTime(selectedResource.description) }} min read
             </span>
           </div>
           <button @click="closeResourceModal" class="p-1 rounded-full hover:bg-gray-100">
@@ -345,13 +344,13 @@
                     :alt="resource.name" 
                     class="w-full h-full object-cover" 
                   />
-                  <div v-else class="w-full h-full flex items-center justify-center bg-blue-100">
+                  <div v-else class="w-16 h-16 flex items-center justify-center bg-blue-100">
                     <FileIcon class="w-6 h-6 text-blue-500" />
                   </div>
                 </div>
                 <div class="p-2 flex-1">
                   <h4 class="text-sm font-medium line-clamp-2">{{ resource.name }}</h4>
-                  <p class="text-xs text-gray-500 mt-1">{{ getReadTime(resource.description) }}</p>
+                  <p class="text-xs text-gray-500 mt-1">{{ getReadTime(resource.description) }} min read</p>
                 </div>
               </div>
             </div>
@@ -377,11 +376,13 @@ import {
   Bookmark as BookmarkIcon,
   Share as ShareIcon,
   BookOpen as BookOpenIcon,
-  File as FileIcon
+  File as FileIcon,
+  Heart as HeartIcon
 } from 'lucide-vue-next';
 import CalendarComponent from './dashboard/Calendar.vue';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { usePetsStore } from '@/stores/modules/petsStore';
+import QueuePosition from '@/components/user/QueuePosition.vue';
 
 const router = useRouter();
 
@@ -399,23 +400,18 @@ const {
 
 const isResourceModalOpen = ref(false);
 const selectedResource = ref(null);
-const relatedResources = ref([]);
 const isLoading = computed(() => storeLoading.value);
 
-// Fetch resources on component mount
-onMounted(async () => {
-  try {
-    await resourceCategoryStore.fetchResourceCategories(); // Using fetchResourceCategories instead of fetchCategories
-    await resourceCategoryStore.fetchResources();
-  } catch (error) {
-    console.error('Error fetching resources:', error);
-  }
+// Computed properties
+const displayedResources = computed(() => {
+  return resources.value.slice(0, 6); // Show only 6 resources
 });
 
-// Get only the first 4 resources for display
-const displayedResources = computed(() => {
-  if (!resources.value) return [];
-  return resources.value.slice(0, 4);
+const relatedResources = computed(() => {
+  if (!selectedResource.value) return [];
+  return resources.value
+    .filter(r => r.id !== selectedResource.value.id && r.categoryId === selectedResource.value.categoryId)
+    .slice(0, 3);
 });
 
 // Pets
@@ -447,7 +443,13 @@ const fetchPets = async () => {
       age: formatPetAge(pet),
       status: getPetStatus(pet),
       statusColor: getPetStatusColor(pet),
-      nextAppointment: getNextAppointment(pet)
+      // nextAppointment removed
+      lastVisit: getLastVisitDate(pet.id),
+      vaccinationCount: getVaccinationCount(pet),
+      species: pet.species,
+      weight: pet.weight,
+      medicalHistory: pet.medicalHistory || [],
+      vaccinations: pet.vaccinations || []
     }))
     
     // Also fetch appointments for the timeline
@@ -470,87 +472,113 @@ const fetchUserAppointments = async () => {
     const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore')
     const { db } = await import('@shared/firebase')
     
-    // Query appointments collection by userId
     const appointmentsRef = collection(db, 'appointments')
     const q = query(
-      appointmentsRef, 
+      appointmentsRef,
       where('userId', '==', authStore.user.userId),
-      orderBy('date', 'desc') // Most recent first
+      orderBy('createdAt', 'desc')
     )
-    const querySnapshot = await getDocs(q)
     
-    const appointmentsData = querySnapshot.docs.map(doc => ({
+    const querySnapshot = await getDocs(q)
+    appointments.value = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }))
     
-    appointments.value = appointmentsData
-    console.log('Fetched user appointments for timeline:', appointmentsData)
+    console.log('Fetched appointments:', appointments.value)
   } catch (error) {
-    console.error('Error fetching appointments for timeline:', error)
+    console.error('Error fetching appointments:', error)
     appointments.value = []
   }
 }
 
-// Helper functions for pet data formatting
+// Helper functions for pet data
 const formatPetAge = (pet) => {
-  if (pet.ageYears && pet.ageYears > 0) {
-    return `${pet.ageYears} ${pet.ageYears === 1 ? 'year' : 'years'}`
-  } else if (pet.ageMonths && pet.ageMonths > 0) {
-    return `${pet.ageMonths} ${pet.ageMonths === 1 ? 'month' : 'months'}`
-  } else if (pet.ageWeeks && pet.ageWeeks > 0) {
-    return `${pet.ageWeeks} ${pet.ageWeeks === 1 ? 'week' : 'weeks'}`
-  }
-  return 'Age not specified'
+  const parts = []
+  if (pet.ageYears > 0) parts.push(`${pet.ageYears}y`)
+  if (pet.ageMonths > 0) parts.push(`${pet.ageMonths}m`)
+  if (pet.ageWeeks > 0) parts.push(`${pet.ageWeeks}w`)
+  
+  if (parts.length === 0) return 'Age not specified'
+  return parts.join(' ')
 }
 
 const getPetStatus = (pet) => {
-  // You can implement more sophisticated status logic here
-  // For now, return a basic status
-  if (pet.healthStatus) {
-    return pet.healthStatus
+  // Check if pet has recent medical activity (appointments, medical history, or vaccinations)
+  const hasRecentAppointments = appointments.value.some(apt => 
+    apt.petIds && apt.petIds.includes(pet.id) && 
+    apt.status === 'completed' &&
+    new Date(apt.completedAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+  )
+  
+  const hasMedicalHistory = pet.medicalHistory && pet.medicalHistory.length > 0
+  const hasVaccinations = pet.vaccinations && pet.vaccinations.length > 0
+  
+  if (hasRecentAppointments || hasMedicalHistory || hasVaccinations) {
+    return 'active'
   }
-  return 'Healthy'
+  return 'inactive'
 }
 
 const getPetStatusColor = (pet) => {
   const status = getPetStatus(pet)
-  switch (status.toLowerCase()) {
-    case 'healthy':
-      return 'text-green-600'
-    case 'vaccination due':
-      return 'text-yellow-600'
-    case 'medication':
-      return 'text-blue-600'
-    case 'treatment':
-      return 'text-orange-600'
-    default:
-      return 'text-gray-600'
+  const colors = {
+    'active': 'text-green-700 bg-green-100',
+    'inactive': 'text-gray-700 bg-gray-100'
   }
+  return colors[status] || 'text-gray-700 bg-gray-100'
 }
 
-const getNextAppointment = (pet) => {
-  // Find the next appointment for this pet
-  if (!appointments.value || appointments.value.length === 0) return 'No upcoming'
-  
-  const now = new Date()
-  const futureAppointments = appointments.value.filter(apt => {
-    const aptDate = apt.date instanceof Date ? apt.date : new Date(apt.date)
-    return apt.petIds && apt.petIds.includes(pet.id) && aptDate > now && apt.status === 'approved'
-  })
-  
-  if (futureAppointments.length === 0) return 'No upcoming'
-  
-  // Sort by date and get the next one
-  const nextAppointment = futureAppointments.sort((a, b) => {
-    const dateA = a.date instanceof Date ? a.date : new Date(a.date)
-    const dateB = b.date instanceof Date ? b.date : new Date(b.date)
-    return dateA - dateB
-  })[0]
-  
-  const aptDate = nextAppointment.date instanceof Date ? nextAppointment.date : new Date(nextAppointment.date)
-  return aptDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+// getNextAppointment function removed
+
+const getVaccinationCount = (pet) => {
+  // Use the actual vaccinations array from the pet object
+  if (pet.vaccinations && Array.isArray(pet.vaccinations)) {
+    return pet.vaccinations.length.toString()
+  }
+  return '0'
 }
+
+const getLastVisitDate = (petId) => {
+  const completedAppointments = appointments.value.filter(apt => 
+    apt.petIds && apt.petIds.includes(petId) && 
+    apt.status === 'completed'
+  )
+  
+  if (completedAppointments.length === 0) return 'No visits yet'
+  
+  // Sort by completion date and get the most recent
+  const lastVisit = completedAppointments.sort((a, b) => 
+    new Date(b.completedAt) - new Date(a.completedAt)
+  )[0]
+  
+  return formatDate(lastVisit.completedAt)
+}
+
+// Update todayAppointmentsCount to use real data
+const todayAppointmentsCount = computed(() => {
+  if (!appointments.value.length) return 0
+  
+  const today = new Date()
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+  
+  return appointments.value.filter(apt => {
+    const aptDate = new Date(apt.date)
+    return aptDate >= startOfDay && aptDate <= endOfDay && apt.status === 'approved'
+  }).length
+})
+
+// Fetch resources on component mount
+onMounted(async () => {
+  try {
+    await resourceCategoryStore.fetchResourceCategories();
+    await resourceCategoryStore.fetchResources();
+    await fetchPets(); // Fetch pets and appointments
+  } catch (error) {
+    console.error('Error fetching resources:', error);
+  }
+});
 
 // Pet expansion functionality
 const togglePetExpansion = (petId) => {
@@ -592,11 +620,6 @@ const formatAppointmentDate = (date) => {
   }
 }
 
-// Fetch pets when component mounts
-onMounted(() => {
-  fetchPets()
-})
-
 // Helper functions
 const typeColors = {
     'Document': 'bg-blue-100 text-blue-600',
@@ -606,61 +629,11 @@ const typeColors = {
     'Other': 'bg-gray-100 text-gray-600'
   };
 
-function getTagColor(type) {
-  return typeColors[type] || 'bg-gray-100 text-gray-600';
-}
-
-function getReadTime(text) {
-  if (!text) return '1 min read';
-  
-  // Average reading speed: 200 words per minute
-  const wordCount = text.split(/\s+/).length;
-  const minutes = Math.max(1, Math.ceil(wordCount / 200));
-  
-  return `${minutes} min read`;
-}
-
-function formatDate(timestamp) {
-  if (!timestamp) return 'Unknown date';
-  
-  const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric' 
-  });
-}
-
-function formatDescription(description) {
-  if (!description) return '';
-  
-  // Convert line breaks to paragraphs
-  return description
-    .split('\n')
-    .filter(paragraph => paragraph.trim() !== '')
-    .map(paragraph => `<p>${paragraph}</p>`)
-    .join('');
-}
-
-function getCategoryName(categoryId) {
-  if (!resourceCategories.value) return 'Unknown Category'; // Using resourceCategories instead of categories
-  
-  const category = resourceCategories.value.find(c => c.id === categoryId); // Using resourceCategories instead of categories
-  return category ? category.name : 'Unknown Category';
-}
-
 // Open resource modal
 function openResourceModal(resource) {
   selectedResource.value = resource;
   isResourceModalOpen.value = true;
   document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
-  
-  // Find related resources (same category, excluding current resource)
-  if (resources.value) {
-    relatedResources.value = resources.value
-      .filter(r => r.categoryId === resource.categoryId && r.id !== resource.id)
-      .slice(0, 2); // Limit to 2 related resources
-  }
 }
 
 // Close resource modal
@@ -669,6 +642,51 @@ function closeResourceModal() {
   isResourceModalOpen.value = false;
   document.body.style.overflow = ''; // Restore scrolling
 }
+
+const getTagColor = (type) => {
+  const colors = {
+    'Article': 'bg-blue-100 text-blue-700',
+    'Video': 'bg-green-100 text-green-700',
+    'Guide': 'bg-purple-100 text-purple-700',
+    'Infographic': 'bg-orange-100 text-orange-700'
+  };
+  return colors[type] || 'bg-gray-100 text-gray-700';
+};
+
+const getReadTime = (description) => {
+  if (!description) return 2;
+  const wordCount = description.split(' ').length;
+  return Math.ceil(wordCount / 200); // Assuming 200 words per minute reading speed
+};
+
+const getCategoryName = (categoryId) => {
+  const category = resourceCategories.value.find(cat => cat.id === categoryId);
+  return category ? category.name : 'General';
+};
+
+const formatDate = (date) => {
+  if (!date) return 'Unknown date';
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
+const formatDescription = (description) => {
+  if (!description) return '';
+  return description.replace(/\n/g, '<br>');
+};
+
+const getStatusColor = (status) => {
+  const colors = {
+    'active': 'text-green-700 bg-green-100',
+    'inactive': 'text-gray-700 bg-gray-100',
+    'pending': 'text-yellow-700 bg-yellow-100',
+    'suspended': 'text-red-700 bg-red-100'
+  };
+  return colors[status] || 'text-gray-700 bg-gray-100';
+};
 </script>
 
 <style scoped>
