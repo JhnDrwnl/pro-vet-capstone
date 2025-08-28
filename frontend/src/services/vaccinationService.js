@@ -1,6 +1,7 @@
 // services/vaccinationService.js
 import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '@shared/firebase'
+import { processCompletedVaccination } from './vaccinationAutoScheduler'
 
 /**
  * Automatically generate vaccination records from completed vaccination appointments
@@ -50,6 +51,43 @@ export function generateVaccinationRecord(appointment, pet, serviceDetails) {
   }
 
   return vaccinationRecord
+}
+
+/**
+ * Enhanced vaccination record generation with autoscheduling
+ * @param {Object} appointment - The completed appointment object
+ * @param {Object} pet - The pet object
+ * @param {Array} serviceDetails - Array of service objects with full details
+ * @param {Object} user - User object (owner)
+ * @returns {Promise<Object>} Generated vaccination record and new suggestions
+ */
+export async function generateVaccinationRecordWithAutoScheduling(appointment, pet, serviceDetails, user = null) {
+  // Generate the basic vaccination record
+  const vaccinationRecord = generateVaccinationRecord(appointment, pet, serviceDetails)
+  
+  if (!vaccinationRecord) {
+    return { vaccinationRecord: null, newSuggestions: [] }
+  }
+  
+  try {
+    // Process the completed vaccination and auto-schedule next doses
+    const newSuggestions = await processCompletedVaccination(vaccinationRecord, pet, user)
+    
+    return {
+      vaccinationRecord,
+      newSuggestions,
+      autoScheduled: newSuggestions.length > 0
+    }
+  } catch (error) {
+    console.error('Error in auto-scheduling vaccinations:', error)
+    // Return the vaccination record even if autoscheduling fails
+    return {
+      vaccinationRecord,
+      newSuggestions: [],
+      autoScheduled: false,
+      error: error.message
+    }
+  }
 }
 
 /**

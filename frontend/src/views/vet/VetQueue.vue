@@ -5,6 +5,20 @@
     <div class="mb-8">
       <h1 class="text-2xl font-semibold text-gray-900">Queue Management</h1>
       <p class="text-gray-500 mt-1">Manage today's patient consultations</p>
+      
+      <!-- Debug Test Button -->
+      <div class="mt-4 p-3 bg-gray-100 rounded-lg">
+        <button 
+          @click="testVaccinationDetection"
+          class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600"
+        >
+          🧪 Test Vaccination Detection
+        </button>
+        <div class="mt-2 text-xs text-gray-600">
+          Services loaded: {{ Object.keys(servicesData).length }}, 
+          Vaccination services: {{ Object.values(servicesData).filter(s => s.isVaccination).length }}
+        </div>
+      </div>
     </div>
 
     <!-- Queue Stats -->
@@ -29,6 +43,14 @@
 
     <!-- Current Patient -->
     <div v-if="currentPatient" class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-8 mb-8 shadow-lg">
+      <!-- Debug Info -->
+      <div class="mb-4 p-3 bg-blue-100 rounded-lg text-xs text-blue-800">
+        <strong>Debug Info:</strong> 
+        hasVaccinationServices: {{ currentPatient.hasVaccinationServices }}, 
+        redirectCountdown: {{ redirectCountdown }},
+        Patient ID: {{ currentPatient.id }}
+      </div>
+      
       <div class="flex items-center justify-between mb-6">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
@@ -71,7 +93,28 @@
       </div>
       
       <div class="flex flex-wrap gap-4">
+        <!-- Auto-redirect for vaccination appointments -->
+        <div v-if="currentPatient.hasVaccinationServices" class="space-y-3">
+          <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            🩺 Auto-redirecting to Vaccination Completion in {{ redirectCountdown }}s...
+          </div>
+          <button 
+            @click="redirectToApprovalPage(currentPatient.id)"
+            class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Go to Vaccination Completion Now
+          </button>
+        </div>
+        
+        <!-- Regular completion button for non-vaccination appointments -->
         <button 
+          v-else
           @click="openCompletionForm(currentPatient)"
           class="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2"
         >
@@ -291,6 +334,10 @@
                     <h3 class="text-lg font-semibold text-gray-900">{{ patient.ownerName }}</h3>
                     <p class="text-blue-600 font-medium">{{ patient.petName }}</p>
                     <p class="text-sm text-gray-600">{{ patient.serviceName }}</p>
+                    <!-- Vaccination Service Indicator -->
+                    <div v-if="patient.hasVaccinationServices" class="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium border border-yellow-200 mt-1">
+                      🩺 Vaccination Service
+                    </div>
                   </div>
                 </div>
                 
@@ -409,6 +456,20 @@
       </div>
       
       <div class="p-6">
+        <!-- Vaccination Service Notice -->
+        <div v-if="selectedAppointment?.hasVaccinationServices" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-yellow-800">Vaccination Service Detected</h3>
+          </div>
+          <p class="text-yellow-700 text-sm">
+            This appointment contains vaccination services that require detailed completion and auto-scheduling. 
+            You will be redirected to the approval page for proper completion.
+          </p>
+        </div>
+        
         <!-- Appointment Summary -->
         <div class="bg-gray-50 rounded-lg p-4 mb-6">
           <h3 class="text-lg font-medium text-gray-800 mb-3">Appointment Summary</h3>
@@ -1529,6 +1590,107 @@ const isTelehealthAppointment = (appointment) => {
   return false
 }
 
+// Countdown for auto-redirect
+const redirectCountdown = ref(3)
+
+// Test function for debugging vaccination detection
+const testVaccinationDetection = () => {
+  console.log('🧪 Testing vaccination detection...')
+  console.log('🔍 Services data:', servicesData.value)
+  console.log('🔍 Vaccination services:', Object.values(servicesData.value).filter(s => s.isVaccination))
+  
+  if (currentPatient.value) {
+    console.log('🔍 Current patient:', currentPatient.value)
+    checkForVaccinationServices(currentPatient.value).then(result => {
+      console.log('🧪 Vaccination detection result:', result)
+    })
+  } else {
+    console.log('❌ No current patient to test')
+  }
+}
+
+// Check if appointment has vaccination services that require detailed completion
+const checkForVaccinationServices = async (appointment) => {
+  try {
+    console.log('🔍 Checking appointment for vaccination services:', appointment.id)
+    
+    // Check both possible field names for services
+    const serviceIds = appointment.Services || appointment.services || []
+    const serviceNames = appointment['Service Names'] || appointment.serviceNames || []
+    
+    console.log('🔍 Service IDs:', serviceIds)
+    console.log('🔍 Service Names:', serviceNames)
+    console.log('🔍 Available services data count:', Object.keys(servicesData.value).length)
+    
+    if (!serviceIds.length && !serviceNames.length) {
+      console.log('❌ No services found in appointment')
+      return false
+    }
+    
+    // First try to check by service IDs (more reliable)
+    if (serviceIds.length > 0) {
+      console.log('🔍 Checking by service IDs...')
+      for (const serviceId of serviceIds) {
+        console.log(`🔍 Checking service ID: ${serviceId}`)
+        const service = servicesData.value[serviceId]
+        console.log(`🔍 Service data for ${serviceId}:`, service)
+        
+        if (service && service.isVaccination === true) {
+          console.log(`🩺 Found vaccination service by ID: ${service.name}`)
+          return true
+        }
+      }
+    }
+    
+    // Fallback: check by service names if no vaccination found by ID
+    if (serviceNames.length > 0) {
+      console.log('🔍 Checking by service names...')
+      for (const serviceName of serviceNames) {
+        console.log(`🔍 Checking service name: ${serviceName}`)
+        const service = getServiceByName(serviceName)
+        console.log(`🔍 Service data for "${serviceName}":`, service)
+        
+        if (service && service.isVaccination === true) {
+          console.log(`🩺 Found vaccination service by name: ${service.name}`)
+          return true
+        }
+        
+        // 🔧 ADDITIONAL FALLBACK: Check if service name contains vaccination keywords
+        if (serviceName && typeof serviceName === 'string') {
+          const vaccinationKeywords = ['vaccine', 'vaccination', 'shot', 'immunization', 'rabies', 'dhpp', 'fvr', 'felv']
+          const hasVaccinationKeyword = vaccinationKeywords.some(keyword => 
+            serviceName.toLowerCase().includes(keyword.toLowerCase())
+          )
+          
+          if (hasVaccinationKeyword) {
+            console.log(`🩺 Found vaccination service by keyword in name: ${serviceName}`)
+            return true
+          }
+        }
+      }
+    }
+    
+    console.log('❌ No vaccination services found')
+    return false
+  } catch (error) {
+    console.error('Error checking for vaccination services:', error)
+    return false
+  }
+}
+
+// Redirect to approval page for detailed completion
+const redirectToApprovalPage = (appointmentId) => {
+  try {
+    // Navigate to the approval page with the appointment ID
+    console.log('🔄 Redirecting to approval page for appointment:', appointmentId)
+    router.push(`/vet/appointments/vetappointmentapproval?id=${appointmentId}`)
+  } catch (error) {
+    console.error('Error redirecting to approval page:', error)
+    // Fallback: show error message
+    alert('Error redirecting to approval page. Please navigate manually.')
+  }
+}
+
 // Check Xirsys availability
 const checkXirsysAvailability = async () => {
   try {
@@ -1589,18 +1751,35 @@ const startConsultation = async (patientId) => {
     return
   }
   
-      // Regular appointment - proceed as before
-    currentPatient.value = {
-      ...patient,
-      startTime: new Date()
-    }
-    waitingQueue.value = waitingQueue.value.filter(p => p.id !== patientId)
-    
-    // Update appointment status to 'in-progress'
-    updateAppointmentStatus(patientId, 'in-progress')
-    
-    // Update Firestore queue
-    updateFirestoreQueue()
+  // Check if this patient has vaccination services
+  const hasVaccinationServices = await checkForVaccinationServices(patient)
+  
+  // Regular appointment - proceed as before
+  currentPatient.value = {
+    ...patient,
+    startTime: new Date(),
+    hasVaccinationServices // Add this property for UI display
+  }
+  waitingQueue.value = waitingQueue.value.filter(p => p.id !== patientId)
+  
+  // Update appointment status to 'in-progress'
+  updateAppointmentStatus(patientId, 'in-progress')
+  
+  // Update Firestore queue
+  updateFirestoreQueue()
+  
+  if (hasVaccinationServices) {
+    console.log('🩺 This patient has vaccination services - auto-redirecting to approval page in 3 seconds...')
+    // Start countdown and auto-redirect
+    redirectCountdown.value = 3
+    const countdownInterval = setInterval(() => {
+      redirectCountdown.value--
+      if (redirectCountdown.value <= 0) {
+        clearInterval(countdownInterval)
+        redirectToApprovalPage(patientId)
+      }
+    }, 1000)
+  }
 }
 
 // Start consultation with confirmation if there's a current patient
@@ -2210,12 +2389,16 @@ const fetchAppointments = async () => {
           }
         }
         
+        // Check if this appointment has vaccination services
+        const hasVaccinationServices = await checkForVaccinationServices(appointment)
+        
         appointmentsData.push({
           id: doc.id,
           ...appointment,
           ownerName,
           petName: appointment.petNames?.[0] || 'Unknown Pet',
-          serviceName: appointment['Service Names']?.[0] || appointment.serviceNames?.[0] || 'Unknown Service'
+          serviceName: appointment['Service Names']?.[0] || appointment.serviceNames?.[0] || 'Unknown Service',
+          hasVaccinationServices // Add vaccination service flag
         })
       }
       
@@ -2241,7 +2424,7 @@ const fetchAppointments = async () => {
 }
 
 // Queue management methods
-const callNext = () => {
+const callNext = async () => {
   if (!canCallNext.value) return
   
   const nextPatient = waitingQueue.value[0]
@@ -2250,14 +2433,40 @@ const callNext = () => {
     return
   }
   
+  console.log('🔍 Checking next patient for vaccination services...')
+  console.log('Patient data:', nextPatient)
+  
+  // Check if this patient has vaccination services
+  const hasVaccinationServices = await checkForVaccinationServices(nextPatient)
+  console.log('🩺 Vaccination services detected:', hasVaccinationServices)
+  
   // Set current patient and remove from waiting queue
   currentPatient.value = {
     ...nextPatient,
-    startTime: new Date()
+    startTime: new Date(),
+    hasVaccinationServices // Add this property for UI display
   }
   waitingQueue.value.shift()
   
   console.log(`Called next patient: ${nextPatient.ownerName} with ${nextPatient.petName}`)
+  console.log('Current patient object:', currentPatient.value)
+  
+  if (hasVaccinationServices) {
+    console.log('🩺 This patient has vaccination services - auto-redirecting to approval page in 3 seconds...')
+    // Start countdown and auto-redirect
+    redirectCountdown.value = 3
+    const countdownInterval = setInterval(() => {
+      redirectCountdown.value--
+      console.log(`🩺 Countdown: ${redirectCountdown.value}s`)
+      if (redirectCountdown.value <= 0) {
+        clearInterval(countdownInterval)
+        console.log('🩺 Redirecting to approval page...')
+        redirectToApprovalPage(nextPatient.id)
+      }
+    }, 1000)
+  } else {
+    console.log('✅ Regular appointment - no auto-redirect needed')
+  }
   
   // Update Firestore queue
   updateFirestoreQueue()
@@ -2281,34 +2490,60 @@ const callNextWithConfirmation = () => {
 }
 
 // Completion form functions
-const openCompletionForm = (appointment) => {
-  selectedAppointment.value = appointment
-  
-  // Initialize completion form with appointment data
-  completionForm.value = {
-    services: (appointment['Service Names'] || appointment.serviceNames || []).map(service => ({
-      name: service,
-      status: 'completed',
-      duration: 30,
-      notes: '',
-      category: getServiceCategory(service) // Add category information
-    })),
-    pets: [{
-      name: appointment.petName || 'Pet',
-      overallHealth: 'good',
-      weight: '',
-      healthNotes: '',
-      followUpRequired: false,
-      followUpNotes: ''
-    }],
-    generalNotes: {
-      treatmentSummary: '',
-      ownerInstructions: '',
-      nextSteps: ''
+const openCompletionForm = async (appointment) => {
+  try {
+    // 🔧 CRITICAL FIX: Ensure services data is loaded first
+    if (Object.keys(servicesData.value).length === 0) {
+      console.log('🔄 Services data not loaded yet, fetching now...')
+      await fetchServiceData()
     }
+    
+    // Now check if this appointment has vaccination services
+    const hasVaccinationServices = await checkForVaccinationServices(appointment)
+    console.log('🩺 Vaccination services detected:', hasVaccinationServices)
+    
+    if (hasVaccinationServices) {
+      // Redirect to approval page for vaccination appointments
+      console.log('🩺 Vaccination service detected - redirecting to approval page')
+      redirectToApprovalPage(appointment.id)
+      return
+    }
+    
+    // Regular appointment - show completion form modal
+    console.log('✅ Regular appointment - showing completion form modal')
+    selectedAppointment.value = appointment
+    
+    // Initialize completion form with appointment data
+    completionForm.value = {
+      services: (appointment['Service Names'] || appointment.serviceNames || []).map(service => ({
+        name: service,
+        status: 'completed',
+        duration: 30,
+        notes: '',
+        category: getServiceCategory(service) // Add category information
+      })),
+      pets: [{
+        name: appointment.petName || 'Pet',
+        overallHealth: 'good',
+        weight: '',
+        healthNotes: '',
+        followUpRequired: false,
+        followUpNotes: ''
+      }],
+      generalNotes: {
+        treatmentSummary: '',
+        ownerInstructions: '',
+        nextSteps: ''
+      }
+    }
+    
+    showCompletionFormModal.value = true
+    
+  } catch (error) {
+    console.error('Error in openCompletionForm:', error)
+    // Fallback: show modal
+    showCompletionFormModal.value = true
   }
-  
-  showCompletionFormModal.value = true
 }
 
 const closeCompletionFormModal = () => {
@@ -2444,7 +2679,8 @@ const fetchServiceData = async () => {
         classification: data.classification,
         fees: data.fees,
         processingTime: data.processingTime,
-        transactionType: data.transactionType
+        transactionType: data.transactionType,
+        isVaccination: data.isVaccination || false // Include vaccination field
       }
     })
     
@@ -2457,6 +2693,18 @@ const fetchServiceData = async () => {
         serviceCategories.value[service.name] = categoriesData.value[service.categoryId]
       }
     })
+    
+    // Debug logging
+    console.log('🔍 Services loaded:', Object.keys(servicesData.value).length)
+    console.log('🔍 Vaccination services found:', Object.values(servicesData.value).filter(s => s.isVaccination).length)
+    
+    // Log a few services for debugging
+    const vaccinationServices = Object.values(servicesData.value).filter(s => s.isVaccination)
+    if (vaccinationServices.length > 0) {
+      console.log('🔍 Sample vaccination service:', vaccinationServices[0])
+    }
+    
+    console.log('✅ Service data loading completed successfully')
     
   } catch (error) {
     console.error('Error fetching service data:', error)

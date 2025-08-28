@@ -20,6 +20,14 @@ const routes = [
   ...authRoutes,
   ...telehealthRoutes,
 
+  // Test routes
+  {
+    path: '/test/vaccination-autoscheduler',
+    name: 'VaccinationAutoSchedulerTest',
+    component: () => import('@/views/test/VaccinationAutoSchedulerTest.vue'),
+    meta: { public: true } // Allow access without authentication for testing
+  },
+
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',

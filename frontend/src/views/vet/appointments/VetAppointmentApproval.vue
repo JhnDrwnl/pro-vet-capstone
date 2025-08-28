@@ -216,9 +216,10 @@
   
   <!-- Appointment Cards -->
   <div class="grid gap-4">
-    <div v-for="appointment in paginatedAppointments" :key="appointment.id" 
-         :id="`appt-${appointment.id}`"
-         class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+          <div v-for="appointment in paginatedAppointments" :key="appointment.id" 
+           :id="`appt-${appointment.id}`"
+           :data-appointment-id="appointment.id"
+           class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
       
       <!-- Card Header -->
       <div class="flex items-start justify-between mb-4">
@@ -2415,6 +2416,10 @@ import { useAuthStore } from '@/stores/modules/authStore';
 import { useNotificationsStore } from '@/stores/modules/notifications';
 import { parseISO, format } from 'date-fns';
 import notificationService from '@/services/notificationService';
+import { useServiceCategoryStore } from '@/stores/modules/ServiceCategoryStore'
+import { generateVaccinationRecordWithAutoScheduling, addVaccinationToPet } from '@/services/vaccinationService'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '@shared/firebase'
 
 // Router and route
 const router = useRouter();
@@ -2685,6 +2690,14 @@ const submitCompletionForm = async () => {
     // Store completion data in a separate collection or as part of the appointment
     await storeCompletionData(completionData);
     
+    // 🔧 NEW: Check if this appointment has vaccination services and generate vaccination records
+    try {
+      await processVaccinationAppointment(selectedAppointment.value, completionData);
+    } catch (vaccinationError) {
+      console.error('Error processing vaccination appointment:', vaccinationError);
+      // Don't fail the completion if vaccination processing fails
+    }
+    
     // Send notification to the user about appointment completion
     try {
       await sendAppointmentNotification(selectedAppointment.value.id, 'complete', 'completed');
@@ -2743,6 +2756,257 @@ const storeCompletionData = async (completionData) => {
   } catch (error) {
     console.error('Error storing completion data:', error);
     throw error;
+  }
+};
+
+// 🔧 NEW: Process vaccination appointments and generate autoscheduling suggestions
+const processVaccinationAppointment = async (appointment, completionData) => {
+  try {
+    console.log('🔍 Checking if appointment has vaccination services...');
+    
+    // Get the appointment's services
+    const appointmentServices = appointment.services || [];
+    if (appointmentServices.length === 0) {
+      console.log('❌ No services found in appointment');
+      return;
+    }
+    
+    // Get service details to check if any are vaccination services
+    const serviceDetails = await fetchVaccinationServiceDetails(appointmentServices);
+    const hasVaccinationServices = serviceDetails.some(service => 
+      service.isVaccination === true ||
+      service.name?.toLowerCase().includes('vaccination') ||
+      service.name?.toLowerCase().includes('vaccine') ||
+      service.name?.toLowerCase().includes('shot')
+    );
+    
+    if (!hasVaccinationServices) {
+      console.log('❌ No vaccination services found in appointment');
+      return;
+    }
+    
+    console.log('🩺 Vaccination services detected, processing...');
+    
+    // Get pet details
+    const petIds = appointment.petIds || [appointment.petId];
+    if (petIds.length === 0) {
+      console.log('❌ No pets found in appointment');
+      return;
+    }
+    
+    // Get user details
+    const userId = appointment.userId;
+    if (!userId) {
+      console.log('❌ No user ID found in appointment');
+      return;
+    }
+    
+    // Process each pet
+    for (const petId of petIds) {
+      try {
+        // Get pet details
+        const petDoc = await getDoc(doc(db, 'pets', petId));
+        if (!petDoc.exists()) {
+          console.log(`❌ Pet ${petId} not found`);
+          continue;
+        }
+        
+        const pet = { id: petId, ...petDoc.data() };
+        
+        // Generate vaccination record with autoscheduling
+        const result = await generateVaccinationRecordWithAutoScheduling(
+          appointment, 
+          pet, 
+          serviceDetails, 
+          { id: userId }
+        );
+        
+        if (result.vaccinationRecord) {
+          // Add vaccination record to pet
+          await addVaccinationToPet(petId, result.vaccinationRecord);
+          console.log(`✅ Vaccination record added for pet ${pet.name || petId}`);
+          
+          if (result.autoScheduled) {
+            console.log(`✅ Auto-scheduled ${result.newSuggestions.length} vaccination appointments`);
+            console.log('🎯 Created appointments:', result.newSuggestions);
+          }
+        }
+        
+      } catch (petError) {
+        console.error(`Error processing pet ${petId}:`, petError);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error processing vaccination appointment:', error);
+    throw error;
+  }
+};
+
+// Helper function to fetch service details for vaccination processing
+const fetchVaccinationServiceDetails = async (serviceIds) => {
+  try {
+    const serviceDetails = [];
+    for (const serviceId of serviceIds) {
+      if (servicesData.value[serviceId]) {
+        serviceDetails.push(servicesData.value[serviceId]);
+      }
+    }
+    return serviceDetails;
+  } catch (error) {
+    console.error('Error fetching service details:', error);
+    return [];
+  }
+};
+
+// 🔧 NEW: Handle appointment ID from query parameter when redirected from queue
+const handleAppointmentFromQuery = async () => {
+  try {
+    // Check if there's an appointment ID in the query parameter
+    const appointmentId = route.query.id;
+    
+    if (!appointmentId) {
+      console.log('No appointment ID in query parameters');
+      return;
+    }
+    
+    console.log('🔍 Found appointment ID in query:', appointmentId);
+    console.log('🔍 Current route query:', route.query);
+    console.log('🔍 Current route path:', route.path);
+    
+    // Wait for appointments to be loaded with retry logic
+    let retryCount = 0;
+    const maxRetries = 10;
+    
+    while (appointments.value.length === 0 && retryCount < maxRetries) {
+      console.log(`Appointments not loaded yet, waiting... (attempt ${retryCount + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+      retryCount++;
+    }
+    
+    if (appointments.value.length === 0) {
+      console.log('❌ Appointments still not loaded after retries');
+      return;
+    }
+    
+    console.log('🔍 Appointments loaded, count:', appointments.value.length);
+    console.log('🔍 Available appointment IDs:', appointments.value.map(a => a.id));
+    
+    // Find the specific appointment
+    const targetAppointment = appointments.value.find(appt => appt.id === appointmentId);
+    
+    if (!targetAppointment) {
+      console.log('❌ Appointment not found:', appointmentId);
+      console.log('🔍 First few appointments:', appointments.value.slice(0, 3).map(a => ({ id: a.id, ownerName: a.ownerName, petName: a.petName })));
+      return;
+    }
+    
+    console.log('✅ Found target appointment:', targetAppointment.ownerName, targetAppointment.petName);
+    
+    // Auto-filter to show only this appointment's status
+    if (targetAppointment.status) {
+      filters.value.status = targetAppointment.status;
+      console.log('🔧 Auto-filtered to status:', targetAppointment.status);
+    }
+    
+    // Auto-filter to show only this appointment's service category
+    if (targetAppointment.serviceCategoryId) {
+      categoryFilter.value = targetAppointment.serviceCategoryId;
+      console.log('🔧 Auto-filtered to category:', targetAppointment.serviceCategoryId);
+    }
+    
+    // Wait for DOM to be updated and then scroll to the appointment
+    await nextTick();
+    // Add a small delay to ensure DOM is fully rendered
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log('🔍 About to scroll to appointment:', appointmentId);
+    scrollToAppointment(appointmentId);
+    
+    // Show a notification that the appointment was found
+    showAppointmentFoundNotification(targetAppointment);
+    
+  } catch (error) {
+    console.error('Error handling appointment from query:', error);
+  }
+};
+
+// 🔧 NEW: Scroll to specific appointment in the table
+const scrollToAppointment = (appointmentId) => {
+  try {
+    console.log('🔍 Looking for appointment element with data-appointment-id:', appointmentId);
+    
+    // Find the appointment row element
+    const appointmentRow = document.querySelector(`[data-appointment-id="${appointmentId}"]`);
+    
+    if (appointmentRow) {
+      console.log('✅ Found appointment row element:', appointmentRow);
+      
+      // Scroll to the appointment row
+      appointmentRow.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+      
+      // Add highlight effect
+      appointmentRow.classList.add('highlight-appointment');
+      console.log('🎨 Added highlight class to appointment row');
+      
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        appointmentRow.classList.remove('highlight-appointment');
+        console.log('🎨 Removed highlight class from appointment row');
+      }, 3000);
+      
+      console.log('✅ Scrolled to appointment:', appointmentId);
+    } else {
+      console.log('❌ Appointment row element not found in DOM');
+      console.log('🔍 Available data-appointment-id elements:', 
+        Array.from(document.querySelectorAll('[data-appointment-id]')).map(el => el.getAttribute('data-appointment-id'))
+      );
+    }
+  } catch (error) {
+    console.error('Error scrolling to appointment:', error);
+  }
+};
+
+// 🔧 NEW: Show notification that appointment was found
+const showAppointmentFoundNotification = (appointment) => {
+  try {
+    // Create a temporary notification
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full';
+    notification.innerHTML = `
+      <div class="flex items-center gap-3">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div>
+          <div class="font-medium">Appointment Found!</div>
+          <div class="text-sm opacity-90">${appointment.ownerName} - ${appointment.petName}</div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+      notification.classList.add('translate-x-full');
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 4000);
+    
+  } catch (error) {
+    console.error('Error showing notification:', error);
   }
 };
 
@@ -3213,6 +3477,9 @@ onMounted(async () => {
     }
   }
   
+  // 🔧 NEW: Also handle query parameters on mount as fallback
+  await handleAppointmentFromQuery();
+  
   // Action menu functionality removed - no action menus implemented in this component
 });
 
@@ -3229,10 +3496,14 @@ onUnmounted(() => {
 
 // Handle Vue keep-alive activation/deactivation
 onActivated(() => {
+console.log('🔄 Component activated - onActivated hook called');
 // When the component is activated (comes back into view)
 // Reset any processing states and refresh data
 resetProcessingStates();
 fetchAppointments(); // Always fetch fresh data when coming back to this view
+// Also handle query parameters when coming back to the page
+console.log('🔄 Calling handleAppointmentFromQuery from onActivated');
+handleAppointmentFromQuery();
 });
 
 onDeactivated(() => {
@@ -5586,6 +5857,21 @@ const completeAppointment = async (appointmentId) => {
       appointments.value[index].updatedAt = new Date();
     }
 
+    // 🔧 NEW: Check if this appointment has vaccination services and generate vaccination records
+    try {
+      const appointment = appointments.value[index];
+      if (appointment) {
+        await processVaccinationAppointment(appointment, {
+          appointmentId: appointmentId,
+          completedAt: new Date(),
+          completedBy: 'vet'
+        });
+      }
+    } catch (vaccinationError) {
+      console.error('Error processing vaccination appointment:', vaccinationError);
+      // Don't fail the completion if vaccination processing fails
+    }
+
     // Notify user
     await sendAppointmentNotification(appointmentId, 'complete', 'completed');
     
@@ -5752,5 +6038,21 @@ table {
 .stepper-container {
   padding: 0 8px;
 }
+}
+
+/* 🔧 NEW: Highlight effect for appointments found from queue */
+.highlight-appointment {
+  background-color: #dbeafe !important;
+  border-left: 4px solid #3b82f6 !important;
+  animation: pulse-highlight 2s ease-in-out;
+}
+
+@keyframes pulse-highlight {
+  0%, 100% {
+    background-color: #dbeafe;
+  }
+  50% {
+    background-color: #bfdbfe;
+  }
 }
 </style>
