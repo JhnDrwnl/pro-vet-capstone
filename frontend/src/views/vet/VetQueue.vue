@@ -47,7 +47,6 @@
       <div class="mb-4 p-3 bg-blue-100 rounded-lg text-xs text-blue-800">
         <strong>Debug Info:</strong> 
         hasVaccinationServices: {{ currentPatient.hasVaccinationServices }}, 
-        redirectCountdown: {{ redirectCountdown }},
         Patient ID: {{ currentPatient.id }}
       </div>
       
@@ -93,20 +92,20 @@
       </div>
       
       <div class="flex flex-wrap gap-4">
-        <!-- Auto-redirect for vaccination appointments -->
+        <!-- Manual redirect for vaccination appointments -->
         <div v-if="currentPatient.hasVaccinationServices" class="space-y-3">
-          <div class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2">
+          <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
             </svg>
-            🩺 Auto-redirecting to Vaccination Completion in {{ redirectCountdown }}s...
+            🩺 Vaccination Service - Manual Completion Required
           </div>
           <button 
             @click="redirectToApprovalPage(currentPatient.id)"
             class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg flex items-center gap-2"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
             Go to Vaccination Completion Now
           </button>
@@ -1590,8 +1589,7 @@ const isTelehealthAppointment = (appointment) => {
   return false
 }
 
-// Countdown for auto-redirect
-const redirectCountdown = ref(3)
+// Removed auto-redirect countdown - now manual only
 
 // Test function for debugging vaccination detection
 const testVaccinationDetection = () => {
@@ -1769,16 +1767,8 @@ const startConsultation = async (patientId) => {
   updateFirestoreQueue()
   
   if (hasVaccinationServices) {
-    console.log('🩺 This patient has vaccination services - auto-redirecting to approval page in 3 seconds...')
-    // Start countdown and auto-redirect
-    redirectCountdown.value = 3
-    const countdownInterval = setInterval(() => {
-      redirectCountdown.value--
-      if (redirectCountdown.value <= 0) {
-        clearInterval(countdownInterval)
-        redirectToApprovalPage(patientId)
-      }
-    }, 1000)
+    console.log('🩺 This patient has vaccination services - manual completion required')
+    // No auto-redirect - vet must manually click the button
   }
 }
 
@@ -2452,18 +2442,8 @@ const callNext = async () => {
   console.log('Current patient object:', currentPatient.value)
   
   if (hasVaccinationServices) {
-    console.log('🩺 This patient has vaccination services - auto-redirecting to approval page in 3 seconds...')
-    // Start countdown and auto-redirect
-    redirectCountdown.value = 3
-    const countdownInterval = setInterval(() => {
-      redirectCountdown.value--
-      console.log(`🩺 Countdown: ${redirectCountdown.value}s`)
-      if (redirectCountdown.value <= 0) {
-        clearInterval(countdownInterval)
-        console.log('🩺 Redirecting to approval page...')
-        redirectToApprovalPage(nextPatient.id)
-      }
-    }, 1000)
+    console.log('🩺 This patient has vaccination services - manual completion required')
+    // No auto-redirect - vet must manually click the button
   } else {
     console.log('✅ Regular appointment - no auto-redirect needed')
   }
