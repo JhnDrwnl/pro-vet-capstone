@@ -4,40 +4,6 @@
   <div class="h-screen flex flex-col bg-gray-50 -mt-4 md:mt-0">
     <!-- Fixed header with stepper - adjusted padding to align with sidebar -->
     <div class="bg-white shadow-lg rounded-2xl p-3 mb-2 mx-0 md:mx-4 mt-0">
-      <!-- Queue Position Indicator -->
-      <div v-if="hasAppointmentToday" class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </div>
-            <div>
-              <div class="text-sm font-medium text-blue-800">Today's Appointment</div>
-              <div class="text-xs text-blue-600">
-                <span v-if="queuePosition > 0">
-                  Position #{{ queuePosition }} in queue
-                  <span v-if="estimatedWaitTime > 0"> • ~{{ estimatedWaitTime }} min wait</span>
-                </span>
-                <span v-else-if="appointmentStatus === 'in-progress'">Currently consulting</span>
-                <span v-else-if="appointmentStatus === 'completed'">Completed</span>
-                <span v-else>Ready</span>
-              </div>
-            </div>
-          </div>
-          <button 
-            @click="refreshQueuePosition"
-            class="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-          >
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            Refresh
-          </button>
-        </div>
-      </div>
-      
       <div class="flex w-full justify-between items-start">
         <!-- Steps -->
         <div ref="stepsContainer" class="flex-1 flex justify-between relative px-1 md:px-8">
@@ -1663,11 +1629,7 @@ const mapError = ref(false)
 const map = ref(null)
 
 // Queue position state
-const hasAppointmentToday = ref(false)
-const queuePosition = ref(0)
-const estimatedWaitTime = ref(0)
-const appointmentStatus = ref('')
-const todayAppointment = ref(null)
+
 const marker = ref(null)
 const hasLocation = ref(false)
 const isMapInitialized = ref(false)
@@ -3788,119 +3750,11 @@ const submitFeedback = async () => {
   }
 }
 
-// Queue position methods
-const checkTodayAppointment = async () => {
-  try {
-    if (!authStore.user?.userId) return
-    
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
-    
-    const appointmentsRef = collection(db, 'appointments')
-    const q = query(
-      appointmentsRef,
-      where('userId', '==', authStore.user.userId),
-      where('date', '>=', startOfDay),
-      where('date', '<=', endOfDay)
-    )
-    
-    const querySnapshot = await getDocs(q)
-    
-    if (!querySnapshot.empty) {
-      const appointment = querySnapshot.docs[0].data()
-      todayAppointment.value = {
-        id: querySnapshot.docs[0].id,
-        ...appointment
-      }
-      
-      hasAppointmentToday.value = true
-      appointmentStatus.value = appointment.status || 'pending'
-      
-      // Calculate queue position if approved
-      if (appointment.status === 'approved' && appointment.doctorId) {
-        await calculateQueuePosition(appointment.doctorId, appointment.id)
-      }
-    } else {
-      hasAppointmentToday.value = false
-      todayAppointment.value = null
-      appointmentStatus.value = ''
-      queuePosition.value = 0
-      estimatedWaitTime.value = 0
-    }
-  } catch (error) {
-    console.error('Error checking today appointment:', error)
-  }
-}
 
-const calculateQueuePosition = async (doctorId, appointmentId) => {
-  try {
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
-    
-    const appointmentsRef = collection(db, 'appointments')
-    const q = query(
-      appointmentsRef,
-      where('doctorId', '==', doctorId),
-      where('date', '>=', startOfDay),
-      where('date', '<=', endOfDay),
-      where('status', 'in', ['approved', 'in-progress'])
-    )
-    
-    const querySnapshot = await getDocs(q)
-    const allAppointments = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
-    
-    // Sort by date and time
-    allAppointments.sort((a, b) => {
-      const dateA = a.date?.toDate ? a.date.toDate() : new Date(a.date)
-      const dateB = b.date?.toDate ? b.date.toDate() : new Date(b.date)
-      
-      if (dateA.getTime() !== dateB.getTime()) {
-        return dateA - dateB
-      }
-      
-      // If dates are the same, sort by time
-      const timeA = a.time || '00:00'
-      const timeB = b.time || '00:00'
-      return timeA.localeCompare(timeB)
-    })
-    
-    // Find user's position
-    const userIndex = allAppointments.findIndex(apt => apt.id === appointmentId)
-    
-    if (userIndex !== -1) {
-      queuePosition.value = userIndex + 1
-      
-      // Calculate estimated wait time
-      if (userIndex > 0) {
-        let totalWaitTime = 0
-        for (let i = 0; i < userIndex; i++) {
-          const patient = allAppointments[i]
-          if (patient) {
-            const duration = patient.duration || 30
-            totalWaitTime += duration
-            if (i < userIndex - 1) {
-              totalWaitTime += 5 // Buffer time
-            }
-          }
-        }
-        estimatedWaitTime.value = totalWaitTime
-      } else {
-        estimatedWaitTime.value = 0
-      }
-    }
-  } catch (error) {
-    console.error('Error calculating queue position:', error)
-  }
-}
 
-const refreshQueuePosition = async () => {
-  await checkTodayAppointment()
-}
+
+
+
 
 // Initialize data on component mount
 onMounted(async () => {
@@ -3932,8 +3786,7 @@ onMounted(async () => {
     // Add window resize event listener for connector line
     window.addEventListener("resize", positionConnectorLine)
     
-    // Check today's appointment for queue position
-    await checkTodayAppointment()
+
     
     console.log("Initialization complete")
   } catch (error) {

@@ -4,6 +4,8 @@
 <div class="mb-6">
   <h2 class="text-2xl font-medium text-gray-900">Appointment Approval</h2>
   <p class="text-gray-500 mt-1">Manage and approve veterinary appointments.</p>
+  
+
 </div>
 
 <!-- Search and Actions -->
@@ -2507,6 +2509,11 @@ const availableCategories = computed(() => {
   return Object.values(categoriesData.value).filter(category => !category.archived);
 });
 
+// Check if we're in reschedule reconsideration mode
+const isRescheduleMode = computed(() => {
+  return route.query.mode === 'reschedule';
+});
+
 // Filtered appointments based on status AND category (both filters work together)
 const filteredAppointments = computed(() => {
   let filtered = appointments.value;
@@ -2864,6 +2871,7 @@ const handleAppointmentFromQuery = async () => {
   try {
     // Check if there's an appointment ID in the query parameter
     const appointmentId = route.query.id;
+    const mode = route.query.mode;
     
     if (!appointmentId) {
       console.log('No appointment ID in query parameters');
@@ -2871,6 +2879,7 @@ const handleAppointmentFromQuery = async () => {
     }
     
     console.log('🔍 Found appointment ID in query:', appointmentId);
+    console.log('🔍 Mode:', mode);
     console.log('🔍 Current route query:', route.query);
     console.log('🔍 Current route path:', route.path);
     
