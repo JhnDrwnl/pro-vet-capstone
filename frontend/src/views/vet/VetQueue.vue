@@ -286,17 +286,17 @@
               <span class="text-sm font-medium">{{ queuePaused ? 'Queue Paused' : 'Queue Active' }}</span>
             </div>
             
-            <!-- Debug Button -->
-            <button 
-              @click="debugUserDataFetching"
-              class="px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2 shadow-sm"
-              title="Debug user data fetching"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-              </svg>
-              Debug Users
-            </button>
+                      <!-- Debug Button -->
+          <button 
+            @click="debugUserDataFetching"
+            class="px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2 shadow-sm"
+            title="Debug user data fetching and clean up excluded appointments"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+            </svg>
+            Debug & Clean
+          </button>
           </div>
         </div>
         
@@ -2450,24 +2450,25 @@ const manualCheckDatabase = async () => {
       })
     })
     
-    // Check if there are any approved appointments for today
-    const todayApprovedQuery = query(
+    // Check if there are any appointments for today (all statuses)
+    const todayAllAppointmentsQuery = query(
       appointmentsRef,
       where('doctorId', '==', authStore.user.userId),
-      where('status', '==', 'approved'),
       where('date', '>=', startOfDay),
       where('date', '<=', endOfDay)
     )
     
-    const todayApprovedAppointments = await getDocs(todayApprovedQuery)
-    console.log('📋 Today approved appointments for doctor:', todayApprovedAppointments.size)
+    const todayAllAppointments = await getDocs(todayAllAppointmentsQuery)
+    console.log('📋 Today appointments for doctor:', todayAllAppointments.size)
     
-    todayApprovedAppointments.forEach(doc => {
+    // Show all appointments with their statuses
+    todayAllAppointments.forEach(doc => {
       const apt = doc.data()
-      console.log('✅ Today approved appointment:', {
+      console.log(`📝 Today appointment (${apt.status}):`, {
         id: doc.id,
         date: apt.date,
         time: apt.time,
+        status: apt.status,
         userId: apt.userId,
         petNames: apt.petNames,
         serviceNames: apt.serviceNames
@@ -2475,8 +2476,23 @@ const manualCheckDatabase = async () => {
     })
     
     // Check if there are any approved appointments that might be missing from the queue
-    const missingAppointments = todayApprovedAppointments.docs.filter(doc => {
+    const todayApprovedAppointments = todayAllAppointments.docs.filter(doc => {
       const apt = doc.data()
+      return apt.status === 'approved'
+    })
+    
+    const missingAppointments = todayApprovedAppointments.filter(doc => {
+      const apt = doc.data()
+      
+      // Skip appointments with reschedule requests
+      if (apt.rescheduleRequest && apt.rescheduleRequest.status) {
+        const rescheduleStatus = apt.rescheduleRequest.status
+        if (['reschedule_requested', 'reschedule_approved', 'reschedule_rejected'].includes(rescheduleStatus)) {
+          console.log(`⏭️ Skipping appointment with reschedule status for queue addition: ${doc.id} (${rescheduleStatus})`)
+          return false
+        }
+      }
+      
       // Check if this appointment is already in the waiting queue
       const inQueue = waitingQueue.value.some(queueItem => queueItem.id === doc.id)
       // Check if this appointment is the current patient
@@ -2573,8 +2589,8 @@ const setupAppointmentListener = () => {
     // Listen for changes to appointments for this doctor
     const q = query(
       appointmentsRef,
-      where('doctorId', '==', authStore.user.userId),
-      where('status', '==', 'approved')
+      where('doctorId', '==', authStore.user.userId)
+      // Remove status filter to get all appointments, then filter in code
     )
     
     appointmentListener.value = onSnapshot(q, async (snapshot) => {
@@ -2586,8 +2602,19 @@ const setupAppointmentListener = () => {
         
         // Skip appointments that shouldn't be in the queue
         const excludedStatuses = ['completed', 'cancelled', 'ended', 'expired', 'rejected']
+        
+        // Check main status
         if (excludedStatuses.includes(appointment.status)) {
           continue
+        }
+        
+        // Check if appointment has a reschedule request (new structure)
+        if (appointment.rescheduleRequest && appointment.rescheduleRequest.status) {
+          const rescheduleStatus = appointment.rescheduleRequest.status
+          if (['reschedule_requested', 'reschedule_approved', 'reschedule_rejected'].includes(rescheduleStatus)) {
+            console.log(`🗑️ Skipping appointment with reschedule status: ${appointment.id} (${rescheduleStatus})`)
+            continue
+          }
         }
         
         // Check if appointment is for today
@@ -2744,8 +2771,8 @@ const fetchAppointments = async () => {
       // Simplified query without orderBy to avoid Firestore limitations
       const q = query(
         appointmentsRef,
-        where('status', '==', 'approved'),
         where('doctorId', '==', authStore.user.userId)
+        // Remove status filter to get all appointments, then filter in code
       )
       
       const querySnapshot = await getDocs(q)
@@ -2756,8 +2783,19 @@ const fetchAppointments = async () => {
         
         // Skip appointments that shouldn't be in the queue
         const excludedStatuses = ['completed', 'cancelled', 'ended', 'expired', 'rejected']
+        
+        // Check main status
         if (excludedStatuses.includes(appointment.status)) {
           continue
+        }
+        
+        // Check if appointment has a reschedule request (new structure)
+        if (appointment.rescheduleRequest && appointment.rescheduleRequest.status) {
+          const rescheduleStatus = appointment.rescheduleRequest.status
+          if (['reschedule_requested', 'reschedule_approved', 'reschedule_rejected'].includes(rescheduleStatus)) {
+            console.log(`🗑️ Skipping appointment with reschedule status: ${appointment.id} (${rescheduleStatus})`)
+            continue
+          }
         }
         
         // Check if appointment is for today
@@ -3920,6 +3958,10 @@ const debugUserDataFetching = async () => {
       return
     }
     
+    // First, clean up any excluded appointments
+    console.log('🧹 Cleaning up excluded appointments...')
+    cleanupExcludedAppointments()
+    
     // Check if we have any appointments with userIds
     const appointmentsWithUsers = appointments.value.filter(apt => apt.userId)
     console.log(`📋 Appointments with userIds: ${appointmentsWithUsers.length}`)
@@ -3929,7 +3971,8 @@ const debugUserDataFetching = async () => {
       console.log('📝 Sample appointment:', {
         id: sampleAppointment.id,
         userId: sampleAppointment.userId,
-        ownerName: sampleAppointment.ownerName
+        ownerName: sampleAppointment.ownerName,
+        status: sampleAppointment.status
       })
       
       // Try to fetch user data for the first appointment
@@ -3968,6 +4011,58 @@ const cleanupAppointmentListener = () => {
   }
 }
 
+// Clean up any appointments with excluded statuses from the current queue
+const cleanupExcludedAppointments = () => {
+  const excludedStatuses = ['completed', 'cancelled', 'ended', 'expired', 'rejected']
+  
+  // Clean waiting queue
+  waitingQueue.value = waitingQueue.value.filter(patient => {
+    // Check main status
+    if (excludedStatuses.includes(patient.status)) {
+      console.log(`🗑️ Removing excluded appointment from queue: ${patient.id} (${patient.status})`)
+      return false
+    }
+    
+    // Check reschedule request status (new structure)
+    if (patient.rescheduleRequest && patient.rescheduleRequest.status) {
+      const rescheduleStatus = patient.rescheduleRequest.status
+      if (['reschedule_requested', 'reschedule_approved', 'reschedule_rejected'].includes(rescheduleStatus)) {
+        console.log(`🗑️ Removing appointment with reschedule status from queue: ${patient.id} (${rescheduleStatus})`)
+        return false
+      }
+    }
+    
+    return true
+  })
+  
+  // Clean current patient if they have excluded status
+  if (currentPatient.value) {
+    let shouldClear = false
+    
+    // Check main status
+    if (excludedStatuses.includes(currentPatient.value.status)) {
+      console.log(`🗑️ Clearing current patient with excluded status: ${currentPatient.value.id} (${currentPatient.value.status})`)
+      shouldClear = true
+    }
+    
+    // Check reschedule request status
+    if (currentPatient.value.rescheduleRequest && currentPatient.value.rescheduleRequest.status) {
+      const rescheduleStatus = currentPatient.value.rescheduleRequest.status
+      if (['reschedule_requested', 'reschedule_approved', 'reschedule_rejected'].includes(rescheduleStatus)) {
+        console.log(`🗑️ Clearing current patient with reschedule status: ${currentPatient.value.id} (${rescheduleStatus})`)
+        shouldClear = true
+      }
+    }
+    
+    if (shouldClear) {
+      currentPatient.value = null
+    }
+  }
+  
+  // Update Firestore queue after cleanup
+  updateFirestoreQueue()
+}
+
 // Lifecycle
 onUnmounted(() => {
   // Don't clear the queue on unmount - this can cause data loss
@@ -3997,6 +4092,9 @@ onMounted(async () => {
   
   // Load queue data from Firestore to restore state
   await loadFirestoreQueue()
+  
+  // Clean up any excluded appointments that might have been loaded
+  cleanupExcludedAppointments()
   
   // Update current time every minute to refresh wait estimates
   const timer = setInterval(() => {

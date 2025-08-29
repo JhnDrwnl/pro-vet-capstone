@@ -37,13 +37,13 @@
           All Statuses
         </button>
         <button 
-          v-for="status in ['pending', 'approved', 'completed', 'cancelled', 'ended', 'expired', 'consider_rescheduling']" 
+          v-for="status in ['pending', 'approved', 'completed', 'cancelled', 'ended', 'expired', 'reschedule_requested']" 
           :key="status"
           @click="toggleStatusFilter(status)"
           class="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 capitalize"
           :class="{ 'text-[#0066FF]': filters.status === status }"
         >
-          {{ status === 'consider_rescheduling' ? 'Consider Rescheduling' : status }}
+          {{ status === 'reschedule_requested' ? 'Reschedule Requested' : status }}
         </button>
       </div>
     </div>
@@ -261,16 +261,14 @@
               'bg-blue-100 text-blue-800': appointment.status === 'completed',
               'bg-gray-100 text-gray-800': appointment.status === 'cancelled',
               'bg-slate-100 text-slate-800': appointment.status === 'ended',
-              'bg-orange-100 text-orange-800': appointment.status === 'consider_rescheduling',
+              'bg-orange-100 text-orange-800': appointment.rescheduleRequest?.status === 'reschedule_requested',
               'bg-red-50 text-red-700 border border-red-200': isExpired(appointment)
             }"
           >
-            {{ isExpired(appointment) ? 'Expired' : formatStatus(appointment.status) }}
+            {{ isExpired(appointment) ? 'Expired' : 
+               (appointment.rescheduleRequest?.status === 'reschedule_requested' ? 'Reschedule Requested' : formatStatus(appointment.status)) }}
           </span>
           <span v-if="isExpired(appointment)" class="text-xs text-red-500">Past scheduled time</span>
-          <span v-if="appointment.rescheduleRequest" class="px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-200">
-            Reschedule Requested
-          </span>
         </div>
       </div>
       
@@ -328,9 +326,9 @@
         
         <!-- Action Buttons -->
         <div class="flex items-center gap-2">
-          <!-- Request Reschedule button - for pending, approved, expired, or consider_rescheduling appointments -->
-          <button 
-            v-if="appointment.status === 'pending' || appointment.status === 'approved' || appointment.status === 'consider_rescheduling' || isExpired(appointment)"
+                  <!-- Request Reschedule button - for pending, approved, expired, or reschedule_requested appointments -->
+        <button 
+          v-if="appointment.status === 'pending' || appointment.status === 'approved' || (appointment.rescheduleRequest && appointment.rescheduleRequest.status === 'reschedule_requested') || isExpired(appointment)"
             @click="openRescheduleRequestPanel(appointment)"
             class="p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-full transition-colors duration-200"
             :title="isExpired(appointment) ? 'Request Reschedule for Expired Appointment' : 'Request Reschedule'"
@@ -451,7 +449,8 @@
                         'bg-orange-100 text-orange-800': isExpired(appointment)
                       }"
                     >
-                      {{ isExpired(appointment) ? 'Expired' : formatStatus(appointment.status) }}
+                      {{ isExpired(appointment) ? 'Expired' : 
+                         (appointment.rescheduleRequest?.status === 'reschedule_requested' ? 'Reschedule Requested' : formatStatus(appointment.status)) }}
                     </span>
                   </span>
                 </div>
@@ -2485,7 +2484,16 @@ const statusCategories = computed(() => {
 
   // Count by effective status (expired is computed)
   const counters = unique.reduce((acc, a) => {
-    const eff = isExpired(a) ? 'expired' : (a.status || '').toLowerCase();
+    let eff;
+    
+    if (isExpired(a)) {
+      eff = 'expired';
+    } else if (a.rescheduleRequest && a.rescheduleRequest.status === 'reschedule_requested') {
+      eff = 'reschedule_requested';
+    } else {
+      eff = (a.status || '').toLowerCase();
+    }
+    
     const key = eff || 'pending';
     acc[key] = (acc[key] || 0) + 1;
     return acc;
@@ -2500,7 +2508,7 @@ const statusCategories = computed(() => {
     { key: 'rejected', label: 'Rejected', count: counters['rejected'] || 0 },
     { key: 'cancelled', label: 'Cancelled', count: counters['cancelled'] || 0 },
     { key: 'expired', label: 'Expired', count: counters['expired'] || 0 },
-    { key: 'consider_rescheduling', label: 'Consider Rescheduling', count: counters['consider_rescheduling'] || 0 },
+            { key: 'reschedule_requested', label: 'Reschedule Requested', count: counters['reschedule_requested'] || 0 },
   ];
 });
 
@@ -2521,8 +2529,28 @@ const filteredAppointments = computed(() => {
   // Apply status filter
   if (filters.value.status) {
     filtered = filtered.filter(appointment => {
-      const effectiveStatus = isExpired(appointment) ? 'expired' : appointment.status;
-      return effectiveStatus === filters.value.status;
+      // Handle expired appointments
+      if (isExpired(appointment)) {
+        return filters.value.status === 'expired';
+      }
+      
+      // Handle reschedule requests (new structure)
+      if (filters.value.status === 'reschedule_requested') {
+        return appointment.rescheduleRequest && 
+               appointment.rescheduleRequest.status === 'reschedule_requested';
+      }
+      
+      // For approved filter, exclude appointments with reschedule requests
+      if (filters.value.status === 'approved') {
+        // If appointment has a reschedule request, don't show it in approved filter
+        if (appointment.rescheduleRequest && appointment.rescheduleRequest.status === 'reschedule_requested') {
+          return false;
+        }
+        return appointment.status === 'approved';
+      }
+      
+      // Handle other statuses normally
+      return appointment.status === filters.value.status;
     });
   }
   
@@ -3693,8 +3721,8 @@ const formatStatus = (status) => {
 if (!status) return 'Unknown';
 
 // Handle special status formatting
-if (status === 'consider_rescheduling') {
-  return 'Consider Rescheduling';
+if (status === 'reschedule_requested') {
+  return 'Reschedule Requested';
 }
 
 // Capitalize first letter
@@ -3703,7 +3731,8 @@ return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 
 // Check if appointment is expired (past scheduled time and not approved)
 const isExpired = (appointment) => {
-  if (appointment.status === 'approved' || appointment.status === 'completed' || appointment.status === 'cancelled' || appointment.status === 'consider_rescheduling') {
+  if (appointment.status === 'approved' || appointment.status === 'completed' || appointment.status === 'cancelled' || 
+      (appointment.rescheduleRequest && appointment.rescheduleRequest.status === 'reschedule_requested')) {
     return false;
   }
   
@@ -3910,7 +3939,7 @@ switch (status?.toLowerCase()) {
     return `${baseClasses} bg-red-50 text-red-700 border border-red-200`;
   case 'ended':
     return `${baseClasses} bg-slate-200 text-slate-700`;
-    case 'consider_rescheduling':
+    case 'reschedule_requested':
       return `${baseClasses} bg-orange-100 text-orange-800`;
   default:
     return `${baseClasses} bg-gray-100 text-gray-800`;
@@ -5453,10 +5482,9 @@ const executeRescheduleRequest = async () => {
       status: 'reschedule_requested'
     };
     
-    // Update appointment with reschedule request and status change
+    // Update appointment with reschedule request (no status change needed)
     await appointmentStore.updateAppointment(reschedulingAppointment.value.id, {
       rescheduleRequest: rescheduleRequestData,
-      status: 'consider_rescheduling',
       updatedAt: new Date()
     });
     
@@ -5466,7 +5494,6 @@ const executeRescheduleRequest = async () => {
       appointments.value[index] = {
         ...appointments.value[index],
         rescheduleRequest: rescheduleRequestData,
-        status: 'consider_rescheduling',
         updatedAt: new Date()
       };
     }
