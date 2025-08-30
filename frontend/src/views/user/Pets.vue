@@ -33,6 +33,12 @@
     <div class="flex-1 px-4 md:px-6 py-6">
       <div class="max-w-7xl mx-auto">
         <LoadingSpinner v-if="isLoading" isOverlay text="Loading pets data..." />
+        
+        <!-- Initial Data Loading State -->
+        <div v-if="!isLoading && initialLoading" class="text-center py-12">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p class="text-gray-500">Preparing pet data...</p>
+        </div>
 
         <div v-if="!isLoading" class="space-y-6">
           <!-- List view -->
@@ -169,26 +175,29 @@
         <!-- Tabs -->
         <div v-if="!selectedLocalPet?.isNew && viewMode === 'view'" class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <nav class="hidden md:flex border-b border-gray-200">
-            <button v-for="tab in petTabs" :key="tab.id" @click.prevent="selectedPetTab = tab.id" type="button" :class="['py-4 px-6 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2 transition-colors', selectedPetTab === tab.id ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50']">
+            <button v-for="tab in petTabs" :key="tab.id" @click.prevent="handleTabClick(tab.id)" type="button" :class="['py-4 px-6 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2 transition-colors', selectedPetTab === tab.id ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50']">
               <component :is="tab.icon" class="w-5 h-5" />
               {{ tab.name }}
             </button>
           </nav>
-          <div class="md:hidden relative">
-            <button @click.stop="toggleTabsDropdown" type="button" class="w-full flex items-center justify-between py-4 px-6 border-b border-gray-200">
-              <div class="flex items-center gap-2">
-                <component :is="getCurrentTabIcon()" class="w-5 h-5" />
-                <span>{{ getCurrentTabName() }}</span>
-              </div>
-              <ChevronDownIcon class="w-5 h-5" :class="{ 'transform rotate-180': tabsDropdownOpen }" />
-            </button>
-            <div v-show="tabsDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg tabs-dropdown">
-              <button v-for="tab in petTabs" :key="tab.id" @click.stop="selectTabAndCloseDropdown(tab.id)" type="button" :class="['w-full text-left py-3 px-6 flex items-center gap-2', selectedPetTab === tab.id ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50']">
-                <component :is="tab.icon" class="w-5 h-5" />
-                {{ tab.name }}
+                      <div class="md:hidden relative">
+              <button @click.stop="toggleTabsDropdown" type="button" class="w-full flex items-center justify-between py-4 px-6 border-b border-gray-200">
+                <div class="flex items-center gap-2">
+                  <component :is="getCurrentTabIcon()" class="w-5 h-5" />
+                  <span>{{ getCurrentTabName() }}</span>
+                </div>
+                <ChevronDownIcon class="w-5 h-5" :class="{ 'transform rotate-180': tabsDropdownOpen }" />
               </button>
+              <div v-show="tabsDropdownOpen" class="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg tabs-dropdown">
+                <button v-for="tab in petTabs" :key="tab.id" @click.stop="() => {
+                  console.log('Mobile tab clicked:', tab.id);
+                  selectTabAndCloseDropdown(tab.id);
+                }" type="button" :class="['w-full text-left py-3 px-6 flex items-center gap-2', selectedPetTab === tab.id ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50']">
+                  <component :is="tab.icon" class="w-5 h-5" />
+                  {{ tab.name }}
+                </button>
+              </div>
             </div>
-          </div>
         </div>
         
         <!-- Tab Content -->
@@ -278,18 +287,16 @@
                   <ShieldIcon class="w-4 h-4" />
                   View Vaccination Card
                 </button>
-                <button 
-                  @click="addNewRecord"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                >
-                  <PlusIcon class="w-4 h-4" />
-                  Add Record
-                </button>
               </div>
             </div>
 
             <!-- Enhanced Filter Buttons -->
             <div class="flex flex-wrap gap-3">
+              <!-- Loading state for categories -->
+              <div v-if="categories.length === 0" class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg">
+                <div class="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                <span class="text-sm">Loading categories...</span>
+              </div>
               <button
                 @click="setHistoryFilter('all')"
                 :class="[
@@ -390,6 +397,7 @@
             <div v-if="historyLoading" class="py-12 text-center">
               <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
               <p class="text-gray-500">Loading medical records...</p>
+              <p class="text-sm text-gray-400 mt-2">This may take a few seconds on first load</p>
             </div>
             
             <div v-else-if="historyError" class="bg-red-50 border border-red-200 text-red-600 p-6 rounded-lg text-center">
@@ -404,7 +412,13 @@
 
             <!-- Records Timeline -->
             <div v-else>
-              <div v-if="timelineEntries.length === 0" class="text-center py-12">
+              <!-- Loading state for timeline -->
+              <div v-if="historyLoading" class="text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p class="text-gray-500">Loading timeline...</p>
+              </div>
+              
+              <div v-else-if="timelineEntries.length === 0" class="text-center py-12">
                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <component
                     :is="historyFilter === 'vaccinations' ? ShieldIcon :
@@ -724,7 +738,7 @@
 </template>
   
 <script setup>
-  import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+  import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
   import { 
   Camera as CameraIcon,
   Plus as PlusIcon,
@@ -810,6 +824,9 @@ const petTabs = [
   { id: 'medical-history', name: 'Medical History', icon: ActivityIcon },
 ];
 
+// Debug: Log tabs on mount
+console.log('Pet tabs defined:', petTabs);
+
 const getCurrentTabIcon = () => {
   const currentTab = petTabs.find(tab => tab.id === selectedPetTab.value);
   return currentTab ? currentTab.icon : FileTextIcon;
@@ -824,9 +841,43 @@ const toggleTabsDropdown = () => {
   tabsDropdownOpen.value = !tabsDropdownOpen.value;
 };
 
+// Handle tab clicks for desktop navigation
+const handleTabClick = (tabId) => {
+  console.log('Tab clicked:', tabId);
+  console.log('Current selected pet:', selectedLocalPet.value);
+  console.log('Current user:', authStore.user);
+  
+  selectedPetTab.value = tabId;
+  
+  // If medical history tab is selected, fetch appointments
+  if (tabId === 'medical-history') {
+    console.log('Medical history tab clicked');
+    if (selectedLocalPet.value) {
+      console.log('Pet found, fetching appointments');
+      fetchPetAppointments();
+    } else {
+      console.log('No pet selected, cannot fetch appointments');
+    }
+  }
+};
+
 const selectTabAndCloseDropdown = (tabId) => {
+  console.log('Mobile tab selected:', tabId);
+  console.log('Current selected pet:', selectedLocalPet.value);
+  
   selectedPetTab.value = tabId;
   tabsDropdownOpen.value = false;
+  
+  // If medical history tab is selected, fetch appointments
+  if (tabId === 'medical-history') {
+    console.log('Medical history tab selected on mobile');
+    if (selectedLocalPet.value) {
+      console.log('Pet found, fetching appointments');
+      fetchPetAppointments();
+    } else {
+      console.log('No pet selected, cannot fetch appointments');
+    }
+  }
 };
 
 const toggleGenderDropdown = () => {
@@ -847,7 +898,15 @@ const formatGender = (gender) => {
 const storedPets = computed(() => petsStore.getPets);
 const selectedLocalPet = computed(() => {
   if (!selectedPetId.value) return null;
-  return localPets.value.find(p => (p.id || p.tempId) === selectedPetId.value) || null;
+  const pet = localPets.value.find(p => (p.id || p.tempId) === selectedPetId.value) || null;
+  console.log('Selected local pet computed:', {
+    selectedPetId: selectedPetId.value,
+    petFound: !!pet,
+    petData: pet,
+    medicalHistory: pet?.medicalHistory,
+    vaccinations: pet?.vaccinations
+  });
+  return pet;
 });
 const hasUnsavedNewPet = computed(() => localPets.value.some(p => p.isNew === true));
 
@@ -858,6 +917,10 @@ const fetchPets = async () => {
     initialLoading.value = true;
     await petsStore.fetchUserPets(authStore.user.userId);
     const userPets = storedPets.value;
+    
+    console.log('Fetched pets from store:', userPets);
+    console.log('Sample pet medical history:', userPets[0]?.medicalHistory);
+    console.log('Sample pet vaccinations:', userPets[0]?.vaccinations);
     
     const petsChanged = JSON.stringify(userPets) !== JSON.stringify(localPets.value);
     localPets.value = userPets.map(p => ({ ...p }));
@@ -942,11 +1005,22 @@ const updateLocalPet = () => {
 
 // Actions
 const viewPet = (pet) => {
+  console.log('Viewing pet:', pet);
   selectedPetId.value = pet.id || pet.tempId;
   selectedPetTab.value = 'basic-details';
   viewMode.value = 'view';
   tabsDropdownOpen.value = false;
   genderDropdownOpen.value = false;
+  
+  // Wait for next tick to ensure selectedLocalPet is updated
+  nextTick(() => {
+    console.log('Selected pet data (after nextTick):', selectedLocalPet.value);
+    console.log('Pet medical history:', selectedLocalPet.value?.medicalHistory);
+    console.log('Pet vaccinations:', selectedLocalPet.value?.vaccinations);
+    console.log('Selected pet ID:', selectedPetId.value);
+    console.log('Selected pet tab:', selectedPetTab.value);
+  });
+  
   if (selectedLocalPet.value) editablePet.value = { ...selectedLocalPet.value };
 };
 
@@ -1022,9 +1096,24 @@ const setHistoryFilter = (filter) => {
   historyFilter.value = filter;
 };
 
-// Function to populate categories and their services from the collections
+// Cache for categories and services
+const categoriesCache = ref(null);
+const categoriesLastFetch = ref(0);
+const CATEGORIES_CACHE_EXPIRY = 10 * 60 * 1000; // 10 minutes
+
+// Function to populate categories and their services from the collections with caching
 const populateCategoriesAndServices = async () => {
+  const now = Date.now();
+  
+  // Check if we have valid cached data
+  if (categoriesCache.value && (now - categoriesLastFetch.value < CATEGORIES_CACHE_EXPIRY)) {
+    console.log('Using cached categories and services');
+    categories.value = categoriesCache.value;
+    return;
+  }
+  
   try {
+    console.log('Fetching fresh categories and services...');
     const { collection, query, where, getDocs } = await import('firebase/firestore');
     const { db } = await import('@shared/firebase');
     
@@ -1071,10 +1160,14 @@ const populateCategoriesAndServices = async () => {
       categoryServiceIds.value.set(categoryId, serviceIds);
     }
     
+    // Cache the results
+    categoriesCache.value = categoriesData;
+    categoriesLastFetch.value = now;
+    
     // Update the reactive categories
     categories.value = categoriesData;
     
-    console.log('Populated categories and services:', categoriesData);
+    console.log('Populated categories and services:', categoriesData.length);
     console.log('Category service mapping:', Object.fromEntries(categoryServiceIds.value));
     
   } catch (error) {
@@ -1120,13 +1213,27 @@ const isServiceTelehealth = async (serviceId) => {
 
 // Unified history: fetch pet appointments
 const fetchPetAppointments = async () => {
-  if (!selectedLocalPet.value || !authStore.user?.userId) return;
+  if (!selectedLocalPet.value || !authStore.user?.userId) {
+    console.log('Cannot fetch appointments: no pet selected or user not authenticated');
+    return;
+  }
+  
   try {
     historyLoading.value = true;
     historyError.value = '';
-    const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+    
     const petId = selectedLocalPet.value.id;
-    petAppointments.value = (userAppointments || []).filter(a => a && ((a.petId && a.petId === petId) || (Array.isArray(a.petIds) && a.petIds.includes(petId))));
+    console.log('Fetching appointments for pet:', petId);
+    
+    // Fetch appointments for this specific pet
+    const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
+    const filteredAppointments = (userAppointments || []).filter(a => a && ((a.petId && a.petId === petId) || (Array.isArray(a.petIds) && a.petIds.includes(petId))));
+    
+    petAppointments.value = filteredAppointments;
+    
+    console.log('Fetched appointments for pet:', petId, petAppointments.value.length);
+    console.log('Selected pet data:', selectedLocalPet.value);
+    
   } catch (e) {
     console.error('Failed fetching pet appointments:', e);
     historyError.value = 'Failed to load pet appointment history.';
@@ -1137,133 +1244,300 @@ const fetchPetAppointments = async () => {
 
 // Build timeline
 const timelineEntries = computed(() => {
-  if (!selectedLocalPet.value) return [];
-  const entries = [];
-  const toDateFromDateAndTime = (dateVal, timeRange) => {
-    try {
-      const base = new Date(dateVal);
-      if (!timeRange) return base;
-      const m = String(timeRange).match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      if (!m) return base;
-      let hh = parseInt(m[1], 10);
-      const mm = parseInt(m[2], 10);
-      const ap = m[3].toUpperCase();
-      if (ap === 'PM' && hh !== 12) hh += 12;
-      if (ap === 'AM' && hh === 12) hh = 0;
-      const d = new Date(base);
-      d.setHours(hh, mm, 0, 0);
-      return d;
-    } catch {
-      return new Date(dateVal);
+  try {
+    const petId = selectedLocalPet.value?.id;
+    const filter = historyFilter.value;
+    
+    console.log('Computing timeline entries for pet:', petId, 'filter:', filter);
+    
+    if (!selectedLocalPet.value) {
+      console.log('No selected pet, returning empty timeline');
+      return [];
     }
-  };
+    
+    const entries = [];
+    
+              // Add appointments (including telehealth) - only add each appointment once
+     const processedAppointmentIds = new Set();
+     
+     for (const a of petAppointments.value) {
+       try {
+         // Skip if we've already processed this appointment
+         if (processedAppointmentIds.has(a.id)) {
+           console.log('Skipping duplicate appointment:', a.id);
+           continue;
+         }
+         
+         // Safely create date from appointment data
+         let when;
+         try {
+           if (a.date) {
+             when = new Date(a.date);
+             // Check if the date is valid
+             if (isNaN(when.getTime())) {
+               console.warn('Invalid appointment date:', a.date);
+               when = new Date();
+             }
+           } else {
+             when = new Date();
+           }
+         } catch (dateError) {
+           console.warn('Error creating date from appointment:', dateError);
+           when = new Date();
+         }
+         
+         // Check if this appointment belongs to a specific category based on its services
+         let appointmentCategory = null;
+         
+         if (a.services && Array.isArray(a.services) && a.services.length > 0) {
+           // Find which category this appointment's services belong to
+           for (const [categoryId, serviceIds] of categoryServiceIds.value.entries()) {
+             if (a.services.some(serviceId => serviceIds.includes(serviceId))) {
+               appointmentCategory = categoryId;
+               break;
+             }
+           }
+         }
+         
+         // For backward compatibility, also check traditional telehealth indicators
+         const isTele = (
+           String(a.type || '').toLowerCase() === 'online' || 
+           a.isTelehealth === true ||
+           appointmentCategory === 'telehealth5192' ||
+           // Check service names for telehealth indicators
+           (a.serviceNames && Array.isArray(a.serviceNames) && 
+            a.serviceNames.some(name => name.toLowerCase().includes('video') || name.toLowerCase().includes('telehealth')))
+         );
+         
+         // Apply filter based on category
+         if (historyFilter.value !== 'all' && historyFilter.value !== 'vaccinations' && historyFilter.value !== 'completed') {
+           // Category-based filtering
+           if (historyFilter.value !== appointmentCategory) continue;
+         }
+         
+         // Special filters
+         if (historyFilter.value === 'vaccinations') continue; // Vaccinations are handled separately
+         if (historyFilter.value === 'completed' && a.status !== 'completed') continue;
+         
+         // Get category name for display
+         const categoryName = appointmentCategory ? 
+           categories.value.find(cat => cat.id === appointmentCategory)?.name || 'Appointment' : 
+           (isTele ? 'Telehealth' : 'Appointment');
+         
+         // Ensure we have a valid date before adding to entries
+         if (when && !isNaN(when.getTime())) {
+           entries.push({
+             kind: categoryName,
+             date: when,
+             title: (Array.isArray(a.serviceNames) && a.serviceNames.length ? a.serviceNames.join(', ') : 'Veterinary appointment'),
+             subtitle: a.doctorName || a.vetName || '',
+             status: (a.status || '').toLowerCase(),
+             details: a.notes || '',
+             icon: isTele ? ActivityIcon : FileTextIcon,
+             color: isTele ? 'text-indigo-600' : 'text-blue-600',
+             completionData: a.completionData || null,
+             serviceIds: a.services || [],
+             categoryId: appointmentCategory,
+             isTelehealth: isTele,
+             appointmentId: a.id // Add appointment ID for better tracking
+           });
+           
+           // Mark this appointment as processed
+           processedAppointmentIds.add(a.id);
+         } else {
+           console.warn('Skipping appointment with invalid date:', a);
+         }
+       } catch (appointmentError) {
+         console.error('Error processing appointment:', appointmentError, a);
+         continue;
+       }
+     }
 
-  // Add appointments (including telehealth)
-  for (const a of petAppointments.value) {
-    const when = toDateFromDateAndTime(a.date, a.time);
-    
-    // Check if this appointment belongs to a specific category based on its services
-    // We'll determine the category by checking which services the appointment uses
-    let appointmentCategory = null;
-    
-    if (a.services && Array.isArray(a.services) && a.services.length > 0) {
-      // Find which category this appointment's services belong to
-      for (const [categoryId, serviceIds] of categoryServiceIds.value.entries()) {
-        if (a.services.some(serviceId => serviceIds.includes(serviceId))) {
-          appointmentCategory = categoryId;
-          break;
-        }
-      }
+    // Add medical history treatments if viewing all records
+    if (historyFilter.value === 'all') {
+      const mh = selectedLocalPet.value.medicalHistory || [];
+      console.log('Medical history data:', mh);
+      console.log('Medical history length:', mh.length);
+      
+             for (const r of mh) {
+         try {
+           // Safely create date from medical history record
+           let when;
+           try {
+             if (r.date) {
+               when = new Date(r.date);
+               // Check if the date is valid
+               if (isNaN(when.getTime())) {
+                 console.warn('Invalid medical history date:', r.date);
+                 when = new Date();
+               }
+             } else {
+               when = new Date();
+             }
+           } catch (dateError) {
+             console.warn('Error creating date from medical history:', dateError);
+             when = new Date();
+           }
+           
+           // Ensure we have a valid date before adding to entries
+           if (when && !isNaN(when.getTime())) {
+             entries.push({ 
+               kind: 'Treatment', 
+               date: when, 
+               title: r.type || 'Treatment/Check-up', 
+               subtitle: r.vet || '', 
+               status: '', 
+               details: r.description || '', 
+               icon: ActivityIcon, 
+               color: 'text-emerald-600' 
+             });
+           } else {
+             console.warn('Skipping medical history record with invalid date:', r);
+           }
+         } catch (recordError) {
+           console.error('Error processing medical history record:', recordError, r);
+           continue;
+         }
+       }
+      
+      // Add vaccinations if viewing all records
+      const vacs = selectedLocalPet.value.vaccinations || [];
+      console.log('Vaccinations data:', vacs);
+      console.log('Vaccinations length:', vacs.length);
+      
+             for (const v of vacs) {
+         try {
+           // Safely create date from vaccination record
+           let when;
+           try {
+             if (v.date) {
+               when = new Date(v.date);
+               // Check if the date is valid
+               if (isNaN(when.getTime())) {
+                 console.warn('Invalid vaccination date:', v.date);
+                 when = new Date();
+               }
+             } else {
+               when = new Date();
+             }
+           } catch (dateError) {
+             console.warn('Error creating date from vaccination:', dateError);
+             when = new Date();
+           }
+           
+           // Ensure we have a valid date before adding to entries
+           if (when && !isNaN(when.getTime())) {
+             entries.push({ 
+               kind: 'Vaccination', 
+               date: when, 
+               title: v.name || 'Vaccination', 
+               subtitle: v.completed ? 'Completed' : 'Scheduled', 
+               status: v.completed ? 'completed' : 'pending', 
+               details: '', 
+               icon: SyringeIcon, 
+               color: 'text-teal-600' 
+             });
+           } else {
+             console.warn('Skipping vaccination record with invalid date:', v);
+           }
+         } catch (vaccinationError) {
+           console.error('Error processing vaccination record:', vaccinationError, v);
+           continue;
+         }
+       }
     }
-    
-    // For backward compatibility, also check traditional telehealth indicators
-    const isTele = (
-      String(a.type || '').toLowerCase() === 'online' || 
-      a.isTelehealth === true ||
-      appointmentCategory === 'telehealth5192' ||
-      // Check service names for telehealth indicators
-      (a.serviceNames && Array.isArray(a.serviceNames) && 
-       a.serviceNames.some(name => name.toLowerCase().includes('video') || name.toLowerCase().includes('telehealth')))
-    );
-    
-    // Apply filter based on category
-    if (historyFilter.value !== 'all' && historyFilter.value !== 'vaccinations' && historyFilter.value !== 'completed') {
-      // Category-based filtering
-      if (historyFilter.value !== appointmentCategory) continue;
-    }
-    
-    // Special filters
-    if (historyFilter.value === 'vaccinations') continue; // Vaccinations are handled separately
-    if (historyFilter.value === 'completed' && a.status !== 'completed') continue;
-    
-    // Get category name for display
-    const categoryName = appointmentCategory ? 
-      categories.value.find(cat => cat.id === appointmentCategory)?.name || 'Appointment' : 
-      (isTele ? 'Telehealth' : 'Appointment');
-    
-    entries.push({
-      kind: categoryName,
-      date: when,
-      title: (Array.isArray(a.serviceNames) && a.serviceNames.length ? a.serviceNames.join(', ') : 'Veterinary appointment'),
-      subtitle: a.doctorName || a.vetName || '',
-      status: (a.status || '').toLowerCase(),
-      details: a.notes || '',
-      icon: isTele ? ActivityIcon : FileTextIcon,
-      color: isTele ? 'text-indigo-600' : 'text-blue-600',
-      completionData: a.completionData || null, // Include completion data
-      serviceIds: a.services || [], // Include service IDs for better categorization
-      categoryId: appointmentCategory, // Store the category ID
-      isTelehealth: isTele // Store the telehealth flag
-    });
+
+         // Debug log
+     console.log('Total timeline entries before deduplication:', entries.length);
+     console.log('Timeline entries breakdown:', {
+       appointments: entries.filter(e => e.kind === 'Appointment' || e.kind === 'Telehealth').length,
+       treatments: entries.filter(e => e.kind === 'Treatment').length,
+       vaccinations: entries.filter(e => e.kind === 'Vaccination').length,
+       other: entries.filter(e => !['Appointment', 'Telehealth', 'Treatment', 'Vaccination'].includes(e.kind)).length
+     });
+     
+     // Log first few entries to see their structure
+     if (entries.length > 0) {
+       console.log('Sample entries structure:', entries.slice(0, 3).map(e => ({
+         kind: e.kind,
+         title: e.title,
+         date: e.date,
+         serviceIds: e.serviceIds,
+         subtitle: e.subtitle
+       })));
+     }
+
+         // Remove duplicates based on unique identifiers
+     const uniqueEntries = [];
+     const seenKeys = new Set();
+     
+     for (const entry of entries) {
+       // Create a unique key for each entry to prevent duplicates
+       let uniqueKey;
+       
+       if (entry.kind === 'Appointment' || entry.kind === 'Telehealth') {
+         // For appointments, use a more specific key to prevent duplicates
+         // Include the appointment title and date, but not service IDs which might vary
+         const appointmentDate = entry.date?.getTime() || Date.now();
+         const appointmentTitle = entry.title || 'Unknown';
+         uniqueKey = `appointment_${appointmentTitle}_${appointmentDate}`;
+       } else if (entry.kind === 'Treatment') {
+         // For medical history, use type + date + description hash
+         uniqueKey = `treatment_${entry.title}_${entry.date?.getTime() || Date.now()}_${entry.details?.substring(0, 50) || ''}`;
+       } else if (entry.kind === 'Vaccination') {
+         // For vaccinations, use name + date combination
+         uniqueKey = `vaccination_${entry.title}_${entry.date?.getTime() || Date.now()}`;
+       } else {
+         // Fallback for other types
+         uniqueKey = `${entry.kind}_${entry.title}_${entry.date?.getTime() || Date.now()}`;
+       }
+       
+       if (!seenKeys.has(uniqueKey)) {
+         seenKeys.add(uniqueKey);
+         uniqueEntries.push(entry);
+       } else {
+         console.log('Skipping duplicate entry:', entry);
+       }
+     }
+     
+     // Sort entries by date (latest first)
+     uniqueEntries.sort((a, b) => {
+       try {
+         const dateA = new Date(a.date);
+         const dateB = new Date(b.date);
+         
+         // Check if dates are valid
+         if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+           console.warn('Invalid date found during sorting:', { a: a.date, b: b.date });
+           return 0;
+         }
+         
+         // Sort latest first (descending order)
+         return dateB - dateA;
+       } catch (sortError) {
+         console.error('Error sorting entries:', sortError);
+         return 0;
+       }
+     });
+     
+     console.log('Timeline processing complete:', {
+       originalEntries: entries.length,
+       uniqueEntries: uniqueEntries.length,
+       duplicatesRemoved: entries.length - uniqueEntries.length
+     });
+     
+          return uniqueEntries;
+  } catch (error) {
+    console.error('Error in timelineEntries computed:', error);
+    return [];
   }
-
-  // Add medical history treatments if viewing all records
-  if (historyFilter.value === 'all') {
-    const mh = selectedLocalPet.value.medicalHistory || [];
-    console.log('Medical history data:', mh); // Debug log
-    for (const r of mh) {
-      const when = r.date ? new Date(r.date) : new Date();
-      entries.push({ 
-        kind: 'Treatment', 
-        date: when, 
-        title: r.type || 'Treatment/Check-up', 
-        subtitle: r.vet || '', 
-        status: '', 
-        details: r.description || '', 
-        icon: ActivityIcon, 
-        color: 'text-emerald-600' 
-      });
-    }
-    
-    // Add vaccinations if viewing all records
-    const vacs = selectedLocalPet.value.vaccinations || [];
-    console.log('Vaccinations data:', vacs); // Debug log
-    for (const v of vacs) {
-      const when = v.date ? new Date(v.date) : new Date();
-      entries.push({ 
-        kind: 'Vaccination', 
-        date: when, 
-        title: v.name || 'Vaccination', 
-        subtitle: v.completed ? 'Completed' : 'Scheduled', 
-        status: v.completed ? 'completed' : 'pending', 
-        details: '', 
-        icon: SyringeIcon, 
-        color: 'text-teal-600' 
-      });
-    }
-  }
-
-  // Debug log
-  console.log('Total timeline entries:', entries.length);
-  console.log('Selected pet data:', selectedLocalPet.value);
-
-  entries.sort((a, b) => a.date - b.date);
-  return entries;
 });
 
 // Watchers
 watch([selectedLocalPet, selectedPetTab, viewMode], ([pet, tab, mode]) => {
+  console.log('Watcher triggered:', { pet: pet?.id, tab, mode });
   if (pet && tab === 'medical-history' && mode === 'view') {
+    console.log('Fetching pet appointments for medical history tab');
     historyFilter.value = 'all'; // Reset filter when switching pets or entering medical history tab
     fetchPetAppointments();
   }
@@ -1309,9 +1583,12 @@ const saveAllChanges = async () => {
 const hasPendingChanges = () => pendingChanges.value || deletedPetIds.value.length > 0;
 
 // Lifecycle
-onMounted(() => { 
-  fetchPets(); 
-  populateCategoriesAndServices(); // Populate categories and services
+onMounted(async () => { 
+  console.log('Pets component mounted');
+  await fetchPets(); 
+  console.log('Pets fetched, local pets:', localPets.value);
+  await populateCategoriesAndServices(); // Populate categories and services
+  console.log('Categories and services populated');
   document.addEventListener('click', handleClickOutside); 
 });
 onBeforeUnmount(() => { document.removeEventListener('click', handleClickOutside); });
@@ -1330,14 +1607,35 @@ watch(selectedLocalPet, (newPet) => { if (newPet) editablePet.value = { ...newPe
 // Expose
 defineExpose({ saveAllChanges, hasPendingChanges, fetchPets });
 
-// Make format function available to template
-const formatDate = (date, formatString) => format(date, formatString);
-
-// Add new record function
-const addNewRecord = () => {
-  // This function can be implemented to add new medical records
-  console.log('Add new record clicked');
+// Make format function available to template with safe date handling
+const formatDate = (date, formatString = 'PPpp') => {
+  try {
+    if (!date) return 'N/A';
+    
+    // Handle different date formats
+    let validDate;
+    if (date instanceof Date) {
+      validDate = date;
+    } else if (typeof date === 'string' || typeof date === 'number') {
+      validDate = new Date(date);
+    } else {
+      return 'Invalid Date';
+    }
+    
+    // Check if the date is valid
+    if (isNaN(validDate.getTime())) {
+      console.warn('Invalid date passed to formatDate:', date);
+      return 'Invalid Date';
+    }
+    
+    return format(validDate, formatString);
+  } catch (error) {
+    console.error('Error formatting date:', error, date);
+    return 'Date Error';
+  }
 };
+
+
 
 // Vaccination card modal functions
 const openVaccinationCardModal = () => {

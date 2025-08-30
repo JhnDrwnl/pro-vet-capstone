@@ -327,7 +327,7 @@
         <!-- Action Buttons -->
         <div class="flex items-center gap-2">
                   <!-- Request Reschedule button - for pending, approved, expired, or reschedule_requested appointments -->
-        <button 
+          <button 
           v-if="appointment.status === 'pending' || appointment.status === 'approved' || (appointment.rescheduleRequest && appointment.rescheduleRequest.status === 'reschedule_requested') || isExpired(appointment)"
             @click="openRescheduleRequestPanel(appointment)"
             class="p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-600 rounded-full transition-colors duration-200"
@@ -2752,9 +2752,9 @@ const submitCompletionForm = async () => {
     
     // Show success message (only if vaccination processing didn't already show a message)
     if (!vaccinationProcessed) {
-      successTitle.value = 'Appointment Completed';
-      successMessage.value = 'The appointment has been marked as completed with detailed notes.';
-      showSuccessModal.value = true;
+    successTitle.value = 'Appointment Completed';
+    successMessage.value = 'The appointment has been marked as completed with detailed notes.';
+    showSuccessModal.value = true;
     }
     
     // Close modal and refresh data
@@ -2825,8 +2825,8 @@ const processVaccinationAppointment = async (appointment, completionData) => {
     
     const hasVaccinationServices = serviceDetails.some(service => {
       const isVaccination = service.isVaccination === true ||
-        service.name?.toLowerCase().includes('vaccination') ||
-        service.name?.toLowerCase().includes('vaccine') ||
+      service.name?.toLowerCase().includes('vaccination') ||
+      service.name?.toLowerCase().includes('vaccine') ||
         service.name?.toLowerCase().includes('shot');
       
       console.log(`🔍 Service "${service.name}": isVaccination=${service.isVaccination}, name check=${isVaccination}`);
