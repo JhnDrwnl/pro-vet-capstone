@@ -115,13 +115,7 @@
       
       <!-- Action Buttons - Compact Design -->
       <div class="space-y-4">
-        <!-- Vaccination Service Notice -->
-        <div v-if="currentPatient.hasVaccinationServices" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-          </svg>
-          🩺 Vaccination Service - Manual Completion Required
-        </div>
+
         
         <!-- Primary Actions Row -->
         <div class="flex flex-wrap gap-2">
@@ -286,17 +280,7 @@
               <span class="text-sm font-medium">{{ queuePaused ? 'Queue Paused' : 'Queue Active' }}</span>
             </div>
             
-                      <!-- Debug Button -->
-          <button 
-            @click="debugUserDataFetching"
-            class="px-3 py-2 text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors flex items-center gap-2 shadow-sm"
-            title="Debug user data fetching and clean up excluded appointments"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-            </svg>
-            Debug & Clean
-          </button>
+
           </div>
         </div>
         
@@ -2601,9 +2585,9 @@ const setupAppointmentListener = () => {
         const appointment = doc.data()
         
         // Skip appointments that shouldn't be in the queue
-        const excludedStatuses = ['completed', 'cancelled', 'ended', 'expired', 'rejected']
+        const excludedStatuses = ['completed', 'cancelled', 'ended', 'expired', 'rejected', 'pending']
         
-        // Check main status
+        // Check main status - exclude pending appointments
         if (excludedStatuses.includes(appointment.status)) {
           continue
         }
@@ -2615,6 +2599,12 @@ const setupAppointmentListener = () => {
             console.log(`🗑️ Skipping appointment with reschedule status: ${appointment.id} (${rescheduleStatus})`)
             continue
           }
+        }
+        
+        // Additional check: exclude approved appointments that have reschedule_requested status
+        if (appointment.status === 'approved' && appointment.rescheduleRequest && appointment.rescheduleRequest.status === 'reschedule_requested') {
+          console.log(`🗑️ Skipping approved appointment with reschedule_requested status: ${appointment.id}`)
+          continue
         }
         
         // Check if appointment is for today
@@ -2782,9 +2772,9 @@ const fetchAppointments = async () => {
         const appointment = doc.data()
         
         // Skip appointments that shouldn't be in the queue
-        const excludedStatuses = ['completed', 'cancelled', 'ended', 'expired', 'rejected']
+        const excludedStatuses = ['completed', 'cancelled', 'ended', 'expired', 'rejected', 'pending']
         
-        // Check main status
+        // Check main status - exclude pending appointments
         if (excludedStatuses.includes(appointment.status)) {
           continue
         }
@@ -2796,6 +2786,12 @@ const fetchAppointments = async () => {
             console.log(`🗑️ Skipping appointment with reschedule status: ${appointment.id} (${rescheduleStatus})`)
             continue
           }
+        }
+        
+        // Additional check: exclude approved appointments that have reschedule_requested status
+        if (appointment.status === 'approved' && appointment.rescheduleRequest && appointment.rescheduleRequest.status === 'reschedule_requested') {
+          console.log(`🗑️ Skipping approved appointment with reschedule_requested status: ${appointment.id}`)
+          continue
         }
         
         // Check if appointment is for today

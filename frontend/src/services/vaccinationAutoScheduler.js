@@ -1,7 +1,8 @@
 // services/vaccinationAutoScheduler.js
-import { doc, setDoc, collection, query, where, getDocs, orderBy, limit, updateDoc } from 'firebase/firestore'
+import { doc, setDoc, collection, query, where, getDocs, getDoc, orderBy, limit, updateDoc, addDoc } from 'firebase/firestore'
 import { db } from '@shared/firebase'
 import { generateVaccinationAppointments, updatePetVaccinationProgress } from './vaccinationSeriesService'
+import { createNotification } from './notificationService'
 
 /**
  * Automatically schedule next vaccination appointments for a pet
@@ -80,6 +81,82 @@ export async function autoScheduleVaccinations(pet, existingVaccinations = [], u
   } catch (error) {
     console.error('Error auto-scheduling vaccinations:', error)
     throw new Error('Failed to auto-schedule vaccinations')
+  }
+}
+
+/**
+ * Find vaccination service by name
+ * @param {string} vaccineName - Name of the vaccine
+ * @returns {Promise<Object|null>} Vaccination service or null
+ */
+async function findVaccinationServiceByName(vaccineName) {
+  try {
+    const servicesRef = collection(db, 'services')
+    const q = query(
+      servicesRef,
+      where('isVaccination', '==', true),
+      where('archived', '==', false)
+    )
+    
+    const snapshot = await getDocs(q)
+    const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    
+    console.log('🔍 Found vaccination services:', services.map(s => ({
+      id: s.id,
+      name: s.name,
+      vaccineType: s.vaccineType,
+      isVaccination: s.isVaccination
+    })))
+    
+    // First try exact match
+    let matchingService = services.find(service => 
+      service.name.toLowerCase() === vaccineName.toLowerCase()
+    )
+    
+    if (matchingService) {
+      console.log('✅ Exact match found:', matchingService.name)
+      return matchingService
+    }
+    
+    // Try partial match by name
+    matchingService = services.find(service => 
+      service.name.toLowerCase().includes(vaccineName.toLowerCase()) ||
+      vaccineName.toLowerCase().includes(service.name.toLowerCase())
+    )
+    
+    if (matchingService) {
+      console.log('✅ Partial name match found:', matchingService.name)
+      return matchingService
+    }
+    
+    // Try matching by vaccineType
+    matchingService = services.find(service => 
+      service.vaccineType && 
+      service.vaccineType.toLowerCase() === vaccineName.toLowerCase()
+    )
+    
+    if (matchingService) {
+      console.log('✅ VaccineType match found:', matchingService.name)
+      return matchingService
+    }
+    
+    // Try partial match by vaccineType
+    matchingService = services.find(service => 
+      service.vaccineType && 
+      (service.vaccineType.toLowerCase().includes(vaccineName.toLowerCase()) ||
+       vaccineName.toLowerCase().includes(service.vaccineType.toLowerCase()))
+    )
+    
+    if (matchingService) {
+      console.log('✅ Partial vaccineType match found:', matchingService.name)
+      return matchingService
+    }
+    
+    console.log('❌ No matching vaccination service found for:', vaccineName)
+    return null
+  } catch (error) {
+    console.error('Error finding vaccination service by name:', error)
+    return null
   }
 }
 
@@ -344,32 +421,22 @@ export async function processCompletedVaccination(completedVaccination, pet, use
     await updatePetVaccinationProgress(pet.id, completedVaccination)
     console.log('✅ Updated pet vaccination progress')
     
-    // Auto-schedule next vaccinations
-    const newSuggestions = await autoScheduleVaccinations(pet, [completedVaccination], user)
-    console.log('✅ Generated vaccination suggestions:', newSuggestions.length)
-    console.log('📋 Suggestions details:', newSuggestions)
+    // Directly create next vaccination appointment based on completed vaccination
+    const nextVaccinationAppointment = await createNextVaccinationAppointment(completedVaccination, pet, user)
     
-    // Convert suggestions to actual appointments with auto-approved status
-    const createdAppointments = []
-    for (const suggestion of newSuggestions) {
-      try {
-        const appointment = await convertSuggestionToAppointment(suggestion.id, {
-          userId: user?.id || user?.userId,
-          status: 'approved', // Auto-approved status as requested
-          isAutoApproved: true,
-          autoApprovedAt: new Date(),
-          autoApprovedReason: 'Vaccination series continuation'
-        })
-        createdAppointments.push(appointment)
-        console.log('✅ Created auto-approved appointment:', appointment.id)
-      } catch (error) {
-        console.error('❌ Failed to create appointment from suggestion:', error)
-      }
+    if (nextVaccinationAppointment) {
+      console.log('✅ Created next vaccination appointment:', nextVaccinationAppointment.id)
+      
+      // Send notification to user about the scheduled vaccination
+      await sendVaccinationAppointmentNotification(nextVaccinationAppointment, pet, user)
+      console.log('✅ Sent vaccination appointment notification')
+      
+      return [nextVaccinationAppointment]
+    } else {
+      console.log('ℹ️ No next vaccination appointment needed at this time')
+      return []
     }
     
-    console.log(`🎯 Processed completed vaccination for ${pet.name}, created ${createdAppointments.length} auto-approved appointments`)
-    
-    return createdAppointments
   } catch (error) {
     console.error('Error processing completed vaccination:', error)
     throw new Error('Failed to process completed vaccination')
@@ -415,4 +482,796 @@ export function getVaccinationScheduleSummary(pet, existingVaccinations = []) {
     progress: existingVaccinations.length > 0 ? 
       Math.round((completedVaccinations.length / existingVaccinations.length) * 100) : 0
   }
+}
+
+/**
+ * Create next vaccination appointment based on completed vaccination
+ * @param {Object} completedVaccination - The completed vaccination record
+ * @param {Object} pet - Pet object
+ * @param {Object} user - User object
+ * @returns {Promise<Object|null>} Created appointment or null if not needed
+ */
+export async function createNextVaccinationAppointment(completedVaccination, pet, user) {
+  try {
+    console.log('🔄 Creating next vaccination appointment for:', completedVaccination.name)
+    
+    // Try to get vaccination service from the completed vaccination record first
+    let vaccinationService = null
+    
+    // First, check if we have vaccination service data stored in the vaccination record
+    if (completedVaccination.vaccinationServiceData) {
+      vaccinationService = completedVaccination.vaccinationServiceData
+      console.log('✅ Found vaccination service data in vaccination record:', vaccinationService.name)
+    }
+    // If not found in vaccination record, try to get it from Firestore by serviceId
+    else if (completedVaccination.serviceId) {
+      try {
+        const serviceRef = doc(db, 'services', completedVaccination.serviceId)
+        const serviceDoc = await getDoc(serviceRef)
+        if (serviceDoc.exists()) {
+          vaccinationService = { id: serviceDoc.id, ...serviceDoc.data() }
+          console.log('✅ Found vaccination service by ID:', vaccinationService.name)
+        }
+      } catch (error) {
+        console.log('⚠️ Error fetching service by ID:', error)
+      }
+    }
+    
+    // If still not found, try to find by name
+    if (!vaccinationService) {
+      vaccinationService = await findVaccinationServiceByName(completedVaccination.name)
+    }
+    
+    if (!vaccinationService) {
+      console.log('❌ No vaccination service found for:', completedVaccination.name)
+      console.log('🔍 Attempting to create appointment with default values...')
+      
+      // Create appointment with default values if service not found
+      const defaultNextDate = new Date()
+      defaultNextDate.setFullYear(defaultNextDate.getFullYear() + 1) // Default to 1 year
+      
+      // Get the original appointment time and duration from the completed vaccination
+      const originalAppointmentTime = completedVaccination.appointmentTime || '1:00 PM - 2:00 PM' // Fallback
+      const originalDuration = completedVaccination.appointmentDuration || 60 // Fallback to 60 minutes
+      
+      // Adjust default date to office hours
+      const adjustedDefaultDate = await adjustDateToOfficeHours(defaultNextDate, user?.id || user?.userId, pet.id)
+      
+      // Get the vet ID from the completed vaccination - this should be the actual vet who completed the vaccination
+      const vetId = completedVaccination.doctorId || completedVaccination.administeredBy || 'default_vet_id'
+      const vetName = completedVaccination.doctorName || completedVaccination.administeredBy || 'Auto-Scheduled'
+      
+          console.log('👨‍⚕️ Using vet ID for fallback auto-scheduled appointment:', vetId)
+    
+    // 🔧 DEBUG: Log what we're receiving from the vaccination record
+    console.log('🔍 Vaccination record data for fallback auto-scheduling:', {
+      completedVaccinationDoctorId: completedVaccination.doctorId,
+      completedVaccinationAdministeredBy: completedVaccination.administeredBy,
+      completedVaccinationDoctorName: completedVaccination.doctorName,
+      finalVetId: vetId,
+      finalVetName: vetName
+    })
+    
+    console.log('🕐 Using original appointment time:', originalAppointmentTime)
+      console.log('⏱️ Using original appointment duration:', originalDuration)
+      
+      // Create booster service name
+      const boosterServiceName = `${completedVaccination.name} - BOOSTER`
+      
+      const appointmentData = {
+        userId: user?.id || user?.userId,
+        petIds: [pet.id],
+        petNames: [pet.name],
+        doctorId: vetId, // Use the actual vet ID who completed the vaccination
+        doctorName: vetName,
+        serviceNames: [boosterServiceName], // Add "BOOSTER" to service name
+        servicesIds: [completedVaccination.serviceId || 'unknown'],
+        services: [completedVaccination.serviceId || 'unknown'], // Add services field to match user-created appointments
+        date: adjustedDefaultDate,
+        time: originalAppointmentTime, // Use the same time as original appointment
+        duration: originalDuration, // Use the same duration as original appointment
+        status: 'approved',
+        isVaccination: true,
+        isAutoScheduled: true,
+        autoScheduledAt: new Date(),
+        autoScheduledReason: 'Vaccination series continuation - BOOSTER (default schedule)',
+        vaccinationSeries: 'Standard',
+        vaccinationDose: 'booster',
+        vaccinationTotalDoses: 1,
+        isCore: completedVaccination.isCore || false,
+        notes: `Auto-scheduled BOOSTER vaccination for ${completedVaccination.name} - This is a follow-up vaccination appointment.`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        source: 'vaccination_auto_schedule',
+        previousVaccinationId: completedVaccination.id
+      }
+      
+      // Save to appointments collection
+      const appointmentRef = doc(collection(db, 'appointments'))
+      await setDoc(appointmentRef, {
+        ...appointmentData,
+        id: appointmentRef.id
+      })
+      
+      console.log('✅ Created next vaccination appointment with default values:', appointmentRef.id)
+      return { ...appointmentData, id: appointmentRef.id }
+    }
+    
+    console.log('🔍 Found vaccination service:', {
+      name: vaccinationService.name,
+      nextDoseIn: vaccinationService.nextDoseIn,
+      nextDoseUnit: vaccinationService.nextDoseUnit,
+      autoSchedule: vaccinationService.autoSchedule,
+      seriesType: vaccinationService.seriesType,
+      totalBoosters: vaccinationService.totalBoosters,
+      vaccineType: vaccinationService.vaccineType
+    })
+    
+    // Check if auto-scheduling is enabled for this service
+    if (vaccinationService.autoSchedule !== true) {
+      console.log('ℹ️ Auto-scheduling is disabled for this service')
+      return null
+    }
+    
+    // Calculate next vaccination date using service data and office hours
+    const nextVaccinationDate = await calculateNextVaccinationDateFromService(vaccinationService, new Date(), user?.id || user?.userId, pet.id)
+    
+    // Check if next vaccination is needed (not too far in the future)
+    const maxFutureDate = new Date()
+    maxFutureDate.setFullYear(maxFutureDate.getFullYear() + 2) // Max 2 years in future
+    
+    if (nextVaccinationDate > maxFutureDate) {
+      console.log('ℹ️ Next vaccination date is too far in the future, skipping')
+      return null
+    }
+    
+    // Get the original appointment time and duration from the completed vaccination
+    const originalAppointmentTime = completedVaccination.appointmentTime || '1:00 PM - 2:00 PM' // Fallback
+    const originalDuration = completedVaccination.appointmentDuration || 60 // Fallback to 60 minutes
+    
+    // Get the vet ID from the completed vaccination - this should be the actual vet who completed the vaccination
+    const vetId = completedVaccination.doctorId || completedVaccination.administeredBy || 'default_vet_id'
+    const vetName = completedVaccination.doctorName || completedVaccination.administeredBy || 'Auto-Scheduled'
+    
+    console.log('👨‍⚕️ Using vet ID for auto-scheduled appointment:', vetId)
+    
+    // 🔧 DEBUG: Log what we're receiving from the vaccination record
+    console.log('🔍 Vaccination record data for auto-scheduling:', {
+      completedVaccinationDoctorId: completedVaccination.doctorId,
+      completedVaccinationAdministeredBy: completedVaccination.administeredBy,
+      completedVaccinationDoctorName: completedVaccination.doctorName,
+      finalVetId: vetId,
+      finalVetName: vetName
+    })
+    
+    console.log('🕐 Using original appointment time:', originalAppointmentTime)
+    console.log('⏱️ Using original appointment duration:', originalDuration)
+    
+    // Create booster service name
+    const boosterServiceName = `${vaccinationService.name} - BOOSTER`
+    
+    const appointmentData = {
+      userId: user?.id || user?.userId,
+      petIds: [pet.id],
+      petNames: [pet.name],
+      doctorId: vetId, // Use the actual vet ID who completed the vaccination
+      doctorName: vetName,
+      serviceNames: [boosterServiceName], // Add "BOOSTER" to service name
+      servicesIds: [vaccinationService.id],
+      services: [vaccinationService.id], // Add services field to match user-created appointments
+      date: nextVaccinationDate,
+      time: originalAppointmentTime, // Use the same time as original appointment
+      duration: originalDuration, // Use the same duration as original appointment
+      status: 'approved', // Auto-approved status as requested
+      isVaccination: true,
+      isAutoScheduled: true,
+      autoScheduledAt: new Date(),
+      autoScheduledReason: 'Vaccination series continuation - BOOSTER',
+      vaccinationSeries: vaccinationService.seriesType || 'Standard',
+      vaccinationDose: 'booster',
+      vaccinationTotalDoses: vaccinationService.totalBoosters || 1,
+      isCore: completedVaccination.isCore || false,
+      notes: `Auto-scheduled BOOSTER vaccination for ${vaccinationService.name} - This is a follow-up vaccination appointment.`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      source: 'vaccination_auto_schedule',
+      previousVaccinationId: completedVaccination.id,
+      vaccineType: vaccinationService.vaccineType
+    }
+    
+    // Save to appointments collection
+    const appointmentRef = doc(collection(db, 'appointments'))
+    await setDoc(appointmentRef, {
+      ...appointmentData,
+      id: appointmentRef.id
+    })
+    
+    console.log('✅ Created next vaccination appointment:', appointmentRef.id)
+    
+    return { ...appointmentData, id: appointmentRef.id }
+  } catch (error) {
+    console.error('Error creating next vaccination appointment:', error)
+    return null
+  }
+}
+
+/**
+ * Test function to verify auto-scheduling is working
+ * This can be called from browser console for debugging
+ */
+export async function testVaccinationAutoScheduling() {
+  try {
+    console.log('🧪 Testing vaccination auto-scheduling with office hours...')
+    
+    // Create a mock vaccination record
+    const mockVaccination = {
+      id: 'test_vacc_123',
+      name: 'Rabies Vaccine',
+      serviceId: 'test_service_id',
+      doctorId: 'test_vet_id', // Add vet ID
+      doctorName: 'Test Vet',
+      appointmentTime: '1:00 PM - 2:10 PM', // Add appointment time
+      appointmentDuration: 70, // Add appointment duration (70 minutes)
+      vaccinationServiceData: {
+        id: 'test_service_id',
+        name: 'Rabies Vaccine',
+        nextDoseIn: 14,
+        nextDoseUnit: 'days',
+        autoSchedule: true,
+        seriesType: 'single',
+        totalBoosters: 1,
+        vaccineType: 'Rabies'
+      },
+      administeredBy: 'Test Vet',
+      isCore: true
+    }
+    
+    const mockPet = {
+      id: 'test_pet_id',
+      name: 'Test Pet',
+      species: 'Dog'
+    }
+    
+    const mockUser = {
+      id: 'test_user_id',
+      firstName: 'Test',
+      lastName: 'User'
+    }
+    
+    console.log('🧪 Mock data created:', { mockVaccination, mockPet, mockUser })
+    
+    // Test the auto-scheduling
+    const result = await processCompletedVaccination(mockVaccination, mockPet, mockUser)
+    
+    console.log('🧪 Test result:', result)
+    
+    if (result && result.length > 0) {
+      const appointment = result[0]
+      console.log('✅ Auto-scheduling test PASSED - appointment created:', {
+        id: appointment.id,
+        date: appointment.date,
+        time: appointment.time,
+        serviceName: appointment.serviceNames[0],
+        doctorId: appointment.doctorId,
+        status: appointment.status
+      })
+    } else {
+      console.log('❌ Auto-scheduling test FAILED - no appointment created')
+    }
+    
+    return result
+  } catch (error) {
+    console.error('❌ Auto-scheduling test ERROR:', error)
+    return null
+  }
+}
+
+/**
+ * Debug function to check why auto-scheduled appointments might not be showing
+ * This can be called from browser console for debugging
+ */
+export async function debugAutoScheduledAppointments() {
+  try {
+    console.log('🔍 Debugging auto-scheduled appointments...')
+    
+    // Get current vet ID from auth store
+    const { useAuthStore } = await import('@/stores/modules/authStore')
+    const authStore = useAuthStore()
+    const currentVetId = authStore.user?.userId
+    
+    console.log('👨‍⚕️ Current vet ID:', currentVetId)
+    
+    if (!currentVetId) {
+      console.log('❌ No vet ID found in auth store')
+      return
+    }
+    
+    // Query for auto-scheduled appointments for this vet
+    const appointmentsRef = collection(db, 'appointments')
+    const q = query(
+      appointmentsRef,
+      where('doctorId', '==', currentVetId),
+      where('isAutoScheduled', '==', true),
+      where('status', '==', 'approved')
+    )
+    
+    const querySnapshot = await getDocs(q)
+    const autoScheduledAppointments = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+    console.log('🔍 Found auto-scheduled appointments:', autoScheduledAppointments.length)
+    console.log('🔍 Auto-scheduled appointments:', autoScheduledAppointments.map(apt => ({
+      id: apt.id,
+      date: apt.date,
+      time: apt.time,
+      serviceNames: apt.serviceNames,
+      doctorId: apt.doctorId,
+      status: apt.status,
+      createdAt: apt.createdAt
+    })))
+    
+    // Also check all approved appointments for this vet
+    const allApprovedQuery = query(
+      appointmentsRef,
+      where('doctorId', '==', currentVetId),
+      where('status', '==', 'approved')
+    )
+    
+    const allApprovedSnapshot = await getDocs(allApprovedQuery)
+    const allApprovedAppointments = allApprovedSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+    console.log('🔍 All approved appointments for this vet:', allApprovedAppointments.length)
+    console.log('🔍 All approved appointments:', allApprovedAppointments.map(apt => ({
+      id: apt.id,
+      date: apt.date,
+      time: apt.time,
+      serviceNames: apt.serviceNames,
+      doctorId: apt.doctorId,
+      isAutoScheduled: apt.isAutoScheduled,
+      createdAt: apt.createdAt
+    })))
+    
+    // Check for any appointments with the current vet's name (fallback)
+    const vetNameQuery = query(
+      appointmentsRef,
+      where('doctorName', '==', authStore.user?.firstName || authStore.user?.name)
+    )
+    
+    const vetNameSnapshot = await getDocs(vetNameQuery)
+    const vetNameAppointments = vetNameSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+    console.log('🔍 Appointments with vet name:', vetNameAppointments.length)
+    console.log('🔍 Vet name appointments:', vetNameAppointments.map(apt => ({
+      id: apt.id,
+      date: apt.date,
+      time: apt.time,
+      serviceNames: apt.serviceNames,
+      doctorId: apt.doctorId,
+      doctorName: apt.doctorName,
+      isAutoScheduled: apt.isAutoScheduled,
+      status: apt.status
+    })))
+    
+    return {
+      autoScheduled: autoScheduledAppointments,
+      allApproved: allApprovedAppointments,
+      vetNameAppointments: vetNameAppointments
+    }
+    
+  } catch (error) {
+    console.error('❌ Error debugging auto-scheduled appointments:', error)
+    return null
+  }
+}
+
+/**
+ * Create a vaccination appointment from suggestion
+ * @param {Object} suggestion - Vaccination suggestion
+ * @param {Object} user - User object
+ * @param {Object} pet - Pet object
+ * @returns {Promise<Object>} Created appointment
+ */
+export async function createVaccinationAppointment(suggestion, user, pet) {
+  try {
+    console.log('🩺 Creating vaccination appointment from suggestion:', suggestion)
+    
+    // Calculate next vaccination date based on vaccine type
+    const nextVaccinationDate = calculateNextVaccinationDate(suggestion.serviceName, new Date())
+    
+    // Create appointment data
+    const appointmentData = {
+      userId: user?.id || user?.userId,
+      petIds: [pet.id],
+      petNames: [pet.name],
+      servicesIds: [suggestion.serviceId],
+      serviceNames: [suggestion.serviceName],
+      date: nextVaccinationDate,
+      time: suggestion.time || '9:00 AM', // Default time
+      duration: suggestion.estimatedDuration || 30,
+      status: 'approved', // Auto-approved
+      doctorId: null, // Will be assigned later
+      doctorName: null,
+      isVaccination: true,
+      isAutoScheduled: true,
+      autoScheduledAt: new Date(),
+      autoScheduledReason: 'Vaccination series continuation',
+      vaccinationSeries: suggestion.series,
+      vaccinationDose: suggestion.dose,
+      vaccinationTotalDoses: suggestion.totalDoses,
+      isCore: suggestion.isCore,
+      notes: `Auto-scheduled vaccination: ${suggestion.description}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      source: 'vaccination_auto_schedule',
+      originalSuggestionId: suggestion.id
+    }
+    
+    // Save to appointments collection
+    const appointmentRef = doc(collection(db, 'appointments'))
+    await setDoc(appointmentRef, {
+      ...appointmentData,
+      id: appointmentRef.id
+    })
+    
+    console.log('✅ Created vaccination appointment:', appointmentRef.id)
+    
+    // Update suggestion status to converted
+    await updateVaccinationSuggestionStatus(suggestion.id, 'converted')
+    
+    return { ...appointmentData, id: appointmentRef.id }
+  } catch (error) {
+    console.error('Error creating vaccination appointment:', error)
+    throw new Error('Failed to create vaccination appointment')
+  }
+}
+
+/**
+ * Calculate next vaccination date based on vaccine type
+ * @param {string} vaccineName - Name of the vaccine
+ * @param {Date} currentDate - Current date
+ * @returns {Date} Next vaccination date
+ */
+function calculateNextVaccinationDate(vaccineName, currentDate) {
+  const vaccineNameLower = vaccineName.toLowerCase()
+  const nextDate = new Date(currentDate)
+  
+  // Common vaccine schedules
+  if (vaccineNameLower.includes('rabies')) {
+    nextDate.setFullYear(nextDate.getFullYear() + 1) // 1 year
+  } else if (vaccineNameLower.includes('dhpp') || vaccineNameLower.includes('dhp')) {
+    nextDate.setFullYear(nextDate.getFullYear() + 1) // 1 year
+  } else if (vaccineNameLower.includes('bordetella')) {
+    nextDate.setMonth(nextDate.getMonth() + 6) // 6 months
+  } else if (vaccineNameLower.includes('feline') || vaccineNameLower.includes('fiv')) {
+    nextDate.setFullYear(nextDate.getFullYear() + 1) // 1 year
+  } else {
+    // Default to 1 year for unknown vaccines
+    nextDate.setFullYear(nextDate.getFullYear() + 1)
+  }
+  
+  return nextDate
+}
+
+/**
+ * Calculate next vaccination date using service configuration and office hours
+ * @param {Object} vaccinationService - Vaccination service object
+ * @param {Date} currentDate - Current date
+ * @param {string} userId - User ID to check for conflicts
+ * @param {string} petId - Pet ID to check for conflicts
+ * @returns {Promise<Date>} Next vaccination date that falls on an open day
+ */
+async function calculateNextVaccinationDateFromService(vaccinationService, currentDate, userId, petId) {
+  const nextDate = new Date(currentDate)
+  
+  if (!vaccinationService.nextDoseIn || !vaccinationService.nextDoseUnit) {
+    console.log('⚠️ No nextDoseIn or nextDoseUnit found, using default 1 year')
+    nextDate.setFullYear(nextDate.getFullYear() + 1)
+    return await adjustDateToOfficeHours(nextDate, userId, petId)
+  }
+  
+  const doseValue = parseInt(vaccinationService.nextDoseIn)
+  const doseUnit = vaccinationService.nextDoseUnit.toLowerCase()
+  
+  console.log('🔍 Calculating next dose date:', {
+    doseValue,
+    doseUnit,
+    currentDate: currentDate.toISOString(),
+    userId,
+    petId
+  })
+  
+  switch (doseUnit) {
+    case 'days':
+      nextDate.setDate(nextDate.getDate() + doseValue)
+      break
+    case 'weeks':
+      nextDate.setDate(nextDate.getDate() + (doseValue * 7))
+      break
+    case 'months':
+      nextDate.setMonth(nextDate.getMonth() + doseValue)
+      break
+    case 'years':
+      nextDate.setFullYear(nextDate.getFullYear() + doseValue)
+      break
+    default:
+      console.log('⚠️ Unknown dose unit, using default 1 year')
+      nextDate.setFullYear(nextDate.getFullYear() + 1)
+  }
+  
+  console.log('✅ Calculated initial next vaccination date:', nextDate.toISOString())
+  
+  // Adjust the date to fall on an open day
+  const adjustedDate = await adjustDateToOfficeHours(nextDate, userId, petId)
+  console.log('✅ Adjusted to office hours:', adjustedDate.toISOString())
+  
+  return adjustedDate
+}
+
+/**
+ * Adjust date to fall on an open day and during business hours
+ * @param {Date} targetDate - The target date to adjust
+ * @param {string} userId - User ID to check for existing appointments
+ * @param {string} petId - Pet ID to check for existing appointments
+ * @returns {Promise<Date>} Adjusted date that falls on an open day with no conflicts
+ */
+async function adjustDateToOfficeHours(targetDate, userId, petId) {
+  try {
+    console.log('🏢 Adjusting date to office hours for:', targetDate.toISOString())
+    console.log('🏢 Checking for conflicts for user:', userId, 'pet:', petId)
+    
+    // Get office hours from Firestore
+    const officeHours = await getOfficeHours()
+    console.log('🏢 Office hours loaded:', officeHours)
+    
+    let adjustedDate = new Date(targetDate)
+    let attempts = 0
+    const maxAttempts = 60 // Increased to allow more attempts for conflict resolution
+    
+    while (attempts < maxAttempts) {
+      const dayName = getDayName(adjustedDate)
+      const dayHours = officeHours[dayName]
+      
+      console.log(`🏢 Checking ${dayName}:`, dayHours)
+      
+      if (dayHours && dayHours.isOpen) {
+        // Check for existing appointments on this date
+        const hasConflict = await checkForAppointmentConflict(adjustedDate, userId, petId)
+        
+        if (!hasConflict) {
+          // Set the time to a reasonable business hour (9:00 AM)
+          adjustedDate.setHours(9, 0, 0, 0)
+          console.log(`✅ Found available day: ${dayName} at ${adjustedDate.toISOString()}`)
+          return adjustedDate
+        } else {
+          console.log(`⚠️ Conflict found on ${dayName}, moving to next day`)
+        }
+      } else {
+        console.log(`🏢 ${dayName} is closed, moving to next day`)
+      }
+      
+      // Move to next day
+      adjustedDate.setDate(adjustedDate.getDate() + 1)
+      attempts++
+      console.log(`🏢 Attempt ${attempts} of ${maxAttempts}`)
+    }
+    
+    console.log('⚠️ Could not find available day within 60 attempts, using original date')
+    return targetDate
+    
+  } catch (error) {
+    console.error('Error adjusting date to office hours:', error)
+    return targetDate // Return original date if there's an error
+  }
+}
+
+/**
+ * Check for existing appointments on a specific date for a user/pet
+ * @param {Date} date - Date to check
+ * @param {string} userId - User ID
+ * @param {string} petId - Pet ID
+ * @returns {Promise<boolean>} True if there's a conflict
+ */
+async function checkForAppointmentConflict(date, userId, petId) {
+  try {
+    if (!userId || !petId) {
+      console.log('⚠️ No userId or petId provided, skipping conflict check')
+      return false
+    }
+    
+    // Create date range for the specific day
+    const startOfDay = new Date(date)
+    startOfDay.setHours(0, 0, 0, 0)
+    
+    const endOfDay = new Date(date)
+    endOfDay.setHours(23, 59, 59, 999)
+    
+    console.log('🔍 Checking for conflicts on:', date.toISOString())
+    console.log('🔍 Date range:', startOfDay.toISOString(), 'to', endOfDay.toISOString())
+    
+    // Query for existing appointments
+    const appointmentsRef = collection(db, 'appointments')
+    const q = query(
+      appointmentsRef,
+      where('userId', '==', userId),
+      where('petIds', 'array-contains', petId),
+      where('date', '>=', startOfDay),
+      where('date', '<=', endOfDay),
+      where('status', 'in', ['pending', 'approved', 'in-progress'])
+    )
+    
+    const querySnapshot = await getDocs(q)
+    const existingAppointments = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+    console.log('🔍 Found existing appointments:', existingAppointments.length)
+    
+    if (existingAppointments.length > 0) {
+      console.log('⚠️ Conflicts found:', existingAppointments.map(apt => ({
+        id: apt.id,
+        date: apt.date,
+        time: apt.time,
+        status: apt.status,
+        serviceNames: apt.serviceNames
+      })))
+      return true
+    }
+    
+    console.log('✅ No conflicts found for this date')
+    return false
+    
+  } catch (error) {
+    console.error('Error checking for appointment conflicts:', error)
+    return false // Assume no conflict if there's an error
+  }
+}
+
+/**
+ * Get office hours from Firestore
+ * @returns {Promise<Object>} Office hours by day
+ */
+async function getOfficeHours() {
+  try {
+    const officeHoursRef = collection(db, 'officeHours')
+    const snapshot = await getDocs(officeHoursRef)
+    
+    const officeHours = {}
+    snapshot.forEach(doc => {
+      const data = doc.data()
+      officeHours[data.day] = {
+        isOpen: data.isOpen,
+        openTime: data.openTime,
+        closeTime: data.closeTime,
+        lunchStart: data.lunchStart,
+        lunchEnd: data.lunchEnd
+      }
+    })
+    
+    console.log('🏢 Office hours fetched:', officeHours)
+    return officeHours
+    
+  } catch (error) {
+    console.error('Error fetching office hours:', error)
+    // Return default office hours (Mon-Fri 9-5) if fetch fails
+    return {
+      'Monday': { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+      'Tuesday': { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+      'Wednesday': { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+      'Thursday': { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+      'Friday': { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+      'Saturday': { isOpen: true, openTime: '08:00', closeTime: '17:00' },
+      'Sunday': { isOpen: false }
+    }
+  }
+}
+
+/**
+ * Get day name from date
+ * @param {Date} date - Date object
+ * @returns {string} Day name
+ */
+function getDayName(date) {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  return days[date.getDay()]
+}
+
+// Removed getBestAvailableTimeSlot function - no longer needed since we use original appointment time
+
+// Removed parseTimeString and formatTimeString functions - no longer needed
+
+/**
+ * Send notification to user and vet about scheduled vaccination appointment
+ * @param {Object} appointment - Created appointment
+ * @param {Object} pet - Pet object
+ * @param {Object} user - User object
+ * @returns {Promise} Notification result
+ */
+export async function sendVaccinationAppointmentNotification(appointment, pet, user) {
+  try {
+    console.log('📧 Sending vaccination appointment notifications...')
+    
+    // Send notification to user
+    const userNotificationData = {
+      userId: user?.id || user?.userId,
+      type: 'vaccination_scheduled',
+      title: 'Vaccination Appointment Scheduled',
+      message: `A vaccination appointment for ${pet.name} has been automatically scheduled for ${formatDate(appointment.date)} at ${appointment.time}.`,
+      data: {
+        appointmentId: appointment.id,
+        petId: pet.id,
+        petName: pet.name,
+        serviceName: appointment.serviceNames[0],
+        scheduledDate: appointment.date,
+        scheduledTime: appointment.time,
+        isAutoScheduled: true
+      },
+      priority: 'medium',
+      read: false,
+      createdAt: new Date()
+    }
+    
+    const userNotificationId = await createNotification(userNotificationData)
+    console.log('✅ User vaccination appointment notification sent:', userNotificationId)
+    
+    // Send notification to vet (doctor)
+    if (appointment.doctorId && appointment.doctorId !== 'auto-scheduled') {
+      const vetNotificationData = {
+        userId: appointment.doctorId,
+        type: 'vaccination_auto_scheduled',
+        title: 'Auto-Scheduled Vaccination Appointment',
+        message: `A vaccination appointment for ${pet.name} (${pet.species}) has been automatically scheduled for ${formatDate(appointment.date)} at ${appointment.time}.`,
+        data: {
+          appointmentId: appointment.id,
+          petId: pet.id,
+          petName: pet.name,
+          petSpecies: pet.species,
+          serviceName: appointment.serviceNames[0],
+          scheduledDate: appointment.date,
+          scheduledTime: appointment.time,
+          isAutoScheduled: true,
+          ownerName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Pet Owner'
+        },
+        priority: 'medium',
+        read: false,
+        createdAt: new Date()
+      }
+      
+      const vetNotificationId = await createNotification(vetNotificationData)
+      console.log('✅ Vet vaccination appointment notification sent:', vetNotificationId)
+    } else {
+      console.log('ℹ️ No vet notification sent - doctorId is auto-scheduled or missing')
+    }
+    
+    return userNotificationId
+  } catch (error) {
+    console.error('Error sending vaccination appointment notifications:', error)
+    // Don't throw error - notification failure shouldn't break the appointment creation
+    return false
+  }
+}
+
+/**
+ * Format date for notification message
+ * @param {Date} date - Date to format
+ * @returns {string} Formatted date string
+ */
+function formatDate(date) {
+  if (!date) return 'Unknown date'
+  
+  const dateObj = date instanceof Date ? date : new Date(date)
+  return dateObj.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
 }

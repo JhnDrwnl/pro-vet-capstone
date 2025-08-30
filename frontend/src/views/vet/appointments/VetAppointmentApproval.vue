@@ -2726,8 +2726,9 @@ const submitCompletionForm = async () => {
     await storeCompletionData(completionData);
     
     // 🔧 NEW: Check if this appointment has vaccination services and generate vaccination records
+    let vaccinationProcessed = false;
     try {
-      await processVaccinationAppointment(selectedAppointment.value, completionData);
+      vaccinationProcessed = await processVaccinationAppointment(selectedAppointment.value, completionData);
     } catch (vaccinationError) {
       console.error('Error processing vaccination appointment:', vaccinationError);
       // Don't fail the completion if vaccination processing fails
@@ -2749,10 +2750,12 @@ const submitCompletionForm = async () => {
       // Don't fail the completion if notification fails
     }
     
-    // Show success message
-    successTitle.value = 'Appointment Completed';
-    successMessage.value = 'The appointment has been marked as completed with detailed notes.';
-    showSuccessModal.value = true;
+    // Show success message (only if vaccination processing didn't already show a message)
+    if (!vaccinationProcessed) {
+      successTitle.value = 'Appointment Completed';
+      successMessage.value = 'The appointment has been marked as completed with detailed notes.';
+      showSuccessModal.value = true;
+    }
     
     // Close modal and refresh data
     closeCompletionFormModal();
@@ -2798,26 +2801,46 @@ const storeCompletionData = async (completionData) => {
 const processVaccinationAppointment = async (appointment, completionData) => {
   try {
     console.log('🔍 Checking if appointment has vaccination services...');
+    console.log('🔍 Appointment data:', {
+      id: appointment.id,
+      servicesIds: appointment.servicesIds,
+      services: appointment.services,
+      serviceNames: appointment.serviceNames,
+      'Service Names': appointment['Service Names']
+    });
     
     // Get the appointment's services
-    const appointmentServices = appointment.services || [];
+    const appointmentServices = appointment.servicesIds || appointment.services || [];
     if (appointmentServices.length === 0) {
       console.log('❌ No services found in appointment');
-      return;
+      return false;
     }
+    
+    console.log('🔍 Service IDs found:', appointmentServices);
+    console.log('🔍 Available services data:', Object.keys(servicesData.value));
     
     // Get service details to check if any are vaccination services
     const serviceDetails = await fetchVaccinationServiceDetails(appointmentServices);
-    const hasVaccinationServices = serviceDetails.some(service => 
-      service.isVaccination === true ||
-      service.name?.toLowerCase().includes('vaccination') ||
-      service.name?.toLowerCase().includes('vaccine') ||
-      service.name?.toLowerCase().includes('shot')
-    );
+    console.log('🔍 Service details fetched:', serviceDetails);
+    
+    const hasVaccinationServices = serviceDetails.some(service => {
+      const isVaccination = service.isVaccination === true ||
+        service.name?.toLowerCase().includes('vaccination') ||
+        service.name?.toLowerCase().includes('vaccine') ||
+        service.name?.toLowerCase().includes('shot');
+      
+      console.log(`🔍 Service "${service.name}": isVaccination=${service.isVaccination}, name check=${isVaccination}`);
+      return isVaccination;
+    });
     
     if (!hasVaccinationServices) {
       console.log('❌ No vaccination services found in appointment');
-      return;
+      console.log('🔍 Service details that were checked:', serviceDetails.map(s => ({
+        name: s.name,
+        isVaccination: s.isVaccination,
+        id: s.id
+      })));
+      return false;
     }
     
     console.log('🩺 Vaccination services detected, processing...');
@@ -2826,15 +2849,35 @@ const processVaccinationAppointment = async (appointment, completionData) => {
     const petIds = appointment.petIds || [appointment.petId];
     if (petIds.length === 0) {
       console.log('❌ No pets found in appointment');
-      return;
+      return false;
     }
+    
+    console.log('🔍 Pet IDs found:', petIds);
     
     // Get user details
     const userId = appointment.userId;
     if (!userId) {
       console.log('❌ No user ID found in appointment');
-      return;
+      return false;
     }
+    
+    console.log('🔍 User ID found:', userId);
+    
+    // Get user details for notification
+    let user = null;
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        user = { id: userId, ...userDoc.data() };
+        console.log('✅ Found user details:', user.firstName, user.lastName);
+      }
+    } catch (userError) {
+      console.error('Error fetching user details:', userError);
+      user = { id: userId }; // Fallback with just ID
+    }
+    
+    let vaccinationProcessed = false;
+    let autoScheduledCount = 0;
     
     // Process each pet
     for (const petId of petIds) {
@@ -2847,30 +2890,67 @@ const processVaccinationAppointment = async (appointment, completionData) => {
         }
         
         const pet = { id: petId, ...petDoc.data() };
+        console.log(`🩺 Processing vaccination for pet: ${pet.name}`);
+        console.log('🔍 Pet data:', {
+          id: pet.id,
+          name: pet.name,
+          species: pet.species,
+          ageYears: pet.ageYears,
+          ageMonths: pet.ageMonths,
+          ageWeeks: pet.ageWeeks
+        });
         
         // Generate vaccination record with autoscheduling
         const result = await generateVaccinationRecordWithAutoScheduling(
           appointment, 
           pet, 
           serviceDetails, 
-          { id: userId }
+          user
         );
+        
+        console.log('🔍 Vaccination processing result:', result);
         
         if (result.vaccinationRecord) {
           // Add vaccination record to pet
           await addVaccinationToPet(petId, result.vaccinationRecord);
           console.log(`✅ Vaccination record added for pet ${pet.name || petId}`);
+          vaccinationProcessed = true;
           
-          if (result.autoScheduled) {
+          if (result.autoScheduled && result.newSuggestions.length > 0) {
             console.log(`✅ Auto-scheduled ${result.newSuggestions.length} vaccination appointments`);
             console.log('🎯 Created appointments:', result.newSuggestions);
+            autoScheduledCount += result.newSuggestions.length;
+          } else {
+            console.log('⚠️ No auto-scheduling occurred. Result:', {
+              autoScheduled: result.autoScheduled,
+              newSuggestions: result.newSuggestions,
+              error: result.error
+            });
           }
+        } else {
+          console.log('❌ No vaccination record generated');
         }
         
       } catch (petError) {
         console.error(`Error processing pet ${petId}:`, petError);
       }
     }
+    
+    // Show success message about auto-scheduling if any appointments were created
+    if (vaccinationProcessed && autoScheduledCount > 0) {
+      successTitle.value = 'Vaccination Completed & Next Appointments Scheduled';
+      successMessage.value = `Vaccination completed successfully. ${autoScheduledCount} follow-up vaccination appointment(s) have been automatically scheduled and the pet owner has been notified.`;
+      showSuccessModal.value = true;
+      return true; // Indicate that we showed a vaccination-specific message
+    } else if (vaccinationProcessed) {
+      console.log('✅ Vaccination processed but no auto-scheduling occurred');
+      successTitle.value = 'Vaccination Completed';
+      successMessage.value = 'Vaccination completed successfully. No follow-up appointments were needed at this time.';
+      showSuccessModal.value = true;
+      return true;
+    }
+    
+    return vaccinationProcessed; // Return true if vaccinations were processed, false otherwise
     
   } catch (error) {
     console.error('Error processing vaccination appointment:', error);
@@ -2887,12 +2967,82 @@ const fetchVaccinationServiceDetails = async (serviceIds) => {
         serviceDetails.push(servicesData.value[serviceId]);
       }
     }
+    console.log('🔍 Fetched service details:', serviceDetails.map(s => ({
+      id: s.id,
+      name: s.name,
+      isVaccination: s.isVaccination,
+      nextDoseIn: s.nextDoseIn,
+      nextDoseUnit: s.nextDoseUnit,
+      autoSchedule: s.autoSchedule
+    })));
     return serviceDetails;
   } catch (error) {
     console.error('Error fetching service details:', error);
     return [];
   }
 };
+
+// Debug function to test auto-scheduling (can be called from browser console)
+const debugVaccinationAutoScheduling = async () => {
+  try {
+    console.log('🔧 Debugging vaccination auto-scheduling...');
+    console.log('🔧 Services data loaded:', Object.keys(servicesData.value).length);
+    console.log('🔧 Vaccination services:', Object.values(servicesData.value).filter(s => s.isVaccination).map(s => ({
+      id: s.id,
+      name: s.name,
+      nextDoseIn: s.nextDoseIn,
+      nextDoseUnit: s.nextDoseUnit,
+      autoSchedule: s.autoSchedule
+    })));
+    
+    // Test with a sample vaccination service
+    const vaccinationServices = Object.values(servicesData.value).filter(s => s.isVaccination);
+    if (vaccinationServices.length > 0) {
+      const testService = vaccinationServices[0];
+      console.log('🔧 Test service found:', testService);
+      
+      // Create a mock appointment
+      const mockAppointment = {
+        id: 'debug_test_appointment',
+        servicesIds: [testService.id],
+        serviceNames: [testService.name],
+        petIds: ['debug_pet_id'],
+        userId: 'debug_user_id',
+        doctorName: 'Debug Vet',
+        completedAt: new Date()
+      };
+      
+      const mockPet = {
+        id: 'debug_pet_id',
+        name: 'Debug Pet',
+        species: 'Dog'
+      };
+      
+      const mockUser = {
+        id: 'debug_user_id',
+        firstName: 'Debug',
+        lastName: 'User'
+      };
+      
+      console.log('🔧 Testing with mock data:', { mockAppointment, mockPet, mockUser });
+      
+      // Test the vaccination processing
+      const result = await processVaccinationAppointment(mockAppointment, {});
+      console.log('🔧 Test result:', result);
+      
+      return result;
+    } else {
+      console.log('❌ No vaccination services found in servicesData');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Debug error:', error);
+    return false;
+  }
+};
+
+// Make debug function available globally for testing
+window.debugVaccinationAutoScheduling = debugVaccinationAutoScheduling;
 
 // 🔧 NEW: Handle appointment ID from query parameter when redirected from queue
 const handleAppointmentFromQuery = async () => {
@@ -5966,7 +6116,20 @@ const fetchServiceData = async () => {
         classification: data.classification,
         fees: data.fees,
         processingTime: data.processingTime,
-        transactionType: data.transactionType
+        transactionType: data.transactionType,
+        // Vaccination-specific fields
+        isVaccination: data.isVaccination || false,
+        vaccineType: data.vaccineType || '',
+        seriesType: data.seriesType || 'single',
+        minAgeWeeks: data.minAgeWeeks || 6,
+        totalBoosters: data.totalBoosters || 1,
+        nextDoseIn: data.nextDoseIn || 14,
+        nextDoseUnit: data.nextDoseUnit || 'days',
+        reminderDays: data.reminderDays || 30,
+        autoSchedule: data.autoSchedule !== undefined ? data.autoSchedule : true,
+        boosterSchedule: data.boosterSchedule || [],
+        // Telehealth field
+        isTelehealth: data.isTelehealth || false
       };
     });
     
