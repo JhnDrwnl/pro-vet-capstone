@@ -1218,6 +1218,12 @@ const fetchPetAppointments = async () => {
     return;
   }
   
+  // Prevent multiple simultaneous fetches
+  if (historyLoading.value) {
+    console.log('Already fetching appointments, skipping duplicate call');
+    return;
+  }
+  
   try {
     historyLoading.value = true;
     historyError.value = '';
@@ -1228,6 +1234,10 @@ const fetchPetAppointments = async () => {
     // Fetch appointments for this specific pet
     const userAppointments = await appointmentStore.fetchAppointmentsByUserId(authStore.user.userId);
     const filteredAppointments = (userAppointments || []).filter(a => a && ((a.petId && a.petId === petId) || (Array.isArray(a.petIds) && a.petIds.includes(petId))));
+    
+    console.log('Raw user appointments:', userAppointments?.length || 0);
+    console.log('Filtered appointments for pet:', petId, filteredAppointments.length);
+    console.log('Filtered appointment IDs:', filteredAppointments.map(a => a.id));
     
     petAppointments.value = filteredAppointments;
     
@@ -1260,11 +1270,24 @@ const timelineEntries = computed(() => {
               // Add appointments (including telehealth) - only add each appointment once
      const processedAppointmentIds = new Set();
      
+     console.log('Processing appointments:', petAppointments.value.length);
+     console.log('Appointment details:', petAppointments.value.map(a => ({
+       id: a.id,
+       date: a.date,
+       serviceNames: a.serviceNames,
+       services: a.services,
+       status: a.status,
+       type: a.type,
+       isTelehealth: a.isTelehealth
+     })));
+     
      for (const a of petAppointments.value) {
        try {
+         console.log('Processing appointment:', a.id, a.serviceNames);
+         
          // Skip if we've already processed this appointment
          if (processedAppointmentIds.has(a.id)) {
-           console.log('Skipping duplicate appointment:', a.id);
+           console.log('Skipping duplicate appointment ID:', a.id);
            continue;
          }
          
@@ -1294,6 +1317,7 @@ const timelineEntries = computed(() => {
            for (const [categoryId, serviceIds] of categoryServiceIds.value.entries()) {
              if (a.services.some(serviceId => serviceIds.includes(serviceId))) {
                appointmentCategory = categoryId;
+               console.log('Appointment', a.id, 'matched category:', categoryId);
                break;
              }
            }
@@ -1309,41 +1333,91 @@ const timelineEntries = computed(() => {
             a.serviceNames.some(name => name.toLowerCase().includes('video') || name.toLowerCase().includes('telehealth')))
          );
          
+         console.log('Appointment', a.id, 'telehealth check:', {
+           type: a.type,
+           isTelehealth: a.isTelehealth,
+           appointmentCategory,
+           isTele
+         });
+         
          // Apply filter based on category
          if (historyFilter.value !== 'all' && historyFilter.value !== 'vaccinations' && historyFilter.value !== 'completed') {
            // Category-based filtering
-           if (historyFilter.value !== appointmentCategory) continue;
+           if (historyFilter.value !== appointmentCategory) {
+             console.log('Appointment', a.id, 'filtered out by category:', historyFilter.value, 'vs', appointmentCategory);
+             continue;
+           }
          }
          
          // Special filters
-         if (historyFilter.value === 'vaccinations') continue; // Vaccinations are handled separately
-         if (historyFilter.value === 'completed' && a.status !== 'completed') continue;
+         if (historyFilter.value === 'vaccinations') {
+           console.log('Appointment', a.id, 'filtered out by vaccinations filter');
+           continue;
+         }
+         if (historyFilter.value === 'completed' && a.status !== 'completed') {
+           console.log('Appointment', a.id, 'filtered out by completed filter');
+           continue;
+         }
          
          // Get category name for display
          const categoryName = appointmentCategory ? 
            categories.value.find(cat => cat.id === appointmentCategory)?.name || 'Appointment' : 
            (isTele ? 'Telehealth' : 'Appointment');
          
+         console.log('Appointment', a.id, 'final category name:', categoryName);
+         
          // Ensure we have a valid date before adding to entries
          if (when && !isNaN(when.getTime())) {
-           entries.push({
-             kind: categoryName,
-             date: when,
-             title: (Array.isArray(a.serviceNames) && a.serviceNames.length ? a.serviceNames.join(', ') : 'Veterinary appointment'),
-             subtitle: a.doctorName || a.vetName || '',
-             status: (a.status || '').toLowerCase(),
-             details: a.notes || '',
-             icon: isTele ? ActivityIcon : FileTextIcon,
-             color: isTele ? 'text-indigo-600' : 'text-blue-600',
-             completionData: a.completionData || null,
-             serviceIds: a.services || [],
-             categoryId: appointmentCategory,
-             isTelehealth: isTele,
-             appointmentId: a.id // Add appointment ID for better tracking
-           });
+           // Check if this is a vaccination appointment
+           const isVaccinationAppointment = (Array.isArray(a.serviceNames) && 
+             a.serviceNames.some(name => name.toLowerCase().includes('vaccination')));
+           
+           // For vaccination appointments, create a single entry instead of multiple
+           if (isVaccinationAppointment) {
+             const entry = {
+               kind: 'Vaccination', // Force vaccination kind for vaccination appointments
+               date: when,
+               title: 'Vaccination Appointment', // Use generic title to prevent duplicates
+               subtitle: a.doctorName || a.vetName || '',
+               status: (a.status || '').toLowerCase(),
+               details: a.notes || '',
+               icon: SyringeIcon,
+               color: 'text-teal-600',
+               completionData: a.completionData || null,
+               serviceIds: a.services || [],
+               categoryId: appointmentCategory,
+               isTelehealth: isTele,
+               appointmentId: a.id,
+               isVaccinationAppointment: true // Flag to identify vaccination appointments
+             };
+             
+             console.log('Adding vaccination appointment entry for appointment', a.id, ':', entry);
+             entries.push(entry);
+           } else {
+             // Regular appointment entry
+             const entry = {
+               kind: categoryName,
+               date: when,
+               title: (Array.isArray(a.serviceNames) && a.serviceNames.length ? a.serviceNames.join(', ') : 'Veterinary appointment'),
+               subtitle: a.doctorName || a.vetName || '',
+               status: (a.status || '').toLowerCase(),
+               details: a.notes || '',
+               icon: isTele ? ActivityIcon : FileTextIcon,
+               color: isTele ? 'text-indigo-600' : 'text-blue-600',
+               completionData: a.completionData || null,
+               serviceIds: a.services || [],
+               categoryId: appointmentCategory,
+               isTelehealth: isTele,
+               appointmentId: a.id
+             };
+             
+             console.log('Adding regular appointment entry for appointment', a.id, ':', entry);
+             entries.push(entry);
+           }
            
            // Mark this appointment as processed
            processedAppointmentIds.add(a.id);
+           console.log('Marked appointment', a.id, 'as processed. Total processed:', processedAppointmentIds.size);
          } else {
            console.warn('Skipping appointment with invalid date:', a);
          }
@@ -1353,13 +1427,13 @@ const timelineEntries = computed(() => {
        }
      }
 
-    // Add medical history treatments if viewing all records
-    if (historyFilter.value === 'all') {
-      const mh = selectedLocalPet.value.medicalHistory || [];
-      console.log('Medical history data:', mh);
-      console.log('Medical history length:', mh.length);
-      
-             for (const r of mh) {
+         // Add medical history treatments if viewing all records
+     if (historyFilter.value === 'all') {
+       const mh = selectedLocalPet.value.medicalHistory || [];
+       console.log('Medical history data:', mh);
+       console.log('Medical history length:', mh.length);
+       
+       for (const r of mh) {
          try {
            // Safely create date from medical history record
            let when;
@@ -1399,53 +1473,64 @@ const timelineEntries = computed(() => {
            continue;
          }
        }
-      
-      // Add vaccinations if viewing all records
-      const vacs = selectedLocalPet.value.vaccinations || [];
-      console.log('Vaccinations data:', vacs);
-      console.log('Vaccinations length:', vacs.length);
-      
-             for (const v of vacs) {
-         try {
-           // Safely create date from vaccination record
-           let when;
+       
+       // Skip vaccinations from pet data if we already have them from appointments
+       // This prevents duplication between appointment vaccinations and pet vaccinations
+       const hasVaccinationAppointments = entries.some(e => 
+         (e.kind === 'Appointment' || e.kind === 'Telehealth') && 
+         e.title && e.title.toLowerCase().includes('vaccination')
+       );
+       
+       if (!hasVaccinationAppointments) {
+         // Only add vaccinations from pet data if no vaccination appointments exist
+         const vacs = selectedLocalPet.value.vaccinations || [];
+         console.log('Vaccinations data from pet (no vaccination appointments found):', vacs);
+         console.log('Vaccinations length:', vacs.length);
+         
+         for (const v of vacs) {
            try {
-             if (v.date) {
-               when = new Date(v.date);
-               // Check if the date is valid
-               if (isNaN(when.getTime())) {
-                 console.warn('Invalid vaccination date:', v.date);
+             // Safely create date from vaccination record
+             let when;
+             try {
+               if (v.date) {
+                 when = new Date(v.date);
+                 // Check if the date is valid
+                 if (isNaN(when.getTime())) {
+                   console.warn('Invalid vaccination date:', v.date);
+                   when = new Date();
+                 }
+               } else {
                  when = new Date();
                }
-             } else {
+             } catch (dateError) {
+               console.warn('Error creating date from vaccination:', dateError);
                when = new Date();
              }
-           } catch (dateError) {
-             console.warn('Error creating date from vaccination:', dateError);
-             when = new Date();
+             
+             // Ensure we have a valid date before adding to entries
+             if (when && !isNaN(when.getTime())) {
+               entries.push({ 
+                 kind: 'Vaccination', 
+                 date: when, 
+                 title: v.name || 'Vaccination', 
+                 subtitle: v.completed ? 'Completed' : 'Scheduled', 
+                 status: v.completed ? 'completed' : 'pending', 
+                 details: '', 
+                 icon: SyringeIcon, 
+                 color: 'text-teal-600' 
+               });
+             } else {
+               console.warn('Skipping vaccination record with invalid date:', v);
+             }
+           } catch (vaccinationError) {
+             console.error('Error processing vaccination record:', vaccinationError, v);
+             continue;
            }
-           
-           // Ensure we have a valid date before adding to entries
-           if (when && !isNaN(when.getTime())) {
-             entries.push({ 
-               kind: 'Vaccination', 
-               date: when, 
-               title: v.name || 'Vaccination', 
-               subtitle: v.completed ? 'Completed' : 'Scheduled', 
-               status: v.completed ? 'completed' : 'pending', 
-               details: '', 
-               icon: SyringeIcon, 
-               color: 'text-teal-600' 
-             });
-           } else {
-             console.warn('Skipping vaccination record with invalid date:', v);
-           }
-         } catch (vaccinationError) {
-           console.error('Error processing vaccination record:', vaccinationError, v);
-           continue;
          }
+       } else {
+         console.log('Skipping pet vaccinations - vaccination appointments already exist');
        }
-    }
+     }
 
          // Debug log
      console.log('Total timeline entries before deduplication:', entries.length);
@@ -1471,32 +1556,40 @@ const timelineEntries = computed(() => {
      const uniqueEntries = [];
      const seenKeys = new Set();
      
+     console.log('Starting duplicate removal. Total entries before:', entries.length);
+     
      for (const entry of entries) {
        // Create a unique key for each entry to prevent duplicates
        let uniqueKey;
        
        if (entry.kind === 'Appointment' || entry.kind === 'Telehealth') {
-         // For appointments, use a more specific key to prevent duplicates
-         // Include the appointment title and date, but not service IDs which might vary
-         const appointmentDate = entry.date?.getTime() || Date.now();
-         const appointmentTitle = entry.title || 'Unknown';
-         uniqueKey = `appointment_${appointmentTitle}_${appointmentDate}`;
+         // For appointments, use appointment ID as the primary unique identifier
+         uniqueKey = `appointment_${entry.appointmentId || 'unknown'}`;
+         console.log('Appointment unique key:', uniqueKey, 'for entry:', entry);
        } else if (entry.kind === 'Treatment') {
          // For medical history, use type + date + description hash
          uniqueKey = `treatment_${entry.title}_${entry.date?.getTime() || Date.now()}_${entry.details?.substring(0, 50) || ''}`;
+         console.log('Treatment unique key:', uniqueKey, 'for entry:', entry);
        } else if (entry.kind === 'Vaccination') {
-         // For vaccinations, use name + date combination
-         uniqueKey = `vaccination_${entry.title}_${entry.date?.getTime() || Date.now()}`;
+         // For vaccinations, use a more specific key to prevent duplicates
+         // Include title, date, and status to catch variations
+         const vaccinationDate = entry.date?.getTime() || Date.now();
+         const vaccinationTitle = entry.title || 'Unknown';
+         const vaccinationStatus = entry.status || 'unknown';
+         uniqueKey = `vaccination_${vaccinationTitle}_${vaccinationDate}_${vaccinationStatus}`;
+         console.log('Vaccination unique key:', uniqueKey, 'for entry:', entry);
        } else {
          // Fallback for other types
          uniqueKey = `${entry.kind}_${entry.title}_${entry.date?.getTime() || Date.now()}`;
+         console.log('Other unique key:', uniqueKey, 'for entry:', entry);
        }
        
        if (!seenKeys.has(uniqueKey)) {
          seenKeys.add(uniqueKey);
          uniqueEntries.push(entry);
+         console.log('Added unique entry:', uniqueKey);
        } else {
-         console.log('Skipping duplicate entry:', entry);
+         console.log('Skipping duplicate entry with key:', uniqueKey, 'Entry:', entry);
        }
      }
      
