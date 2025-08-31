@@ -1582,8 +1582,9 @@ import dogImage from "@/assets/media/images/appointment/Dog.png"
 import catImage from "@/assets/media/images/appointment/Cat.png"
 import birdImage from "@/assets/media/images/appointment/Bird.png"
 import reptilesImage from "@/assets/media/images/appointment/Reptiles.png"
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore"
+import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
 import notificationService from "@/services/notificationService"
+import smsService from "@/services/smsService"
 
 // Define props to accept isSidebarOpen from parent component
 const props = defineProps({
@@ -3468,6 +3469,56 @@ const bookAppointment = async () => {
       console.log('Notifications sent for appointment booking');
     } catch (notificationError) {
       console.error('Error sending notifications:', notificationError);
+    }
+    
+    // Send SMS confirmation to user if phone is verified
+    try {
+      console.log('📱 Processing SMS confirmation for appointment creation...');
+      
+      // Get user's phone number and verification status
+      const userRef = doc(db, 'users', authStore.user?.userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const userPhone = userData.phone;
+        const isPhoneVerified = userData.phoneVerified;
+        
+        console.log('📱 User phone data for SMS:', { phone: userPhone, verified: isPhoneVerified });
+        
+        // Only send SMS if phone is verified and phone number exists
+        if (isPhoneVerified && userPhone && userPhone.trim() !== '') {
+          // Use the petNames from the outer scope (defined earlier in the function)
+          const appointmentDate = selectedDate.value;
+          const appointmentTime = selectedTime.value;
+          const isHealthCertificate = isVeterinaryHealthCertificateCategory.value;
+          
+          console.log('📱 Sending SMS confirmation to:', userPhone);
+          console.log('📱 SMS data:', { petNames, appointmentDate, appointmentTime, isHealthCertificate });
+          
+          // Send SMS confirmation
+          const smsResult = await smsService.sendAppointmentConfirmation(
+            userPhone, 
+            petNames, 
+            appointmentDate, 
+            appointmentTime, 
+            isHealthCertificate
+          );
+          
+          if (smsResult.success) {
+            console.log('📱 SMS confirmation sent successfully:', smsResult.messageId);
+          } else {
+            console.log('❌ SMS confirmation failed:', smsResult.error);
+          }
+        } else {
+          console.log('⚠️ Skipping SMS confirmation: phone not verified or no phone number');
+        }
+      } else {
+        console.log('⚠️ User document not found for SMS confirmation');
+      }
+    } catch (smsError) {
+      console.error('❌ Error processing SMS confirmation:', smsError);
+      // Don't break the appointment creation flow if SMS fails
     }
     
     // Show success modal

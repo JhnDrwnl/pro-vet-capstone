@@ -178,39 +178,105 @@ class SMSService {
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: 15000 // 15 second timeout
+        timeout: 15000
       })
 
       if (response.data.success) {
-        console.log('Appointment reminder SMS sent successfully')
+        console.log('SMS appointment reminder sent successfully via Semaphore')
         return {
           success: true,
           messageId: response.data.messageId,
-          message: message
+          message: response.data.message
         }
       } else {
-        throw new Error(response.data.message || 'Failed to send appointment reminder SMS')
+        throw new Error(response.data.message || 'Failed to send SMS reminder')
       }
     } catch (error) {
-      console.error('Appointment reminder SMS sending error:', error)
+      console.error('SMS appointment reminder error:', error)
       
       // Handle specific Semaphore errors
       if (error.response?.data?.error) {
         const semaphoreError = error.response.data.error
         
         if (semaphoreError.includes('insufficient') || semaphoreError.includes('balance')) {
-          throw new Error('SMS service temporarily unavailable due to insufficient credits.')
+          throw new Error('SMS service temporarily unavailable due to insufficient credits. Please try again later.')
         } else if (semaphoreError.includes('invalid') || semaphoreError.includes('number')) {
-          throw new Error('Invalid phone number format.')
+          throw new Error('Invalid phone number format. Please check your number and try again.')
         } else if (semaphoreError.includes('rate limit') || semaphoreError.includes('too many')) {
-          throw new Error('Too many SMS requests. Please wait before trying again.')
+          throw new Error('Too many SMS requests. Please wait a moment before trying again.')
         } else {
           throw new Error(`SMS service error: ${semaphoreError}`)
         }
       }
       
-      throw new Error('Failed to send appointment reminder SMS. Please try again.')
+      throw new Error('Failed to send SMS appointment reminder. Please try again.')
     }
+  }
+
+  // Send appointment confirmation SMS
+  async sendAppointmentConfirmation(phone, petNames, date, time, isHealthCert = false) {
+    try {
+      const formattedPhone = this.formatPhoneForSMS(phone)
+      
+      // Create short SMS message
+      const pets = Array.isArray(petNames) ? petNames.join(', ') : petNames
+      const shortDate = this.formatDateForSMS(date)
+      const service = isHealthCert ? 'Health Cert' : 'appt'
+      
+      const message = `${pets} ${service} on ${shortDate} at ${time} booked. Pending.`
+      
+      const payload = {
+        phoneNumber: formattedPhone,
+        message: message,
+        type: 'appointment_confirmation'
+      }
+
+      const response = await axios.post(`${this.baseURL}/send-appointment-confirmation`, payload, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      })
+
+      if (response.data.success) {
+        console.log('SMS appointment confirmation sent successfully via Semaphore')
+        return {
+          success: true,
+          messageId: response.data.messageId,
+          message: response.data.message
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to send SMS confirmation')
+      }
+    } catch (error) {
+      console.error('SMS appointment confirmation error:', error)
+      
+      // Handle specific Semaphore errors
+      if (error.response?.data?.error) {
+        const semaphoreError = error.response.data.error
+        
+        if (semaphoreError.includes('insufficient') || semaphoreError.includes('balance')) {
+          throw new Error('SMS service temporarily unavailable due to insufficient credits. Please try again later.')
+        } else if (semaphoreError.includes('invalid') || semaphoreError.includes('number')) {
+          throw new Error('Invalid phone number format. Please check your number and try again.')
+        } else if (semaphoreError.includes('rate limit') || semaphoreError.includes('too many')) {
+          throw new Error('Too many SMS requests. Please wait a moment before trying again.')
+        } else {
+          throw new Error(`SMS service error: ${semaphoreError}`)
+        }
+      }
+      
+      throw new Error('Failed to send SMS appointment confirmation. Please try again.')
+    }
+  }
+
+  // Helper function to format date for SMS (MMM dd format)
+  formatDateForSMS(date) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const d = new Date(date)
+    const month = months[d.getMonth()]
+    const day = d.getDate().toString().padStart(2, '0')
+    return `${month} ${day}`
   }
 }
 
