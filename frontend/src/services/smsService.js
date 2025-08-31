@@ -352,6 +352,43 @@ class SMSService {
       }
     }
   }
+
+  // Send appointment reschedule SMS
+  async sendAppointmentReschedule(phone, petNames, date, time, isHealthCert = false) {
+    try {
+      const formattedPhone = this.formatPhoneForSMS(phone)
+      
+      // Create short SMS message for reschedule
+      const pets = Array.isArray(petNames) ? petNames.join(', ') : petNames
+      const shortDate = this.formatDateForSMS(date)
+      const service = isHealthCert ? 'Health Cert' : 'appt'
+      
+      const message = `${pets} ${service} on ${shortDate} at ${time} rescheduled. Please check new time.`
+      
+      const payload = {
+        phoneNumber: formattedPhone,
+        message: message,
+        type: 'appointment_reschedule'
+      }
+      const response = await axios.post(`${this.baseURL}/send-appointment-reschedule`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000
+      })
+      if (response.data.success) {
+        console.log('SMS appointment reschedule sent successfully via Semaphore')
+        return { success: true, messageId: response.data.messageId, message: response.data.message }
+      } else {
+        throw new Error(response.data.message || 'Failed to send SMS reschedule')
+      }
+    } catch (error) {
+      console.error('SMS appointment reschedule error:', error)
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send SMS reschedule',
+        details: error.response?.data || null
+      }
+    }
+  }
 }
 
 export default new SMSService()

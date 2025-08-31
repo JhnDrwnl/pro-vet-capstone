@@ -64,7 +64,7 @@
                     : 'Unnamed Service' }}
                 </div>
                 <span :class="getStatusClass(appointment)">
-                  {{ isExpired(appointment) ? 'Expired' : formatStatus(appointment.status) }}
+                  {{ isExpired(appointment) ? 'Expired' : formatStatus(getEffectiveStatus(appointment)) }}
                 </span>
               </div>
               <div class="text-sm text-gray-700 mb-1">
@@ -86,7 +86,7 @@
 
               
               <!-- Feedback status indicator -->
-              <div v-if="appointment.status === 'completed'" class="text-xs mt-1">
+              <div v-if="getEffectiveStatus(appointment) === 'completed'" class="text-xs mt-1">
                 <span 
                   v-if="appointment.hasFeedback" 
                   class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full"
@@ -128,7 +128,7 @@
                   >
                     <!-- Cancel option for pending appointments -->
                     <button 
-                      v-if="appointment.status === 'pending'"
+                      v-if="getEffectiveStatus(appointment) === 'pending'"
                       @click="confirmCancel(appointment)"
                       class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                     >
@@ -140,7 +140,43 @@
                     
                     <!-- Create New Appointment option for reschedule requests -->
                     <button 
-                      v-if="appointment.status === 'consider_rescheduling'"
+                      v-if="getEffectiveStatus(appointment) === 'consider_rescheduling'"
+                      @click="createNewAppointment(appointment)"
+                      class="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      Create New Appointment
+                    </button>
+                    
+                    <!-- Create New Appointment option for reschedule requested status -->
+                    <button 
+                      v-if="getEffectiveStatus(appointment) === 'reschedule_requested'"
+                      @click="createNewAppointment(appointment)"
+                      class="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      Create New Appointment
+                    </button>
+                    
+                    <!-- Create New Appointment option for reschedule approved status -->
+                    <button 
+                      v-if="getEffectiveStatus(appointment) === 'reschedule_approved'"
+                      @click="createNewAppointment(appointment)"
+                      class="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      Create New Appointment
+                    </button>
+                    
+                    <!-- Create New Appointment option for reschedule request sent status -->
+                    <button 
+                      v-if="getEffectiveStatus(appointment) === 'reschedule_request_sent'"
                       @click="createNewAppointment(appointment)"
                       class="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 flex items-center gap-2"
                     >
@@ -152,7 +188,7 @@
                     
                     <!-- View Notes option for completed appointments -->
                     <button 
-                      v-if="appointment.status === 'completed' && appointment.completionData"
+                      v-if="getEffectiveStatus(appointment) === 'completed' && appointment.completionData"
                       @click="viewAppointmentSummary(appointment)"
                       class="w-full text-left px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 flex items-center gap-2"
                     >
@@ -164,7 +200,7 @@
                 
                     <!-- Feedback option for completed appointments -->
                 <button 
-                  v-if="appointment.status === 'completed'"
+                  v-if="getEffectiveStatus(appointment) === 'completed'"
                   @click="openFeedback(appointment)"
                       class="w-full text-left px-4 py-2 text-sm flex items-center gap-2"
                       :class="appointment.hasFeedback ? 'text-green-600 hover:bg-green-50' : 'text-blue-600 hover:bg-blue-50'"
@@ -177,7 +213,7 @@
                 
                                         <!-- Schedule Follow-up option for completed appointments -->
                     <button 
-                      v-if="appointment.status === 'completed'"
+                      v-if="getEffectiveStatus(appointment) === 'completed'"
                       @click="() => { console.log('Schedule Follow-up clicked for appointment:', appointment.id); scheduleFollowUp(appointment); }"
                       class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
                     >
@@ -493,6 +529,19 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
     emit('close');
   };
   
+  // Helper function to get effective status (considers both direct status and rescheduleRequest status)
+  const getEffectiveStatus = (appointment) => {
+    if (!appointment) return null;
+    
+    // Check if there's a reschedule request that should override the main status
+    if (appointment.rescheduleRequest && appointment.rescheduleRequest.status) {
+      return appointment.rescheduleRequest.status;
+    }
+    
+    // Return the main status if no reschedule request
+    return appointment.status;
+  };
+  
   // Helper function to get pet display name
   const getPetDisplayName = (appointment) => {
     // Check if we have petNames array (multiple pets)
@@ -579,6 +628,14 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
         return 'Consider Rescheduling';
       case 'partially_completed':
         return 'Partially Completed';
+      case 'reschedule_requested':
+        return 'Reschedule Requested';
+      case 'reschedule_approved':
+        return 'Reschedule Approved';
+      case 'reschedule_rejected':
+        return 'Reschedule Rejected';
+      case 'reschedule_request_sent':
+        return 'Reschedule Request Sent';
       default:
         // Capitalize first letter and replace underscores with spaces
         return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, ' ');
@@ -591,7 +648,7 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
     if (isExpired(appointment)) {
       return `${baseClasses} bg-orange-100 text-orange-800`;
     }
-    const status = appointment?.status?.toLowerCase();
+    const status = getEffectiveStatus(appointment)?.toLowerCase();
     switch (status) {
       case 'pending':
         return `${baseClasses} bg-yellow-100 text-yellow-800`;
@@ -602,6 +659,14 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
       case 'processing':
         return `${baseClasses} bg-indigo-100 text-indigo-800`;
       case 'consider_rescheduling':
+        return `${baseClasses} bg-orange-100 text-orange-800`;
+      case 'reschedule_requested':
+        return `${baseClasses} bg-orange-100 text-orange-800`;
+      case 'reschedule_approved':
+        return `${baseClasses} bg-blue-100 text-blue-800`;
+      case 'reschedule_rejected':
+        return `${baseClasses} bg-red-100 text-red-800`;
+      case 'reschedule_request_sent':
         return `${baseClasses} bg-orange-100 text-orange-800`;
       case 'cancelled':
       case 'rejected':
@@ -618,8 +683,8 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
     if (!appointment) return false;
     
     try {
-      const status = (appointment.status || '').toLowerCase();
-      if (['approved','completed','cancelled','rejected','ended','consider_rescheduling'].includes(status)) return false;
+      const status = (getEffectiveStatus(appointment) || '').toLowerCase();
+      if (['approved','completed','cancelled','rejected','ended','consider_rescheduling','reschedule_requested','reschedule_approved','reschedule_rejected','reschedule_request_sent'].includes(status)) return false;
       if (!appointment.date || !appointment.time) return false;
       
       let appointmentDate;

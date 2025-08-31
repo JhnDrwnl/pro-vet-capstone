@@ -5673,6 +5673,14 @@ const executeRescheduleRequest = async () => {
     } catch (notifyErr) {
       console.error('Failed to send notification:', notifyErr);
     }
+
+    // Send SMS notification for reschedule request
+    try {
+      await sendAppointmentNotification(reschedulingAppointment.value.id, 'reschedule', 'reschedule_requested');
+    } catch (smsErr) {
+      console.error('Failed to send SMS reschedule notification:', smsErr);
+      // Don't break the flow if SMS fails
+    }
     
     // Notify the vet about the reschedule request sent
     try {
@@ -5745,6 +5753,10 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
       case 'reject':
         title = 'Appointment Rejected';
         description = `${subject} on ${dateStr} at ${appointmentData.time} has been rejected.`;
+        break;
+      case 'reschedule':
+        title = 'Appointment Rescheduled';
+        description = `${subject} on ${dateStr} at ${appointmentData.time} has been rescheduled.`;
         break;
       case 'cancel':
         title = 'Appointment Cancelled';
@@ -5879,6 +5891,59 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
         // Don't break the notification flow if SMS fails
       }
     }
+
+    // Send SMS notification for reschedule (only for rescheduled appointments)
+    if (action === 'reschedule') {
+      try {
+        console.log('📱 Processing SMS notification for appointment reschedule...');
+        
+        // Get user's phone number and verification status
+        const userRef = doc(db, 'users', appointmentData.userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userPhone = userData.phone;
+          const isPhoneVerified = userData.phoneVerified;
+          
+          console.log('📱 User phone data for SMS:', { phone: userPhone, verified: isPhoneVerified });
+          
+          // Only send SMS if phone is verified and phone number exists
+          if (isPhoneVerified && userPhone && userPhone.trim() !== '') {
+            const petNames = appointmentData.petNames || [appointmentData.petName] || ['Pet'];
+            const appointmentDate = appointmentData.date;
+            const appointmentTime = appointmentData.time;
+            const isHealthCertificate = appointmentData.isHealthCertificate || false;
+            
+            console.log('📱 Sending SMS reschedule to:', userPhone);
+            console.log('📱 SMS data:', { petNames, appointmentDate, appointmentTime, isHealthCertificate });
+            
+            // Send SMS reschedule
+            const smsResult = await smsService.sendAppointmentReschedule(
+              userPhone, 
+              petNames, 
+              appointmentDate, 
+              appointmentTime, 
+              isHealthCertificate
+            );
+            
+            if (smsResult.success) {
+              console.log('📱 SMS reschedule sent successfully:', smsResult.messageId);
+              console.log('📱 SMS reschedule message:', smsResult.message);
+            } else {
+              console.log('❌ SMS reschedule failed:', smsResult.error);
+            }
+          } else {
+            console.log('⚠️ Skipping SMS reschedule: phone not verified or no phone number');
+          }
+        } else {
+          console.log('⚠️ User document not found for SMS reschedule');
+        }
+      } catch (smsError) {
+        console.error('❌ Error processing SMS reschedule:', smsError);
+        // Don't break the notification flow if SMS fails
+      }
+    }
   } catch (error) {
     console.error('Error sending user notification:', error);
   }
@@ -5917,6 +5982,10 @@ const sendVetNotification = async (appointmentId, action, status) => {
       case 'reject':
         title = 'Appointment Rejected';
         description = `You rejected an appointment for ${petNamesJoined || 'pet'} on ${dateStr} at ${appointmentData.time}`;
+        break;
+      case 'reschedule':
+        title = 'Appointment Rescheduled';
+        description = `You rescheduled an appointment for ${petNamesJoined || 'pet'} on ${dateStr} at ${appointmentData.time}`;
         break;
       case 'cancel':
         title = 'Appointment Cancelled';
