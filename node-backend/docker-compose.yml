@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  innovet-backend:
+    image: innovet-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - FIREBASE_PROJECT_ID=provet-calapan-3bc89
+      - FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCyCSQM4njiDs2Z\noXcDWn2FxN/CC0ij+AqcC4eOtwVG/HBTXi6W8VziZ3/90s8MfauIj+UJPIpaJLrt\naHBXC6mtCYOLlFEj+W2pnmiWkSip78tAvlrlg1eR3TMUti0TmUdQo7yug6OxmRf3\n+8pZGTqGlUw+KqHHZ8XoEOeUo3NwfWvEPDQUeFVVGSzvyUGpLbZjRN+0mzhWjK+B\njeGIlBr5Vp3ucdkGeDFSZ36xhvVtuPScqZlA2yRe0N5DU6HrAKXaPz3VbvTZWX3E\n7Xj4oPMnnQx460BNnfsSWuo9SJs2sF2ssUkwV/JT3b3nYV1w4dkjKIKpG8BGVit1\nKI3KSWIRAgMBAAECggEAAwe09sjXpLClTwHTQs9EYdA2Zw5Q8RonOL2D1AnpO6p6\nEUUsrFIqfJ+lK0auUkivmx5TLYYmVv9B34lemMYAoDVlqSy/+R7alF+Mk/wfpyLH\nFhCXVJ7Yu566QEDogVP4xYEqlIV2NgSEcVVLqJq4EbMn+MqPddNzksNPjwqoIT2N\n3Xyi84XKfwP1v+yvybpa6YAQRt4iBl+P/diIWiiP3k7GlZVO8SONrGV0WgXeMReN\nki4sJPoo/LQD1De+bqp4jd+FBC8xDur3BsQN3fqj0B5sO7l7k7lMh9ODj6H6Lefm\nboyzVwi54UjUZ+hG3nnMBVpjAE2FD9nfzbBlrqK4VQKBgQD7poDvDgRZULbFB63/\nB6oqvQTT9W2K7JOd6KmFwfHWpzr37yiFPd9kych942MKcylZ6i7ZPzE9V0e7eozh\nhyZ5I/rcStvZ3+7Q6JzdLKOJTlXpg2vPZNEhS+Y2LDH6KT1Fp5nL9OQ8TAmIJ9Rg\n2C0msK2d9jlVUWZ63K2+inY5RQKBgQC1HOihnYe8t3N2cyDG8bu0iRa6Ti8su8rk\nQG3itBUSy6OZ08fR8zXdlh0epZTOlgRx9n4ePmA39pvaTRd3cgv3WSobuSfjKLDI\nztTt4KTtbs6tamwS5YAxcE17oX/Jwpd9SKvfwNId9U4hzYwU7I3Lt1+iWIdo3Qso\nSj8+LAOEXQKBgBpJlGJkdnPWCKGgYb6oUFBSmnSByMWgXPM74KmGTvr7UR+hLfxt\nMC7ZHUZ5QFlRGlq4Kdirzzr3KRkefiT49z3kUko8z6Z8y/eqtOgtx4+KTVMtVU++\n2lG+GfhCuZ3GPQ5PqbMyi7z4vG4qqvbK3jySbDB6Dhcpf6kJ8GRdFmh5AoGAWrDE\nKJGKc8xlC+4wfo5zkL6I2/fklYDf4xYEMF4+oy/Hl3K9/3rLAU92+26sqhni1fI5\nSwmvArcBafnqg0xfg5dph4Ja39vzUkqHwyoXTDGNWrcMsRWs8JSsp/jB1ZUUaI7o\nSd3zGT9JxZF40M13X4hOYiv0emUdfipXqtk9VZ0CgYBwyFQ1i5yLSV6bo5ELXfFb\n4eENwZMTq6KkMymvKCIEl578RHWPsi+5NJnmfVYt5SKKXeosXX/f/jpvvfaqjMTP\nRIvAF21gqpIsZbO7Z/DhOKsiV2odXbzh7r4s5wt3/sReJS5WLfrbVkqO83s9GbOv\nV+NKKMf60iW4SqD8KQq5XA==\n-----END PRIVATE KEY-----\n
+      - FIREBASE_CLIENT_EMAIL=firebase-adminsdk-3j1s1@provet-calapan-3bc89.iam.gserviceaccount.com
+      - FIREBASE_DATABASE_URL=https://provet-calapan-3bc89-default-rtdb.asia-southeast1.firebasedatabase.app
+      - EMAIL_SERVICE=gmail
+      - EMAIL_USER=provincialveterinarycalapan@gmail.com
+      - EMAIL_APP_PASSWORD=mskd zymi vlgs uxgc
+      - EMAIL_FROM=noreply@innovet.com
+      - SEMAPHORE_API_KEY=88f869b76376046985b94b5c6b596ba7
+      - SEMAPHORE_SENDER_NAME=InnoVet
+      - ALLOWED_ORIGINS=https://innovet-projects.vercel.app,http://localhost:3000
+      - LOG_LEVEL=info

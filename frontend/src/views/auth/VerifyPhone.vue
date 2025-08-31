@@ -26,44 +26,8 @@
           <h1 class="text-2xl font-bold mb-6 text-gray-800 mt-4">Verify Your Phone</h1>
           
           <div class="w-full max-w-md space-y-6">
-            <!-- Method Selection Screen -->
-            <div v-if="!methodChosen" class="space-y-6">
-              <p class="text-center text-gray-600 text-sm">
-                Choose how you'd like to receive your verification code for
-                <span class="font-semibold">{{ formatDisplayPhone(phone) }}</span>
-              </p>
-
-              <!-- Method Selection Buttons -->
-              <div class="space-y-4">
-                <button 
-                  @click="selectMethod('sms')"
-                  class="w-full py-4 px-6 bg-white border-2 border-blue-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  <div class="flex items-center justify-center space-x-3">
-                    <span class="text-2xl">📱</span>
-                    <div class="text-left">
-                      <div class="font-semibold text-gray-800">Send via SMS</div>
-                      <div class="text-sm text-gray-500">Receive code via text message</div>
-                    </div>
-                  </div>
-                </button>
-
-
-
-                
-              </div>
-
-              <button 
-                type="button"
-                @click="goBackToEmail"
-                class="block w-full mt-3 text-sm text-gray-500 hover:text-gray-700"
-              >
-                ← Back to email verification
-              </button>
-            </div>
-
-            <!-- OTP Input Screen -->
-            <div v-else class="space-y-6">
+            <!-- Phone Verification Screen -->
+            <div class="space-y-6">
               <p class="text-center text-gray-600 text-sm">
                 Please enter the verification code sent to 
                 <span class="font-semibold">{{ formatDisplayPhone(phone) }}</span>
@@ -107,37 +71,12 @@
                   Didn't receive the code?
                 </p>
                 
-                <!-- Method Selection -->
-                <div class="flex justify-center space-x-4 mb-3">
-                  <button 
-                    @click="sendViaSMS"
-                    :disabled="resendTimer > 0"
-                    class="text-blue-600 hover:text-blue-700 text-sm font-medium focus:outline-none disabled:opacity-50"
-                  >
-                    📱 Send via SMS
-                  </button>
-
-                  
-                </div>
-                
-                <p class="text-xs text-gray-500 mb-2">
-                  Choose your preferred method
-                </p>
-                
                 <button 
                   @click="resendCode"
                   :disabled="resendTimer > 0"
                   class="text-blue-600 hover:text-blue-700 text-sm font-medium focus:outline-none disabled:opacity-50"
                 >
                   {{ resendTimer > 0 ? `Resend code in ${formatTime(resendTimer)}` : 'Resend code' }}
-                </button>
-                
-                <button 
-                  type="button"
-                  @click="changeMethod"
-                  class="block w-full mt-2 text-sm text-gray-500 hover:text-gray-700"
-                >
-                  ↻ Change method
                 </button>
                 
                 <button 
@@ -181,7 +120,6 @@ import { ArrowLeftIcon } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/modules/authStore'
 import { DotLottieVue } from '@lottiefiles/dotlottie-vue'
- 
 
 const router = useRouter()
 const route = useRoute()
@@ -197,8 +135,6 @@ const currentAnimation = ref("https://lottie.host/c8b6eda0-6211-4124-8483-f57f7c
 let timerInterval = null
 let expiryInterval = null
 const phone = ref(route.query.phone || '')
-const methodChosen = ref(false)
-const selectedMethod = ref('')
 
 const lottieOptions = {
   rendererSettings: {
@@ -425,8 +361,8 @@ const resendCode = async () => {
       return
     }
 
-    // Resend OTP using the last selected method
-    await authStore.sendPhoneOTP(phone.value, selectedMethod.value)
+    // Resend SMS OTP
+    await authStore.sendPhoneOTP(phone.value, 'sms')
     
     // Reset OTP inputs
     otpDigits.value = Array(6).fill('')
@@ -446,8 +382,8 @@ const resendCode = async () => {
   } catch (err) {
     console.error('Resend error:', err)
     
-    // Check if it's a credit issue and suggest the other method
-    if (selectedMethod.value === 'sms' && err.message.includes('credits insufficient')) {
+    // Check if it's a credit issue
+    if (err.message.includes('insufficient') || err.message.includes('credits')) {
       error.value = 'SMS service temporarily unavailable. Please try again later.'
     } else {
       error.value = 'Failed to resend verification code. Please try again.'
@@ -455,112 +391,11 @@ const resendCode = async () => {
   }
 }
 
-const sendViaSMS = async () => {
-  try {
-    if (!phone.value) {
-      error.value = 'Phone number not found. Please try registering again.'
-      return
-    }
-
-    // Update selected method
-    selectedMethod.value = 'sms'
-
-    // Send SMS OTP
-    await authStore.sendPhoneOTP(phone.value, 'sms')
-    
-    // Reset OTP inputs
-    otpDigits.value = Array(6).fill('')
-    // Focus on first input
-    nextTick(() => {
-      if (otpRefs.value[0]) {
-        otpRefs.value[0].focus()
-      }
-    })
-    
-    // Reset timers
-    startResendTimer()
-    startExpiryTimer()
-    
-    // Clear any previous errors
-    error.value = ''
-  } catch (err) {
-    console.error('SMS send error:', err)
-    
-    // Check if it's a credit issue
-    if (err.message.includes('insufficient') || err.message.includes('credits')) {
-      error.value = 'SMS service temporarily unavailable due to insufficient credits. Please try again later.'
-    } else if (err.message.includes('invalid') || err.message.includes('number')) {
-      error.value = 'Invalid phone number format. Please check your number and try again.'
-    } else if (err.message.includes('rate limit') || err.message.includes('too many')) {
-      error.value = 'Too many SMS requests. Please wait before trying again.'
-    } else {
-      error.value = 'Failed to send SMS verification code. Please try again.'
-    }
-  }
-}
-
-
-
- 
-
 const goBackToEmail = () => {
   router.push({
     name: 'verify-email',
     query: { email: route.query.email }
   })
-}
-
-const selectMethod = async (method) => {
-  try {
-    selectedMethod.value = method
-    methodChosen.value = true
-    
-    // Send OTP using the selected method
-    await authStore.sendPhoneOTP(phone.value, method)
-    
-    // Initialize timers
-    startResendTimer()
-    startExpiryTimer()
-    
-    // Focus on first input after a short delay
-    nextTick(() => {
-      setTimeout(() => {
-        if (otpRefs.value[0]) {
-          otpRefs.value[0].focus()
-        }
-      }, 100)
-    })
-    
-  } catch (err) {
-    console.error(`Failed to send ${method.toUpperCase()} OTP:`, err)
-    
-    // Check if it's a credit issue
-    if (method === 'sms' && err.message.includes('credits insufficient')) {
-      error.value = 'SMS service temporarily unavailable. Please try again later.'
-      methodChosen.value = false // Go back to method selection
-    } else {
-      error.value = `Failed to send ${method.toUpperCase()} verification code. Please try again.`
-      methodChosen.value = false // Go back to method selection
-    }
-  }
-}
-
-const changeMethod = () => {
-  // Reset to method selection screen
-  methodChosen.value = false
-  selectedMethod.value = ''
-  otpDigits.value = Array(6).fill('')
-  error.value = ''
-  
-  // Clear timers
-  if (timerInterval) {
-    clearInterval(timerInterval)
-  }
-  if (expiryInterval) {
-    clearInterval(expiryInterval)
-  }
-  resendTimer.value = 0
-  otpExpiryTime.value = 300
 }
 
 const goToHome = () => {
@@ -570,37 +405,20 @@ const goToHome = () => {
 // Function to create welcome notification document
 const createWelcomeNotification = async (userId) => {
   try {
-    const { collection, addDoc, doc, getDoc } = await import('firebase/firestore');
+    const { doc, setDoc } = await import('firebase/firestore');
     const { db } = await import('@shared/firebase');
     
-    const notificationsRef = collection(db, "notifications");
-    
-    // Get user data for personalization
-    const userRef = doc(db, "users", userId);
-    const userDoc = await getDoc(userRef);
-    const userData = userDoc.exists() ? userDoc.data() : {};
-    const firstName = userData.firstName || "there";
-    
-    const notificationData = {
-      userId: userId,
-      title: "Welcome to Provincial Veterinary!",
-      description: `Hi ${firstName}, thanks for joining us! You'll now receive updates about your pet's health.`,
+    const notificationRef = doc(db, "notifications", userId);
+    await setDoc(notificationRef, {
+      title: "Welcome to InnoVet! 🎉",
+      message: "Thank you for joining our community. We're excited to help you take care of your pets!",
       type: "welcome",
       read: false,
       createdAt: new Date(),
-      data: {
-        type: "welcome",
-        url: "/user/notifications",
-        fromRegistration: true
-      },
-      // Add any other fields your notification system expects
-      sent: true,
-      deleted: false
-    };
+      updatedAt: new Date()
+    });
     
-    await addDoc(notificationsRef, notificationData);
-    console.log('Welcome notification document created successfully');
-    
+    console.log('Welcome notification created successfully');
   } catch (error) {
     console.error('Error creating welcome notification document:', error);
   }
@@ -638,8 +456,41 @@ const requestNotificationPermission = async () => {
 };
 
 onMounted(async () => {
-  // Don't automatically send OTP - wait for user to choose method
-  // Just initialize the component
+  // Initialize verification data if it doesn't exist
+  const verificationData = authStore.getVerificationData()
+  
+  if (!verificationData && phone.value) {
+    // Create basic verification data for phone verification
+    authStore.setVerificationData({
+      phone: phone.value,
+      timestamp: Date.now()
+    })
+    console.log('Initialized verification data for phone verification:', phone.value)
+  }
+  
+  // Check if we're coming from Google phone input flow
+  const isFromGoogleFlow = route.query.registrationMethod === 'google'
+  
+  // Only automatically send SMS OTP if NOT coming from Google flow
+  // (Google flow already sent the OTP in the previous step)
+  if (!isFromGoogleFlow) {
+    await authStore.sendPhoneOTP(phone.value, 'sms')
+  } else {
+    console.log('Skipping automatic OTP send - coming from Google phone input flow')
+  }
+  
+  // Initialize timers
+  startResendTimer()
+  startExpiryTimer()
+  
+  // Focus on first input after a short delay
+  nextTick(() => {
+    setTimeout(() => {
+      if (otpRefs.value[0]) {
+        otpRefs.value[0].focus()
+      }
+    }, 100)
+  })
 })
 
 onUnmounted(() => {

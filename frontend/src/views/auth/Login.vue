@@ -350,7 +350,7 @@ const loginWithGoogle = async () => {
     error.value = ''
     
     // Call the signInWithGoogle method which now handles both new and existing users
-    const success = await authStore.signInWithGoogle({
+    const result = await authStore.signInWithGoogle({
       isRegistration: false,
       onNewUser: () => {
         console.log('New user detected during Google login')
@@ -359,14 +359,20 @@ const loginWithGoogle = async () => {
       }
     })
     
+    // Check if phone verification is needed
+    if (result && result.needsPhoneVerification) {
+      console.log('📱 Phone verification required for Google user');
+      
+      // Redirect to phone input page for Google users
+      router.push({
+        name: 'google-phone-input'
+      });
+      return;
+    }
+
     // Check if user is authenticated after Google sign-in
-    if (success && authStore.isAuthenticated) {
+    if (result && authStore.isAuthenticated) {
       console.log('Google sign-in successful, proceeding to dashboard...')
-      
-      // TEMPORARILY DISABLED: Phone verification for Google users
-      // Phone verification is now skipped for Google users
-      
-      console.log('Phone verification disabled, proceeding to dashboard...')
       
       // For existing Google users, check if they need to configure notifications
       const userId = authStore.currentUser.userId

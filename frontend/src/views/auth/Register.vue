@@ -446,7 +446,7 @@ const registerWithGoogle = async () => {
     console.log('🚀 Starting Google OAuth registration...');
     
     // Call the signInWithGoogle method with isRegistration flag
-    await authStore.signInWithGoogle({
+    const result = await authStore.signInWithGoogle({
       isRegistration: true,
       onNewUser: async () => {
         console.log('✅ New user registered with Google');
@@ -492,13 +492,18 @@ const registerWithGoogle = async () => {
       }
     });
     
-    console.log('Google registration successful, proceeding to dashboard...')
-    
-    // TEMPORARILY DISABLED: Phone verification for Google users
-    // Phone verification is now skipped for Google users
-    
-    console.log('Phone verification disabled, redirecting to dashboard...');
-    router.push('/user/dashboard');
+    // Check if phone verification is needed
+    if (result && result.needsPhoneVerification) {
+      console.log('📱 Phone verification required for new Google user');
+      
+      // Redirect to phone input page for Google users
+      router.push({
+        name: 'google-phone-input'
+      });
+    } else {
+      console.log('✅ Google user fully verified, proceeding to dashboard...');
+      router.push('/user/dashboard');
+    }
   } catch (err) {
     console.error('❌ Google sign-in failed:', err);
     error.value = "Google sign-in failed. Please try again.";

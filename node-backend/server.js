@@ -7,10 +7,8 @@ const mailer = require('./utils/mailer');
 const { initScheduler } = require('./scheduler');
 
 
-// Load environment variables (only in development)
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
+// Load environment variables
+dotenv.config();
 
 // Debug environment variables
 console.log('=== Environment Variables Debug ===');
@@ -21,6 +19,29 @@ console.log('===================================');
 
 // Initialize Express app
 const app = express();
+
+// Initialize Firebase and other services with error handling
+let scheduler;
+
+try {
+  console.log('Initializing Firebase and services...');
+  
+  // Initialize Firebase first
+  require('./config/firebase');
+  console.log('Firebase initialized successfully');
+  
+  // Mailer is already initialized at the top of the file
+  console.log('Mailer already initialized');
+  
+  // Initialize scheduler
+  const { initScheduler } = require('./scheduler');
+  scheduler = initScheduler;
+  console.log('Scheduler initialized successfully');
+  
+} catch (error) {
+  console.error('Error initializing services:', error);
+  console.log('Continuing without some services...');
+}
 
 // ---- CORS Setup ----
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -289,9 +310,18 @@ app.use('/api/profile', profileRoutes);
 
 
 
-// Initialize the scheduler
-initScheduler();
-console.log('User archive cleanup scheduler initialized');
+// Initialize the scheduler with error handling
+try {
+  if (scheduler) {
+    scheduler();
+    console.log('User archive cleanup scheduler initialized');
+  } else {
+    console.log('Scheduler not available, skipping initialization');
+  }
+} catch (error) {
+  console.error('Error initializing scheduler:', error);
+  console.log('Continuing without scheduler...');
+}
 
 // 404 handler
 app.use((req, res) => {

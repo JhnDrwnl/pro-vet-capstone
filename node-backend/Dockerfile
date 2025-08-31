@@ -1,15 +1,8 @@
 # Use Node.js 18 LTS (recommended for Cloud Run)
 FROM node:18-alpine
 
-# Install Chromium
-RUN apk add --no-cache chromium
-
 # Set working directory
 WORKDIR /app
-
-# Set environment variables for Puppeteer
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Copy package files
 COPY package*.json ./

@@ -46,15 +46,7 @@ class SemaphoreSMSService {
       }
 
       const formattedPhone = this.formatPhoneForSemaphore(phone);
-      const message = `🔐 InnoVet Verification Code
-
-Your verification code is: ${otp}
-
-⏰ Valid for 5 minutes
-🔒 Do not share this code with anyone
-
----
-This is an automated message from InnoVet`;
+      const message = `InnoVet Verification Code: ${otp}. Valid for 5 minutes. Do not share this code.`;
 
       const payload = {
         apikey: this.apiKey,

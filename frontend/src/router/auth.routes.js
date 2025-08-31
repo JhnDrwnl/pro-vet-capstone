@@ -5,6 +5,7 @@ import Register from '@/views/auth/Register.vue'
 import VerifyEmail from '@/views/auth/VerifyEmail.vue'
 import VerifyPhone from '@/views/auth/VerifyPhone.vue'
 import ForgotPassword from '@/views/auth/ForgotPassword.vue'
+import GooglePhoneInput from '@/components/auth/GooglePhoneInput.vue'
 
 export default [
   {
@@ -30,6 +31,11 @@ export default [
             path: 'verify-phone',
             name: 'verify-phone',
             component: VerifyPhone,
+        },
+        {
+            path: 'google-phone-input',
+            name: 'google-phone-input',
+            component: GooglePhoneInput,
         },
         {
           path: 'forgot-password',

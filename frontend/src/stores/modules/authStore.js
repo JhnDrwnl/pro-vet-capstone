@@ -346,28 +346,47 @@ export const useAuthStore = defineStore("auth", {
           // Call the onNewUser callback
           onNewUser()
 
-          // TEMPORARILY DISABLED: Phone verification for Google users
-          // Create user document immediately for new Google users
-          console.log('New Google user detected - creating user document immediately (phone verification disabled)')
+          // For new Google users, require phone verification
+          console.log('New Google user detected - requiring phone verification')
           
-          // Create user document in Firestore immediately
+          // Create user document in Firestore with pending status
           await this.createUserDocument(user, {
             firstName,
             lastName,
-            phone: '', // Empty phone since verification is disabled
+            phone: '', // Empty phone until verified
             role: "user",
-            status: "active", // Set to active instead of pending
-            phoneVerified: true, // Mark as verified since we're skipping verification
+            status: "pending", // Set to pending until phone verification
+            emailVerified: true, // Google emails are already verified
+            phoneVerified: false, // Require phone verification
             registrationMethod: "google",
             photoURL: photoURL
           })
           
-          // Update the local user object with active status
+          // Update the local user object
           if (this.user) {
-            this.user.status = "active"
-            this.user.phoneVerified = true
+            this.user.status = "pending"
+            this.user.phoneVerified = false
             this.user.registrationMethod = "google"
+            this.user.emailVerified = true
           }
+          
+          // Store verification data for phone verification
+          this.setVerificationData({
+            uid: user.uid,
+            firstName,
+            lastName,
+            email: user.email,
+            photoURL: photoURL,
+            role: "user",
+            status: "pending",
+            emailVerified: true,
+            phoneVerified: false,
+            registrationMethod: "google",
+            timestamp: Date.now()
+          })
+          
+          // Return special flag to indicate phone verification is needed
+          return { needsPhoneVerification: true, user }
         } else {
           // For existing users with Google accounts, only update the photoURL
           // if they don't have a custom photo
@@ -405,6 +424,12 @@ export const useAuthStore = defineStore("auth", {
         }
         
         console.log("Google sign-in successful")
+        
+        // Check if this is a new user that needs phone verification
+        if (this.user && this.user.status === "pending" && !this.user.phoneVerified) {
+          return { needsPhoneVerification: true, user: this.user }
+        }
+        
         return true
       } catch (error) {
         // Handle specific Google authentication errors
@@ -546,12 +571,16 @@ export const useAuthStore = defineStore("auth", {
           throw new Error("No verification data found")
         }
 
+        console.log('Starting email verification with data:', verificationData)
+
         // Verify OTP using Node.js backend
         const response = await emailService.verifyOTP(verificationData.email, otp)
 
         if (!response.success || !response.valid) {
           throw new Error(response.message || "Invalid verification code")
         }
+
+        console.log('Email OTP verified successfully, updating Firestore...')
 
         // Update existing user document status to email verified
         const userId = this.generateUserId(verificationData.uid)
@@ -566,9 +595,16 @@ export const useAuthStore = defineStore("auth", {
           { merge: true },
         )
 
+        console.log('Firestore updated with emailVerified: true')
+
         // Don't clear verification data yet - we need it for phone verification
         // Just update the status to indicate email is verified
         this.verificationData.emailVerified = true
+        
+        // Also update the stored verification data in localStorage
+        this.setVerificationData(this.verificationData)
+        
+        console.log('Verification data updated with emailVerified: true:', this.verificationData)
 
         return true
       } catch (error) {
@@ -604,12 +640,23 @@ export const useAuthStore = defineStore("auth", {
         result = await smsService.sendOTP(phone, otp)
         
         if (result.success) {
-          // Store the OTP in verification data for verification
-          const verificationData = this.getVerificationData()
-          if (verificationData) {
-            verificationData.smsOTP = otp
-            this.setVerificationData(verificationData)
+          // Get or create verification data for storing the SMS OTP
+          let verificationData = this.getVerificationData()
+          
+          // If no verification data exists, create a basic one
+          if (!verificationData) {
+            verificationData = {
+              phone: phone,
+              method: method,
+              timestamp: Date.now()
+            }
           }
+          
+          // Store the SMS OTP in verification data
+          verificationData.smsOTP = otp
+          verificationData.phone = phone
+          verificationData.method = method
+          this.setVerificationData(verificationData)
           
           // Store the timestamp when SMS OTP was sent
           this.otpSentTimestamp = Date.now()
@@ -647,27 +694,74 @@ export const useAuthStore = defineStore("auth", {
           throw new Error("No verification data found")
         }
 
-        if (!verificationData.emailVerified) {
-          throw new Error("Email must be verified before phone verification")
+        // Check if SMS OTP exists
+        if (!verificationData.smsOTP) {
+          throw new Error("No SMS OTP found. Please request a new verification code.")
         }
 
         // Verify the OTP (SMS)
-        if (verificationData.smsOTP && verificationData.smsOTP === otp) {
-          // Update existing user document status to fully active
-          const userId = this.generateUserId(verificationData.uid)
+        if (verificationData.smsOTP === otp) {
+          // Get the user ID - either from verification data or generate it
+          let userId
+          if (verificationData.uid) {
+            userId = this.generateUserId(verificationData.uid)
+          } else {
+            throw new Error("User UID not found in verification data")
+          }
+
           const userRef = doc(db, "users", userId)
 
-          await setDoc(
-            userRef,
-            {
-              status: "active",
-              phoneVerified: true,
-              updatedAt: new Date(),
-            },
-            { merge: true },
-          )
+          // Check if user document exists
+          const userDoc = await getDoc(userRef)
+          
+          if (userDoc.exists()) {
+            // Update existing user document with phone verification
+            await setDoc(
+              userRef,
+              {
+                phoneVerified: true,
+                phone: verificationData.phone,
+                updatedAt: new Date(),
+              },
+              { merge: true },
+            )
+            
+            // If both email and phone are verified, update status to active
+            const userData = userDoc.data()
+            if (userData.emailVerified && verificationData.emailVerified) {
+              await setDoc(
+                userRef,
+                {
+                  status: "active",
+                  updatedAt: new Date(),
+                },
+                { merge: true },
+              )
+              console.log('User status updated to active after complete verification')
+            }
+          } else {
+            // Create new user document if it doesn't exist
+            await setDoc(
+              userRef,
+              {
+                email: verificationData.email || '',
+                firstName: verificationData.firstName || '',
+                lastName: verificationData.lastName || '',
+                phone: verificationData.phone,
+                role: verificationData.role || "user",
+                status: verificationData.emailVerified ? "pending" : "pending",
+                emailVerified: verificationData.emailVerified || false,
+                phoneVerified: true,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                uid: verificationData.uid
+              },
+              { merge: true },
+            )
+            console.log('New user document created with phone verification')
+          }
 
-          // Now clear verification data since both email and phone are verified
+          // Clear verification data since phone verification is complete
           this.clearVerificationData()
           localStorage.removeItem("otpSentTimestamp")
 
@@ -679,7 +773,7 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         this.error = `Something went wrong. Please try again.`
         console.error("Phone verification completion error:", error)
-        throw new Error('Something went wrong. Please try again.')
+        throw new Error(error.message || 'Something went wrong. Please try again.')
       } finally {
         this.loading = false
       }
@@ -741,7 +835,7 @@ export const useAuthStore = defineStore("auth", {
       } catch (error) {
         this.error = `Something went wrong. Please try again.`
         console.error("Google phone verification completion error:", error)
-        throw new Error('Something went wrong. Please try again.')
+        throw new Error(error.message || 'Something went wrong. Please try again.')
       } finally {
         this.loading = false
       }
@@ -848,13 +942,22 @@ export const useAuthStore = defineStore("auth", {
         result = await smsService.sendOTP(phone, otp)
         
         if (result.success) {
-          // Store the OTP in verification data for verification
-          const verificationData = this.getVerificationData() || {}
+          // Get existing verification data or create new one
+          let verificationData = this.getVerificationData() || {}
+          
+          // Update verification data with phone and OTP
           verificationData.smsOTP = otp
           verificationData.phone = phone
           verificationData.method = method
-          verificationData.firstName = this.user?.displayName?.split(' ')[0] || ''
-          verificationData.lastName = this.user?.displayName?.split(' ').slice(1).join(' ') || ''
+          verificationData.timestamp = Date.now()
+          
+          // If we don't have user details yet, try to get them from the current user
+          if (!verificationData.firstName && this.user?.displayName) {
+            const nameParts = this.user.displayName.split(' ')
+            verificationData.firstName = nameParts[0] || ''
+            verificationData.lastName = nameParts.slice(1).join(' ') || ''
+          }
+          
           this.setVerificationData(verificationData)
 
           // Store the timestamp when SMS OTP was sent
@@ -862,7 +965,7 @@ export const useAuthStore = defineStore("auth", {
           localStorage.setItem("otpSentTimestamp", this.otpSentTimestamp.toString())
 
           console.log('SMS OTP sent successfully for Google user')
-          return true
+          return { success: true, message: 'Verification code sent successfully' }
         }
         
         throw new Error(`Failed to send ${method.toUpperCase()} OTP`)

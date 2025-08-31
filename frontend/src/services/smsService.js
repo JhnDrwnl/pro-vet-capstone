@@ -37,15 +37,7 @@ class SMSService {
   async sendOTP(phone, otp) {
     try {
       const formattedPhone = this.formatPhoneForSMS(phone)
-      const message = `🔐 *InnoVet Verification Code*
-
-Your verification code is: *${otp}*
-
-⏰ Valid for 5 minutes
-🔒 Do not share this code with anyone
-
----
-*This is an automated message from InnoVet*`
+      const message = `InnoVet Verification Code: ${otp}. Valid for 5 minutes. Do not share this code.`
       
       const payload = {
         phoneNumber: formattedPhone,
