@@ -87,6 +87,60 @@ router.post('/send-test', async (req, res) => {
   }
 });
 
+// Send appointment reminder SMS
+router.post('/send-appointment-reminder', async (req, res) => {
+  try {
+    const { phoneNumber, message, type } = req.body;
+    
+    if (!phoneNumber || !message) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Phone number and message are required' 
+      });
+    }
+    
+    // Use the existing sendTestMessage function for appointment reminders
+    const result = await smsService.sendTestMessage(phoneNumber, message);
+    
+    res.json({ 
+      success: true, 
+      messageId: result.messageId,
+      status: result.status,
+      message: 'Appointment reminder SMS sent successfully'
+    });
+    
+  } catch (error) {
+    console.error('SMS send-appointment-reminder error:', error);
+    
+    // Handle specific Semaphore errors
+    if (error.message.includes('insufficient') || error.message.includes('balance')) {
+      return res.status(402).json({ 
+        success: false, 
+        message: 'SMS service temporarily unavailable due to insufficient credits',
+        error: error.message
+      });
+    } else if (error.message.includes('invalid') || error.message.includes('number')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid phone number format',
+        error: error.message
+      });
+    } else if (error.message.includes('rate limit')) {
+      return res.status(429).json({ 
+        success: false, 
+        message: 'Too many SMS requests. Please wait before trying again.',
+        error: error.message
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to send appointment reminder SMS',
+      error: error.message 
+    });
+  }
+});
+
 // Get SMS balance
 router.get('/balance', async (req, res) => {
   try {

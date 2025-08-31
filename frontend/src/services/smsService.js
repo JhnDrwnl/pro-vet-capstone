@@ -161,6 +161,57 @@ class SMSService {
       throw new Error(error.response?.data?.message || 'Failed to send test message')
     }
   }
+
+  // Send appointment reminder SMS
+  async sendAppointmentReminder(phone, petName, time) {
+    try {
+      const formattedPhone = this.formatPhoneForSMS(phone)
+      const message = `InnoVet: ${petName} appointment at ${time} today.`
+      
+      const payload = {
+        phoneNumber: formattedPhone,
+        message: message,
+        type: 'appointment_reminder'
+      }
+
+      const response = await axios.post(`${this.baseURL}/send-appointment-reminder`, payload, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000 // 15 second timeout
+      })
+
+      if (response.data.success) {
+        console.log('Appointment reminder SMS sent successfully')
+        return {
+          success: true,
+          messageId: response.data.messageId,
+          message: message
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to send appointment reminder SMS')
+      }
+    } catch (error) {
+      console.error('Appointment reminder SMS sending error:', error)
+      
+      // Handle specific Semaphore errors
+      if (error.response?.data?.error) {
+        const semaphoreError = error.response.data.error
+        
+        if (semaphoreError.includes('insufficient') || semaphoreError.includes('balance')) {
+          throw new Error('SMS service temporarily unavailable due to insufficient credits.')
+        } else if (semaphoreError.includes('invalid') || semaphoreError.includes('number')) {
+          throw new Error('Invalid phone number format.')
+        } else if (semaphoreError.includes('rate limit') || semaphoreError.includes('too many')) {
+          throw new Error('Too many SMS requests. Please wait before trying again.')
+        } else {
+          throw new Error(`SMS service error: ${semaphoreError}`)
+        }
+      }
+      
+      throw new Error('Failed to send appointment reminder SMS. Please try again.')
+    }
+  }
 }
 
 export default new SMSService()

@@ -1,6 +1,7 @@
 // frontend/src/services/notificationService.js
-import { collection, query, where, getDocs, addDoc, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, getDocs, addDoc, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore'
 import { db } from '@shared/firebase'
+import smsService from './smsService' // Assuming smsService.js is in the same directory
 
 // Notification types
 export const NOTIFICATION_TYPES = {
@@ -454,7 +455,11 @@ export const sendDailyAppointmentReminders = async (testMode = false) => {
     
     // Create reminder notifications for EACH appointment (not per user)
     let successCount = 0
+    let smsSuccessCount = 0
+    let smsFailureCount = 0
+    
     for (const appointment of appointments) {
+      // Create in-app notification
       const notificationId = await createAppointmentReminder(appointment)
       if (notificationId) {
         successCount++
@@ -462,12 +467,59 @@ export const sendDailyAppointmentReminders = async (testMode = false) => {
       } else {
         console.log(`❌ Failed to send reminder for appointment: ${appointment.id}`)
       }
+      
+      // Also send SMS reminder (only for verified phone numbers)
+      try {
+        console.log(`📱 Processing SMS for appointment: ${appointment.id}`)
+        
+        // Get user's phone number and verification status
+        const userRef = doc(db, 'users', appointment.userId)
+        const userDoc = await getDoc(userRef)
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data()
+          const userPhone = userData.phone
+          const isPhoneVerified = userData.phoneVerified
+          
+          console.log(`📱 User data for ${appointment.userId}:`, { phone: userPhone, verified: isPhoneVerified })
+          
+          // Only send SMS if phone is verified and phone number exists
+          if (isPhoneVerified && userPhone && userPhone.trim() !== '') {
+            // Extract pet name and time
+            const petName = appointment.petNames?.[0] || appointment.petName || 'Pet'
+            const appointmentTime = appointment.time || 'Time not specified'
+            
+            console.log(`📱 Sending SMS to ${userPhone} for ${petName} at ${appointmentTime}`)
+            
+            // Send SMS reminder
+            const smsResult = await smsService.sendAppointmentReminder(userPhone, petName, appointmentTime)
+            
+            if (smsResult.success) {
+              smsSuccessCount++
+              console.log(`📱 SMS reminder sent for appointment: ${appointment.id} - ${petName} at ${appointmentTime} to ${userPhone}`)
+            } else {
+              smsFailureCount++
+              console.log(`❌ SMS reminder failed for appointment: ${appointment.id} - ${smsResult.error}`)
+            }
+          } else {
+            console.log(`⚠️ Skipping SMS for user ${appointment.userId}: phone not verified (${isPhoneVerified}) or no phone number`)
+          }
+        } else {
+          console.log(`⚠️ User not found: ${appointment.userId}`)
+        }
+      } catch (error) {
+        smsFailureCount++
+        console.error(`❌ Error processing SMS reminder for appointment ${appointment.id}:`, error)
+      }
     }
     
     // Mark that reminders were sent today
     lastDailyReminderDate = today
-    console.log(`Successfully sent ${successCount} appointment reminders for ${today}`)
-    return successCount
+    console.log(`Successfully sent ${successCount} in-app appointment reminders and ${smsSuccessCount} SMS reminders for ${today}`)
+    if (smsFailureCount > 0) {
+      console.log(`⚠️ ${smsFailureCount} SMS reminders failed`)
+    }
+    return { successCount, smsSuccessCount, smsFailureCount }
   } catch (error) {
     console.error('Error sending daily appointment reminders:', error)
     return 0

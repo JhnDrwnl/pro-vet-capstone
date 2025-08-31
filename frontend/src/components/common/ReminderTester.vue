@@ -74,8 +74,7 @@
     </div>
   </div>
   
-  <!-- Toggle button - Hidden for production -->
-  <!-- 
+    <!-- Test Button - Now Visible for Testing SMS Reminders -->
   <button 
     @click="showTester = !showTester"
     class="fixed bottom-4 right-4 z-40 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
@@ -83,14 +82,15 @@
   >
     🔔
   </button>
-  -->
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { sendDailyAppointmentReminders, createTestAppointmentReminder } from '@/services/notificationService'
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore'
 import { db } from '@shared/firebase'
+import { useAuthStore } from '@/stores/modules/authStore'
+import smsService from '@/services/smsService'
 
 // Props
 const props = defineProps({
@@ -230,6 +230,85 @@ const resetReminderSystem = async () => {
 const checkCurrentTime = () => {
   updateTime()
   lastResult.value = `⏰ Time checked: ${currentTime.value}`
+}
+
+const testSMSReminders = async () => {
+  testing.value = true
+  try {
+    console.log('🧪 Testing SMS appointment reminder system...')
+    
+    // Get current user's phone number and verification status
+    const authStore = useAuthStore()
+    
+    if (!authStore.currentUser) {
+      lastResult.value = '❌ No user logged in'
+      console.log('❌ No user logged in')
+      return
+    }
+    
+    console.log('✅ User logged in:', authStore.currentUser.userId)
+    
+    // Get user document from Firestore
+    const userRef = doc(db, 'users', authStore.currentUser.userId)
+    const userDoc = await getDoc(userRef)
+    
+    if (!userDoc.exists()) {
+      lastResult.value = '❌ User document not found'
+      console.log('❌ User document not found')
+      return
+    }
+    
+    const userData = userDoc.data()
+    const userPhone = userData.phone
+    const isPhoneVerified = userData.phoneVerified
+    
+    console.log('📱 User phone data:', { phone: userPhone, verified: isPhoneVerified })
+    
+    // Check if phone is verified
+    if (!isPhoneVerified) {
+      lastResult.value = '⚠️ Phone number not verified. Please verify your phone first.'
+      console.log('⚠️ Phone number not verified:', { phone: userPhone, verified: isPhoneVerified })
+      return
+    }
+    
+    if (!userPhone || userPhone.trim() === '') {
+      lastResult.value = '⚠️ No phone number found in user profile'
+      console.log('⚠️ No phone number found')
+      return
+    }
+    
+    // Test with sample appointment data
+    const testPetName = 'Max'
+    const testTime = '2:00 PM'
+    
+    console.log('📱 Sending test SMS to verified phone:', userPhone)
+    console.log('📱 Test data:', { petName: testPetName, time: testTime })
+    
+    // Call SMS service directly
+    console.log('📱 Calling smsService.sendAppointmentReminder...')
+    const result = await smsService.sendAppointmentReminder(userPhone, testPetName, testTime)
+    
+    console.log('📱 SMS service result:', result)
+    
+    if (result.success) {
+      lastResult.value = `✅ SMS reminder sent successfully to ${userPhone}! Message ID: ${result.messageId}`
+      console.log('✅ SMS test completed:', result)
+    } else {
+      lastResult.value = `❌ SMS reminder failed: ${result.message || 'Unknown error'}`
+      console.log('❌ SMS test failed:', result)
+    }
+  } catch (error) {
+    lastResult.value = `❌ Error: ${error.message}`
+    console.error('❌ SMS test error:', error)
+    console.error('❌ Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      response: error.response?.data
+    })
+  } finally {
+    testing.value = false
+  }
 }
 
 onMounted(() => {
