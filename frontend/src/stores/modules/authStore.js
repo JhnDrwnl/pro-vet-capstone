@@ -1228,6 +1228,42 @@ export const useAuthStore = defineStore("auth", {
       }
     },
 
+    // Verify phone OTP for general verification (not just registration)
+    async verifyPhoneOTP(phone, otp) {
+      this.loading = true
+      this.error = null
+      try {
+        const verificationData = this.getVerificationData()
+        if (!verificationData) {
+          throw new Error("No verification data found")
+        }
+
+        // Check if SMS OTP exists
+        if (!verificationData.smsOTP) {
+          throw new Error("No SMS OTP found. Please request a new verification code.")
+        }
+
+        // Verify the OTP (SMS)
+        if (verificationData.smsOTP === otp) {
+          // Check if the phone number matches
+          if (verificationData.phone !== phone) {
+            throw new Error("Phone number mismatch. Please use the verification code sent to the correct number.")
+          }
+
+          console.log('Phone OTP verification completed successfully')
+          return true
+        } else {
+          throw new Error("Invalid verification code")
+        }
+      } catch (error) {
+        this.error = `Something went wrong. Please try again.`
+        console.error("Phone OTP verification error:", error)
+        throw new Error(error.message || 'Something went wrong. Please try again.')
+      } finally {
+        this.loading = false
+      }
+    },
+
 
   },
 

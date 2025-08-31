@@ -314,12 +314,22 @@
                         </div>
                         <div>
                           <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                          <input
-                            v-model="form.phone"
-                            type="tel"
-                            placeholder="Enter phone number"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
-                          />
+                          <div class="flex gap-2">
+                            <input
+                              v-model="form.phone"
+                              type="tel"
+                              placeholder="Enter phone number"
+                              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-200 text-sm"
+                              readonly
+                            />
+                            <button
+                              @click="openPhoneChangeModal"
+                              type="button"
+                              class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                            >
+                              Change
+                            </button>
+                          </div>
                         </div>
 
                         <div>
@@ -621,6 +631,15 @@
     
     <!-- Loading Spinner for operations (not initial loading) -->
     <LoadingSpinner v-if="loading && !initialLoading" isOverlay text="Processing..." />
+    
+    <!-- Phone Number Change Modal -->
+    <PhoneNumberChangeModal
+      v-if="showPhoneChangeModal"
+      :current-phone="form.phone"
+      :is-open="showPhoneChangeModal"
+      @close="closePhoneChangeModal"
+      @phone-changed="handlePhoneChanged"
+    />
   </div>
 </template>
 
@@ -651,6 +670,7 @@ import { useProfileStore } from '@/stores/modules/profileStore';
 import Pets from '@/views/user/Pets.vue';
 import { usePetsStore } from '@/stores/modules/petsStore';
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue';
+import PhoneNumberChangeModal from '@/components/common/PhoneNumberChangeModal.vue';
 
 // Import Firebase Auth functions
 import { 
@@ -762,6 +782,9 @@ const isChangingPassword = ref(false);
 const verificationEmailSent = ref(false);
 const sendingVerification = ref(false);
 const showEmailVerificationModal = ref(false);
+
+// Phone change modal state
+const showPhoneChangeModal = ref(false);
 
 // Password strength validation
 const passwordRequirements = ref({
@@ -1527,6 +1550,9 @@ const handleKeyDown = (event) => {
     if (showEmailVerificationModal.value) {
       showEmailVerificationModal.value = false;
     }
+    if (showPhoneChangeModal.value) {
+      showPhoneChangeModal.value = false;
+    }
   }
 };
 
@@ -1554,6 +1580,22 @@ const getCharClass = (index) => {
     'text-gray-400': !visible,
     'font-bold': visible
   };
+};
+
+// Phone change modal methods
+const openPhoneChangeModal = () => {
+  showPhoneChangeModal.value = true;
+};
+
+const closePhoneChangeModal = () => {
+  showPhoneChangeModal.value = false;
+};
+
+const handlePhoneChanged = (newPhone) => {
+  form.value.phone = newPhone;
+  displayedProfile.value.phone = newPhone;
+  statusMessage.value = 'Phone number updated successfully!';
+  showSuccessModal.value = true;
 };
 </script>
 
