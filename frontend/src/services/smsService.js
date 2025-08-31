@@ -278,6 +278,63 @@ class SMSService {
     const day = d.getDate().toString().padStart(2, '0')
     return `${month} ${day}`
   }
+
+  // Send appointment approval SMS
+  async sendAppointmentApproval(phone, petNames, date, time, isHealthCert = false) {
+    try {
+      const formattedPhone = this.formatPhoneForSMS(phone)
+      
+      // Create short SMS message for approval
+      const pets = Array.isArray(petNames) ? petNames.join(', ') : petNames
+      const shortDate = this.formatDateForSMS(date)
+      const service = isHealthCert ? 'Health Cert' : 'appt'
+      
+      const message = `${pets} ${service} on ${shortDate} at ${time} approved. See you soon!`
+      
+      const payload = {
+        phoneNumber: formattedPhone,
+        message: message,
+        type: 'appointment_approval'
+      }
+
+      const response = await axios.post(`${this.baseURL}/send-appointment-approval`, payload, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 15000
+      })
+
+      if (response.data.success) {
+        console.log('SMS appointment approval sent successfully via Semaphore')
+        return {
+          success: true,
+          messageId: response.data.messageId,
+          message: response.data.message
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to send SMS approval')
+      }
+    } catch (error) {
+      console.error('SMS appointment approval error:', error)
+      
+      // Handle specific Semaphore errors
+      if (error.response?.data?.error) {
+        const semaphoreError = error.response.data.error
+        
+        if (semaphoreError.includes('insufficient') || semaphoreError.includes('balance')) {
+          throw new Error('SMS service temporarily unavailable due to insufficient credits. Please try again later.')
+        } else if (semaphoreError.includes('invalid') || semaphoreError.includes('number')) {
+          throw new Error('Invalid phone number format. Please check your number and try again.')
+        } else if (semaphoreError.includes('rate limit') || semaphoreError.includes('too many')) {
+          throw new Error('Too many SMS requests. Please wait a moment before trying again.')
+        } else {
+          throw new Error(`SMS service error: ${semaphoreError}`)
+        }
+      }
+      
+      throw new Error('Failed to send SMS appointment approval. Please try again.')
+    }
+  }
 }
 
 export default new SMSService()

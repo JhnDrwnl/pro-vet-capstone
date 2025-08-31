@@ -2417,6 +2417,7 @@ import { useAuthStore } from '@/stores/modules/authStore';
 import { useNotificationsStore } from '@/stores/modules/notifications';
 import { parseISO, format } from 'date-fns';
 import notificationService from '@/services/notificationService';
+import smsService from '@/services/smsService';
 import { useServiceCategoryStore } from '@/stores/modules/ServiceCategoryStore'
 import { generateVaccinationRecordWithAutoScheduling, addVaccinationToPet } from '@/services/vaccinationService'
 import { doc, getDoc } from 'firebase/firestore'
@@ -5773,6 +5774,58 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
     });
 
     console.log(`User notification sent for appointment ${appointmentId}: ${action}`);
+    
+    // Send SMS notification for approval (only for approved appointments)
+    if (action === 'approve') {
+      try {
+        console.log('📱 Processing SMS notification for appointment approval...');
+        
+        // Get user's phone number and verification status
+        const userRef = doc(db, 'users', appointmentData.userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userPhone = userData.phone;
+          const isPhoneVerified = userData.phoneVerified;
+          
+          console.log('📱 User phone data for SMS:', { phone: userPhone, verified: isPhoneVerified });
+          
+          // Only send SMS if phone is verified and phone number exists
+          if (isPhoneVerified && userPhone && userPhone.trim() !== '') {
+            const petNames = appointmentData.petNames || [appointmentData.petName] || ['Pet'];
+            const appointmentDate = appointmentData.date;
+            const appointmentTime = appointmentData.time;
+            const isHealthCertificate = appointmentData.isHealthCertificate || false;
+            
+            console.log('📱 Sending SMS approval to:', userPhone);
+            console.log('📱 SMS data:', { petNames, appointmentDate, appointmentTime, isHealthCertificate });
+            
+            // Send SMS approval
+            const smsResult = await smsService.sendAppointmentApproval(
+              userPhone, 
+              petNames, 
+              appointmentDate, 
+              appointmentTime, 
+              isHealthCertificate
+            );
+            
+            if (smsResult.success) {
+              console.log('📱 SMS approval sent successfully:', smsResult.messageId);
+            } else {
+              console.log('❌ SMS approval failed:', smsResult.error);
+            }
+          } else {
+            console.log('⚠️ Skipping SMS approval: phone not verified or no phone number');
+          }
+        } else {
+          console.log('⚠️ User document not found for SMS approval');
+        }
+      } catch (smsError) {
+        console.error('❌ Error processing SMS approval:', smsError);
+        // Don't break the notification flow if SMS fails
+      }
+    }
   } catch (error) {
     console.error('Error sending user notification:', error);
   }
