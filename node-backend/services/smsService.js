@@ -264,6 +264,94 @@ class SemaphoreSMSService {
       throw new Error('Failed to get message status');
     }
   }
+
+  // Send appointment approval SMS
+  async sendAppointmentApproval(phone, petNames, date, time, isHealthCert = false) {
+    try {
+      const formattedPhone = this.formatPhoneForSemaphore(phone)
+      
+      // Create short SMS message for approval
+      const pets = Array.isArray(petNames) ? petNames.join(', ') : petNames
+      const shortDate = this.formatDateForSMS(date)
+      const service = isHealthCert ? 'Health Cert' : 'appt'
+      
+      const message = `${pets} ${service} on ${shortDate} at ${time} approved. See you soon!`
+      
+      const payload = {
+        apikey: this.apiKey,
+        number: formattedPhone,
+        message: message,
+        sendername: this.senderName
+      };
+
+      const response = await axios.post(`${this.baseURL}/messages`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000
+      })
+      if (response.data && response.data.length > 0) {
+        const result = response.data[0];
+        if (result.status === 'Pending' || result.status === 'Sent') {
+          console.log('SMS appointment approval sent successfully via Semaphore')
+          return { success: true, messageId: result.message_id || result.id || `appointment_approval_${Date.now()}`, message: message }
+        } else {
+          throw new Error(response.data.message || 'Failed to send SMS approval')
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to send SMS approval')
+      }
+    } catch (error) {
+      console.error('SMS appointment approval error:', error)
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send SMS approval',
+        details: error.response?.data || null
+      }
+    }
+  }
+
+  // Send appointment rejection SMS
+  async sendAppointmentRejection(phone, petNames, date, time, isHealthCert = false) {
+    try {
+      const formattedPhone = this.formatPhoneForSemaphore(phone)
+      
+      // Create short SMS message for rejection
+      const pets = Array.isArray(petNames) ? petNames.join(', ') : petNames
+      const shortDate = this.formatDateForSMS(date)
+      const service = isHealthCert ? 'Health Cert' : 'appt'
+      
+      const message = `${pets} ${service} on ${shortDate} at ${time} rejected. Please contact us.`
+      
+      const payload = {
+        apikey: this.apiKey,
+        number: formattedPhone,
+        message: message,
+        sendername: this.senderName
+      };
+
+      const response = await axios.post(`${this.baseURL}/messages`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000
+      })
+      if (response.data && response.data.length > 0) {
+        const result = response.data[0];
+        if (result.status === 'Pending' || result.status === 'Sent') {
+          console.log('SMS appointment rejection sent successfully via Semaphore')
+          return { success: true, messageId: result.message_id || result.id || `appointment_rejection_${Date.now()}`, message: message }
+        } else {
+          throw new Error(response.data.message || 'Failed to send SMS rejection')
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to send SMS rejection')
+      }
+    } catch (error) {
+      console.error('SMS appointment rejection error:', error)
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send SMS rejection',
+        details: error.response?.data || null
+      }
+    }
+  }
 }
 
 module.exports = new SemaphoreSMSService();

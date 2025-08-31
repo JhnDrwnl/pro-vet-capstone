@@ -5826,6 +5826,59 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
         // Don't break the notification flow if SMS fails
       }
     }
+
+    // Send SMS notification for rejection (only for rejected appointments)
+    if (action === 'reject') {
+      try {
+        console.log('📱 Processing SMS notification for appointment rejection...');
+        
+        // Get user's phone number and verification status
+        const userRef = doc(db, 'users', appointmentData.userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userPhone = userData.phone;
+          const isPhoneVerified = userData.phoneVerified;
+          
+          console.log('📱 User phone data for SMS:', { phone: userPhone, verified: isPhoneVerified });
+          
+          // Only send SMS if phone is verified and phone number exists
+          if (isPhoneVerified && userPhone && userPhone.trim() !== '') {
+            const petNames = appointmentData.petNames || [appointmentData.petName] || ['Pet'];
+            const appointmentDate = appointmentData.date;
+            const appointmentTime = appointmentData.time;
+            const isHealthCertificate = appointmentData.isHealthCertificate || false;
+            
+            console.log('📱 Sending SMS rejection to:', userPhone);
+            console.log('📱 SMS data:', { petNames, appointmentDate, appointmentTime, isHealthCertificate });
+            
+            // Send SMS rejection
+            const smsResult = await smsService.sendAppointmentRejection(
+              userPhone, 
+              petNames, 
+              appointmentDate, 
+              appointmentTime, 
+              isHealthCertificate
+            );
+            
+            if (smsResult.success) {
+              console.log('📱 SMS rejection sent successfully:', smsResult.messageId);
+              console.log('📱 SMS rejection message:', smsResult.message);
+            } else {
+              console.log('❌ SMS rejection failed:', smsResult.error);
+            }
+          } else {
+            console.log('⚠️ Skipping SMS rejection: phone not verified or no phone number');
+          }
+        } else {
+          console.log('⚠️ User document not found for SMS rejection');
+        }
+      } catch (smsError) {
+        console.error('❌ Error processing SMS rejection:', smsError);
+        // Don't break the notification flow if SMS fails
+      }
+    }
   } catch (error) {
     console.error('Error sending user notification:', error);
   }
