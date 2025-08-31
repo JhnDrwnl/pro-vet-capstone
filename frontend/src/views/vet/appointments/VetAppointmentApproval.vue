@@ -5944,6 +5944,59 @@ const sendAppointmentNotification = async (appointmentId, action, status) => {
         // Don't break the notification flow if SMS fails
       }
     }
+
+    // Send SMS notification for completion (only for completed appointments)
+    if (action === 'complete') {
+      try {
+        console.log('📱 Processing SMS notification for appointment completion...');
+        
+        // Get user's phone number and verification status
+        const userRef = doc(db, 'users', appointmentData.userId);
+        const userDoc = await getDoc(userRef);
+        
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const userPhone = userData.phone;
+          const isPhoneVerified = userData.phoneVerified;
+          
+          console.log('📱 User phone data for SMS:', { phone: userPhone, verified: isPhoneVerified });
+          
+          // Only send SMS if phone is verified and phone number exists
+          if (isPhoneVerified && userPhone && userPhone.trim() !== '') {
+            const petNames = appointmentData.petNames || [appointmentData.petName] || ['Pet'];
+            const appointmentDate = appointmentData.date;
+            const appointmentTime = appointmentData.time;
+            const isHealthCertificate = appointmentData.isHealthCertificate || false;
+            
+            console.log('📱 Sending SMS completion to:', userPhone);
+            console.log('📱 SMS data:', { petNames, appointmentDate, appointmentTime, isHealthCertificate });
+            
+            // Send SMS completion
+            const smsResult = await smsService.sendAppointmentCompletion(
+              userPhone, 
+              petNames, 
+              appointmentDate, 
+              appointmentTime, 
+              isHealthCertificate
+            );
+            
+            if (smsResult.success) {
+              console.log('📱 SMS completion sent successfully:', smsResult.messageId);
+              console.log('📱 SMS completion message:', smsResult.message);
+            } else {
+              console.log('❌ SMS completion failed:', smsResult.error);
+            }
+          } else {
+            console.log('⚠️ Skipping SMS completion: phone not verified or no phone number');
+          }
+        } else {
+          console.log('⚠️ User document not found for SMS completion');
+        }
+      } catch (smsError) {
+        console.error('❌ Error processing SMS completion:', smsError);
+        // Don't break the notification flow if SMS fails
+      }
+    }
   } catch (error) {
     console.error('Error sending user notification:', error);
   }

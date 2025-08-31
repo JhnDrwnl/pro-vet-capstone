@@ -363,7 +363,7 @@ class SMSService {
       const shortDate = this.formatDateForSMS(date)
       const service = isHealthCert ? 'Health Cert' : 'appt'
       
-      const message = `${pets} ${service} on ${shortDate} at ${time} rescheduled. Please check new time.`
+      const message = `${pets} ${service} ${shortDate} at ${time} rescheduled. Please check new time.`
       
       const payload = {
         phoneNumber: formattedPhone,
@@ -385,6 +385,43 @@ class SMSService {
       return { 
         success: false, 
         error: error.message || 'Failed to send SMS reschedule',
+        details: error.response?.data || null
+      }
+    }
+  }
+
+  // Send appointment completion SMS
+  async sendAppointmentCompletion(phone, petNames, date, time, isHealthCert = false) {
+    try {
+      const formattedPhone = this.formatPhoneForSMS(phone)
+      
+      // Create short SMS message for completion with feedback reminder
+      const pets = Array.isArray(petNames) ? petNames.join(', ') : petNames
+      const shortDate = this.formatDateForSMS(date)
+      const service = isHealthCert ? 'Health Cert' : 'appt'
+      
+      const message = `${pets} ${service} on ${shortDate} at ${time} completed. Please leave feedback.`
+      
+      const payload = {
+        phoneNumber: formattedPhone,
+        message: message,
+        type: 'appointment_completion'
+      }
+      const response = await axios.post(`${this.baseURL}/send-appointment-completion`, payload, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 15000
+      })
+      if (response.data.success) {
+        console.log('SMS appointment completion sent successfully via Semaphore')
+        return { success: true, messageId: response.data.messageId, message: response.data.message }
+      } else {
+        throw new Error(response.data.message || 'Failed to send SMS completion')
+      }
+    } catch (error) {
+      console.error('SMS appointment completion error:', error)
+      return { 
+        success: false, 
+        error: error.message || 'Failed to send SMS completion',
         details: error.response?.data || null
       }
     }
