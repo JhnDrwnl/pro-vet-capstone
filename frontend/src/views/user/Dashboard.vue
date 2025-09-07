@@ -19,7 +19,7 @@
                   Book Appointment
                 </router-link>
                 <router-link 
-                  to="/user/pets" 
+                  to="/user/profile?tab=pet-info" 
                   class="bg-blue-500 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-full text-sm font-medium hover:bg-blue-400 transition-colors inline-flex items-center"
                 >
                   Manage Pets
@@ -80,7 +80,7 @@
                 <p class="text-sm text-gray-600 mt-1">Manage your pets and view their health status</p>
               </div>
               <router-link 
-                to="/user/pets" 
+                to="/user/profile?tab=pet-info" 
                 class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center"
               >
                 <PlusIcon class="w-4 h-4 mr-2" />
@@ -103,7 +103,7 @@
               <h3 class="text-lg font-medium text-gray-900 mb-2">No pets added yet</h3>
               <p class="text-gray-500 mb-6">Add your first pet to get started with ProVET services.</p>
               <router-link 
-                to="/user/pets" 
+                to="/user/profile?tab=pet-info" 
                 class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center"
               >
                 <PlusIcon class="w-4 h-4 mr-2" />
@@ -138,7 +138,7 @@
                   
                   <div class="flex gap-2 mb-4">
                     <router-link 
-                      :to="`/user/pets?id=${pet.id}`"
+                      :to="`/user/profile?tab=pet-info&petId=${pet.id}`"
                       class="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors text-center"
                     >
                       View Details
@@ -240,7 +240,7 @@
               </router-link>
               
               <router-link 
-                to="/user/pets" 
+                to="/user/profile?tab=pet-info" 
                 class="flex items-center p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors group"
               >
                 <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3 group-hover:bg-green-200 transition-colors">

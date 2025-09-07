@@ -8,19 +8,6 @@
             <h1 class="text-2xl font-semibold text-gray-900">Medical Records</h1>
             <p class="text-sm text-gray-600">Comprehensive medical history for all clients and pets</p>
           </div>
-          <div class="flex items-center gap-3">
-            <button 
-              @click="exportRecords"
-              :disabled="!selectedClientId || loading || exporting"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <svg v-if="!exporting" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-              <div v-else class="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-              {{ exporting ? 'Exporting...' : 'Export to Excel' }}
-            </button>
-          </div>
         </div>
       </div>
     </div>
@@ -31,21 +18,38 @@
         <!-- Client Selector -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Select Client</label>
-          <select 
-            v-model="selectedClientId" 
-            @change="onClientChange"
+          <div class="relative">
+            <input
+              v-model="clientSearchQuery"
+              @focus="showClientDropdown = true"
+              @blur="handleClientBlur"
+              @input="filterClients"
+              type="text"
+              placeholder="Search for a client..."
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="">Choose a client...</option>
-            <option 
-              v-for="client in clients" 
+            <svg class="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            
+            <!-- Client dropdown -->
+            <div v-if="showClientDropdown && filteredClients.length > 0" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+              <div 
+                v-for="client in filteredClients" 
               :key="client.id" 
-              :value="client.id"
-            >
-              {{ client.firstName }} {{ client.lastName }} 
-              ({{ client.petCount || 0 }} pets)
-            </option>
-          </select>
+                @mousedown.prevent="selectClient(client)"
+                class="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm transition-colors border-b border-gray-100 last:border-b-0"
+              >
+                <div class="font-medium text-gray-900">{{ client.firstName }} {{ client.lastName }}</div>
+                <div class="text-xs text-gray-500">{{ client.petCount || 0 }} pets</div>
+              </div>
+            </div>
+            
+            <!-- No clients found -->
+            <div v-if="showClientDropdown && filteredClients.length === 0 && clientSearchQuery" class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl p-4 text-center text-gray-500 text-sm">
+              No clients found matching "{{ clientSearchQuery }}"
+            </div>
+          </div>
         </div>
         
         <!-- Pet Selector -->
@@ -75,13 +79,14 @@
             class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">All Services</option>
-            <option value="consultation">Consultations</option>
-            <option value="vaccination">Vaccinations</option>
-            <option value="treatment">Treatments</option>
-            <option value="surgery">Surgeries</option>
-            <option value="dental">Dental Care</option>
-            <option value="emergency">Emergency Care</option>
-            <option value="wellness">Wellness Check</option>
+            <option 
+              v-for="category in categories" 
+              :key="category.id" 
+              :value="category.id"
+            >
+              {{ category.name }}
+            </option>
+            <option v-if="categories.length === 0" disabled>Loading categories...</option>
           </select>
         </div>
       </div>
@@ -96,7 +101,7 @@
     </div>
 
     <!-- Records Display -->
-    <div v-else-if="selectedClientId" class="records-display">
+    <div v-else class="records-display">
       <!-- Summary Statistics -->
       <div class="stats-grid grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div class="stat-card bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -122,7 +127,7 @@
         <div class="flex items-center justify-between mb-6">
           <div>
             <h3 class="text-lg font-semibold text-gray-900">
-              Medical Records Timeline
+              Medical Records
               <span v-if="selectedPetId" class="text-sm font-normal text-gray-500 ml-2">
                 - {{ getSelectedPetName() }}
               </span>
@@ -131,6 +136,19 @@
               Showing {{ filteredRecords.length }} appointments
             </p>
           </div>
+          
+          <div class="flex items-center gap-4">
+            <!-- Export Button -->
+            <button 
+              @click="showExportModal = true"
+              :disabled="loading || filteredRecords.length === 0"
+              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Export to PDF
+            </button>
           
           <!-- Search -->
           <div class="relative">
@@ -143,76 +161,88 @@
             <svg class="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
+            </div>
           </div>
         </div>
 
-        <!-- Timeline Items -->
-        <div v-if="filteredRecords.length > 0" class="timeline-container">
-          <div 
+        <!-- Table View -->
+        <div>
+          <div v-if="filteredRecords.length > 0" class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date & Time
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Service
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pet
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Veterinarian
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Services
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Treatment Summary
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr 
             v-for="record in filteredRecords" 
             :key="record.id" 
-            class="timeline-item relative pl-8 pb-6"
-          >
-            <!-- Timeline Dot -->
-            <div class="absolute left-0 w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
-                 :class="getTimelineDotClass(record.serviceCategory)">
-              <component :is="getRecordIcon(record.serviceCategory)" class="w-2.5 h-2.5 text-white" />
-            </div>
-            
-            <!-- Timeline Content -->
-            <div class="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow border border-gray-200">
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-2">
-                    <span class="text-sm font-medium text-gray-900">{{ record.title }}</span>
+                  class="hover:bg-gray-50 transition-colors"
+                >
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ formatDate(record.date) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
                     <span class="text-xs px-2 py-1 rounded-full" :class="getRecordBadgeClass(record.serviceCategory)">
                       {{ formatServiceCategory(record.serviceCategory) }}
                     </span>
-                    <span v-if="record.petName" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600">
-                      {{ record.petName }}
-                    </span>
-                  </div>
-                  <p class="text-sm text-gray-600">{{ record.description }}</p>
-                </div>
-                <div class="text-right ml-4">
-                  <div class="text-xs text-gray-400">{{ formatDate(record.date) }}</div>
-                  <div v-if="record.doctor" class="text-xs text-gray-500">{{ record.doctor }}</div>
-                </div>
-              </div>
-              
-              <!-- Appointment details -->
-              <div class="appointment-details mt-3 pt-3 border-t border-gray-200">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span class="text-gray-500">Services:</span>
-                    <span class="ml-2 font-medium">{{ record.services?.join(', ') || 'N/A' }}</span>
-                  </div>
-                  <div>
-                    <span class="text-gray-500">Status:</span>
-                    <span class="ml-2 font-medium" :class="getStatusClass(record.status)">
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ getClientName(record.clientId) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ record.petName || 'N/A' }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {{ record.doctor || 'N/A' }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="text-sm font-medium" :class="getStatusClass(record.status)">
                       {{ record.status }}
                     </span>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                    <div class="truncate" :title="record.services?.join(', ') || 'N/A'">
+                      {{ record.services?.join(', ') || 'N/A' }}
                   </div>
-                  <div v-if="record.treatmentSummary" class="md:col-span-2">
-                    <span class="text-gray-500">Treatment Summary:</span>
-                    <p class="ml-2 font-medium text-gray-700 mt-1">{{ record.treatmentSummary }}</p>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                    <div class="truncate" :title="record.treatmentSummary || 'N/A'">
+                      {{ record.treatmentSummary || 'N/A' }}
                   </div>
-                  <div v-if="record.ownerInstructions" class="md:col-span-2">
-                    <span class="text-gray-500">Owner Instructions:</span>
-                    <p class="ml-2 font-medium text-gray-700 mt-1">{{ record.ownerInstructions }}</p>
-                  </div>
-                  <div v-if="record.nextSteps" class="md:col-span-2">
-                    <span class="text-gray-500">Next Steps:</span>
-                    <p class="ml-2 font-medium text-gray-700 mt-1">{{ record.nextSteps }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
         <!-- No Records State -->
-        <div v-else class="text-center py-20">
+        <div v-if="filteredRecords.length === 0" class="text-center py-20">
           <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 mx-auto">
             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
@@ -226,22 +256,97 @@
       </div>
     </div>
 
-    <!-- No Client Selected State -->
-    <div v-else class="text-center py-20">
-      <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4 mx-auto">
-        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+  </div>
+  
+  <!-- Export Modal -->
+  <div v-if="showExportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Export Medical Records</h3>
+          <button @click="showExportModal = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
+          </button>
       </div>
-      <h3 class="text-lg font-medium text-gray-900 mb-2">Select a Client</h3>
-      <p class="text-gray-500">Choose a client to view their pets' medical records</p>
+        
+        <div class="space-y-4">
+          <!-- Client Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Client</label>
+            <select v-model="exportFilters.clientId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">All Clients</option>
+              <option v-for="client in clients" :key="client.id" :value="client.id">
+                {{ client.firstName }} {{ client.lastName }}
+              </option>
+            </select>
+          </div>
+          
+          <!-- Pet Filter -->
+          <div v-if="exportFilters.clientId">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Pet</label>
+            <select v-model="exportFilters.petId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">All Pets</option>
+              <option v-for="pet in getClientPets(exportFilters.clientId)" :key="pet.id" :value="pet.id">
+                {{ pet.name }} ({{ pet.species }})
+              </option>
+            </select>
+          </div>
+          
+          <!-- Service Category Filter -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Service Category</label>
+            <select v-model="exportFilters.serviceCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">All Services</option>
+              <option 
+                v-for="category in categories" 
+                :key="category.id" 
+                :value="category.id"
+              >
+                {{ category.name }}
+              </option>
+              <option v-if="categories.length === 0" disabled>Loading categories...</option>
+            </select>
+          </div>
+          
+          <!-- Date Range -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+              <input v-model="exportFilters.fromDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+              <input v-model="exportFilters.toDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex justify-end gap-3 mt-6">
+          <button @click="showExportModal = false" class="px-4 py-2 text-gray-600 hover:text-gray-800">
+            Cancel
+          </button>
+          <button 
+            @click="exportToPDF" 
+            :disabled="exporting"
+            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <div v-if="exporting" class="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            {{ exporting ? 'Exporting...' : 'Export to PDF' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
   
   <!-- Export Loading Overlay -->
   <LoadingSpinner 
     v-if="exporting" 
-    text="Exporting to Excel..." 
+    text="Exporting to PDF..." 
     :is-overlay="true" 
   />
 </template>
@@ -285,6 +390,26 @@ const loading = ref(false)
 const searchQuery = ref('')
 const exporting = ref(false) // New state for export loading
 
+// Categories and services data
+const categories = ref([])
+const services = ref([])
+const serviceCategories = ref({}) // Map service ID to category
+
+// Client search state
+const clientSearchQuery = ref('')
+const showClientDropdown = ref(false)
+const filteredClients = ref([])
+
+// Export modal state
+const showExportModal = ref(false)
+const exportFilters = ref({
+  clientId: '',
+  petId: '',
+  serviceCategory: '',
+  fromDate: '',
+  toDate: ''
+})
+
 // Computed properties
 const selectedClientPets = computed(() => {
   if (!selectedClientId.value) return []
@@ -295,8 +420,13 @@ const selectedClientPets = computed(() => {
 const filteredRecords = computed(() => {
   let records = medicalRecords.value
   
-  // Filter by pet if selected
-  if (selectedPetId.value) {
+  // Filter by client if selected
+  if (selectedClientId.value) {
+    records = records.filter(record => record.clientId === selectedClientId.value)
+  }
+  
+  // Filter by pet if selected (only if client is also selected)
+  if (selectedPetId.value && selectedClientId.value) {
     records = records.filter(record => record.petId === selectedPetId.value)
   }
   
@@ -309,10 +439,11 @@ const filteredRecords = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     records = records.filter(record => 
-      record.title.toLowerCase().includes(query) ||
-      record.description.toLowerCase().includes(query) ||
-      record.petName.toLowerCase().includes(query) ||
-      record.doctor.toLowerCase().includes(query) ||
+      record.title?.toLowerCase().includes(query) ||
+      record.description?.toLowerCase().includes(query) ||
+      record.petName?.toLowerCase().includes(query) ||
+      record.doctor?.toLowerCase().includes(query) ||
+      getClientName(record.clientId).toLowerCase().includes(query) ||
       record.services?.some(service => service.toLowerCase().includes(query))
     )
   }
@@ -325,17 +456,99 @@ const filteredRecords = computed(() => {
 })
 
 const totalRecords = computed(() => medicalRecords.value.length)
-const totalConsultations = computed(() => 
-  medicalRecords.value.filter(r => r.serviceCategory === 'consultation').length
-)
-const totalVaccinations = computed(() => 
-  medicalRecords.value.filter(r => r.serviceCategory === 'vaccination').length
-)
-const totalTreatments = computed(() => 
-  medicalRecords.value.filter(r => r.serviceCategory === 'treatment').length
-)
+
+// Dynamic statistics based on actual categories
+const categoryStats = computed(() => {
+  const stats = {}
+  categories.value.forEach(category => {
+    stats[category.id] = medicalRecords.value.filter(r => r.serviceCategory === category.id).length
+  })
+  return stats
+})
+
+// Keep some common stats for backward compatibility
+const totalConsultations = computed(() => {
+  const consultationCategory = categories.value.find(c => c.name.toLowerCase().includes('consultation'))
+  return consultationCategory ? categoryStats.value[consultationCategory.id] || 0 : 0
+})
+
+const totalVaccinations = computed(() => {
+  const vaccinationCategory = categories.value.find(c => c.name.toLowerCase().includes('vaccination'))
+  return vaccinationCategory ? categoryStats.value[vaccinationCategory.id] || 0 : 0
+})
+
+const totalTreatments = computed(() => {
+  const treatmentCategory = categories.value.find(c => c.name.toLowerCase().includes('treatment'))
+  return treatmentCategory ? categoryStats.value[treatmentCategory.id] || 0 : 0
+})
 
 // Methods
+const fetchCategoriesAndServices = async () => {
+  try {
+    // Fetch categories - try with orderBy first, fallback without if index missing
+    let categoriesSnapshot
+    try {
+      const categoriesQuery = query(
+        collection(db, 'categories'),
+        where('archived', '==', false),
+        orderBy('name')
+      )
+      categoriesSnapshot = await getDocs(categoriesQuery)
+    } catch (orderByError) {
+      console.warn('OrderBy index missing for categories, fetching without order:', orderByError)
+      const categoriesQuery = query(
+        collection(db, 'categories'),
+        where('archived', '==', false)
+      )
+      categoriesSnapshot = await getDocs(categoriesQuery)
+    }
+    
+    const categoriesData = categoriesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    categories.value = categoriesData
+    
+    // Fetch services - try with orderBy first, fallback without if index missing
+    let servicesSnapshot
+    try {
+      const servicesQuery = query(
+        collection(db, 'services'),
+        where('archived', '==', false),
+        orderBy('name')
+      )
+      servicesSnapshot = await getDocs(servicesQuery)
+    } catch (orderByError) {
+      console.warn('OrderBy index missing for services, fetching without order:', orderByError)
+      const servicesQuery = query(
+        collection(db, 'services'),
+        where('archived', '==', false)
+      )
+      servicesSnapshot = await getDocs(servicesQuery)
+    }
+    
+    const servicesData = servicesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    services.value = servicesData
+    
+    // Build service to category mapping
+    const serviceCategoryMap = {}
+    servicesData.forEach(service => {
+      serviceCategoryMap[service.id] = service.categoryId
+    })
+    serviceCategories.value = serviceCategoryMap
+    
+    console.log('Fetched categories:', categoriesData.length, categoriesData)
+    console.log('Fetched services:', servicesData.length, servicesData)
+    console.log('Service category mapping:', serviceCategoryMap)
+    
+  } catch (error) {
+    console.error('Error fetching categories and services:', error)
+  }
+}
+
 const fetchClients = async () => {
   try {
     loading.value = true
@@ -400,6 +613,7 @@ const fetchClients = async () => {
     }
     
     clients.value = clientsData
+    filteredClients.value = clientsData // Initialize filtered clients
     console.log('Final clients data:', clientsData)
     
   } catch (error) {
@@ -410,23 +624,23 @@ const fetchClients = async () => {
 }
 
 const fetchMedicalRecords = async () => {
-  if (!selectedClientId.value) return
-  
   try {
     loading.value = true
     const records = []
     
-    // Get all pets for the selected client
-    const client = clients.value.find(c => c.id === selectedClientId.value)
-    if (!client?.pets) return
+    // Fetch all completed appointments for the current vet
+    const currentVetUserId = authStore.user?.userId
+    if (!currentVetUserId) {
+      console.error('No vet user ID found')
+      return
+    }
     
-    const petIds = client.pets.map(pet => pet.id)
-    console.log('Fetching records for pet IDs:', petIds)
+    console.log('Fetching all records for vet:', currentVetUserId)
     
-    // Fetch completed appointments for this client's pets
+    // Fetch completed appointments for this vet
     const appointmentsQuery = query(
       collection(db, 'appointments'),
-      where('petIds', 'array-contains-any', petIds),
+      where('doctorId', '==', currentVetUserId),
       where('status', '==', 'completed'),
       orderBy('completedAt', 'desc')
     )
@@ -437,8 +651,16 @@ const fetchMedicalRecords = async () => {
     for (const appointmentDoc of appointmentsSnapshot.docs) {
       const appointmentData = appointmentDoc.data()
       
-      // Determine service category based on services
-      const serviceCategory = determineServiceCategory(appointmentData.serviceNames || [])
+      // Get client and pet information for this appointment
+      const clientId = appointmentData.userId
+      const petId = appointmentData.petIds?.[0]
+      
+      // Find client data
+      const client = clients.value.find(c => c.id === clientId)
+      const petName = client?.pets?.find(p => p.id === petId)?.name || 'Unknown Pet'
+      
+      // Determine service category based on actual service IDs and categories
+      const serviceCategory = determineServiceCategoryFromServices(appointmentData.services || [])
       
       // Create appointment record
       records.push({
@@ -448,8 +670,9 @@ const fetchMedicalRecords = async () => {
         date: getSafeDate(appointmentData.completedAt || appointmentData.date),
         title: appointmentData.serviceNames?.join(', ') || 'Veterinary Appointment',
         description: appointmentData.treatmentSummary || 'Appointment completed',
-        petId: appointmentData.petIds?.[0], // Primary pet
-        petName: client.pets.find(p => p.id === appointmentData.petIds?.[0])?.name,
+        clientId: clientId,
+        petId: petId,
+        petName: petName,
         doctor: formatDoctorName(appointmentData.doctorName),
         services: appointmentData.serviceNames,
         status: appointmentData.status,
@@ -469,72 +692,25 @@ const fetchMedicalRecords = async () => {
   }
 }
 
-// Helper function to determine service category
-const determineServiceCategory = (serviceNames) => {
-  if (!serviceNames || serviceNames.length === 0) return 'consultation'
-  
-  const servicesLower = serviceNames.map(s => s.toLowerCase())
-  
-  // Check for vaccination services
-  if (servicesLower.some(s => 
-    s.includes('vaccination') || 
-    s.includes('vaccine') || 
-    s.includes('shot') || 
-    s.includes('immunization') ||
-    s.includes('rabies') ||
-    s.includes('dhpp') ||
-    s.includes('bordetella')
-  )) {
-    return 'vaccination'
+// Helper function to determine service category from actual service IDs
+const determineServiceCategoryFromServices = (serviceIds) => {
+  if (!serviceIds || serviceIds.length === 0) {
+    // Return first available category or 'consultation' as fallback
+    return categories.value.length > 0 ? categories.value[0].id : 'consultation'
   }
   
-  // Check for surgery services
-  if (servicesLower.some(s => 
-    s.includes('surgery') || 
-    s.includes('operation') || 
-    s.includes('procedure')
-  )) {
-    return 'surgery'
+  // Get the first service's category
+  const firstServiceId = serviceIds[0]
+  const categoryId = serviceCategories.value[firstServiceId]
+  
+  if (categoryId) {
+    // Find the category name
+    const category = categories.value.find(c => c.id === categoryId)
+    return category ? category.id : 'consultation'
   }
   
-  // Check for dental services
-  if (servicesLower.some(s => 
-    s.includes('dental') || 
-    s.includes('teeth') || 
-    s.includes('cleaning')
-  )) {
-    return 'dental'
-  }
-  
-  // Check for emergency services
-  if (servicesLower.some(s => 
-    s.includes('emergency') || 
-    s.includes('urgent') || 
-    s.includes('critical')
-  )) {
-    return 'emergency'
-  }
-  
-  // Check for wellness services
-  if (servicesLower.some(s => 
-    s.includes('wellness') || 
-    s.includes('checkup') || 
-    s.includes('examination')
-  )) {
-    return 'wellness'
-  }
-  
-  // Check for treatment services
-  if (servicesLower.some(s => 
-    s.includes('treatment') || 
-    s.includes('therapy') || 
-    s.includes('medication')
-  )) {
-    return 'treatment'
-  }
-  
-  // Default to consultation
-  return 'consultation'
+  // Fallback to first available category
+  return categories.value.length > 0 ? categories.value[0].id : 'consultation'
 }
 
 // Helper function to safely create a Date object
@@ -569,10 +745,39 @@ const formatDoctorName = (name) => {
   return name
 }
 
+// Client search methods
+const filterClients = () => {
+  if (!clientSearchQuery.value || clientSearchQuery.value.trim() === '') {
+    filteredClients.value = clients.value
+    return
+  }
+  
+  const search = clientSearchQuery.value.toLowerCase()
+  filteredClients.value = clients.value.filter(client => 
+    client.firstName.toLowerCase().includes(search) ||
+    client.lastName.toLowerCase().includes(search) ||
+    `${client.firstName} ${client.lastName}`.toLowerCase().includes(search)
+  )
+}
+
+const selectClient = (client) => {
+  selectedClientId.value = client.id
+  clientSearchQuery.value = `${client.firstName} ${client.lastName}`
+  showClientDropdown.value = false
+  onClientChange()
+}
+
+const handleClientBlur = () => {
+  // Delay hiding dropdown to allow click events to complete
+  setTimeout(() => {
+    showClientDropdown.value = false
+  }, 200)
+}
+
 // Event handlers
 const onClientChange = () => {
   selectedPetId.value = '' // Reset pet selection
-  fetchMedicalRecords()
+  // No need to refetch records since we have all records loaded
 }
 
 const onPetChange = () => {
@@ -585,91 +790,57 @@ const getSelectedPetName = () => {
   return pet?.name || 'Unknown Pet'
 }
 
+const getClientName = (clientId) => {
+  if (!clientId) return 'N/A'
+  const client = clients.value.find(c => c.id === clientId)
+  return client ? `${client.firstName} ${client.lastName}` : 'N/A'
+}
+
+const getClientPets = (clientId) => {
+  if (!clientId) return []
+  const client = clients.value.find(c => c.id === clientId)
+  return client?.pets || []
+}
+
 // Helper functions
-const getTimelineDotClass = (serviceCategory) => {
-  const baseClasses = 'w-4 h-4 rounded-full border-2 border-white shadow-sm flex items-center justify-center'
+
+const getRecordBadgeClass = (serviceCategoryId) => {
+  // Define color classes for different category types
+  const colorClasses = {
+    'consultation': 'bg-blue-100 text-blue-700',
+    'vaccination': 'bg-green-100 text-green-700',
+    'treatment': 'bg-purple-100 text-purple-700',
+    'surgery': 'bg-red-100 text-red-700',
+    'dental': 'bg-yellow-100 text-yellow-700',
+    'emergency': 'bg-red-100 text-red-700',
+    'wellness': 'bg-indigo-100 text-indigo-700'
+  }
   
-  switch (serviceCategory) {
-    case 'consultation':
-      return `${baseClasses} bg-blue-500`
-    case 'vaccination':
-      return `${baseClasses} bg-green-500`
-    case 'treatment':
-      return `${baseClasses} bg-purple-500`
-    case 'surgery':
-      return `${baseClasses} bg-red-500`
-    case 'dental':
-      return `${baseClasses} bg-yellow-500`
-    case 'emergency':
-      return `${baseClasses} bg-red-600`
-    case 'wellness':
-      return `${baseClasses} bg-indigo-500`
-    default:
-      return `${baseClasses} bg-gray-500`
+  // Find the category and check if it matches any predefined types
+  const category = categories.value.find(c => c.id === serviceCategoryId)
+  if (category) {
+    const categoryName = category.name.toLowerCase()
+    
+    // Check for specific category types
+    if (categoryName.includes('consultation')) return colorClasses.consultation
+    if (categoryName.includes('vaccination')) return colorClasses.vaccination
+    if (categoryName.includes('treatment')) return colorClasses.treatment
+    if (categoryName.includes('surgery')) return colorClasses.surgery
+    if (categoryName.includes('dental')) return colorClasses.dental
+    if (categoryName.includes('emergency')) return colorClasses.emergency
+    if (categoryName.includes('wellness')) return colorClasses.wellness
   }
+  
+  // Default color for unknown categories
+  return 'bg-gray-100 text-gray-700'
 }
 
-const getRecordIcon = (serviceCategory) => {
-  switch (serviceCategory) {
-    case 'consultation':
-      return StethoscopeIcon
-    case 'vaccination':
-      return SyringeIcon
-    case 'treatment':
-      return ActivityIcon
-    case 'surgery':
-      return AlertTriangleIcon
-    case 'dental':
-      return TrendingUpIcon
-    case 'emergency':
-      return AlertTriangleIcon
-    case 'wellness':
-      return HeartIcon
-    default:
-      return CalendarIcon
-  }
-}
-
-const getRecordBadgeClass = (serviceCategory) => {
-  switch (serviceCategory) {
-    case 'consultation':
-      return 'bg-blue-100 text-blue-700'
-    case 'vaccination':
-      return 'bg-green-100 text-green-700'
-    case 'treatment':
-      return 'bg-purple-100 text-purple-700'
-    case 'surgery':
-      return 'bg-red-100 text-red-700'
-    case 'dental':
-      return 'bg-yellow-100 text-yellow-700'
-    case 'emergency':
-      return 'bg-red-100 text-red-700'
-    case 'wellness':
-      return 'bg-indigo-100 text-indigo-700'
-    default:
-      return 'bg-gray-100 text-gray-700'
-  }
-}
-
-const formatServiceCategory = (serviceCategory) => {
-  switch (serviceCategory) {
-    case 'consultation':
-      return 'Consultation'
-    case 'vaccination':
-      return 'Vaccination'
-    case 'treatment':
-      return 'Treatment'
-    case 'surgery':
-      return 'Surgery'
-    case 'dental':
-      return 'Dental Care'
-    case 'emergency':
-      return 'Emergency Care'
-    case 'wellness':
-      return 'Wellness Check'
-    default:
-      return 'Appointment'
-  }
+const formatServiceCategory = (serviceCategoryId) => {
+  if (!serviceCategoryId) return 'Appointment'
+  
+  // Find the category by ID
+  const category = categories.value.find(c => c.id === serviceCategoryId)
+  return category ? category.name : 'Appointment'
 }
 
 const getStatusClass = (status) => {
@@ -696,188 +867,243 @@ const formatDate = (date) => {
   }).format(date)
 }
 
-const exportRecords = async () => {
-  if (!selectedClientId.value || medicalRecords.value.length === 0) {
-    alert('No records to export')
-    return
-  }
-
+const exportToPDF = async () => {
   if (exporting.value) {
     return // Prevent multiple export attempts
   }
 
   try {
-    exporting.value = true // Start loading for export
-    // Dynamic import of xlsx library
-    const XLSX = await import('xlsx')
+    exporting.value = true
+    showExportModal.value = false
     
-    // Get client and pet info
-    const client = clients.value.find(c => c.id === selectedClientId.value)
-    const clientName = client ? `${client.firstName} ${client.lastName}` : 'Unknown Client'
+    // Filter records based on export filters
+    let recordsToExport = medicalRecords.value
     
-    // Create workbook
-    const workbook = XLSX.utils.book_new()
+    // Apply filters
+    if (exportFilters.value.clientId) {
+      recordsToExport = recordsToExport.filter(record => record.clientId === exportFilters.value.clientId)
+    }
     
-    // 1. MAIN RECORDS SHEET
-    const mainRecordsData = medicalRecords.value.map(record => ({
-      'Date & Time': formatDate(record.date),
-      'Service Category': formatServiceCategory(record.serviceCategory),
-      'Appointment Title': record.title || 'N/A',
-      'Description': record.description || 'N/A',
-      'Pet Name': record.petName || 'N/A',
-      'Veterinarian': record.doctor || 'N/A',
-      'Services Provided': record.services?.join('; ') || 'N/A',
-      'Status': record.status || 'N/A',
-      'Treatment Summary': record.treatmentSummary || 'N/A',
-      'Owner Instructions': record.ownerInstructions || 'N/A',
-      'Next Steps': record.nextSteps || 'N/A'
-    }))
+    if (exportFilters.value.petId) {
+      recordsToExport = recordsToExport.filter(record => record.petId === exportFilters.value.petId)
+    }
     
-    const mainSheet = XLSX.utils.json_to_sheet(mainRecordsData)
+    if (exportFilters.value.serviceCategory) {
+      recordsToExport = recordsToExport.filter(record => record.serviceCategory === exportFilters.value.serviceCategory)
+    }
     
-    // Style the main sheet
-    mainSheet['!cols'] = [
-      { width: 20 }, // Date & Time
-      { width: 15 }, // Service Category
-      { width: 30 }, // Appointment Title
-      { width: 25 }, // Description
-      { width: 15 }, // Pet Name
-      { width: 20 }, // Veterinarian
-      { width: 30 }, // Services Provided
-      { width: 12 }, // Status
-      { width: 30 }, // Treatment Summary
-      { width: 25 }, // Owner Instructions
-      { width: 20 }  // Next Steps
-    ]
+    if (exportFilters.value.fromDate) {
+      const fromDate = new Date(exportFilters.value.fromDate)
+      recordsToExport = recordsToExport.filter(record => record.date >= fromDate)
+    }
     
-    // Add header styling
-    const range = XLSX.utils.decode_range(mainSheet['!ref'])
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const address = XLSX.utils.encode_cell({ r: 0, c: C })
-      if (!mainSheet[address]) continue
-      mainSheet[address].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "4472C4" } },
-        alignment: { horizontal: "center" }
+    if (exportFilters.value.toDate) {
+      const toDate = new Date(exportFilters.value.toDate)
+      toDate.setHours(23, 59, 59, 999) // End of day
+      recordsToExport = recordsToExport.filter(record => record.date <= toDate)
+    }
+    
+    if (recordsToExport.length === 0) {
+      alert('No records found matching the selected filters.')
+      return
+    }
+    
+    // Try to use autotable first, fallback to simple table
+    try {
+      // Dynamic import of jsPDF library and autotable plugin
+      const { jsPDF } = await import('jspdf')
+      const autoTable = (await import('jspdf-autotable')).default
+      
+      // Create PDF with autotable
+      const doc = new jsPDF('l', 'mm', 'a4') // Landscape orientation
+      
+      // Add title
+      doc.setFontSize(20)
+      doc.text('Medical Records Report', 14, 22)
+      
+      // Add export info
+      doc.setFontSize(10)
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
+      doc.text(`Total Records: ${recordsToExport.length}`, 14, 35)
+      
+      // Add filter info
+      let filterInfo = 'Filters: '
+      if (exportFilters.value.clientId) {
+        const client = clients.value.find(c => c.id === exportFilters.value.clientId)
+        filterInfo += `Client: ${client?.firstName} ${client?.lastName}`
       }
-    }
-    
-    XLSX.utils.book_append_sheet(workbook, mainSheet, 'Medical Records')
-    
-    // 2. SUMMARY STATISTICS SHEET
-    const summaryData = [
-      { 'Metric': 'Total Appointments', 'Count': totalRecords.value },
-      { 'Metric': 'Consultations', 'Count': totalConsultations.value },
-      { 'Metric': 'Vaccinations', 'Count': totalVaccinations.value },
-      { 'Metric': 'Treatments', 'Count': totalTreatments.value },
-      { 'Metric': 'Surgeries', 'Count': medicalRecords.value.filter(r => r.serviceCategory === 'surgery').length },
-      { 'Metric': 'Dental Care', 'Count': medicalRecords.value.filter(r => r.serviceCategory === 'dental').length },
-      { 'Metric': 'Emergency Care', 'Count': medicalRecords.value.filter(r => r.serviceCategory === 'emergency').length },
-      { 'Metric': 'Wellness Checks', 'Count': medicalRecords.value.filter(r => r.serviceCategory === 'wellness').length }
-    ]
-    
-    const summarySheet = XLSX.utils.json_to_sheet(summaryData)
-    summarySheet['!cols'] = [
-      { width: 20 }, // Metric
-      { width: 15 }  // Count
-    ]
-    
-    // Add header styling to summary sheet
-    const summaryRange = XLSX.utils.decode_range(summarySheet['!ref'])
-    for (let C = summaryRange.s.c; C <= summaryRange.e.c; ++C) {
-      const address = XLSX.utils.encode_cell({ r: 0, c: C })
-      if (!summarySheet[address]) continue
-      summarySheet[address].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "70AD47" } },
-        alignment: { horizontal: "center" }
+      if (exportFilters.value.serviceCategory) {
+        filterInfo += ` | Service: ${formatServiceCategory(exportFilters.value.serviceCategory)}`
       }
-    }
-    
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary Statistics')
-    
-    // 3. PET-SPECIFIC RECORDS SHEET
-    if (selectedPetId.value) {
-      const petRecords = medicalRecords.value.filter(record => record.petId === selectedPetId.value)
-      const petName = client.pets.find(p => p.id === selectedPetId.value)?.name || 'Unknown Pet'
+      if (exportFilters.value.fromDate || exportFilters.value.toDate) {
+        filterInfo += ` | Date Range: ${exportFilters.value.fromDate || 'All'} to ${exportFilters.value.toDate || 'All'}`
+      }
       
-      const petData = petRecords.map(record => ({
-        'Date': formatDate(record.date),
-        'Service Type': formatServiceCategory(record.serviceCategory),
-        'Services': record.services?.join('; ') || 'N/A',
-        'Veterinarian': record.doctor || 'N/A',
-        'Treatment Summary': record.treatmentSummary || 'N/A',
-        'Next Steps': record.nextSteps || 'N/A'
-      }))
+      doc.text(filterInfo, 14, 40)
       
-      const petSheet = XLSX.utils.json_to_sheet(petData)
-      petSheet['!cols'] = [
-        { width: 20 }, // Date
-        { width: 20 }, // Service Type
-        { width: 30 }, // Services
-        { width: 20 }, // Veterinarian
-        { width: 30 }, // Treatment Summary
-        { width: 25 }  // Next Steps
-      ]
+      // Prepare table data
+      const tableData = recordsToExport.map(record => [
+        formatDate(record.date),
+        getClientName(record.clientId),
+        record.petName || 'N/A',
+        formatServiceCategory(record.serviceCategory),
+        record.doctor || 'N/A',
+        record.status,
+        record.services?.join(', ') || 'N/A'
+      ])
       
-      XLSX.utils.book_append_sheet(workbook, petSheet, `${petName} Records`)
-    }
-    
-    // 4. CLIENT INFORMATION SHEET
-    const clientInfo = [
-      { 'Field': 'Client Name', 'Value': `${client.firstName} ${client.lastName}` },
-      { 'Field': 'Total Pets', 'Value': client.petCount || 0 },
-      { 'Field': 'Export Date', 'Value': new Date().toLocaleDateString() },
-      { 'Field': 'Export Time', 'Value': new Date().toLocaleTimeString() },
-      { 'Field': 'Total Records', 'Value': medicalRecords.value.length }
-    ]
-    
-    // Add pet details
-    client.pets?.forEach(pet => {
-      clientInfo.push({ 'Field': `Pet: ${pet.name}`, 'Value': `${pet.species} - ${pet.breed || 'Unknown'}` })
-    })
-    
-    const clientSheet = XLSX.utils.json_to_sheet(clientInfo)
-    clientSheet['!cols'] = [
-      { width: 25 }, // Field
-      { width: 30 }  // Value
-    ]
-    
-    XLSX.utils.book_append_sheet(workbook, clientSheet, 'Client Information')
-    
-    // Generate filename with timestamp
+      // Add table using autotable
+      autoTable(doc, {
+        head: [['Date', 'Client', 'Pet', 'Service', 'Veterinarian', 'Status', 'Services']],
+        body: tableData,
+        startY: 50,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [66, 114, 196] },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      })
+      
+      // Generate filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
+      const filename = `Medical_Records_${timestamp}.pdf`
+      
+      // Save the PDF
+      doc.save(filename)
+      
+      console.log('PDF exported successfully with autotable:', filename)
+      
+    } catch (autotableError) {
+      console.warn('Autotable failed, using simple table:', autotableError)
+      
+      // Fallback to simple table without autotable
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF('l', 'mm', 'a4') // Landscape orientation
+      
+      // Add title
+      doc.setFontSize(20)
+      doc.text('Medical Records Report', 14, 22)
+      
+      // Add export info
+      doc.setFontSize(10)
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
+      doc.text(`Total Records: ${recordsToExport.length}`, 14, 35)
+      
+      // Add filter info
+      let filterInfo = 'Filters: '
+      if (exportFilters.value.clientId) {
+        const client = clients.value.find(c => c.id === exportFilters.value.clientId)
+        filterInfo += `Client: ${client?.firstName} ${client?.lastName}`
+      }
+      if (exportFilters.value.serviceCategory) {
+        filterInfo += ` | Service: ${formatServiceCategory(exportFilters.value.serviceCategory)}`
+      }
+      if (exportFilters.value.fromDate || exportFilters.value.toDate) {
+        filterInfo += ` | Date Range: ${exportFilters.value.fromDate || 'All'} to ${exportFilters.value.toDate || 'All'}`
+      }
+      
+      doc.text(filterInfo, 14, 40)
+      
+      // Create simple table
+      let yPosition = 60
+      const pageWidth = doc.internal.pageSize.width
+      const margin = 14
+      const colWidth = (pageWidth - 2 * margin) / 7
+      
+      // Table headers
+      doc.setFontSize(8)
+      doc.setFont(undefined, 'bold')
+      const headers = ['Date', 'Client', 'Pet', 'Service', 'Veterinarian', 'Status', 'Services']
+      headers.forEach((header, index) => {
+        doc.text(header, margin + index * colWidth, yPosition)
+      })
+      
+      // Draw header line
+      yPosition += 5
+      doc.line(margin, yPosition, pageWidth - margin, yPosition)
+      yPosition += 5
+      
+      // Table data
+      doc.setFont(undefined, 'normal')
+      recordsToExport.forEach((record, rowIndex) => {
+        // Check if we need a new page
+        if (yPosition > 280) {
+          doc.addPage()
+          yPosition = 20
+        }
+        
+        const rowData = [
+          formatDate(record.date),
+          getClientName(record.clientId),
+          record.petName || 'N/A',
+          formatServiceCategory(record.serviceCategory),
+          record.doctor || 'N/A',
+          record.status,
+          record.services?.join(', ') || 'N/A'
+        ]
+        
+        rowData.forEach((cell, colIndex) => {
+          // Truncate long text
+          const cellText = cell.length > 15 ? cell.substring(0, 15) + '...' : cell
+          doc.text(cellText, margin + colIndex * colWidth, yPosition)
+        })
+        
+        yPosition += 6
+      })
+      
+      // Generate filename
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
-    const filename = `Medical_Records_${clientName.replace(/\s+/g, '_')}_${timestamp}.xlsx`
+      const filename = `Medical_Records_${timestamp}.pdf`
     
-    // Export the workbook
-    XLSX.writeFile(workbook, filename)
+      // Save the PDF
+      doc.save(filename)
     
-    console.log('Excel file exported successfully:', filename)
+      console.log('PDF exported successfully with simple table:', filename)
+    }
     
   } catch (error) {
-    console.error('Error exporting records:', error)
+    console.error('Error exporting PDF:', error)
     
-    // Check if xlsx library is not installed
-    if (error.message.includes('xlsx')) {
-      alert('Excel export library not found. Please install xlsx package:\n\nnpm install xlsx')
+    // Check if jsPDF library is not installed
+    if (error.message.includes('jspdf')) {
+      alert('PDF export library not found. Please install jspdf package:\n\nnpm install jspdf jspdf-autotable')
     } else {
-      alert('Failed to export records. Please try again.')
+      alert('Failed to export PDF. Please try again.')
     }
   } finally {
-    exporting.value = false // End loading for export
+    exporting.value = false
   }
 }
 
 // Lifecycle
-onMounted(() => {
-  fetchClients()
+onMounted(async () => {
+  // Fetch categories and services first, then clients
+  await fetchCategoriesAndServices()
+  await fetchClients()
 })
 
 // Watch for changes
-watch(selectedClientId, () => {
-  if (selectedClientId.value) {
+watch(selectedClientId, (newClientId) => {
+  if (newClientId) {
+    // Update the search query to show the selected client's name
+    const client = clients.value.find(c => c.id === newClientId)
+    if (client) {
+      clientSearchQuery.value = `${client.firstName} ${client.lastName}`
+    }
+  } else {
+    // Clear the search query when no client is selected
+    clientSearchQuery.value = ''
+  }
+})
+
+// Watch for clients to be loaded, then fetch all records
+watch(clients, (newClients) => {
+  if (newClients.length > 0) {
     fetchMedicalRecords()
   }
+}, { immediate: true })
+
+// Watch for client search query changes to filter clients
+watch(clientSearchQuery, () => {
+  filterClients()
 })
 </script>
 

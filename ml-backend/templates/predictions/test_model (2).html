@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pet Disease Prediction - Model Testing</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .prediction-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .high-confidence {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .medium-confidence {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+        }
+        .low-confidence {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Pet Disease Prediction - Model Testing</h1>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Test Your Model</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'test_model' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="pet_id" class="form-label">Pet ID</label>
+                        <input type="number" class="form-control" id="pet_id" name="pet_id" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="symptoms" class="form-label">Symptoms (comma separated)</label>
+                        <input type="text" class="form-control" id="symptoms" name="symptoms" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="images" class="form-label">Images (optional)</label>
+                        <input type="file" class="form-control" id="images" name="images" multiple>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Predict Disease</button>
+                </form>
+            </div>
+        </div>
+        
+        {% if prediction %}
+        <div class="prediction-result {% if prediction.confidence > 0.8 %}high-confidence{% elif prediction.confidence > 0.5 %}medium-confidence{% else %}low-confidence{% endif %}">
+            <h3>Prediction Result</h3>
+            <p><strong>Predicted Disease:</strong> {{ prediction.disease }}</p>
+            <p><strong>Confidence:</strong> {{ prediction.confidence|floatformat:2 }}</p>
+            <p><strong>Details:</strong> <pre>{{ prediction.details|pprint }}</pre></p>
+        </div>
+        {% endif %}
+        
+        {% if error %}
+        <div class="alert alert-danger mt-3">
+            <h3>Error</h3>
+            <p>{{ error }}</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,23 @@
+# Ultra-safe requirements for ML inference on Windows
+# These versions are guaranteed to work without compilation issues
+
+# Core Django and API
+Django==4.2.7
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+
+# ML and data processing (inference only) - Ultra-safe versions
+numpy==1.21.6
+pandas==1.5.3
+scikit-learn==1.0.2
+joblib==1.1.1
+
+# Web server
+gunicorn==20.1.0
+
+# Environment and config
+python-dotenv==0.19.2
+
+# Optional: TensorFlow if you have .h5 models
+# tensorflow==2.10.1
+

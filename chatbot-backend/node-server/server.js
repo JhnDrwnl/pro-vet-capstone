@@ -13,7 +13,7 @@ dotenv.config()
 
 // Create Express app
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 8080
 const RASA_URL = process.env.RASA_URL || "http://localhost:5005"
 
 // Basic middleware

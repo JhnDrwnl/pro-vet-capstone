@@ -175,6 +175,7 @@ import { MessageSquare, X, Send } from 'lucide-vue-next';
 import { useProfileStore } from '@/stores/modules/profileStore';
 import { useAuthStore } from '@/stores/modules/authStore';
 import { storeToRefs } from 'pinia';
+import config from '@/config/environment';
 
 export default {
   name: "Chatbot",
@@ -190,7 +191,7 @@ export default {
     },
     apiBaseUrl: {
       type: String,
-      default: "http://localhost:3001"
+      default: config.chatbot.apiUrl
     }
   },
   data() {

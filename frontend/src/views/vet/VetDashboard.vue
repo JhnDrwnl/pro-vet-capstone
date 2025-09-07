@@ -1,28 +1,28 @@
 <template>
-  <main class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-6">
+  <main class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-3 sm:p-6">
     <!-- Header Section -->
-    <div class="mb-8">
-      <div class="flex items-center justify-between mb-6">
+    <div class="mb-6 sm:mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 class="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+          <h1 class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
             Veterinary Dashboard
           </h1>
-          <p class="text-slate-600 mt-1">Monitor your veterinary practice performance</p>
+          <p class="text-slate-600 mt-1 text-sm sm:text-base">Monitor your veterinary practice performance</p>
         </div>
         
         <!-- Time Period Filter -->
-        <div class="relative">
+        <div class="relative w-full sm:w-auto">
           <select
             v-model="selectedPeriod"
             @change="updateVetDashboard"
-            class="appearance-none bg-white/80 backdrop-blur-sm border border-slate-200 py-3 px-6 pr-10 text-slate-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            class="appearance-none bg-white/80 backdrop-blur-sm border border-slate-200 py-2 sm:py-3 px-4 sm:px-6 pr-8 sm:pr-10 text-slate-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full sm:w-auto text-sm sm:text-base"
           >
             <option v-for="period in periodOptions" :key="period.value" :value="period.value">
               {{ period.label }}
             </option>
           </select>
-          <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3 pointer-events-none">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </div>
@@ -31,38 +31,38 @@
     </div>
 
     <!-- Top Row: Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
       <div v-for="(stat, index) in filteredStats" :key="stat.title" 
            class="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden"
            :style="{ animationDelay: `${index * 100}ms` }">
         <!-- Gradient overlay -->
         <div class="absolute inset-0 bg-gradient-to-br from-white/50 to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
         
-        <div class="relative p-6">
-          <div class="flex justify-between items-start mb-4">
+        <div class="relative p-4 sm:p-6">
+          <div class="flex justify-between items-start mb-3 sm:mb-4">
             <div class="flex-1">
-              <p class="text-sm font-medium text-slate-500 mb-2">{{ stat.title }}</p>
-              <h3 class="text-3xl font-bold text-slate-800">
-                <span v-if="statsLoading" class="animate-pulse bg-slate-200 h-8 w-16 rounded"></span>
+              <p class="text-xs sm:text-sm font-medium text-slate-500 mb-1 sm:mb-2">{{ stat.title }}</p>
+              <h3 class="text-2xl sm:text-3xl font-bold text-slate-800">
+                <span v-if="statsLoading" class="animate-pulse bg-slate-200 h-6 sm:h-8 w-12 sm:w-16 rounded"></span>
                 <span v-else>{{ stat.value }}</span>
               </h3>
             </div>
-            <div :class="`bg-gradient-to-br from-${stat.color}-100 to-${stat.color}-200 p-3 rounded-xl shadow-sm group-hover:scale-110 transition-transform duration-300`">
-              <LottieIcon :animationPath="stat.icon" width="32px" height="32px" />
+            <div :class="`bg-gradient-to-br from-${stat.color}-100 to-${stat.color}-200 p-2 sm:p-3 rounded-xl shadow-sm group-hover:scale-110 transition-transform duration-300`">
+              <LottieIcon :animationPath="stat.icon" width="24px" height="24px" class="sm:w-8 sm:h-8" />
             </div>
           </div>
           
           <div class="flex items-center">
-            <span v-if="statsLoading" class="animate-pulse bg-slate-200 h-4 w-20 rounded"></span>
+            <span v-if="statsLoading" class="animate-pulse bg-slate-200 h-3 sm:h-4 w-16 sm:w-20 rounded"></span>
             <template v-else>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1 sm:gap-2">
                 <component :is="stat.trend === 'up' ? ArrowUp : ArrowDown" 
-                          :class="`w-4 h-4 ${stat.trend === 'up' ? 'text-emerald-500' : 'text-rose-500'}`" />
-                <span :class="`${stat.trend === 'up' ? 'text-emerald-600' : 'text-rose-600'} text-sm font-medium`">
+                          :class="`w-3 h-3 sm:w-4 sm:h-4 ${stat.trend === 'up' ? 'text-emerald-500' : 'text-rose-500'}`" />
+                <span :class="`${stat.trend === 'up' ? 'text-emerald-600' : 'text-rose-600'} text-xs sm:text-sm font-medium`">
                   {{ stat.percentage }}
                 </span>
               </div>
-              <span class="text-slate-500 text-sm ml-3">{{ getComparisonLabel() }}</span>
+              <span class="text-slate-500 text-xs sm:text-sm ml-2 sm:ml-3 hidden sm:inline">{{ getComparisonLabel() }}</span>
             </template>
           </div>
         </div>
@@ -73,34 +73,34 @@
     </div>
 
     <!-- Charts Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
       <!-- Appointments Overview (Larger) -->
       <div class="lg:col-span-2 bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden">
-        <div class="p-6 border-b border-slate-100">
-          <div class="flex justify-between items-center">
+        <div class="p-4 sm:p-6 border-b border-slate-100">
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-              <h3 class="text-xl font-bold text-slate-800 mb-2">Appointments Overview</h3>
-              <div class="flex items-center gap-4">
+              <h3 class="text-lg sm:text-xl font-bold text-slate-800 mb-2">Appointments Overview</h3>
+              <div class="flex items-center gap-2 sm:gap-4">
                 <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-                  <span class="text-sm text-slate-600">Total Appointments</span>
+                  <div class="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                  <span class="text-xs sm:text-sm text-slate-600">Total Appointments</span>
                 </div>
               </div>
             </div>
-            <div class="text-right">
+            <div class="text-left sm:text-right">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-sm text-slate-500">Period</span>
-                <span class="text-sm font-semibold text-slate-700">{{ getPeriodLabel() }}</span>
+                <span class="text-xs sm:text-sm text-slate-500">Period</span>
+                <span class="text-xs sm:text-sm font-semibold text-slate-700">{{ getPeriodLabel() }}</span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-sm text-slate-500">Total</span>
-                <span class="text-sm font-semibold text-slate-700">{{ filteredAppointments.reduce((sum, count) => sum + count, 0) }} appointments</span>
+                <span class="text-xs sm:text-sm text-slate-500">Total</span>
+                <span class="text-xs sm:text-sm font-semibold text-slate-700">{{ filteredAppointments.reduce((sum, count) => sum + count, 0) }} appointments</span>
               </div>
             </div>
           </div>
         </div>
-        <div class="p-6">
-          <div class="h-[400px] relative">
+        <div class="p-4 sm:p-6">
+          <div class="h-[250px] sm:h-[400px] relative">
             <div v-if="loading" class="w-full h-full flex items-center justify-center">
               <div class="animate-pulse bg-slate-200 w-full h-full rounded-xl"></div>
             </div>
@@ -111,70 +111,67 @@
 
       <!-- Today's Appointments -->
       <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden">
-        <div class="p-6 border-b border-slate-100">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xl font-bold text-slate-800">Today's Schedule</h3>
+        <div class="p-4 sm:p-6 border-b border-slate-100">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 class="text-lg sm:text-xl font-bold text-slate-800">Today's Schedule</h3>
             <button 
               @click="startQueue"
               :disabled="filteredTodaysAppointments.length === 0"
-              class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              class="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors flex items-center gap-2 w-full sm:w-auto justify-center"
             >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
               </svg>
-              Start Queue
+              View Queue
               <span v-if="filteredTodaysAppointments.length > 0" class="bg-white/20 px-2 py-1 rounded-full text-xs">
                 {{ filteredTodaysAppointments.length }}
               </span>
             </button>
           </div>
           <div v-if="filteredTodaysAppointments.length === 0" class="text-xs text-gray-500 mt-2">
-            No appointments today - queue will be empty
-          </div>
-          <div v-else class="text-xs text-blue-600 mt-2">
-            Click to manage today's patient queue
+            No approved appointments today - queue will be empty
           </div>
         </div>
-        <div class="p-6">
-          <div v-if="loading" class="space-y-4">
-            <div v-for="i in 3" :key="i" class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-              <div class="flex items-center gap-3">
-                <div class="animate-pulse bg-slate-200 h-4 w-4 rounded-full"></div>
-                <div class="animate-pulse bg-slate-200 h-4 w-4 rounded"></div>
+        <div class="p-4 sm:p-6">
+          <div v-if="loading" class="space-y-3 sm:space-y-4">
+            <div v-for="i in 3" :key="i" class="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-xl">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="animate-pulse bg-slate-200 h-3 w-3 sm:h-4 sm:w-4 rounded-full"></div>
+                <div class="animate-pulse bg-slate-200 h-3 w-3 sm:h-4 sm:w-4 rounded"></div>
                 <div class="flex-1">
-                  <div class="animate-pulse bg-slate-200 h-4 w-20 rounded mb-1"></div>
-                  <div class="animate-pulse bg-slate-200 h-3 w-32 rounded"></div>
+                  <div class="animate-pulse bg-slate-200 h-3 sm:h-4 w-16 sm:w-20 rounded mb-1"></div>
+                  <div class="animate-pulse bg-slate-200 h-2 sm:h-3 w-24 sm:w-32 rounded"></div>
                 </div>
               </div>
-              <div class="animate-pulse bg-slate-200 h-4 w-16 rounded"></div>
+              <div class="animate-pulse bg-slate-200 h-3 sm:h-4 w-12 sm:w-16 rounded"></div>
             </div>
           </div>
-          <div v-else-if="filteredTodaysAppointments.length === 0" class="text-center py-8">
-            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div v-else-if="filteredTodaysAppointments.length === 0" class="text-center py-6 sm:py-8">
+            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+              <svg class="w-6 h-6 sm:w-8 sm:h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
               </svg>
             </div>
-            <p class="text-slate-500 font-medium">No appointments today</p>
-            <p class="text-sm text-slate-400 mt-1">Enjoy a quiet day!</p>
+            <p class="text-slate-500 font-medium text-sm sm:text-base">No approved appointments today</p>
+            <p class="text-xs sm:text-sm text-slate-400 mt-1">Enjoy a quiet day!</p>
           </div>
-          <div v-else class="space-y-4">
+          <div v-else class="space-y-3 sm:space-y-4">
             <div v-for="appointment in filteredTodaysAppointments.slice(0, 3)" :key="appointment.id" 
-                 class="group p-4 rounded-xl transition-all duration-300 border bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-200 border-slate-200/50">
-              <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-3">
-                  <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full" 
+                 class="group p-3 sm:p-4 rounded-xl transition-all duration-300 border bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-200 border-slate-200/50">
+              <div class="flex items-center justify-between mb-2 sm:mb-3">
+                <div class="flex items-center gap-2 sm:gap-3">
+                  <div class="flex items-center gap-1 sm:gap-2">
+                    <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" 
                          :class="appointment.status === 'completed' ? 'bg-emerald-500' : 'bg-indigo-500'">
                     </div>
                     <component 
                       :is="appointment.petType === 'Cat' ? Cat : PawPrint" 
-                      class="w-4 h-4 text-slate-500"
+                      class="w-3 h-3 sm:w-4 sm:h-4 text-slate-500"
                     />
                   </div>
                   <div>
-                    <p class="text-sm font-semibold text-slate-800">{{ appointment.time }}</p>
-                    <p class="text-xs text-slate-600">{{ appointment.petName }} - {{ appointment.service }}</p>
+                    <p class="text-xs sm:text-sm font-semibold text-slate-800">{{ appointment.time }}</p>
+                    <p class="text-xs text-slate-600 truncate">{{ appointment.petName }} - {{ appointment.service }}</p>
                   </div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
@@ -186,7 +183,7 @@
               </div>
             </div>
             <div v-if="filteredTodaysAppointments.length > 3" class="text-center pt-2">
-              <p class="text-sm text-slate-500">+{{ filteredTodaysAppointments.length - 3 }} more appointments</p>
+              <p class="text-xs sm:text-sm text-slate-500">+{{ filteredTodaysAppointments.length - 3 }} more appointments</p>
             </div>
           </div>
         </div>
@@ -194,27 +191,27 @@
 
       <!-- Pet Categories Donut Chart -->
       <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden">
-        <div class="p-6 border-b border-slate-100">
-          <h3 class="text-xl font-bold text-slate-800">Pet Distribution</h3>
+        <div class="p-4 sm:p-6 border-b border-slate-100">
+          <h3 class="text-lg sm:text-xl font-bold text-slate-800">Pet Distribution</h3>
         </div>
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <div v-if="loading" class="flex items-center justify-center">
-            <div class="relative w-48 h-48">
-              <div class="animate-pulse bg-slate-200 w-48 h-48 rounded-full"></div>
+            <div class="relative w-32 h-32 sm:w-48 sm:h-48">
+              <div class="animate-pulse bg-slate-200 w-32 h-32 sm:w-48 sm:h-48 rounded-full"></div>
               <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <div class="animate-pulse bg-slate-200 h-8 w-16 rounded mb-2"></div>
-                <div class="animate-pulse bg-slate-200 h-4 w-20 rounded"></div>
+                <div class="animate-pulse bg-slate-200 h-6 w-12 sm:h-8 sm:w-16 rounded mb-2"></div>
+                <div class="animate-pulse bg-slate-200 h-3 w-16 sm:h-4 sm:w-20 rounded"></div>
               </div>
             </div>
           </div>
           <div v-else class="flex items-center justify-center">
-            <div class="relative w-48 h-48">
+            <div class="relative w-32 h-32 sm:w-48 sm:h-48">
               <canvas ref="petDistributionChart" class="w-full h-full"></canvas>
               <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <span class="text-3xl font-bold text-slate-800">{{ totalPets }}</span>
-                <span class="flex items-center text-sm text-emerald-500 mt-1">
+                <span class="text-2xl sm:text-3xl font-bold text-slate-800">{{ totalPets }}</span>
+                <span class="flex items-center text-xs sm:text-sm text-emerald-500 mt-1">
                   <svg 
-                    class="w-3 h-3 mr-1" 
+                    class="w-2 h-2 sm:w-3 sm:h-3 mr-1" 
                     viewBox="0 0 24 24" 
                     fill="none" 
                     stroke="currentColor" 
@@ -227,36 +224,36 @@
               </div>
             </div>
           </div>
-          <div v-if="loading" class="space-y-3 mt-6">
+          <div v-if="loading" class="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
             <div v-for="i in 4" :key="i" class="flex items-center justify-between py-2">
               <div class="flex items-center gap-2">
-                <div class="animate-pulse bg-slate-200 w-3 h-3 rounded-full"></div>
-                <div class="animate-pulse bg-slate-200 h-4 w-16 rounded"></div>
+                <div class="animate-pulse bg-slate-200 w-2 h-2 sm:w-3 sm:h-3 rounded-full"></div>
+                <div class="animate-pulse bg-slate-200 h-3 sm:h-4 w-12 sm:w-16 rounded"></div>
               </div>
               <div class="flex items-center gap-2">
-                <div class="animate-pulse bg-slate-200 h-4 w-8 rounded"></div>
-                <div class="animate-pulse bg-slate-200 h-4 w-12 rounded"></div>
+                <div class="animate-pulse bg-slate-200 h-3 sm:h-4 w-6 sm:w-8 rounded"></div>
+                <div class="animate-pulse bg-slate-200 h-3 sm:h-4 w-8 sm:w-12 rounded"></div>
               </div>
             </div>
           </div>
-          <div v-else-if="filteredSegments.length === 0" class="text-center py-8">
-            <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div v-else-if="filteredSegments.length === 0" class="text-center py-6 sm:py-8">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg class="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
               </svg>
             </div>
-            <p class="text-slate-500">No pet data available</p>
+            <p class="text-slate-500 text-sm sm:text-base">No pet data available</p>
           </div>
-          <div v-else class="space-y-3 mt-6">
+          <div v-else class="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
             <div v-for="segment in filteredSegments" :key="segment.label" 
                  class="flex items-center justify-between py-2 hover:bg-slate-50 rounded-lg px-2 transition-colors duration-200">
-              <div class="flex items-center gap-3">
-                <div :style="{ backgroundColor: segment.color }" class="w-3 h-3 rounded-full shadow-sm"></div>
-                <span class="text-sm font-medium text-slate-700">{{ segment.label }}</span>
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div :style="{ backgroundColor: segment.color }" class="w-2 h-2 sm:w-3 sm:h-3 rounded-full shadow-sm"></div>
+                <span class="text-xs sm:text-sm font-medium text-slate-700">{{ segment.label }}</span>
               </div>
-              <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-slate-800">{{ segment.value }}</span>
-                <span class="text-sm text-slate-500">({{ segment.percentage }}%)</span>
+              <div class="flex items-center gap-1 sm:gap-2">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800">{{ segment.value }}</span>
+                <span class="text-xs sm:text-sm text-slate-500">({{ segment.percentage }}%)</span>
               </div>
             </div>
           </div>
@@ -265,57 +262,57 @@
     </div>
 
     <!-- Telehealth Sessions -->
-    <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden mb-8">
-      <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-        <div class="flex items-center justify-between">
+    <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden mb-6 sm:mb-8">
+      <div class="p-4 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h3 class="text-xl font-bold text-slate-800 mb-1">Telehealth Sessions</h3>
-            <p class="text-sm text-slate-600">Today's online consultations</p>
+            <h3 class="text-lg sm:text-xl font-bold text-slate-800 mb-1">Telehealth Sessions</h3>
+            <p class="text-xs sm:text-sm text-slate-600">Today's online consultations</p>
           </div>
           <div class="flex items-center gap-2">
-            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-full animate-pulse"></div>
             <span class="text-xs font-medium text-emerald-600">Live</span>
           </div>
         </div>
       </div>
-      <div class="p-6">
-        <div v-if="loading" class="space-y-4">
+      <div class="p-4 sm:p-6">
+        <div v-if="loading" class="space-y-3 sm:space-y-4">
           <div v-for="i in 3" :key="i" class="animate-pulse">
-            <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-slate-200 rounded-full"></div>
+            <div class="flex items-center justify-between p-3 sm:p-4 bg-slate-50 rounded-xl">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-slate-200 rounded-full"></div>
                 <div class="flex-1">
-                  <div class="h-4 bg-slate-200 rounded w-24 mb-2"></div>
-                  <div class="h-3 bg-slate-200 rounded w-32"></div>
+                  <div class="h-3 sm:h-4 bg-slate-200 rounded w-20 sm:w-24 mb-2"></div>
+                  <div class="h-2 sm:h-3 bg-slate-200 rounded w-28 sm:w-32"></div>
                 </div>
               </div>
               <div class="text-right">
-                <div class="h-3 bg-slate-200 rounded w-16 mb-1"></div>
-                <div class="h-4 bg-slate-200 rounded w-20"></div>
+                <div class="h-2 sm:h-3 bg-slate-200 rounded w-12 sm:w-16 mb-1"></div>
+                <div class="h-3 sm:h-4 bg-slate-200 rounded w-16 sm:w-20"></div>
               </div>
             </div>
           </div>
         </div>
-        <div v-else-if="telehealthSessions.length === 0" class="text-center py-12">
-          <div class="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Video class="w-10 h-10 text-slate-400" />
+        <div v-else-if="telehealthSessions.length === 0" class="text-center py-8 sm:py-12">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+            <Video class="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" />
           </div>
-          <h3 class="text-lg font-semibold text-slate-700 mb-2">No Telehealth Sessions</h3>
-          <p class="text-sm text-slate-500 mb-4">No online consultations scheduled for today</p>
-          <div class="w-16 h-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent mx-auto"></div>
+          <h3 class="text-base sm:text-lg font-semibold text-slate-700 mb-2">No Telehealth Sessions</h3>
+          <p class="text-xs sm:text-sm text-slate-500 mb-4">No online consultations scheduled for today</p>
+          <div class="w-12 h-1 sm:w-16 bg-gradient-to-r from-transparent via-slate-300 to-transparent mx-auto"></div>
         </div>
-        <div v-else class="space-y-4">
+        <div v-else class="space-y-3 sm:space-y-4">
           <div v-for="session in telehealthSessions" :key="session.id" 
-               class="group p-4 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-200/50 hover:border-indigo-300 hover:shadow-md transition-all duration-300">
+               class="group p-3 sm:p-4 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-200/50 hover:border-indigo-300 hover:shadow-md transition-all duration-300">
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
-                  <Video class="w-6 h-6 text-white" />
+              <div class="flex items-center gap-3 sm:gap-4">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <Video class="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div>
-                  <p class="text-sm font-semibold text-slate-800">{{ session.petName }}</p>
+                  <p class="text-xs sm:text-sm font-semibold text-slate-800">{{ session.petName }}</p>
                   <div class="flex items-center gap-1 mt-1">
-                    <User class="w-3 h-3 text-slate-400" />
+                    <User class="w-2 h-2 sm:w-3 sm:h-3 text-slate-400" />
                     <p class="text-xs text-slate-500">{{ session.ownerName }}</p>
                   </div>
                 </div>
@@ -334,63 +331,63 @@
 
     <!-- Recent Activity -->
     <div class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden">
-      <div class="p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-        <div class="flex items-center justify-between">
+      <div class="p-4 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 class="text-xl font-bold text-slate-800 mb-1">Recent Activity</h2>
-            <p class="text-sm text-slate-600">Latest updates and notifications</p>
+            <h2 class="text-lg sm:text-xl font-bold text-slate-800 mb-1">Recent Activity</h2>
+            <p class="text-xs sm:text-sm text-slate-600">Latest updates and notifications</p>
           </div>
           <div class="flex items-center gap-2">
-            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-emerald-500 rounded-full animate-pulse"></div>
             <span class="text-xs font-medium text-emerald-600">Live Updates</span>
           </div>
         </div>
       </div>
-      <div class="p-6">
-        <div v-if="loading" class="space-y-6">
+      <div class="p-4 sm:p-6">
+        <div v-if="loading" class="space-y-4 sm:space-y-6">
           <div v-for="i in 4" :key="i" class="animate-pulse">
-            <div class="flex items-start gap-4">
-              <div class="w-12 h-12 bg-slate-200 rounded-full"></div>
+            <div class="flex items-start gap-3 sm:gap-4">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 bg-slate-200 rounded-full"></div>
               <div class="flex-1 space-y-2">
-                <div class="h-4 bg-slate-200 rounded w-3/4"></div>
-                <div class="h-3 bg-slate-200 rounded w-1/2"></div>
-                <div class="h-3 bg-slate-200 rounded w-1/4"></div>
+                <div class="h-3 sm:h-4 bg-slate-200 rounded w-3/4"></div>
+                <div class="h-2 sm:h-3 bg-slate-200 rounded w-1/2"></div>
+                <div class="h-2 sm:h-3 bg-slate-200 rounded w-1/4"></div>
               </div>
             </div>
           </div>
         </div>
-        <div v-else-if="filteredRecentActivities.length === 0" class="text-center py-12">
-          <div class="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div v-else-if="filteredRecentActivities.length === 0" class="text-center py-8 sm:py-12">
+          <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+            <svg class="w-8 h-8 sm:w-10 sm:h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-slate-700 mb-2">No Recent Activities</h3>
-          <p class="text-sm text-slate-500 mb-4">When new appointments or updates occur, they'll appear here</p>
-          <div class="w-16 h-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent mx-auto"></div>
+          <h3 class="text-base sm:text-lg font-semibold text-slate-700 mb-2">No Recent Activities</h3>
+          <p class="text-xs sm:text-sm text-slate-500 mb-4">When new appointments or updates occur, they'll appear here</p>
+          <div class="w-12 h-1 sm:w-16 bg-gradient-to-r from-transparent via-slate-300 to-transparent mx-auto"></div>
         </div>
-        <div v-else class="space-y-6">
+        <div v-else class="space-y-4 sm:space-y-6">
           <div v-for="(activity, index) in filteredRecentActivities" :key="index" 
                class="group relative">
             <!-- Activity Timeline -->
-            <div class="flex items-start gap-4">
+            <div class="flex items-start gap-3 sm:gap-4">
               <!-- Timeline Line -->
               <div class="relative flex flex-col items-center">
-                <div :class="`w-12 h-12 rounded-full ${activity.bgColor} flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300 border-2 border-white`">
-                  <component :is="activity.icon" class="w-6 h-6" :class="activity.iconColor" />
+                <div :class="`w-10 h-10 sm:w-12 sm:h-12 rounded-full ${activity.bgColor} flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300 border-2 border-white`">
+                  <component :is="activity.icon" class="w-5 h-5 sm:w-6 sm:h-6" :class="activity.iconColor" />
                 </div>
-                <div v-if="index < filteredRecentActivities.length - 1" class="w-0.5 h-12 bg-gradient-to-b from-slate-200 to-transparent mt-2"></div>
+                <div v-if="index < filteredRecentActivities.length - 1" class="w-0.5 h-8 sm:h-12 bg-gradient-to-b from-slate-200 to-transparent mt-2"></div>
               </div>
               
               <!-- Activity Content -->
               <div class="flex-1 min-w-0">
-                <div class="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 border border-slate-200/50 hover:border-slate-300 hover:shadow-md transition-all duration-300 group-hover:scale-[1.02]">
-                  <div class="flex items-start justify-between mb-3">
+                <div class="bg-gradient-to-r from-slate-50 to-white rounded-xl p-3 sm:p-4 border border-slate-200/50 hover:border-slate-300 hover:shadow-md transition-all duration-300 group-hover:scale-[1.02]">
+                  <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0 mb-2 sm:mb-3">
                     <div class="flex-1">
-                      <h3 class="text-sm font-bold text-slate-800 mb-1">{{ activity.title }}</h3>
-                      <p class="text-sm text-slate-600 leading-relaxed">{{ activity.description }}</p>
+                      <h3 class="text-xs sm:text-sm font-bold text-slate-800 mb-1">{{ activity.title }}</h3>
+                      <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">{{ activity.description }}</p>
                     </div>
-                    <div class="flex items-center gap-2 ml-4">
+                    <div class="flex items-center gap-2 sm:ml-4">
                       <span class="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
                         {{ activity.time }}
                       </span>
@@ -400,7 +397,7 @@
                   <!-- Status Badge -->
                   <div class="flex items-center gap-2">
                     <div class="flex items-center gap-1">
-                      <div class="w-2 h-2 rounded-full" 
+                      <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full" 
                            :class="activity.status === 'completed' ? 'bg-emerald-500' : 
                                   activity.status === 'approved' ? 'bg-indigo-500' : 
                                   activity.status === 'pending' ? 'bg-amber-500' : 'bg-rose-500'">
@@ -419,10 +416,10 @@
           </div>
           
           <!-- View All Activities Button -->
-          <div class="text-center pt-4">
-            <button class="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-200 group">
+          <div class="text-center pt-3 sm:pt-4">
+            <button class="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors duration-200 group">
               <span>View All Activities</span>
-              <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
               </svg>
             </button>
@@ -617,7 +614,7 @@ const filteredAppointments = computed(() => {
 })
 
 const filteredTodaysAppointments = computed(() => {
-  return todaysAppointments.value
+  return todaysAppointments.value.filter(appointment => appointment.status === 'approved')
 })
 
 const filteredSegments = computed(() => {
@@ -633,6 +630,7 @@ const totalPets = computed(() => filteredSegments.value.reduce((sum, segment) =>
 const telehealthSessions = computed(() => {
   return todaysAppointments.value
     .filter(app => 
+      app.status === 'approved' && 
       app.service?.toLowerCase().includes('video consultation')
     )
     .map(app => ({

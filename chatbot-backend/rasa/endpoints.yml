@@ -45,7 +45,7 @@
 #   url: "http://localhost:5055/webhook"
 
 action_endpoint:
-  url: "http://localhost:5055/webhook"
+  url: "http://rasa-actions:5055/webhook"
 
 # Tracker store configuration
 tracker_store:

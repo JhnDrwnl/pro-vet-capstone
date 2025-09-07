@@ -1,6 +1,8 @@
 import axios from 'axios';
+import config from '@/config/environment';
 
-const RASA_URL = 'http://localhost:5005/webhooks/rest/webhook';
+// Use environment configuration for Rasa URL
+const RASA_URL = config.chatbot.apiUrl.replace('/chat', '/webhooks/rest/webhook');
 
 export default {
   async sendMessage(message) {

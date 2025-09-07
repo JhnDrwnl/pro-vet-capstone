@@ -210,9 +210,6 @@
               <span v-if="getTimeStatus(currentPatient) === 'early'">🔵 Too Early</span>
               <span v-if="getTimeStatus(currentPatient) === 'expired'">🔴 Time Expired</span>
             </div>
-            <div class="text-sm text-gray-600 mt-2">
-              {{ getTimeInfo(currentPatient) }}
-            </div>
           </div>
           
           <!-- Debug info and refresh button -->
@@ -393,12 +390,6 @@
                 <div class="flex items-center gap-4 text-sm text-gray-600">
                   <div class="flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    <span>{{ formatDate(patient.date) }}</span>
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     <span>{{ patient.time }}</span>
@@ -424,9 +415,6 @@
                   <span v-else-if="getTimeStatus(patient) === 'expired'">🔴 Time Expired</span>
                 </div>
                 
-                <div class="text-xs text-gray-500 mt-1">
-                  {{ getTimeInfo(patient) }}
-                </div>
               </div>
             </div>
             
@@ -551,9 +539,9 @@
               </div>
             </div>
             <div>
-              <div class="text-sm text-gray-500 mb-1">Date & Time</div>
+              <div class="text-sm text-gray-500 mb-1">Time</div>
               <div class="font-medium text-gray-900">
-                {{ formatDate(selectedAppointment?.date) }} at {{ selectedAppointment?.time }}
+                {{ selectedAppointment?.time }}
               </div>
             </div>
             <div>
@@ -733,6 +721,150 @@
                         />
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Prescription Section - HIGH PRIORITY -->
+          <div class="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg p-6 shadow-lg">
+            <div class="flex items-center gap-3 mb-6">
+              <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+              </div>
+              <h3 class="text-xl font-bold text-red-800 flex items-center gap-2">
+                🏥 PRESCRIPTION & MEDICATIONS
+              </h3>
+            </div>
+            
+            <div class="space-y-6">
+              <!-- Medications List -->
+              <div>
+                <label class="block text-sm font-bold text-red-700 mb-2">Medications Prescribed</label>
+                <div class="space-y-3">
+                  <div v-for="(medication, index) in completionForm.prescription.medications" :key="index" class="bg-white border border-red-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="font-semibold text-gray-900">Medication {{ index + 1 }}</h4>
+                      <button 
+                        type="button"
+                        @click="removeMedication(index)"
+                        class="text-red-500 hover:text-red-700 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Medication Name</label>
+                        <input 
+                          v-model="medication.name" 
+                          type="text"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          placeholder="e.g., Amoxicillin, Metronidazole"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dosage</label>
+                        <input 
+                          v-model="medication.dosage" 
+                          type="text"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          placeholder="e.g., 250mg, 5ml"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                        <select v-model="medication.frequency" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                          <option value="">Select frequency</option>
+                          <option value="Once daily">Once daily</option>
+                          <option value="Twice daily">Twice daily</option>
+                          <option value="Three times daily">Three times daily</option>
+                          <option value="Every 8 hours">Every 8 hours</option>
+                          <option value="Every 12 hours">Every 12 hours</option>
+                          <option value="As needed">As needed</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                        <input 
+                          v-model="medication.duration" 
+                          type="text"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          placeholder="e.g., 7 days, 2 weeks"
+                        />
+                      </div>
+                      
+                      <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+                        <textarea 
+                          v-model="medication.instructions" 
+                          rows="2"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          placeholder="Special instructions for this medication..."
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="button"
+                    @click="addMedication"
+                    class="w-full border-2 border-dashed border-red-300 text-red-600 py-3 rounded-lg hover:border-red-400 hover:bg-red-50 transition-colors font-medium"
+                  >
+                    + Add Another Medication
+                  </button>
+                </div>
+              </div>
+              
+              <!-- General Prescription Instructions -->
+              <div>
+                <label class="block text-sm font-bold text-red-700 mb-2">General Prescription Instructions</label>
+                <textarea 
+                  v-model="completionForm.prescription.instructions" 
+                  rows="4"
+                  class="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="General instructions for all medications, administration tips, storage requirements..."
+                ></textarea>
+              </div>
+              
+              <!-- Warnings and Contraindications -->
+              <div>
+                <label class="block text-sm font-bold text-red-700 mb-2">⚠️ Warnings & Contraindications</label>
+                <textarea 
+                  v-model="completionForm.prescription.warnings" 
+                  rows="3"
+                  class="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Important warnings, side effects to watch for, contraindications..."
+                ></textarea>
+              </div>
+              
+              <!-- Follow-up Required -->
+              <div class="bg-white border border-red-200 rounded-lg p-4">
+                <label class="block text-sm font-bold text-red-700 mb-3">Follow-up Required</label>
+                <div class="space-y-3">
+                  <label class="flex items-center">
+                    <input 
+                      v-model="completionForm.prescription.followUpRequired" 
+                      type="checkbox" 
+                      class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    />
+                    <span class="ml-2 text-sm font-medium text-gray-700">Patient requires follow-up for prescription monitoring</span>
+                  </label>
+                  
+                  <div v-if="completionForm.prescription.followUpRequired" class="ml-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                    <input 
+                      v-model="completionForm.prescription.followUpDate" 
+                      type="date"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
                   </div>
                 </div>
               </div>
@@ -990,9 +1122,6 @@
               <span v-else-if="getTimeStatus(telehealthAppointment) === 'waiting'">🟡 Waiting for Time</span>
               <span v-else-if="getTimeStatus(telehealthAppointment) === 'early'">🔵 Too Early</span>
               <span v-else-if="getTimeStatus(telehealthAppointment) === 'expired'">🔴 Time Expired</span>
-            </div>
-            <div class="text-sm text-gray-600 mt-2">
-              {{ getTimeInfo(telehealthAppointment) }}
             </div>
           </div>
         </div>
@@ -1301,10 +1430,10 @@ const validateAppointmentTime = (appointment) => {
 const getTimeStatus = (appointment) => {
   try {
     console.log('=== GETTING TIME STATUS ===')
-    console.log('Appointment:', appointment)
+    debugAppointmentData(appointment, 'getTimeStatus')
     
     if (!appointment.date || !appointment.time) {
-      console.log('No date or time - returning expired')
+      console.log('No date or time - returning expired', { date: appointment.date, time: appointment.time })
       return 'expired'
     }
     
@@ -1320,7 +1449,7 @@ const getTimeStatus = (appointment) => {
     } else if (appointment.date && appointment.date.toDate) {
       appointmentDate = appointment.date.toDate()
     } else {
-      console.log('Invalid date format - returning expired')
+      console.error('Invalid date format in getTimeStatus:', appointment.date)
       return 'expired'
     }
     
@@ -1328,7 +1457,7 @@ const getTimeStatus = (appointment) => {
     
     // Check if date is valid
     if (isNaN(appointmentDate.getTime())) {
-      console.log('Invalid date - returning expired')
+      console.error('Invalid date in getTimeStatus:', appointment.date, 'Parsed as:', appointmentDate)
       return 'expired'
     }
     
@@ -1477,12 +1606,14 @@ const getTimeInfo = (appointment) => {
     } else if (appointment.date && appointment.date.toDate) {
       appointmentDate = appointment.date.toDate()
     } else {
-      return 'Invalid date format'
+      console.error('Invalid date format in getTimeInfo:', appointment.date)
+      return 'Date format error'
     }
     
     // Check if date is valid
     if (isNaN(appointmentDate.getTime())) {
-      return 'Invalid date'
+      console.error('Invalid date in getTimeInfo:', appointment.date, 'Parsed as:', appointmentDate)
+      return 'Date parsing error'
     }
     
     // Parse appointment time - handle "1:00 PM - 1:30 PM" format
@@ -1533,7 +1664,7 @@ const getTimeInfo = (appointment) => {
     } else if (diffMinutes >= -15) {
       return `Started ${Math.abs(diffMinutes)} minutes ago`
     } else {
-      return 'Appointment time has passed'
+      return 'Time has passed'
     }
   } catch (error) {
     console.error('Error in getTimeInfo:', error)
@@ -2992,6 +3123,19 @@ const openCompletionForm = async (appointment) => {
         followUpRequired: false,
         followUpNotes: ''
       }],
+      prescription: {
+        medications: [{
+          name: '',
+          dosage: '',
+          frequency: '',
+          duration: '',
+          instructions: ''
+        }],
+        instructions: '',
+        warnings: '',
+        followUpRequired: false,
+        followUpDate: ''
+      },
       generalNotes: {
         treatmentSummary: '',
         ownerInstructions: '',
@@ -3021,12 +3165,40 @@ const closeCompletionFormModal = () => {
       followUpRequired: false,
       followUpNotes: ''
     }],
+    prescription: {
+      medications: [{
+        name: '',
+        dosage: '',
+        frequency: '',
+        duration: '',
+        instructions: ''
+      }],
+      instructions: '',
+      warnings: '',
+      followUpRequired: false,
+      followUpDate: ''
+    },
     generalNotes: {
       treatmentSummary: '',
       ownerInstructions: '',
       nextSteps: ''
     }
   }
+}
+
+// Medication management functions
+const addMedication = () => {
+  completionForm.value.prescription.medications.push({
+    name: '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    instructions: ''
+  })
+}
+
+const removeMedication = (index) => {
+  completionForm.value.prescription.medications.splice(index, 1)
 }
 
 const submitCompletionForm = async () => {
@@ -3041,6 +3213,7 @@ const submitCompletionForm = async () => {
       completedBy: authStore.user?.userId,
       services: completionForm.value.services,
       pets: completionForm.value.pets,
+      prescription: completionForm.value.prescription,
       generalNotes: completionForm.value.generalNotes,
       status: 'completed'
     }
@@ -3740,13 +3913,28 @@ const getEstimatedStartTime = (position) => {
   })
 }
 
+// Debug function to log appointment data
+const debugAppointmentData = (appointment, context = '') => {
+  console.log(`=== DEBUG APPOINTMENT DATA ${context} ===`)
+  console.log('Appointment ID:', appointment.id)
+  console.log('Date field:', appointment.date, 'Type:', typeof appointment.date)
+  console.log('Time field:', appointment.time, 'Type:', typeof appointment.time)
+  console.log('Full appointment:', appointment)
+  console.log('=== END DEBUG ===')
+}
+
 // Format functions
 const formatTime = (timestamp) => {
   if (!timestamp) return 'N/A'
   try {
     let date
+    
+    // Handle Date object directly
+    if (timestamp instanceof Date) {
+      date = timestamp
+    }
     // Handle Firebase Timestamp
-    if (timestamp && typeof timestamp === 'object' && timestamp.toDate) {
+    else if (timestamp && typeof timestamp === 'object' && timestamp.toDate) {
       date = timestamp.toDate()
     } else if (timestamp && typeof timestamp === 'object' && timestamp.seconds) {
       // Handle Firestore Timestamp object
@@ -3755,7 +3943,11 @@ const formatTime = (timestamp) => {
       date = new Date(timestamp)
     }
     
-    if (isNaN(date.getTime())) return 'Invalid Time'
+    if (isNaN(date.getTime())) {
+      console.error('Invalid timestamp:', timestamp)
+      return 'Invalid Time'
+    }
+    
     return date.toLocaleTimeString('en-US', { 
       hour12: true, 
       hour: '2-digit', 
@@ -3772,8 +3964,12 @@ const formatDate = (date) => {
   try {
     let dateObj
     
+    // Handle Date object directly
+    if (date instanceof Date) {
+      dateObj = date
+    }
     // Handle Firebase Timestamp
-    if (date && typeof date === 'object' && date.toDate) {
+    else if (date && typeof date === 'object' && date.toDate) {
       dateObj = date.toDate()
     } else if (date && typeof date === 'object' && date.seconds) {
       // Handle Firestore Timestamp object
@@ -3783,14 +3979,14 @@ const formatDate = (date) => {
     }
     
     if (isNaN(dateObj.getTime())) {
-      console.error('Invalid date object:', date)
-      return 'Invalid Date'
+      console.error('Invalid date object in formatDate:', date)
+      return 'Date Error'
     }
     
     return dateObj.toLocaleDateString()
   } catch (error) {
     console.error('Error formatting date:', error, date)
-    return 'Invalid Date'
+    return 'Date Error'
   }
 }
 
@@ -3799,8 +3995,12 @@ const formatDateTime = (date, time) => {
   try {
     let dateObj
     
+    // Handle Date object directly
+    if (date instanceof Date) {
+      dateObj = date
+    }
     // Handle Firebase Timestamp
-    if (date && typeof date === 'object' && date.toDate) {
+    else if (date && typeof date === 'object' && date.toDate) {
       dateObj = date.toDate()
     } else if (date && typeof date === 'object' && date.seconds) {
       // Handle Firestore Timestamp object

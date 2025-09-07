@@ -40,7 +40,7 @@
     
     <!-- Chatbot Button - Now visible on all devices with custom positioning -->
     <div class="chatbot-wrapper">
-      <ChatbotButton @toggle="toggleChatbot" :isVisible="true" />
+      <ChatbotButton @toggle="toggleChatbot" :isVisible="true" :apiBaseUrl="config.chatbot.apiUrl" />
     </div>
     
     <!-- Push Notification Modal -->
@@ -61,6 +61,7 @@ import ChatbotButton from '@/components/common/Chatbot.vue';
 import SearchPanel from '@/components/common/SearchPanel.vue';
 import NotificationPanel from '@/components/common/NotificationPanel.vue';
 import PushNotificationModal from '@/components/common/PushNotificationModal.vue';
+import config from '@/config/environment';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '@shared/firebase';
 import { useAuthStore } from '@/stores/modules/authStore';

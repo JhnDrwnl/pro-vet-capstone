@@ -196,7 +196,31 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                       </svg>
                       View Notes
-                </button>
+                    </button>
+                    
+                    <!-- View Prescription option for completed appointments -->
+                    <button 
+                      v-if="getEffectiveStatus(appointment) === 'completed' && appointment.completionData && appointment.completionData.prescription"
+                      @click="viewPrescription(appointment)"
+                      class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                      View Prescription
+                    </button>
+                    
+                    <!-- Download Prescription option for completed appointments -->
+                    <button 
+                      v-if="getEffectiveStatus(appointment) === 'completed' && appointment.completionData && appointment.completionData.prescription"
+                      @click="downloadPrescription(appointment)"
+                      class="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                      </svg>
+                      Download Prescription
+                    </button>
                 
                     <!-- Feedback option for completed appointments -->
                 <button 
@@ -470,6 +494,178 @@
         </div>
       </div>
     </div>
+
+    <!-- Prescription Modal -->
+    <div 
+      v-if="showPrescriptionModal" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-4">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+              🏥 Prescription Details
+            </h2>
+            <button 
+              @click="closePrescriptionModal" 
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <XIcon class="w-6 h-6" />
+            </button>
+          </div>
+          
+          <!-- Appointment Details Header -->
+          <div class="bg-red-50 rounded-lg p-4 mb-6 border border-red-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">
+                  {{ selectedAppointment?.serviceNames && selectedAppointment.serviceNames.length > 0 
+                    ? selectedAppointment.serviceNames.join(', ') 
+                    : 'Appointment' }}
+                </h3>
+                <div class="space-y-1 text-sm text-gray-600">
+                  <div><strong>Doctor:</strong> {{ selectedAppointment?.doctorName }}</div>
+                  <div><strong>Pet:</strong> {{ selectedAppointment?.petName }}</div>
+                  <div><strong>Date:</strong> {{ selectedAppointment ? formatDate(selectedAppointment.date) : '' }}</div>
+                  <div><strong>Time:</strong> {{ selectedAppointment?.time }}</div>
+                  <div><strong>Status:</strong> <span class="text-green-600 font-medium">Completed</span></div>
+                </div>
+              </div>
+              <div class="flex items-center justify-center">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prescription Content -->
+          <div v-if="selectedAppointment?.completionData?.prescription" class="space-y-6">
+            <!-- Medications List -->
+            <div v-if="selectedAppointment.completionData.prescription.medications && selectedAppointment.completionData.prescription.medications.length > 0">
+              <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Prescribed Medications
+              </h4>
+              <div class="space-y-4">
+                <div v-for="(medication, index) in selectedAppointment.completionData.prescription.medications" :key="index" class="bg-red-50 rounded-lg p-4 border border-red-200">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-lg font-semibold text-red-800">Medication {{ index + 1 }}</h5>
+                    <span class="text-xs text-red-600 bg-red-100 px-2 py-1 rounded-full">Prescribed</span>
+                  </div>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-if="medication.name">
+                      <div class="text-sm font-medium text-red-700 mb-1">Medication Name:</div>
+                      <div class="text-sm text-red-800 font-semibold">{{ medication.name }}</div>
+                    </div>
+                    
+                    <div v-if="medication.dosage">
+                      <div class="text-sm font-medium text-red-700 mb-1">Dosage:</div>
+                      <div class="text-sm text-red-800">{{ medication.dosage }}</div>
+                    </div>
+                    
+                    <div v-if="medication.frequency">
+                      <div class="text-sm font-medium text-red-700 mb-1">Frequency:</div>
+                      <div class="text-sm text-red-800">{{ medication.frequency }}</div>
+                    </div>
+                    
+                    <div v-if="medication.duration">
+                      <div class="text-sm font-medium text-red-700 mb-1">Duration:</div>
+                      <div class="text-sm text-red-800">{{ medication.duration }}</div>
+                    </div>
+                    
+                    <div v-if="medication.instructions" class="md:col-span-2">
+                      <div class="text-sm font-medium text-red-700 mb-1">Special Instructions:</div>
+                      <div class="text-sm text-red-800 bg-white rounded p-3 border border-red-200">
+                        {{ medication.instructions }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- General Prescription Instructions -->
+            <div v-if="selectedAppointment.completionData.prescription.instructions" class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                General Instructions
+              </h4>
+              <div class="text-sm text-blue-800 bg-white rounded p-3 border border-blue-200">
+                {{ selectedAppointment.completionData.prescription.instructions }}
+              </div>
+            </div>
+            
+            <!-- Warnings and Contraindications -->
+            <div v-if="selectedAppointment.completionData.prescription.warnings" class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+              <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+                ⚠️ Warnings & Contraindications
+              </h4>
+              <div class="text-sm text-orange-800 bg-white rounded p-3 border border-orange-200">
+                {{ selectedAppointment.completionData.prescription.warnings }}
+              </div>
+            </div>
+            
+            <!-- Follow-up Information -->
+            <div v-if="selectedAppointment.completionData.prescription.followUpRequired" class="bg-green-50 rounded-lg p-4 border border-green-200">
+              <h4 class="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Follow-up Required
+              </h4>
+              <div class="text-sm text-green-800">
+                <div class="mb-2">This prescription requires follow-up monitoring.</div>
+                <div v-if="selectedAppointment.completionData.prescription.followUpDate" class="font-medium">
+                  Follow-up Date: {{ formatDate(new Date(selectedAppointment.completionData.prescription.followUpDate)) }}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- No prescription data message -->
+          <div v-else class="text-center py-8">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">No Prescription Available</h3>
+            <p class="text-gray-500">No prescription information was provided for this appointment.</p>
+          </div>
+          
+          <!-- Action buttons -->
+          <div class="flex justify-between mt-6 pt-4 border-t border-gray-200">
+            <button 
+              v-if="selectedAppointment?.completionData?.prescription"
+              @click="downloadPrescription(selectedAppointment)" 
+              class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              Download Prescription
+            </button>
+            <button 
+              @click="closePrescriptionModal" 
+              class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </template>
   
   <script setup>
@@ -508,6 +704,7 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
   const showCancelModal = ref(false);
   const showFeedbackModal = ref(false);
   const showSummaryModal = ref(false);
+  const showPrescriptionModal = ref(false);
   const selectedAppointment = ref(null);
   const openActionMenu = ref(null); // Track which action menu is open
   const cancelLoading = ref(false);
@@ -979,6 +1176,146 @@ import { getFirestore, collection, query, where, getDocs } from 'firebase/firest
   const closeSummaryModal = () => {
     showSummaryModal.value = false;
     selectedAppointment.value = null;
+  };
+
+  // Prescription modal methods
+  const viewPrescription = (appointment) => {
+    selectedAppointment.value = appointment;
+    showPrescriptionModal.value = true;
+    closeActionMenu(); // Close menu after action
+  };
+
+  const closePrescriptionModal = () => {
+    showPrescriptionModal.value = false;
+    selectedAppointment.value = null;
+  };
+
+  // Download prescription as PDF
+  const downloadPrescription = (appointment) => {
+    if (!appointment?.completionData?.prescription) {
+      console.error('No prescription data available for download');
+      return;
+    }
+
+    try {
+      // Create prescription content
+      const prescriptionData = appointment.completionData.prescription;
+      const appointmentInfo = {
+        petName: appointment.petName || 'Unknown Pet',
+        doctorName: appointment.doctorName || 'Unknown Doctor',
+        date: formatDate(appointment.date),
+        time: appointment.time,
+        serviceNames: appointment.serviceNames?.join(', ') || 'Appointment'
+      };
+
+      // Generate PDF content
+      const pdfContent = generatePrescriptionPDF(prescriptionData, appointmentInfo);
+      
+      // Create and download the file
+      const blob = new Blob([pdfContent], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Prescription_${appointmentInfo.petName}_${appointmentInfo.date.replace(/\//g, '-')}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Prescription downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading prescription:', error);
+    }
+  };
+
+  // Generate prescription PDF content
+  const generatePrescriptionPDF = (prescriptionData, appointmentInfo) => {
+    const medications = prescriptionData.medications || [];
+    const instructions = prescriptionData.instructions || '';
+    const warnings = prescriptionData.warnings || '';
+    const followUpRequired = prescriptionData.followUpRequired || false;
+    const followUpDate = prescriptionData.followUpDate || '';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Prescription - ${appointmentInfo.petName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 3px solid #dc2626; padding-bottom: 20px; margin-bottom: 30px; }
+        .clinic-name { font-size: 24px; font-weight: bold; color: #dc2626; margin-bottom: 10px; }
+        .prescription-title { font-size: 20px; font-weight: bold; color: #dc2626; margin-bottom: 20px; }
+        .appointment-info { background: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .medication { background: #fef2f2; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #dc2626; }
+        .medication-name { font-weight: bold; color: #dc2626; font-size: 16px; margin-bottom: 10px; }
+        .medication-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .instructions { background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .warnings { background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #f59e0b; }
+        .followup { background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; }
+        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+        @media print { body { margin: 0; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="clinic-name">ProVet Veterinary Clinic</div>
+        <div class="prescription-title">🏥 PRESCRIPTION</div>
+    </div>
+
+    <div class="appointment-info">
+        <h3>Appointment Information</h3>
+        <p><strong>Pet:</strong> ${appointmentInfo.petName}</p>
+        <p><strong>Doctor:</strong> ${appointmentInfo.doctorName}</p>
+        <p><strong>Date:</strong> ${appointmentInfo.date}</p>
+        <p><strong>Time:</strong> ${appointmentInfo.time}</p>
+        <p><strong>Service:</strong> ${appointmentInfo.serviceNames}</p>
+    </div>
+
+    ${medications.length > 0 ? `
+    <h3>Prescribed Medications</h3>
+    ${medications.map((med, index) => `
+        <div class="medication">
+            <div class="medication-name">Medication ${index + 1}: ${med.name || 'Not specified'}</div>
+            <div class="medication-details">
+                ${med.dosage ? `<div><strong>Dosage:</strong> ${med.dosage}</div>` : ''}
+                ${med.frequency ? `<div><strong>Frequency:</strong> ${med.frequency}</div>` : ''}
+                ${med.duration ? `<div><strong>Duration:</strong> ${med.duration}</div>` : ''}
+            </div>
+            ${med.instructions ? `<div><strong>Special Instructions:</strong> ${med.instructions}</div>` : ''}
+        </div>
+    `).join('')}
+    ` : ''}
+
+    ${instructions ? `
+    <div class="instructions">
+        <h3>General Instructions</h3>
+        <p>${instructions}</p>
+    </div>
+    ` : ''}
+
+    ${warnings ? `
+    <div class="warnings">
+        <h3>⚠️ Warnings & Contraindications</h3>
+        <p>${warnings}</p>
+    </div>
+    ` : ''}
+
+    ${followUpRequired ? `
+    <div class="followup">
+        <h3>Follow-up Required</h3>
+        <p>This prescription requires follow-up monitoring.</p>
+        ${followUpDate ? `<p><strong>Follow-up Date:</strong> ${followUpDate}</p>` : ''}
+    </div>
+    ` : ''}
+
+    <div class="footer">
+        <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+        <p>ProVet Veterinary Clinic - Your trusted pet care partner</p>
+    </div>
+</body>
+</html>`;
   };
 
         // Schedule Follow-up - Simple navigation to appointment creation

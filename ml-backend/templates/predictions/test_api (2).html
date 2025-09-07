@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pet Disease Prediction API Test</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .prediction-result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .high-confidence {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .medium-confidence {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+        }
+        .low-confidence {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Pet Disease Prediction API Test</h1>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>Test Your API</h5>
+            </div>
+            <div class="card-body">
+                <form id="predictionForm">
+                    <div class="mb-3">
+                        <label for="pet_id" class="form-label">Pet ID</label>
+                        <input type="number" class="form-control" id="pet_id" name="pet_id" value="1" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="breed" class="form-label">Breed</label>
+                        <select class="form-control" id="breed" name="breed" required>
+                            <option value="Aspin">Aspin</option>
+                            <option value="Shih Tzu">Shih Tzu</option>
+                            <option value="Beagle">Beagle</option>
+                            <option value="German Shepherd">German Shepherd</option>
+                            <option value="Golden Retriever">Golden Retriever</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="past_diagnosis" class="form-label">Past Diagnosis</label>
+                        <input type="text" class="form-control" id="past_diagnosis" name="past_diagnosis" value="Obesity">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="symptoms" class="form-label">Symptoms (comma separated)</label>
+                        <input type="text" class="form-control" id="symptoms" name="symptoms" value="Lethargy, Excessive panting, Increased thirst" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Predict Disease</button>
+                </form>
+            </div>
+        </div>
+        
+        <div id="result" class="mt-4" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Prediction Result</h5>
+                </div>
+                <div class="card-body">
+                    <div id="resultContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const pet_id = document.getElementById('pet_id').value;
+            const symptoms = document.getElementById('symptoms').value.split(',').map(s => s.trim());
+            const breed = document.getElementById('breed').value;
+            const past_diagnosis = document.getElementById('past_diagnosis').value;
+            
+            const requestData = {
+                pet_id: pet_id,
+                symptoms: symptoms,
+                breed: breed,
+                past_diagnosis: past_diagnosis
+            };
+            
+            try {
+                const response = await fetch('/api/predictions/predict_disease/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const result = await response.json();
+                
+                let confidenceClass = 'high-confidence';
+                if (result.confidence < 0.7) {
+                    confidenceClass = 'low-confidence';
+                } else if (result.confidence < 0.9) {
+                    confidenceClass = 'medium-confidence';
+                }
+                
+                document.getElementById('resultContent').innerHTML = `
+                    <div class="prediction-result ${confidenceClass}">
+                        <h4>Predicted Disease: ${result.disease}</h4>
+                        <p><strong>Confidence:</strong> ${(result.confidence * 100).toFixed(2)}%</p>
+                        <p><strong>Prediction ID:</strong> ${result.prediction_id}</p>
+                        <div>
+                            <strong>Details:</strong>
+                            <pre>${JSON.stringify(result.details, null, 2)}</pre>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('result').style.display = 'block';
+            } catch (error) {
+                document.getElementById('resultContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <h4>Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+                document.getElementById('result').style.display = 'block';
+            }
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

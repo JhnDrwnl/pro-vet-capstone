@@ -1,0 +1,14 @@
+# Use the official Rasa image with Python 3.10
+FROM rasa/rasa:3.6.2
+
+# Set working directory
+WORKDIR /app
+
+# Copy your Rasa files
+COPY . .
+
+# Expose port
+EXPOSE 8080
+
+# Start Rasa server
+CMD ["run", "--enable-api", "--cors", "*", "--port", "8080"]

@@ -1565,6 +1565,150 @@
           </div>
         </div>
         
+        <!-- Prescription Section - HIGH PRIORITY -->
+        <div class="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg p-6 shadow-lg">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+            </div>
+            <h3 class="text-xl font-bold text-red-800 flex items-center gap-2">
+              🏥 PRESCRIPTION & MEDICATIONS
+            </h3>
+          </div>
+          
+          <div class="space-y-6">
+            <!-- Medications List -->
+            <div>
+              <label class="block text-sm font-bold text-red-700 mb-2">Medications Prescribed</label>
+              <div class="space-y-3">
+                <div v-for="(medication, index) in completionForm.prescription.medications" :key="index" class="bg-white border border-red-200 rounded-lg p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold text-gray-900">Medication {{ index + 1 }}</h4>
+                    <button 
+                      type="button"
+                      @click="removeMedication(index)"
+                      class="text-red-500 hover:text-red-700 text-sm font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Medication Name</label>
+                      <input 
+                        v-model="medication.name" 
+                        type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        placeholder="e.g., Amoxicillin, Metronidazole"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Dosage</label>
+                      <input 
+                        v-model="medication.dosage" 
+                        type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        placeholder="e.g., 250mg, 5ml"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+                      <select v-model="medication.frequency" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <option value="">Select frequency</option>
+                        <option value="Once daily">Once daily</option>
+                        <option value="Twice daily">Twice daily</option>
+                        <option value="Three times daily">Three times daily</option>
+                        <option value="Every 8 hours">Every 8 hours</option>
+                        <option value="Every 12 hours">Every 12 hours</option>
+                        <option value="As needed">As needed</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                      <input 
+                        v-model="medication.duration" 
+                        type="text"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        placeholder="e.g., 7 days, 2 weeks"
+                      />
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Special Instructions</label>
+                      <textarea 
+                        v-model="medication.instructions" 
+                        rows="2"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        placeholder="Special instructions for this medication..."
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+                
+                <button 
+                  type="button"
+                  @click="addMedication"
+                  class="w-full border-2 border-dashed border-red-300 text-red-600 py-3 rounded-lg hover:border-red-400 hover:bg-red-50 transition-colors font-medium"
+                >
+                  + Add Another Medication
+                </button>
+              </div>
+            </div>
+            
+            <!-- General Prescription Instructions -->
+            <div>
+              <label class="block text-sm font-bold text-red-700 mb-2">General Prescription Instructions</label>
+              <textarea 
+                v-model="completionForm.prescription.instructions" 
+                rows="4"
+                class="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="General instructions for all medications, administration tips, storage requirements..."
+              ></textarea>
+            </div>
+            
+            <!-- Warnings and Contraindications -->
+            <div>
+              <label class="block text-sm font-bold text-red-700 mb-2">⚠️ Warnings & Contraindications</label>
+              <textarea 
+                v-model="completionForm.prescription.warnings" 
+                rows="3"
+                class="w-full px-3 py-2 border border-red-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Important warnings, side effects to watch for, contraindications..."
+              ></textarea>
+            </div>
+            
+            <!-- Follow-up Required -->
+            <div class="bg-white border border-red-200 rounded-lg p-4">
+              <label class="block text-sm font-bold text-red-700 mb-3">Follow-up Required</label>
+              <div class="space-y-3">
+                <label class="flex items-center">
+                  <input 
+                    v-model="completionForm.prescription.followUpRequired" 
+                    type="checkbox" 
+                    class="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  />
+                  <span class="ml-2 text-sm font-medium text-gray-700">Patient requires follow-up for prescription monitoring</span>
+                </label>
+                
+                <div v-if="completionForm.prescription.followUpRequired" class="ml-6">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                  <input 
+                    v-model="completionForm.prescription.followUpDate" 
+                    type="date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- General Notes -->
         <div class="bg-white border border-gray-200 rounded-lg p-4">
           <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
@@ -1607,24 +1751,38 @@
           </div>
         </div>
         
-        <!-- Form Actions -->
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <button 
-            type="button"
-            @click="closeCompletionFormModal" 
-            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button 
-            type="submit" 
-            :disabled="completionFormLoading"
-            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-          >
-            <span v-if="completionFormLoading">Completing...</span>
-            <span v-else>Complete Appointment</span>
-          </button>
-        </div>
+          <!-- Form Actions -->
+          <div class="flex justify-between pt-4 border-t border-gray-200">
+            <button 
+              type="button"
+              @click="printPrescription" 
+              :disabled="!hasPrescriptionData"
+              class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+              </svg>
+              Print Prescription
+            </button>
+            
+            <div class="flex gap-3">
+              <button 
+                type="button"
+                @click="closeCompletionFormModal" 
+                class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                :disabled="completionFormLoading"
+                class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+              >
+                <span v-if="completionFormLoading">Completing...</span>
+                <span v-else>Complete Appointment</span>
+              </button>
+            </div>
+          </div>
       </form>
     </div>
   </div>
@@ -2608,6 +2766,22 @@ const showTimeline = ref({});
 const completionForm = ref({
   services: [],
   pets: [],
+  prescription: {
+    medications: [{
+      name: '',
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: ''
+    }],
+    dosage: '',
+    frequency: '',
+    duration: '',
+    instructions: '',
+    warnings: '',
+    followUpRequired: false,
+    followUpDate: ''
+  },
   generalNotes: {
     treatmentSummary: '',
     ownerInstructions: '',
@@ -2678,6 +2852,22 @@ const openCompletionForm = async (appointmentId) => {
       followUpRequired: false,
       followUpNotes: ''
     })),
+    prescription: {
+      medications: [{
+        name: '',
+        dosage: '',
+        frequency: '',
+        duration: '',
+        instructions: ''
+      }],
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: '',
+      warnings: '',
+      followUpRequired: false,
+      followUpDate: ''
+    },
     generalNotes: {
       treatmentSummary: '',
       ownerInstructions: '',
@@ -2695,12 +2885,182 @@ const closeCompletionFormModal = () => {
   completionForm.value = {
     services: [],
     pets: [],
+    prescription: {
+      medications: [{
+        name: '',
+        dosage: '',
+        frequency: '',
+        duration: '',
+        instructions: ''
+      }],
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: '',
+      warnings: '',
+      followUpRequired: false,
+      followUpDate: ''
+    },
     generalNotes: {
       treatmentSummary: '',
       ownerInstructions: '',
       nextSteps: ''
     }
   };
+};
+
+// Medication management functions
+const addMedication = () => {
+  completionForm.value.prescription.medications.push({
+    name: '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    instructions: ''
+  });
+};
+
+const removeMedication = (index) => {
+  completionForm.value.prescription.medications.splice(index, 1);
+};
+
+// Computed property to check if prescription has data
+const hasPrescriptionData = computed(() => {
+  const prescription = completionForm.value.prescription;
+  return prescription.medications.some(med => med.name || med.dosage || med.frequency || med.duration || med.instructions) ||
+         prescription.instructions ||
+         prescription.warnings ||
+         prescription.followUpRequired;
+});
+
+// Print prescription function
+const printPrescription = () => {
+  if (!hasPrescriptionData.value) {
+    console.warn('No prescription data to print');
+    return;
+  }
+
+  try {
+    const prescriptionData = completionForm.value.prescription;
+    const appointmentInfo = {
+      petName: selectedAppointment.value?.petName || 'Unknown Pet',
+      doctorName: authStore.user?.displayName || 'Dr. Veterinarian',
+      date: selectedAppointment.value ? formatDate(selectedAppointment.value.date) : new Date().toLocaleDateString(),
+      time: selectedAppointment.value?.time || 'N/A',
+      serviceNames: selectedAppointment.value?.serviceNames?.join(', ') || 'Appointment'
+    };
+
+    // Generate print content
+    const printContent = generatePrescriptionPrintContent(prescriptionData, appointmentInfo);
+    
+    // Create new window for printing
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Wait for content to load then print
+    printWindow.onload = () => {
+      printWindow.print();
+      printWindow.close();
+    };
+    
+    console.log('Prescription print initiated');
+  } catch (error) {
+    console.error('Error printing prescription:', error);
+  }
+};
+
+// Generate prescription print content
+const generatePrescriptionPrintContent = (prescriptionData, appointmentInfo) => {
+  const medications = prescriptionData.medications || [];
+  const instructions = prescriptionData.instructions || '';
+  const warnings = prescriptionData.warnings || '';
+  const followUpRequired = prescriptionData.followUpRequired || false;
+  const followUpDate = prescriptionData.followUpDate || '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Prescription - ${appointmentInfo.petName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 3px solid #dc2626; padding-bottom: 20px; margin-bottom: 30px; }
+        .clinic-name { font-size: 24px; font-weight: bold; color: #dc2626; margin-bottom: 10px; }
+        .prescription-title { font-size: 20px; font-weight: bold; color: #dc2626; margin-bottom: 20px; }
+        .appointment-info { background: #fef2f2; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .medication { background: #fef2f2; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 4px solid #dc2626; }
+        .medication-name { font-weight: bold; color: #dc2626; font-size: 16px; margin-bottom: 10px; }
+        .medication-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .instructions { background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .warnings { background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #f59e0b; }
+        .followup { background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; }
+        .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+        @media print { 
+          body { margin: 0; }
+          .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="clinic-name">ProVet Veterinary Clinic</div>
+        <div class="prescription-title">🏥 PRESCRIPTION</div>
+    </div>
+
+    <div class="appointment-info">
+        <h3>Appointment Information</h3>
+        <p><strong>Pet:</strong> ${appointmentInfo.petName}</p>
+        <p><strong>Doctor:</strong> ${appointmentInfo.doctorName}</p>
+        <p><strong>Date:</strong> ${appointmentInfo.date}</p>
+        <p><strong>Time:</strong> ${appointmentInfo.time}</p>
+        <p><strong>Service:</strong> ${appointmentInfo.serviceNames}</p>
+    </div>
+
+    ${medications.length > 0 ? `
+    <h3>Prescribed Medications</h3>
+    ${medications.map((med, index) => `
+        <div class="medication">
+            <div class="medication-name">Medication ${index + 1}: ${med.name || 'Not specified'}</div>
+            <div class="medication-details">
+                ${med.dosage ? `<div><strong>Dosage:</strong> ${med.dosage}</div>` : ''}
+                ${med.frequency ? `<div><strong>Frequency:</strong> ${med.frequency}</div>` : ''}
+                ${med.duration ? `<div><strong>Duration:</strong> ${med.duration}</div>` : ''}
+            </div>
+            ${med.instructions ? `<div><strong>Special Instructions:</strong> ${med.instructions}</div>` : ''}
+        </div>
+    `).join('')}
+    ` : ''}
+
+    ${instructions ? `
+    <div class="instructions">
+        <h3>General Instructions</h3>
+        <p>${instructions}</p>
+    </div>
+    ` : ''}
+
+    ${warnings ? `
+    <div class="warnings">
+        <h3>⚠️ Warnings & Contraindications</h3>
+        <p>${warnings}</p>
+    </div>
+    ` : ''}
+
+    ${followUpRequired ? `
+    <div class="followup">
+        <h3>Follow-up Required</h3>
+        <p>This prescription requires follow-up monitoring.</p>
+        ${followUpDate ? `<p><strong>Follow-up Date:</strong> ${followUpDate}</p>` : ''}
+    </div>
+    ` : ''}
+
+    <div class="footer">
+        <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+        <p>ProVet Veterinary Clinic - Your trusted pet care partner</p>
+    </div>
+</body>
+</html>`;
 };
 
 // Submit completion form
@@ -2716,6 +3076,7 @@ const submitCompletionForm = async () => {
       completedBy: authStore.user?.uid,
       services: completionForm.value.services,
       pets: completionForm.value.pets,
+      prescription: completionForm.value.prescription,
       generalNotes: completionForm.value.generalNotes,
       status: 'completed'
     };
@@ -2789,6 +3150,7 @@ const storeCompletionData = async (completionData) => {
       completionData: {
         services: completionData.services,
         pets: completionData.pets,
+        prescription: completionData.prescription,
         generalNotes: completionData.generalNotes
       }
     });

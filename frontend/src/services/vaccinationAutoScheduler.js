@@ -396,6 +396,219 @@ async function updateVaccinationSuggestionStatus(suggestionId, status) {
 }
 
 /**
+ * Calculate next vaccination date using boosterSchedule configuration
+ * @param {Object} vaccinationService - Vaccination service configuration
+ * @param {Object} boosterLimitCheck - Booster limit check result
+ * @param {Date} baseDate - Base date to calculate from
+ * @returns {Date} Next vaccination date
+ */
+export function calculateNextVaccinationDateFromBoosterSchedule(vaccinationService, boosterLimitCheck, baseDate = new Date()) {
+  try {
+    console.log('🔍 Calculating next vaccination date from booster schedule:', {
+      boosterSchedule: vaccinationService.boosterSchedule,
+      nextBoosterNumber: boosterLimitCheck.nextBoosterNumber,
+      baseDate: baseDate
+    })
+    
+    // If no booster schedule is configured, use default nextDoseIn
+    if (!vaccinationService.boosterSchedule || Object.keys(vaccinationService.boosterSchedule).length === 0) {
+      console.log('ℹ️ No booster schedule configured, using default nextDoseIn')
+      return calculateNextVaccinationDateFromService(vaccinationService, baseDate)
+    }
+    
+    const boosterNumber = boosterLimitCheck.nextBoosterNumber
+    const boosterSchedule = vaccinationService.boosterSchedule
+    
+    // Look for specific booster schedule entry
+    let scheduleEntry = null
+    
+    // Try to find exact booster number match
+    if (boosterSchedule[boosterNumber]) {
+      scheduleEntry = boosterSchedule[boosterNumber]
+      console.log(`✅ Found specific schedule for booster ${boosterNumber}:`, scheduleEntry)
+    }
+    // Try to find by description matching
+    else {
+      const boosterNumberStr = boosterNumber.toString()
+      for (const [key, value] of Object.entries(boosterSchedule)) {
+        if (value.description && value.description.toLowerCase().includes(boosterNumberStr)) {
+          scheduleEntry = value
+          console.log(`✅ Found schedule by description for booster ${boosterNumber}:`, scheduleEntry)
+          break
+        }
+      }
+    }
+    
+    // If no specific schedule found, use the first available schedule
+    if (!scheduleEntry && Object.keys(boosterSchedule).length > 0) {
+      const firstKey = Object.keys(boosterSchedule)[0]
+      scheduleEntry = boosterSchedule[firstKey]
+      console.log(`⚠️ No specific schedule for booster ${boosterNumber}, using first available:`, scheduleEntry)
+    }
+    
+    // If still no schedule found, fall back to default
+    if (!scheduleEntry) {
+      console.log('⚠️ No booster schedule entry found, using default nextDoseIn')
+      return calculateNextVaccinationDateFromService(vaccinationService, baseDate)
+    }
+    
+    // Calculate next date based on schedule entry
+    const nextDate = new Date(baseDate)
+    const interval = scheduleEntry.interval || vaccinationService.nextDoseIn || 14
+    const unit = scheduleEntry.unit || vaccinationService.nextDoseUnit || 'days'
+    
+    console.log('🔍 Using booster schedule:', {
+      interval,
+      unit,
+      description: scheduleEntry.description
+    })
+    
+    // Add the interval based on the unit
+    switch (unit.toLowerCase()) {
+      case 'days':
+        nextDate.setDate(nextDate.getDate() + interval)
+        break
+      case 'weeks':
+        nextDate.setDate(nextDate.getDate() + (interval * 7))
+        break
+      case 'months':
+        nextDate.setMonth(nextDate.getMonth() + interval)
+        break
+      case 'years':
+        nextDate.setFullYear(nextDate.getFullYear() + interval)
+        break
+      default:
+        console.log('⚠️ Unknown unit, defaulting to days')
+        nextDate.setDate(nextDate.getDate() + interval)
+    }
+    
+    console.log('✅ Calculated next vaccination date from booster schedule:', nextDate)
+    return nextDate
+    
+  } catch (error) {
+    console.error('Error calculating next vaccination date from booster schedule:', error)
+    // Fall back to default calculation
+    return calculateNextVaccinationDateFromService(vaccinationService, baseDate)
+  }
+}
+
+/**
+ * Check if booster limits allow scheduling another vaccination
+ * @param {Object} completedVaccination - Completed vaccination record
+ * @param {Object} pet - Pet object
+ * @param {Object} vaccinationService - Vaccination service configuration
+ * @returns {Promise<Object>} Object with shouldSchedule boolean and details
+ */
+export async function checkBoosterLimits(completedVaccination, pet, vaccinationService) {
+  try {
+    console.log('🔍 Checking booster limits for:', {
+      vaccineName: completedVaccination.name,
+      petName: pet.name,
+      totalBoosters: vaccinationService.totalBoosters
+    })
+    
+    // Get all existing vaccination records for this pet
+    const petVaccinationsRef = collection(db, 'pets', pet.id, 'vaccinations')
+    const vaccinationsSnapshot = await getDocs(petVaccinationsRef)
+    
+    const existingVaccinations = []
+    vaccinationsSnapshot.forEach(doc => {
+      const data = doc.data()
+      if (data.completed) {
+        existingVaccinations.push({ id: doc.id, ...data })
+      }
+    })
+    
+    console.log('🔍 Found existing vaccinations:', existingVaccinations.length)
+    
+    // Count boosters for this specific vaccine
+    const vaccineName = completedVaccination.name.toLowerCase()
+    const boosterVaccinations = existingVaccinations.filter(vaccination => {
+      const vaccinationName = vaccination.name.toLowerCase()
+      // Check if it's a booster for the same vaccine
+      return vaccinationName.includes('booster') && 
+             vaccinationName.includes(vaccineName.split(' ')[0]) // Match base vaccine name
+    })
+    
+    console.log('🔍 Found booster vaccinations for this vaccine:', boosterVaccinations.length)
+    console.log('🔍 Booster vaccinations:', boosterVaccinations.map(v => ({
+      name: v.name,
+      date: v.date,
+      completed: v.completed
+    })))
+    
+    const currentBoosters = boosterVaccinations.length
+    const totalBoosters = vaccinationService.totalBoosters || 1
+    const nextBoosterNumber = currentBoosters + 1
+    
+    // Check if we've reached the limit
+    if (currentBoosters >= totalBoosters) {
+      return {
+        shouldSchedule: false,
+        reason: `Booster limit reached (${currentBoosters}/${totalBoosters})`,
+        currentBoosters,
+        totalBoosters,
+        nextBoosterNumber
+      }
+    }
+    
+    // Check if this is the first vaccination (not a booster)
+    const isFirstVaccination = !completedVaccination.name.toLowerCase().includes('booster')
+    if (isFirstVaccination && currentBoosters === 0) {
+      // First vaccination - check if boosters are allowed
+      if (totalBoosters > 0) {
+        return {
+          shouldSchedule: true,
+          reason: 'First vaccination, boosters allowed',
+          currentBoosters,
+          totalBoosters,
+          nextBoosterNumber: 1
+        }
+      } else {
+        return {
+          shouldSchedule: false,
+          reason: 'No boosters configured for this vaccine',
+          currentBoosters,
+          totalBoosters,
+          nextBoosterNumber
+        }
+      }
+    }
+    
+    // This is a booster vaccination - check if we can schedule another
+    if (currentBoosters < totalBoosters) {
+      return {
+        shouldSchedule: true,
+        reason: `Booster ${nextBoosterNumber} of ${totalBoosters} allowed`,
+        currentBoosters,
+        totalBoosters,
+        nextBoosterNumber
+      }
+    }
+    
+    return {
+      shouldSchedule: false,
+      reason: 'Unknown booster limit condition',
+      currentBoosters,
+      totalBoosters,
+      nextBoosterNumber
+    }
+    
+  } catch (error) {
+    console.error('Error checking booster limits:', error)
+    // Default to allowing scheduling if there's an error
+    return {
+      shouldSchedule: true,
+      reason: 'Error checking limits, defaulting to allow',
+      currentBoosters: 0,
+      totalBoosters: vaccinationService.totalBoosters || 1,
+      nextBoosterNumber: 1,
+      error: error.message
+    }
+  }
+}
+
+/**
  * Process completed vaccination and auto-schedule next dose
  * @param {Object} completedVaccination - Completed vaccination record
  * @param {Object} pet - Pet object
@@ -613,8 +826,21 @@ export async function createNextVaccinationAppointment(completedVaccination, pet
       return null
     }
     
-    // Calculate next vaccination date using service data and office hours
-    const nextVaccinationDate = await calculateNextVaccinationDateFromService(vaccinationService, new Date(), user?.id || user?.userId, pet.id)
+    // 🔧 NEW: Check booster limits before scheduling
+    const boosterLimitCheck = await checkBoosterLimits(completedVaccination, pet, vaccinationService)
+    if (!boosterLimitCheck.shouldSchedule) {
+      console.log('ℹ️ Booster limit reached or exceeded:', boosterLimitCheck.reason)
+      return null
+    }
+    
+    console.log('✅ Booster limit check passed:', {
+      currentBoosters: boosterLimitCheck.currentBoosters,
+      totalBoosters: boosterLimitCheck.totalBoosters,
+      nextBoosterNumber: boosterLimitCheck.nextBoosterNumber
+    })
+    
+    // Calculate next vaccination date using booster schedule or service data
+    const nextVaccinationDate = calculateNextVaccinationDateFromBoosterSchedule(vaccinationService, boosterLimitCheck, new Date())
     
     // Check if next vaccination is needed (not too far in the future)
     const maxFutureDate = new Date()
@@ -647,8 +873,9 @@ export async function createNextVaccinationAppointment(completedVaccination, pet
     console.log('🕐 Using original appointment time:', originalAppointmentTime)
     console.log('⏱️ Using original appointment duration:', originalDuration)
     
-    // Create booster service name
-    const boosterServiceName = `${vaccinationService.name} - BOOSTER`
+    // Create booster service name with booster number
+    const boosterNumber = boosterLimitCheck.nextBoosterNumber
+    const boosterServiceName = `${vaccinationService.name} - BOOSTER ${boosterNumber}`
     
     const appointmentData = {
       userId: user?.id || user?.userId,
@@ -656,7 +883,7 @@ export async function createNextVaccinationAppointment(completedVaccination, pet
       petNames: [pet.name],
       doctorId: vetId, // Use the actual vet ID who completed the vaccination
       doctorName: vetName,
-      serviceNames: [boosterServiceName], // Add "BOOSTER" to service name
+      serviceNames: [boosterServiceName], // Add "BOOSTER X" to service name
       servicesIds: [vaccinationService.id],
       services: [vaccinationService.id], // Add services field to match user-created appointments
       date: nextVaccinationDate,
@@ -666,17 +893,23 @@ export async function createNextVaccinationAppointment(completedVaccination, pet
       isVaccination: true,
       isAutoScheduled: true,
       autoScheduledAt: new Date(),
-      autoScheduledReason: 'Vaccination series continuation - BOOSTER',
+      autoScheduledReason: `Vaccination series continuation - BOOSTER ${boosterNumber} of ${boosterLimitCheck.totalBoosters}`,
       vaccinationSeries: vaccinationService.seriesType || 'Standard',
-      vaccinationDose: 'booster',
+      vaccinationDose: `booster_${boosterNumber}`,
       vaccinationTotalDoses: vaccinationService.totalBoosters || 1,
+      vaccinationCurrentDose: boosterNumber,
       isCore: completedVaccination.isCore || false,
-      notes: `Auto-scheduled BOOSTER vaccination for ${vaccinationService.name} - This is a follow-up vaccination appointment.`,
+      notes: `Auto-scheduled BOOSTER ${boosterNumber} vaccination for ${vaccinationService.name} - This is booster ${boosterNumber} of ${boosterLimitCheck.totalBoosters}.`,
       createdAt: new Date(),
       updatedAt: new Date(),
       source: 'vaccination_auto_schedule',
       previousVaccinationId: completedVaccination.id,
-      vaccineType: vaccinationService.vaccineType
+      vaccineType: vaccinationService.vaccineType,
+      boosterLimitInfo: {
+        currentBoosters: boosterLimitCheck.currentBoosters,
+        totalBoosters: boosterLimitCheck.totalBoosters,
+        nextBoosterNumber: boosterLimitCheck.nextBoosterNumber
+      }
     }
     
     // Save to appointments collection
@@ -930,6 +1163,98 @@ export async function createVaccinationAppointment(suggestion, user, pet) {
   } catch (error) {
     console.error('Error creating vaccination appointment:', error)
     throw new Error('Failed to create vaccination appointment')
+  }
+}
+
+/**
+ * Test function to verify booster limit functionality
+ * @param {Object} mockVaccinationService - Mock vaccination service with totalBoosters
+ * @param {Object} mockPet - Mock pet object
+ * @param {Array} mockExistingVaccinations - Mock existing vaccination records
+ * @returns {Promise<Object>} Test results
+ */
+export async function testBoosterLimitFunctionality(mockVaccinationService, mockPet, mockExistingVaccinations = []) {
+  try {
+    console.log('🧪 Testing booster limit functionality...')
+    
+    const testResults = {
+      service: mockVaccinationService,
+      pet: mockPet,
+      existingVaccinations: mockExistingVaccinations,
+      tests: []
+    }
+    
+    // Test 1: First vaccination (should allow scheduling)
+    const firstVaccination = {
+      name: mockVaccinationService.name,
+      serviceId: mockVaccinationService.id,
+      doctorId: 'test_vet',
+      doctorName: 'Test Vet',
+      appointmentTime: '1:00 PM - 2:00 PM',
+      appointmentDuration: 60,
+      isCore: true
+    }
+    
+    const firstTest = await checkBoosterLimits(firstVaccination, mockPet, mockVaccinationService)
+    testResults.tests.push({
+      test: 'First vaccination',
+      shouldSchedule: firstTest.shouldSchedule,
+      reason: firstTest.reason,
+      currentBoosters: firstTest.currentBoosters,
+      totalBoosters: firstTest.totalBoosters,
+      nextBoosterNumber: firstTest.nextBoosterNumber
+    })
+    
+    // Test 2: After reaching limit (should not allow scheduling)
+    const limitReachedVaccination = {
+      name: `${mockVaccinationService.name} - BOOSTER ${mockVaccinationService.totalBoosters}`,
+      serviceId: mockVaccinationService.id,
+      doctorId: 'test_vet',
+      doctorName: 'Test Vet',
+      appointmentTime: '1:00 PM - 2:00 PM',
+      appointmentDuration: 60,
+      isCore: true
+    }
+    
+    // Mock existing vaccinations to simulate limit reached
+    const mockPetWithVaccinations = {
+      ...mockPet,
+      vaccinations: mockExistingVaccinations
+    }
+    
+    const limitTest = await checkBoosterLimits(limitReachedVaccination, mockPetWithVaccinations, mockVaccinationService)
+    testResults.tests.push({
+      test: 'After reaching limit',
+      shouldSchedule: limitTest.shouldSchedule,
+      reason: limitTest.reason,
+      currentBoosters: limitTest.currentBoosters,
+      totalBoosters: limitTest.totalBoosters,
+      nextBoosterNumber: limitTest.nextBoosterNumber
+    })
+    
+    // Test 3: Booster schedule calculation
+    const boosterScheduleTest = calculateNextVaccinationDateFromBoosterSchedule(
+      mockVaccinationService, 
+      firstTest, 
+      new Date()
+    )
+    
+    testResults.tests.push({
+      test: 'Booster schedule calculation',
+      nextDate: boosterScheduleTest,
+      hasBoosterSchedule: !!(mockVaccinationService.boosterSchedule && Object.keys(mockVaccinationService.boosterSchedule).length > 0)
+    })
+    
+    console.log('🧪 Test results:', testResults)
+    return testResults
+    
+  } catch (error) {
+    console.error('Error testing booster limit functionality:', error)
+    return {
+      error: error.message,
+      service: mockVaccinationService,
+      pet: mockPet
+    }
   }
 }
 
